@@ -20,3 +20,12 @@ PowerShell_transcript.*
 *.pwgt.tmp
 *.pwgt.part
 *.pwgt.partial
+# Local backups and machine-specific files
+*.bak-*
+*.backup
+*.orig
+*.local
+*.user
+*.suo
+*.swp
+*~
