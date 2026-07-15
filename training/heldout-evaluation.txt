@@ -1,0 +1,23 @@
+PASS expected=greeting    got=greeting    variant= 3 score=  86 overlap= 35 :: hello friend, ready to begin?
+PASS expected=identity    got=identity    variant= 4 score= 203 overlap=105 :: what exactly is Perci and where are your limits
+PASS expected=english     got=english     variant= 7 score= 201 overlap=115 :: could you polish my grammar and explain the adjective
+PASS expected=logic       got=logic       variant=14 score= 113 overlap=121 :: all ravens are birds and this is a raven, what follows
+PASS expected=math        got=math        variant= 1 score= 187 overlap= 68 :: compute 812 divided by 7
+PASS expected=geometry    got=geometry    variant=28 score= 390 overlap=202 :: find the area of a triangle whose base is 14 and height is 9
+PASS expected=memory      got=memory      variant=12 score= 147 overlap=110 :: please remember this architectural decision
+PASS expected=code        got=code        variant=27 score= 225 overlap=123 :: help debug this Rust command line parser
+PASS expected=governance  got=governance  variant= 1 score= 143 overlap= 82 :: do we have authority to write this durable mutation
+PASS expected=planning    got=planning    variant= 2 score= 251 overlap=118 :: make milestones and acceptance tests for the project
+PASS expected=explanation got=explanation variant=18 score= 249 overlap=137 :: teach the concept in simple terms with an example
+PASS expected=systems     got=systems     variant=20 score= 409 overlap=162 :: how should Lumen Cortex and Bitwork interconnect
+PASS expected=science     got=science     variant=11 score=  98 overlap=102 :: describe momentum and how to measure it experimentally
+PASS expected=creativity  got=creativity  variant=16 score= 208 overlap=116 :: invent an original cybernetic interface concept
+PASS expected=comparison  got=comparison  variant=13 score= 206 overlap=158 :: compare deterministic solvers against neural prediction
+PASS expected=general     got=general     variant= 3 score=  82 overlap=103 :: give me your careful thoughts on this unusual idea
+{
+  "passed": 16,
+  "total": 16,
+  "accuracy": 1.0,
+  "seconds": 0.5527951717376709,
+  "queries_per_second": 28.943812858757756
+}

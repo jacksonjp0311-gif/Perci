@@ -1,0 +1,39 @@
+{
+  "name": "Perci Cognitive Weights",
+  "version": 1,
+  "format": "PERCIW01",
+  "architecture": "4096-bit sparse associative Bitwork network",
+  "size_bytes": 209715200,
+  "size_mib": 200.0,
+  "prototype_count": 403266,
+  "bits_per_activation": 4096,
+  "words_per_activation": 64,
+  "labels": [
+    "greeting",
+    "identity",
+    "english",
+    "logic",
+    "math",
+    "geometry",
+    "memory",
+    "code",
+    "governance",
+    "planning",
+    "explanation",
+    "systems",
+    "science",
+    "creativity",
+    "comparison",
+    "general"
+  ],
+  "record_size": 520,
+  "sha256": "3ccfc3db59e57e6cfcc9ac511de30710555dca4e19deacf299f560d1db3f5e3e",
+  "corpus_sha256": "5138e904c5e848861fa6e29302a7d945d2c88c3a5492f1ef274f2195c9f997c7",
+  "seed": 5784119745374541361,
+  "limitations": [
+    "Not a transformer or general-purpose pretrained language model.",
+    "Open-ended language is template and retrieval based.",
+    "Exact arithmetic and geometry are delegated to deterministic tools.",
+    "Knowledge is bounded by the generated curriculum and local memory."
+  ]
+}

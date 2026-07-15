@@ -1,0 +1,17 @@
+[package]
+name = "perci"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "A compact governed neuro-symbolic CLI and chat runtime with Bitwork reflexes"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+
+[[bin]]
+name = "perci"
+path = "src/main.rs"

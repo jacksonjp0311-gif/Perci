@@ -1,0 +1,30 @@
+[model]
+name = "perci-200"
+target_package_mib = 200
+architecture = "compact decoder transformer + neuro-symbolic tools"
+recommended_parameters = 350000000
+weight_bits = 4
+context_tokens = 4096
+
+[data]
+# Training data is intentionally external to the runtime repository.
+# Export, license-check, deduplicate, redact, split, and hash every source.
+domains = ["english", "reasoning", "mathematics", "geometry", "coding", "governance"]
+
+[training]
+stages = [
+  "base-model selection",
+  "teacher distillation",
+  "instruction tuning",
+  "tool-use tuning",
+  "reasoning verification",
+  "quantization-aware fine-tuning",
+  "held-out evaluation"
+]
+
+[release_gates]
+minimum_math_exact = 0.95
+minimum_tool_routing = 0.95
+maximum_unsupported_claim_rate = 0.02
+require_reproducible_manifest = true
+require_license_manifest = true
