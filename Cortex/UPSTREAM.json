@@ -1,0 +1,8 @@
+{
+    "schema_version":  "1.0",
+    "repository":  "https://github.com/jacksonjp0311-gif/Cortex.git",
+    "branch":  "main",
+    "commit":  "2fee130cb64efd296e0f2e71b3770c7ab0e8d239",
+    "synchronized_at_utc":  "2026-07-15T14:04:57.4597277Z",
+    "integration":  "vendored snapshot; Cortex runtime state remains local and ignored"
+}

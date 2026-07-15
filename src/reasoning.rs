@@ -1,129 +1,357 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReasoningError {
     Unsupported,
     InvalidNumber(String),
     DivisionByZero,
     InvalidGeometry,
+    Overflow,
 }
 
 impl fmt::Display for ReasoningError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unsupported => write!(f, "I could not map that request to a supported exact operation"),
-            Self::InvalidNumber(v) => write!(f, "invalid integer: {v}"),
+            Self::Unsupported => write!(f, "unsupported exact operation"),
+            Self::InvalidNumber(value) => write!(f, "invalid integer: {value}"),
             Self::DivisionByZero => write!(f, "division by zero is undefined"),
             Self::InvalidGeometry => write!(f, "invalid or incomplete geometry parameters"),
+            Self::Overflow => write!(f, "the exact integer operation exceeded i128 range"),
         }
     }
 }
 
 impl std::error::Error for ReasoningError {}
 
-/// Exact rational value. No floating point is used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Rational { pub numerator: i128, pub denominator: i128 }
+pub struct Rational {
+    pub numerator: i128,
+    pub denominator: i128,
+}
 
 impl Rational {
-    pub fn new(n: i128, d: i128) -> Result<Self, ReasoningError> {
-        if d == 0 { return Err(ReasoningError::DivisionByZero); }
-        let sign = if d < 0 { -1 } else { 1 };
-        let g = gcd(n.unsigned_abs(), d.unsigned_abs()) as i128;
-        Ok(Self { numerator: sign * n / g, denominator: sign * d / g })
+    pub fn new(numerator: i128, denominator: i128) -> Result<Self, ReasoningError> {
+        if denominator == 0 {
+            return Err(ReasoningError::DivisionByZero);
+        }
+
+        let sign = if denominator < 0 { -1 } else { 1 };
+        let divisor = gcd(numerator.unsigned_abs(), denominator.unsigned_abs()) as i128;
+        let signed_numerator = numerator
+            .checked_mul(sign)
+            .ok_or(ReasoningError::Overflow)?;
+
+        Ok(Self {
+            numerator: signed_numerator / divisor,
+            denominator: denominator.unsigned_abs() as i128 / divisor,
+        })
     }
 }
 
 impl fmt::Display for Rational {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.denominator == 1 { write!(f, "{}", self.numerator) }
-        else { write!(f, "{}/{}", self.numerator, self.denominator) }
+        if self.denominator == 1 {
+            write!(f, "{}", self.numerator)
+        } else {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        }
     }
 }
 
-fn gcd(mut a: u128, mut b: u128) -> u128 {
-    while b != 0 { let r = a % b; a = b; b = r; }
-    a.max(1)
+fn gcd(mut left: u128, mut right: u128) -> u128 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left.max(1)
 }
 
-/// Solves simple exact arithmetic expressions of the form `a op b`.
-pub fn solve_arithmetic(text: &str) -> Result<String, ReasoningError> {
-    let normalized = text
-        .to_ascii_lowercase()
-        .replace("calculate", "")
-        .replace("what is", "")
+/// Attempt an exact arithmetic operation.
+///
+/// `Ok(None)` means the prompt is not a supported executable arithmetic form,
+/// so the language backend should continue rather than returning a tool error.
+pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError> {
+    let lower = text.to_ascii_lowercase();
+
+    if lower.contains("percent of") {
+        let numbers = extract_numbers(&lower);
+        if numbers.len() >= 2 {
+            let product = numbers[0]
+                .checked_mul(numbers[1])
+                .ok_or(ReasoningError::Overflow)?;
+            return Ok(Some(Rational::new(product, 100)?.to_string()));
+        }
+        return Ok(None);
+    }
+
+    let normalized = lower
+        .replace("multiplied by", "*")
+        .replace("divided by", "/")
+        .replace("times", "*")
         .replace("plus", "+")
         .replace("minus", "-")
-        .replace("times", "*")
-        .replace("multiplied by", "*")
-        .replace("divided by", "/");
+        .replace("calculate", "")
+        .replace("compute", "")
+        .replace("what is", "");
 
-    for op in ['+', '*', '/'] {
-        if let Some((left, right)) = normalized.split_once(op) {
-            let a = parse_i128(left)?;
-            let b = parse_i128(right)?;
-            return match op {
-                '+' => Ok((a + b).to_string()),
-                '*' => Ok((a * b).to_string()),
-                '/' => Ok(Rational::new(a, b)?.to_string()),
-                _ => unreachable!(),
-            };
+    let compact: String = normalized
+        .chars()
+        .filter(|character| !character.is_whitespace() && *character != ',')
+        .collect();
+
+    let Some((left, operator, right)) = split_binary_expression(&compact) else {
+        return Ok(None);
+    };
+
+    let a = parse_i128(left)?;
+    let b = parse_i128(right)?;
+
+    let result = match operator {
+        '+' => a
+            .checked_add(b)
+            .ok_or(ReasoningError::Overflow)?
+            .to_string(),
+        '-' => a
+            .checked_sub(b)
+            .ok_or(ReasoningError::Overflow)?
+            .to_string(),
+        '*' => a
+            .checked_mul(b)
+            .ok_or(ReasoningError::Overflow)?
+            .to_string(),
+        '/' => Rational::new(a, b)?.to_string(),
+        _ => return Ok(None),
+    };
+
+    Ok(Some(result))
+}
+
+pub fn solve_arithmetic(text: &str) -> Result<String, ReasoningError> {
+    try_solve_arithmetic(text)?.ok_or(ReasoningError::Unsupported)
+}
+
+/// Attempt one of Perci's exact symbolic geometry forms.
+///
+/// Conceptual geometry questions return `Ok(None)` and continue to the language
+/// backend. Only requests containing a supported formula and enough values run.
+pub fn try_solve_geometry(text: &str) -> Result<Option<String>, ReasoningError> {
+    let lower = text.to_ascii_lowercase();
+    let numbers = extract_numbers(&lower);
+
+    if lower.contains("triangle") && lower.contains("area") && numbers.len() >= 2 {
+        let product = numbers[0]
+            .checked_mul(numbers[1])
+            .ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!(
+            "triangle area = {}",
+            Rational::new(product, 2)?
+        )));
+    }
+
+    if lower.contains("rectangle") && lower.contains("area") && numbers.len() >= 2 {
+        let area = numbers[0]
+            .checked_mul(numbers[1])
+            .ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("rectangle area = {area}")));
+    }
+
+    if lower.contains("rectangle") && lower.contains("perimeter") && numbers.len() >= 2 {
+        let sum = numbers[0]
+            .checked_add(numbers[1])
+            .ok_or(ReasoningError::Overflow)?;
+        let perimeter = sum.checked_mul(2).ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("rectangle perimeter = {perimeter}")));
+    }
+
+    if lower.contains("square") && lower.contains("area") && !numbers.is_empty() {
+        let area = numbers[0]
+            .checked_mul(numbers[0])
+            .ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("square area = {area}")));
+    }
+
+    if lower.contains("square") && lower.contains("perimeter") && !numbers.is_empty() {
+        let perimeter = numbers[0].checked_mul(4).ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("square perimeter = {perimeter}")));
+    }
+
+    if lower.contains("pythag") && numbers.len() >= 2 {
+        let first_square = numbers[0]
+            .checked_mul(numbers[0])
+            .ok_or(ReasoningError::Overflow)?;
+        let second_square = numbers[1]
+            .checked_mul(numbers[1])
+            .ok_or(ReasoningError::Overflow)?;
+        let squared = first_square
+            .checked_add(second_square)
+            .ok_or(ReasoningError::Overflow)?;
+
+        if let Some(root) = integer_sqrt_exact(squared) {
+            return Ok(Some(format!("hypotenuse = {root}")));
+        }
+        return Ok(Some(format!(
+            "hypotenuseÂ² = {squared}; exact hypotenuse = âˆš{squared}"
+        )));
+    }
+
+    if lower.contains("circle")
+        && lower.contains("circumference")
+        && lower.contains("radius")
+        && !numbers.is_empty()
+    {
+        let coefficient = numbers[0].checked_mul(2).ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("circle circumference = {coefficient}Ï€")));
+    }
+
+    if lower.contains("circle")
+        && lower.contains("circumference")
+        && lower.contains("diameter")
+        && !numbers.is_empty()
+    {
+        return Ok(Some(format!("circle circumference = {}Ï€", numbers[0])));
+    }
+
+    if lower.contains("circle")
+        && lower.contains("area")
+        && lower.contains("radius")
+        && !numbers.is_empty()
+    {
+        let coefficient = numbers[0]
+            .checked_mul(numbers[0])
+            .ok_or(ReasoningError::Overflow)?;
+        return Ok(Some(format!("circle area = {coefficient}Ï€")));
+    }
+
+    Ok(None)
+}
+
+pub fn solve_geometry(text: &str) -> Result<String, ReasoningError> {
+    try_solve_geometry(text)?.ok_or(ReasoningError::InvalidGeometry)
+}
+
+fn split_binary_expression(expression: &str) -> Option<(&str, char, &str)> {
+    let bytes = expression.as_bytes();
+
+    for (index, character) in expression.char_indices() {
+        if index == 0 {
+            continue;
+        }
+
+        let is_operator = matches!(character, '+' | '-' | '*' | '/');
+        if !is_operator {
+            continue;
+        }
+
+        let previous = bytes.get(index.wrapping_sub(1)).copied().map(char::from);
+        if matches!(previous, Some('+' | '-' | '*' | '/')) {
+            continue;
+        }
+
+        let left = &expression[..index];
+        let right = &expression[index + character.len_utf8()..];
+        if !left.is_empty() && !right.is_empty() {
+            return Some((left, character, right));
         }
     }
 
-    // Treat a minus sign as an operator only after the first character.
-    if let Some(index) = normalized.char_indices().skip(1).find_map(|(i, c)| (c == '-').then_some(i)) {
-        let a = parse_i128(&normalized[..index])?;
-        let b = parse_i128(&normalized[index + 1..])?;
-        return Ok((a - b).to_string());
-    }
-    Err(ReasoningError::Unsupported)
+    None
 }
 
 fn parse_i128(text: &str) -> Result<i128, ReasoningError> {
-    let cleaned = text.trim().trim_matches(|c: char| !c.is_ascii_digit() && c != '-');
-    cleaned.parse().map_err(|_| ReasoningError::InvalidNumber(cleaned.into()))
+    text.trim()
+        .parse()
+        .map_err(|_| ReasoningError::InvalidNumber(text.trim().to_owned()))
 }
 
-/// Handles a small exact geometry vocabulary using integer/rational formulas.
-pub fn solve_geometry(text: &str) -> Result<String, ReasoningError> {
-    let lower = text.to_ascii_lowercase();
-    let nums: Vec<i128> = lower
-        .split(|c: char| !c.is_ascii_digit() && c != '-')
-        .filter(|s| !s.is_empty())
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    if lower.contains("triangle") && lower.contains("area") && nums.len() >= 2 {
-        return Ok(format!("triangle area = {}", Rational::new(nums[0] * nums[1], 2)?));
-    }
-    if lower.contains("rectangle") && lower.contains("area") && nums.len() >= 2 {
-        return Ok(format!("rectangle area = {}", nums[0] * nums[1]));
-    }
-    if lower.contains("pythag") && nums.len() >= 2 {
-        let squared = nums[0] * nums[0] + nums[1] * nums[1];
-        if let Some(root) = integer_sqrt_exact(squared) {
-            return Ok(format!("hypotenuse = {root}"));
-        }
-        return Ok(format!("hypotenuse² = {squared}; exact hypotenuse = √{squared}"));
-    }
-    Err(ReasoningError::InvalidGeometry)
+fn extract_numbers(text: &str) -> Vec<i128> {
+    text.split(|character: char| !character.is_ascii_digit() && character != '-')
+        .filter(|value| !value.is_empty() && *value != "-")
+        .filter_map(|value| value.parse().ok())
+        .collect()
 }
 
 fn integer_sqrt_exact(value: i128) -> Option<i128> {
-    if value < 0 { return None; }
-    let mut low = 0i128;
-    let mut high = value.min(1 << 64) + 1;
-    while low + 1 < high {
-        let mid = (low + high) / 2;
-        if mid.saturating_mul(mid) <= value { low = mid; } else { high = mid; }
+    if value < 0 {
+        return None;
     }
-    (low * low == value).then_some(low)
+
+    let mut low = 0i128;
+    let mut high = value.min(1i128 << 64) + 1;
+
+    while low + 1 < high {
+        let midpoint = (low + high) / 2;
+        if midpoint.saturating_mul(midpoint) <= value {
+            low = midpoint;
+        } else {
+            high = midpoint;
+        }
+    }
+
+    (low.saturating_mul(low) == value).then_some(low)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn exact_fraction() { assert_eq!(solve_arithmetic("10 divided by 4").unwrap(), "5/2"); }
-    #[test] fn triangle() { assert_eq!(solve_geometry("triangle area base 8 height 5").unwrap(), "triangle area = 20"); }
+
+    #[test]
+    fn exact_fraction() {
+        assert_eq!(
+            try_solve_arithmetic("10 divided by 4").unwrap(),
+            Some("5/2".to_owned())
+        );
+    }
+
+    #[test]
+    fn percentage() {
+        assert_eq!(
+            try_solve_arithmetic("calculate 20 percent of 80").unwrap(),
+            Some("16".to_owned())
+        );
+    }
+
+    #[test]
+    fn negative_operands() {
+        assert_eq!(
+            try_solve_arithmetic("calculate -5 minus -3").unwrap(),
+            Some("-2".to_owned())
+        );
+    }
+
+    #[test]
+    fn conceptual_math_falls_through() {
+        assert_eq!(try_solve_arithmetic("what is an equation?").unwrap(), None);
+        assert_eq!(
+            try_solve_arithmetic("discuss the ratio between CPU and RAM").unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn overflow_is_detected() {
+        let input = format!("calculate {} plus 1", i128::MAX);
+        assert_eq!(try_solve_arithmetic(&input), Err(ReasoningError::Overflow));
+    }
+
+    #[test]
+    fn triangle() {
+        assert_eq!(
+            try_solve_geometry("triangle area base 8 height 5").unwrap(),
+            Some("triangle area = 20".to_owned())
+        );
+    }
+
+    #[test]
+    fn conceptual_geometry_falls_through() {
+        assert_eq!(try_solve_geometry("what is a triangle?").unwrap(), None);
+        assert_eq!(
+            try_solve_geometry("explain square brackets in Rust").unwrap(),
+            None
+        );
+        assert_eq!(
+            try_solve_geometry("we need a perimeter security design").unwrap(),
+            None
+        );
+    }
 }

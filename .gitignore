@@ -29,3 +29,11 @@ PowerShell_transcript.*
 *.suo
 *.swp
 *~
+/.cortex/
+/.perci/
+/Cortex/.venv/
+/Cortex/**/__pycache__/
+/Cortex/.pytest_cache/
+/Cortex/.ruff_cache/
+*.pyc
+*.pyo

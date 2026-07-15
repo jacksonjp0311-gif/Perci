@@ -1,0 +1,33 @@
+name: Cortex neural interlink tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall -q cortex tests
+      - name: Test
+        run: python -m unittest discover -s tests -v
+      - name: Bash syntax
+        if: runner.os != 'Windows'
+        run: bash -n cortex.sh cortex-all-one.sh scripts/bash/*.sh
+      - name: Bash portable smoke
+        if: runner.os != 'Windows'
+        run: bash ./cortex-all-one.sh --repository-path . --name CortexSelf --task "Inspect the portable engine"
+      - name: PowerShell launcher smoke
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\cortex.ps1 doctor --json

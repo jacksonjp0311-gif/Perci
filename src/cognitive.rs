@@ -194,11 +194,12 @@ impl CognitiveWeights {
 
                 // Reward matching active bits and learned expert confidence,
                 // while penalizing unmatched bits in the stored prototype.
-                let score = overlap as i32 * 2
-                    - prototype_popcount
-                    + coarse_score * 2
-                    + quality / 500;
-                let replace = best.as_ref().map(|current| score > current.score).unwrap_or(true);
+                let score =
+                    overlap as i32 * 2 - prototype_popcount + coarse_score * 2 + quality / 500;
+                let replace = best
+                    .as_ref()
+                    .map(|current| score > current.score)
+                    .unwrap_or(true);
                 if replace {
                     best = Some(CognitiveMatch {
                         label: label.name.clone(),
@@ -306,27 +307,173 @@ fn set_feature(bits: &mut [u64; WORDS], feature: &str) {
 fn lexical_priors(text: &str) -> Vec<(&'static str, i32)> {
     let padded = format!(" {} ", normalize(text));
     let groups: [(&str, &[&str]); 15] = [
-        ("greeting", &[" hello ", " hi ", " hey ", "good morning", "good evening"]),
-        ("identity", &["who are you", "what exactly is perci", "your limitations", "your limits", "what can you do"]),
-        ("english", &[" grammar ", " adjective ", " noun ", " verb ", "rewrite", "polish", " english "]),
-        ("logic", &[" logically ", "what follows", "contradiction", "assumption", " infer ", "reason step"]),
-        ("math", &[" calculate ", " compute ", " divided ", " multiply ", " plus ", " minus ", " equation ", " fraction ", " percent "]),
-        ("geometry", &[" triangle ", " circle ", " geometry ", " pythagorean ", " angle ", " circumference "]),
-        ("memory", &[" remember ", " recall ", " memory ", " store this ", "what do you remember"]),
-        ("code", &[" rust ", " powershell ", " code ", " debug ", " parser ", " cli ", " repository "]),
-        ("governance", &[" permission ", " authority ", " authorized ", " durable ", " mutation ", " ledger ", " sandbox ", " origin alignment "]),
-        ("planning", &[" plan ", " milestones ", " roadmap ", " acceptance tests ", " dependencies ", " build first "]),
-        ("explanation", &[" explain ", " teach ", " simple terms ", " example ", " how does ", " why does "]),
-        ("systems", &[" lumen ", " cortex ", " bitwork ", " nemo ", " rhp ", " perci "]),
-        ("science", &[" momentum ", " energy ", " force ", " pressure ", " experiment ", " scientific ", " atom ", " cells "]),
-        ("creativity", &[" invent ", " brainstorm ", " story ", " creative ", " original ", " design a futuristic "]),
-        ("comparison", &[" compare ", " contrast ", " tradeoffs ", " versus ", " vs "]),
+        (
+            "greeting",
+            &[" hello ", " hi ", " hey ", "good morning", "good evening"],
+        ),
+        (
+            "identity",
+            &[
+                "who are you",
+                "what exactly is perci",
+                "your limitations",
+                "your limits",
+                "what can you do",
+            ],
+        ),
+        (
+            "english",
+            &[
+                " grammar ",
+                " adjective ",
+                " noun ",
+                " verb ",
+                "rewrite",
+                "polish",
+                " english ",
+            ],
+        ),
+        (
+            "logic",
+            &[
+                " logically ",
+                "what follows",
+                "contradiction",
+                "assumption",
+                " infer ",
+                "reason step",
+            ],
+        ),
+        (
+            "math",
+            &[
+                " calculate ",
+                " compute ",
+                " divided ",
+                " multiply ",
+                " plus ",
+                " minus ",
+                " equation ",
+                " fraction ",
+                " percent ",
+            ],
+        ),
+        (
+            "geometry",
+            &[
+                " triangle ",
+                " circle ",
+                " geometry ",
+                " pythagorean ",
+                " angle ",
+                " circumference ",
+            ],
+        ),
+        (
+            "memory",
+            &[
+                " remember ",
+                " recall ",
+                " memory ",
+                " store this ",
+                "what do you remember",
+            ],
+        ),
+        (
+            "code",
+            &[
+                " rust ",
+                " powershell ",
+                " code ",
+                " debug ",
+                " parser ",
+                " cli ",
+                " repository ",
+            ],
+        ),
+        (
+            "governance",
+            &[
+                " permission ",
+                " authority ",
+                " authorized ",
+                " durable ",
+                " mutation ",
+                " ledger ",
+                " sandbox ",
+                " origin alignment ",
+            ],
+        ),
+        (
+            "planning",
+            &[
+                " plan ",
+                " milestones ",
+                " roadmap ",
+                " acceptance tests ",
+                " dependencies ",
+                " build first ",
+            ],
+        ),
+        (
+            "explanation",
+            &[
+                " explain ",
+                " teach ",
+                " simple terms ",
+                " example ",
+                " how does ",
+                " why does ",
+            ],
+        ),
+        (
+            "systems",
+            &[
+                " lumen ",
+                " cortex ",
+                " bitwork ",
+                " nemo ",
+                " rhp ",
+                " perci ",
+            ],
+        ),
+        (
+            "science",
+            &[
+                " momentum ",
+                " energy ",
+                " force ",
+                " pressure ",
+                " experiment ",
+                " scientific ",
+                " atom ",
+                " cells ",
+            ],
+        ),
+        (
+            "creativity",
+            &[
+                " invent ",
+                " brainstorm ",
+                " story ",
+                " creative ",
+                " original ",
+                " design a futuristic ",
+            ],
+        ),
+        (
+            "comparison",
+            &[" compare ", " contrast ", " tradeoffs ", " versus ", " vs "],
+        ),
     ];
 
     let mut scores: Vec<(&'static str, i32)> = groups
         .iter()
         .map(|(name, phrases)| {
-            let matches = phrases.iter().filter(|phrase| padded.contains(*phrase)).count() as i32;
+            let matches = phrases
+                .iter()
+                .filter(|phrase| padded.contains(*phrase))
+                .count() as i32;
             (*name, matches * 24)
         })
         .collect();

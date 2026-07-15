@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "repository_name": "MyProject",
+  "repository_id": "generated-during-bootstrap",
+  "repository_root": ".",
+  "memory_mode": "index_first",
+  "context_budget": 1200,
+  "query_before_action": true,
+  "refresh_on_activation": "auto",
+  "max_file_bytes": 2000000,
+  "chunk_chars": 4800,
+  "chunk_overlap_lines": 8,
+  "git_commit_limit": 500,
+  "semantic_scan_limit": 5000,
+  "environment_learning_enabled": true,
+  "neural_interlink_enabled": true,
+  "neural_activation_depth": 2,
+  "neural_max_nodes": 64,
+  "neural_plasticity_enabled": true,
+  "neural_learning_rate": 0.025,
+  "bootstrap_thresholds": {
+    "index_coverage": 0.98,
+    "manifest_integrity": 1.0,
+    "retrieval_probe_pass_rate": 0.75
+  },
+  "exclude": [
+    ".git",
+    ".venv",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    ".cortex/runtime",
+    ".cortex/config.json",
+    ".cortex/bootstrap_certificate.json"
+  ],
+  "engine_python": "generated-during-bootstrap",
+  "engine_module_root": "generated-during-bootstrap",
+  "cortex_home": "generated-during-bootstrap"
+}

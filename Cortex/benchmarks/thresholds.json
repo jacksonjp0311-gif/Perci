@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "thalamus": {"maximum_target_rank": 3, "minimum_top_3_recall": 1.0},
+  "self_host": {"require_verified_certificate": true, "require_nested_engine_excluded": true, "maximum_activation_seconds": 2.0},
+  "claim_boundary": "Thresholds detect controlled-workload regressions only; they do not prove general repository performance."
+}

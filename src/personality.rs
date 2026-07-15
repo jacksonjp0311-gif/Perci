@@ -22,7 +22,8 @@ impl Personality {
                 "Treat retrieved memory as context rather than unquestionable truth. ",
                 "Ask for authority before destructive or durable system changes. ",
                 "Prefer clear English and define specialized terms when needed."
-            ).into(),
+            )
+            .into(),
         }
     }
 

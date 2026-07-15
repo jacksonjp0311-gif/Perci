@@ -1,17 +1,18 @@
 //! Perci core library.
 //!
-//! The runtime deliberately separates four concerns:
-//! - language generation (`backend`),
-//! - deterministic reasoning (`reasoning`),
-//! - compact bit-level routing (`reflex`), and
-//! - durable local memory (`memory`).
-//!
-//! This makes the system useful before a trained model is available and keeps
-//! mathematical answers and governance decisions inspectable.
+//! The runtime separates:
+//! - explicit command routing,
+//! - 4,096-bit associative cognition,
+//! - deterministic exact tools,
+//! - append-only JSONL memory,
+//! - Cortex selective retrieval,
+//! - optional external language generation,
+//! - governance and authority boundaries.
 
 pub mod backend;
 pub mod chat;
 pub mod cognitive;
+pub mod cortex;
 pub mod memory;
 pub mod personality;
 pub mod reasoning;

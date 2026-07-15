@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "workload": "Cortex cloned as host; a second Cortex clone bootstraps and activates the host.",
+  "runs": 3,
+  "host_engine": {
+    "bootstrap_seconds": 1.876464,
+    "activation_seconds": 0.520359,
+    "indexed_files": 80.0,
+    "certificate_verified": true
+  },
+  "nested_cloned_engine": {
+    "bootstrap_seconds": 2.023199,
+    "activation_seconds": 0.53738,
+    "indexed_files": 80.0,
+    "certificate_verified": true,
+    "nested_engine_excluded": true
+  },
+  "samples": {
+    "host_engine": [
+      {
+        "mode": "host_engine",
+        "bootstrap_seconds": 2.361601,
+        "activation_seconds": 0.536922,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost",
+        "tests_ok": null
+      },
+      {
+        "mode": "host_engine",
+        "bootstrap_seconds": 1.808373,
+        "activation_seconds": 0.514005,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost",
+        "tests_ok": null
+      },
+      {
+        "mode": "host_engine",
+        "bootstrap_seconds": 1.876464,
+        "activation_seconds": 0.520359,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost",
+        "tests_ok": null
+      }
+    ],
+    "nested_cloned_engine": [
+      {
+        "mode": "nested_clone",
+        "bootstrap_seconds": 2.076011,
+        "activation_seconds": 0.564066,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost\\CortexEngine",
+        "tests_ok": null
+      },
+      {
+        "mode": "nested_clone",
+        "bootstrap_seconds": 2.023199,
+        "activation_seconds": 0.534593,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost\\CortexEngine",
+        "tests_ok": null
+      },
+      {
+        "mode": "nested_clone",
+        "bootstrap_seconds": 2.01991,
+        "activation_seconds": 0.53738,
+        "certificate": "verified",
+        "activation": "ready",
+        "indexed_files": 80,
+        "context_evidence": 1,
+        "nested_engine_excluded": true,
+        "clone_engine": "CortexHost\\CortexEngine",
+        "tests_ok": null
+      }
+    ]
+  }
+}

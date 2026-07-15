@@ -24,3 +24,13 @@ before treating the Rust executable as verified on your machine.
 ## Interpretation
 
 The held-out probes validate the binary associative routing mechanism and prototype retrieval. They do not demonstrate parity with a pretrained transformer or establish general intelligence.
+## Perci v0.1.1 Windows integration validation
+
+- Date (UTC): 2026-07-15
+- Rust compiler: $RustVersion
+- Cargo: $CargoVersion
+- Python: $PythonVersion
+- Release tests: executed by the integration script
+- Cortex engine: vendored and bootstrapped as repository Perci
+- Memory boundary: append-only JSONL plus explicit Cortex episodic events
+- Authority boundary: Cortex evidence is recommendation/context only

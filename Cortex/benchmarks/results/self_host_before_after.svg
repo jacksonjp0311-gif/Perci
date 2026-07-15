@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-label="Cortex self-host benchmark before and after">
+<rect width="900" height="430" fill="#101418"/>
+<text x="42" y="45" fill="#f0f4f8" font-family="Arial" font-size="24">Cortex self-host lifecycle: before / after</text>
+<rect x="610" y="23" width="14" height="14" fill="#8b9bb4"/><text x="632" y="35" fill="#d4dce8" font-family="Arial" font-size="13">Host engine</text>
+<rect x="740" y="23" width="14" height="14" fill="#a878ff"/><text x="762" y="35" fill="#d4dce8" font-family="Arial" font-size="13">Nested cloned engine</text>
+<text x="42" y="92" fill="#d4dce8" font-family="Arial" font-size="14">Bootstrap seconds</text>
+<line x1="42" y1="315" x2="262" y2="315" stroke="#607086"/>
+<rect x="67" y="138.8" width="68" height="176.2" fill="#8b9bb4"/>
+<rect x="167" y="125.0" width="68" height="190.0" fill="#a878ff"/>
+<text x="67" y="340" fill="#d4dce8" font-family="Arial" font-size="12">1.876</text>
+<text x="167" y="340" fill="#d4dce8" font-family="Arial" font-size="12">2.023</text>
+<text x="330" y="92" fill="#d4dce8" font-family="Arial" font-size="14">Activation seconds</text>
+<line x1="330" y1="315" x2="550" y2="315" stroke="#607086"/>
+<rect x="355" y="131.0" width="68" height="184.0" fill="#8b9bb4"/>
+<rect x="455" y="125.0" width="68" height="190.0" fill="#a878ff"/>
+<text x="355" y="340" fill="#d4dce8" font-family="Arial" font-size="12">0.520</text>
+<text x="455" y="340" fill="#d4dce8" font-family="Arial" font-size="12">0.537</text>
+<text x="618" y="92" fill="#d4dce8" font-family="Arial" font-size="14">Indexed files</text>
+<line x1="618" y1="315" x2="838" y2="315" stroke="#607086"/>
+<rect x="643" y="125.0" width="68" height="190.0" fill="#8b9bb4"/>
+<rect x="743" y="125.0" width="68" height="190.0" fill="#a878ff"/>
+<text x="643" y="340" fill="#d4dce8" font-family="Arial" font-size="12">80.000</text>
+<text x="743" y="340" fill="#d4dce8" font-family="Arial" font-size="12">80.000</text>
+<text x="42" y="390" fill="#aeb9c8" font-family="Arial" font-size="12">The nested engine is cloned inside an outer Cortex clone and excluded from the host inventory.</text>
+</svg>
