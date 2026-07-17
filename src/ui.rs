@@ -124,7 +124,7 @@ impl BloodUi {
         );
         println!(
             "  {}",
-            self.paint(ASH, "type /help · /think · /concise · /deep · /trace · /quit")
+            self.paint(ASH, "type /help · /think · /field · /concise · /deep · /quit")
         );
     }
 

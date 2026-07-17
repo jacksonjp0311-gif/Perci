@@ -80,6 +80,7 @@ impl CognitiveBackend {
 impl LanguageBackend for CognitiveBackend {
     fn generate(&mut self, _system: &str, context: &[String], user: &str) -> io::Result<String> {
         let matched = self.classify(user)?;
+        crate::emergence::record_match(user, &matched, "softcascade");
         Ok(render_cognitive_response_with_history(
             &matched,
             context,
@@ -101,7 +102,9 @@ impl LanguageBackend for CognitiveBackend {
     }
 
     fn probe_cognition(&self, user: &str) -> Option<CognitiveMatch> {
-        self.classify(user).ok()
+        let m = self.classify(user).ok()?;
+        crate::emergence::record_match(user, &m, "probe");
+        Some(m)
     }
 }
 
@@ -297,6 +300,7 @@ impl LanguageBackend for CompositeBackend {
         }
 
         if let Some(match_result) = matched.as_ref() {
+            crate::emergence::record_match(user, match_result, "softcascade");
             return Ok(render_cognitive_response_with_history(
                 match_result,
                 context,

@@ -270,6 +270,9 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             "/cortex" => println!("cortex: {}", engine.cortex_status()),
             "/learning" | "/learn" => print_learning(engine),
             "/trace" | "/thought" => println!("{}", engine.deliberation_trace()),
+            "/field" | "/emergence" | "/geometry" => {
+                println!("{}", perci::emergence::status_report(24));
+            }
             "/prompt" => println!("{}", engine.personality().prompt),
             "/intel" | "/intelligence" | "/probe" => {
                 if let Err(error) = run_intelligence_probe() {

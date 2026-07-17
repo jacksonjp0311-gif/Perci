@@ -19,6 +19,7 @@ pub mod cortex;
 pub mod daemon;
 pub mod decision_trace;
 pub mod deliberation;
+pub mod emergence;
 pub mod intel_packs;
 pub mod learning;
 pub mod memory;

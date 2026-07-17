@@ -300,7 +300,31 @@ pub fn compose_soft_cascade(
         return body;
     }
 
-    let arc = ThoughtArc::from_packet(&packet, domain_body, matched.margin, style_depth());
+    // Geometry speaks back: analyze field (+ ledger lessons) → prefer mixture thesis when
+    // primary is off-topic; chronic labels force multipartite arc + critique.
+    let geo = crate::emergence::analyze(matched, user);
+    crate::emergence::set_session_policy(geo.clone());
+    let mix_thesis = if geo.prefer_mixture_thesis {
+        crate::emergence::preferred_mixture_insight(matched, user)
+    } else {
+        None
+    };
+    let used_mix = mix_thesis.is_some();
+    let mut arc = ThoughtArc::from_packet(
+        &packet,
+        domain_body,
+        matched.margin,
+        style_depth(),
+        geo.force_multipartite_arc,
+    );
+    if let Some(ref thesis) = mix_thesis {
+        arc.thesis = thesis.trim().trim_end_matches('.').trim().to_owned();
+        arc.contested = true;
+    }
+    // Geometry blind: primary and mixture both miss user tokens — still force contested tone.
+    if geo.geometry_blind {
+        arc.contested = true;
+    }
     let mut out = arc.speak(user, &topic, ask, variant, peek_premise().as_deref());
 
     // VSA soft binding — never on identity/capability (schema dump ruins natural tone).
@@ -315,15 +339,25 @@ pub fn compose_soft_cascade(
         out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
     }
 
-    // Bind user topic if diluted.
+    // Bind user topic if diluted (always when geometry_blind or mixture-corrected).
     let ol = out.to_ascii_lowercase();
     let hit = tokens.iter().filter(|t| ol.contains(t.as_str())).count();
-    if tokens.len() >= 2 && hit == 0 {
-        out.push(' ');
-        out.push_str(&format!(
-            "All of that still answers {}.",
-            tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
-        ));
+    let need_bind = tokens.len() >= 2 && hit == 0;
+    let force_bind = geo.geometry_blind || (used_mix && hit < tokens.len().min(2));
+    if need_bind || force_bind {
+        if hit == 0 && tokens.len() >= 2 {
+            out.push(' ');
+            out.push_str(&format!(
+                "All of that still answers {}.",
+                tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
+            ));
+        } else if force_bind && hit < 2 && !tokens.is_empty() {
+            out.push(' ');
+            out.push_str(&format!(
+                "On {}: hold the claim against the live constraints.",
+                tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
+            ));
+        }
     }
 
     while out.contains("  ") {
@@ -331,18 +365,33 @@ pub fn compose_soft_cascade(
     }
 
     // Self-critique residual loop (second pass on thin drafts).
-    let (refined, critique) = self_critique_refine(user, &out, &packet, matched);
+    // Contested + residual / chronic / geometry_blind → geometry forces deeper pass.
+    let (mut refined, mut critique) = self_critique_refine(user, &out, &packet, matched);
+    if geo.lower_critique_threshold && !critique.expanded {
+        let prev = style_depth();
+        set_style_depth(2);
+        let (r2, c2) = self_critique_refine(user, &out, &packet, matched);
+        set_style_depth(prev);
+        if c2.expanded {
+            refined = r2;
+            critique = c2;
+        }
+    }
     store_critique(&critique);
     store_tree(&render_prototype_tree(matched, &packet));
 
     let mut plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
     plan = plan.apply_style_depth(style_depth());
-    // Contested geometry → slightly more room to think.
-    if packet.contested && style_depth() != 1 {
+    // Contested / multipartite / blind geometry → slightly more room to think.
+    if (packet.contested || geo.force_multipartite_arc || geo.geometry_blind)
+        && style_depth() != 1
+    {
         plan.words = (plan.words.saturating_add(24)).min(LengthPlan::L_MAX as usize);
     }
     let body = apply_word_budget(&refined, plan.words);
     remember_premise(&body);
+    // Close the loop: speech quality feeds the ledger so future lessons can fire.
+    crate::emergence::record_speech_outcome(user, &body, used_mix);
     plan.seal_backend(&body)
 }
 
@@ -362,6 +411,7 @@ impl ThoughtArc {
         domain_body: &str,
         margin: i32,
         depth: u8,
+        force_multipartite: bool,
     ) -> Self {
         let clean = |s: &str| -> String {
             s.trim().trim_end_matches('.').trim().to_owned()
@@ -413,8 +463,9 @@ impl ThoughtArc {
                 })
             });
 
-        // Check = second residual / second support when contested or deep style.
-        let need_check = packet.contested || margin < 14 || depth == 2;
+        // Check = second residual / second support when contested, multipartite force, or deep.
+        let need_check =
+            packet.contested || margin < 14 || depth == 2 || force_multipartite;
         let check = if need_check {
             packet
                 .residual_supports
@@ -1663,7 +1714,7 @@ mod tests {
     fn thought_arc_has_thesis_and_warrant() {
         let m = sample_match();
         let packet = assemble(&m, "why does trust fail in distributed systems?");
-        let arc = ThoughtArc::from_packet(&packet, "fallback body long enough", 8, 0);
+        let arc = ThoughtArc::from_packet(&packet, "fallback body long enough", 8, 0, false);
         assert!(arc.thesis.chars().count() >= 16);
         // sample has mixture support → warrant likely
         assert!(arc.warrant.is_some() || arc.boundary.is_some());
@@ -1864,6 +1915,38 @@ mod tests {
             out.matches('.').count() >= 2,
             "expected multi-sentence free-form, got: {out}"
         );
+    }
+
+    #[test]
+    fn soft_cascade_geometry_prefers_mixture_when_primary_off_topic() {
+        // Primary insight is phenomenology fluff; mixture hits the user question.
+        let mut m = sample_match();
+        m.margin = 2;
+        m.insight = Some(
+            "Behavioral complexity is observable; subjective experience is inferred.".into(),
+        );
+        m.mixture[0].insight = Some(
+            "Interfaces earn trust when timeouts and retries stay explicit under lag.".into(),
+        );
+        m.mixture[0].attention_pm = 350;
+        let user = "how should interfaces earn trust under lag and retry?";
+        let geo = crate::emergence::analyze(&m, user);
+        assert!(
+            geo.prefer_mixture_thesis,
+            "geometry should prefer mixture: tags={:?}",
+            geo.tags
+        );
+        let out = compose_soft_cascade(user, &m, "placeholder body that is long enough", 0);
+        let low = out.to_ascii_lowercase();
+        assert!(
+            low.contains("trust")
+                || low.contains("timeout")
+                || low.contains("interface")
+                || low.contains("lag")
+                || low.contains("retry"),
+            "mixture thesis or topic bind should surface user domain, got: {out}"
+        );
+        assert!(!low.contains("[cognition"), "cognition leak: {out}");
     }
 
     #[test]
