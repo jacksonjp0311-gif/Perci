@@ -552,6 +552,9 @@ fn ticket_id_for(label: &str, kind: &str) -> String {
 
 /// Stage a primary-fix lab ticket + curriculum candidate (idempotent per label).
 /// Returns ticket id if written or already present.
+///
+/// If a **closed** ticket already exists for this label, do **not** reopen it
+/// (prevents open+closed thrash). Still append curriculum evidence samples.
 pub fn stage_primary_fix_ticket(
     label: &str,
     user: &str,
@@ -563,9 +566,17 @@ pub fn stage_primary_fix_ticket(
     let dir = tickets_dir();
     let _ = fs::create_dir_all(&dir);
     let path = dir.join(format!("{id}.md"));
-    let already = path.is_file();
+    let closed_path = dir.join(format!("{id}.closed.md"));
+    let already_open = path.is_file();
+    let already_closed = closed_path.is_file();
 
-    if !already {
+    // Operator-resolved: keep closed; only grow curriculum samples.
+    if already_closed && !already_open {
+        append_curriculum_sample(&id, label, user, primary_insight, mix_insight, reason);
+        return Some(id);
+    }
+
+    if !already_open {
         let body = format!(
             r#"# Lab ticket: primary fix for `{label}`
 
@@ -614,29 +625,10 @@ Mixture thesis is a **temporary crutch** — not the durable fix.
         }
     }
 
-    // Curriculum JSONL (append sample even if ticket exists — evidence grows).
-    let cand = CurriculumCandidate {
-        ts: now_ts(),
-        id: format!("{id}-{}", now_ts() % 10_000),
-        label: label.to_owned(),
-        kind: "primary_insight_alignment".into(),
-        user_sample: truncate(user, 200),
-        primary_insight: primary_insight.map(|s| truncate(s, 240)),
-        mix_insight: mix_insight.map(|s| truncate(s, 240)),
-        reason: reason.to_owned(),
-        status: "pending".into(),
-    };
-    let cpath = curriculum_path();
-    if let Some(parent) = cpath.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    if let Ok(line) = serde_json::to_string(&cand) {
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&cpath) {
-            let _ = writeln!(f, "{line}");
-        }
-    }
+    append_curriculum_sample(&id, label, user, primary_insight, mix_insight, reason);
 
-    // Ledger ticket event (once per process open is fine; repeated is ok as audit).
+    // Ledger ticket event only when we actually open or reaffirm an open ticket.
+    if !already_closed {
     append_event(&LedgerEvent {
         ts: now_ts(),
         kind: EventKind::Ticket,
@@ -667,8 +659,39 @@ Mixture thesis is a **temporary crutch** — not the durable fix.
         transfer_score_pm: None,
         transfer_detail: None,
     });
+    }
 
     Some(id)
+}
+
+fn append_curriculum_sample(
+    id: &str,
+    label: &str,
+    user: &str,
+    primary_insight: Option<&str>,
+    mix_insight: Option<&str>,
+    reason: &str,
+) {
+    let cand = CurriculumCandidate {
+        ts: now_ts(),
+        id: format!("{id}-{}", now_ts() % 10_000),
+        label: label.to_owned(),
+        kind: "primary_insight_alignment".into(),
+        user_sample: truncate(user, 200),
+        primary_insight: primary_insight.map(|s| truncate(s, 240)),
+        mix_insight: mix_insight.map(|s| truncate(s, 240)),
+        reason: reason.to_owned(),
+        status: "pending".into(),
+    };
+    let cpath = curriculum_path();
+    if let Some(parent) = cpath.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(line) = serde_json::to_string(&cand) {
+        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&cpath) {
+            let _ = writeln!(f, "{line}");
+        }
+    }
 }
 
 // ─── transfer gate ───────────────────────────────────────────────────────────
@@ -1510,6 +1533,184 @@ Policy: operators own speech when transfer passes; weight promote needs human au
         "LAW: mixture_crutch is temporary. Prefer operator frames. Weights only with --authorize + transfer.\n",
     );
     out
+}
+
+/// Mine ledger + tickets + curriculum for emergent structural patterns.
+/// Engineering telemetry → actionable intelligence (not consciousness).
+pub fn pattern_intelligence_report() -> String {
+    let events = load_events(500.max(LESSON_WINDOW));
+    let mut match_n = 0u32;
+    let mut probe_n = 0u32;
+    let mut op_n = 0u32;
+    let mut soft_n = 0u32;
+    let mut primary_off_curr = 0u32;
+    let mut geometry_blind = 0u32;
+    let mut mixture_crutch = 0u32;
+    let mut speech_hit = 0u32;
+    let mut speech_miss = 0u32;
+    let mut xfer_pass = 0u32;
+    let mut xfer_fail = 0u32;
+    let mut auth_counts: HashMap<String, u32> = HashMap::new();
+    let mut label_off: HashMap<String, u32> = HashMap::new();
+
+    for ev in &events {
+        match ev.kind {
+            EventKind::Match => {
+                match_n += 1;
+                let auth = ev.authority.as_deref().unwrap_or("?");
+                *auth_counts.entry(auth.to_owned()).or_insert(0) += 1;
+                if auth == "probe" {
+                    probe_n += 1;
+                } else if auth == "softcascade" {
+                    soft_n += 1;
+                } else {
+                    op_n += 1;
+                }
+                if is_curriculum_authority(auth)
+                    && ev.tags.iter().any(|t| t == "primary_off_topic")
+                {
+                    primary_off_curr += 1;
+                    if let Some(lab) = &ev.label {
+                        *label_off.entry(lab.clone()).or_insert(0) += 1;
+                    }
+                }
+                if is_curriculum_authority(auth) && ev.geometry_blind == Some(true) {
+                    geometry_blind += 1;
+                }
+                if is_curriculum_authority(auth) && ev.mixture_crutch == Some(true) {
+                    mixture_crutch += 1;
+                }
+            }
+            EventKind::Speech => {
+                if ev.speech_hit == Some(true) {
+                    speech_hit += 1;
+                } else if ev.speech_hit == Some(false) {
+                    speech_miss += 1;
+                }
+            }
+            EventKind::Transfer => {
+                if ev.transfer_pass == Some(true) {
+                    xfer_pass += 1;
+                } else if ev.transfer_pass == Some(false) {
+                    xfer_fail += 1;
+                }
+            }
+            EventKind::Ticket => {}
+        }
+    }
+
+    let mut top_auth: Vec<_> = auth_counts.into_iter().collect();
+    top_auth.sort_by(|a, b| b.1.cmp(&a.1));
+    let mut top_off: Vec<_> = label_off.into_iter().collect();
+    top_off.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let open = list_open_tickets();
+    let closed = list_closed_tickets();
+    let resolved = resolved_primary_labels();
+
+    let dual: Vec<String> = open
+        .iter()
+        .filter(|id| closed.iter().any(|c| c == *id))
+        .cloned()
+        .collect();
+
+    let mut out = String::from("[Pattern intelligence · geometry speaks]\n");
+    out.push_str(&format!(
+        "window_events={} matches={match_n} (probe={probe_n} operator={op_n} softcascade={soft_n})\n\
+speech hit/miss={speech_hit}/{speech_miss} · transfer pass/fail={xfer_pass}/{xfer_fail}\n\
+curriculum primary_off={primary_off_curr} geometry_blind={geometry_blind} mixture_crutch={mixture_crutch}\n\
+tickets open={} closed={} dual_open+closed_bug={}\n",
+        events.len(),
+        open.len(),
+        closed.len(),
+        dual.len()
+    ));
+
+    out.push_str("\n## Emergent laws (from data)\n");
+    out.push_str(
+        "1. **Dual authority split:** Bitwork probes geometry while operators own speech. \
+Operators are the load-bearing intelligence layer; SoftCascade is minority path.\n",
+    );
+    out.push_str(
+        "2. **Primary pack lag:** high primary_off under probe means pack insights often miss user tokens; \
+tickets + operators paper the gap. Pack rebuild is optional, not urgent if transfer holds.\n",
+    );
+    out.push_str(
+        "3. **Transfer is the truth gate:** pass history dominates fail when suite is maintained; \
+entity-swap tests structure not name parrot.\n",
+    );
+    out.push_str(
+        "4. **Ticket thrash:** open+closed pairs mean closed labels were reopened by match events — \
+now suppressed: closed tickets stay closed, curriculum still grows.\n",
+    );
+    out.push_str(
+        "5. **Impasse primitive:** fail → ticket → transfer → close is the real self-improve unit \
+(Soar-style), not denser chat.\n",
+    );
+    out.push_str(
+        "6. **Three memories:** Bitwork pack · append-only ledgers · session/Cortex. \
+Folding them into one blob would poison curriculum.\n",
+    );
+
+    if !top_auth.is_empty() {
+        out.push_str("\n## Top speech authorities (match)\n");
+        for (a, n) in top_auth.iter().take(8) {
+            out.push_str(&format!("  · {a}: {n}\n"));
+        }
+    }
+    if !top_off.is_empty() {
+        out.push_str("\n## Curriculum primary_off labels\n");
+        for (l, n) in top_off.iter().take(8) {
+            let res = if resolved.iter().any(|r| r == l) {
+                "operator-resolved"
+            } else {
+                "open pack debt"
+            };
+            out.push_str(&format!("  · {l}: {n}  [{res}]\n"));
+        }
+    }
+    if !dual.is_empty() {
+        out.push_str("\n## Dual ticket hygiene (remove open if closed exists)\n");
+        for id in &dual {
+            out.push_str(&format!("  · {id}\n"));
+        }
+        out.push_str("  fix: `perci lab hygiene` or next stage_primary_fix_ticket call path\n");
+    }
+
+    out.push_str(
+        "\n## Feed-forward (how intelligence enters Perci)\n\
+- Operators & frames (code) — fastest intelligence channel\n\
+- Hardness + transfer suite — anti-overfit law\n\
+- Curriculum JSONL — staged pack debt only\n\
+- Cortex remember/consolidate — human/agent session memory\n\
+- **Never** silent weight promote from this report\n",
+    );
+    out
+}
+
+/// Remove open ticket files when a `.closed.md` already exists (hygiene).
+pub fn hygiene_dual_tickets() -> String {
+    let dir = tickets_dir();
+    let open = list_open_tickets();
+    let closed = list_closed_tickets();
+    let mut removed = 0u32;
+    let mut lines = String::from("[Lab hygiene]\n");
+    for id in &open {
+        if closed.iter().any(|c| c == id) {
+            let path = dir.join(format!("{id}.md"));
+            if path.is_file() {
+                let _ = fs::remove_file(&path);
+                removed += 1;
+                lines.push_str(&format!("removed reopen thrash: {id}.md (closed remains)\n"));
+            }
+        }
+    }
+    if removed == 0 {
+        lines.push_str("no dual open+closed pairs\n");
+    } else {
+        lines.push_str(&format!("removed {removed} thrash open ticket(s)\n"));
+    }
+    lines
 }
 
 /// Unified world-loop queue: emergence tickets + hardness red summary path.

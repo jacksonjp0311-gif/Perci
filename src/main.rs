@@ -148,6 +148,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "curriculum" | "cluster" => {
                     println!("{}", perci::emergence::curriculum_cluster_report());
                 }
+                "patterns" | "pattern" | "intel-patterns" => {
+                    println!("{}", perci::emergence::pattern_intelligence_report());
+                }
+                "hygiene" => {
+                    println!("{}", perci::emergence::hygiene_dual_tickets());
+                }
                 "field" => {
                     println!("{}", perci::emergence::status_report(32));
                 }
@@ -176,6 +182,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                            perci lab queue                 open tickets + next work item\n\
                            perci lab unified               hardness + emergence + curriculum\n\
                            perci lab curriculum            pack-debt cluster by label\n\
+                           perci lab patterns              emergent laws from ledger\n\
+                           perci lab hygiene               drop open tickets if closed exists\n\
                            perci lab field                 geometry (curriculum view)\n\
                            perci lab close <id> --reason   resolve ticket\n\
                            perci transfer \"<prompt>\"       single transfer gate\n\

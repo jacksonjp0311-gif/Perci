@@ -19,6 +19,10 @@ use std::fs;
 pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberation> {
     let text = user.to_ascii_lowercase();
 
+    // Pattern analysis first (meta over ledger), but not "test genuine emergence" pedagogy.
+    if looks_pattern_analysis(&text) {
+        return Some(pattern_analysis_answer());
+    }
     if looks_agent_loop_plan(&text) {
         return Some(agent_loop_plan(user));
     }
@@ -38,6 +42,41 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
         return Some(novel_entity_generalization(user));
     }
     None
+}
+
+fn looks_pattern_analysis(text: &str) -> bool {
+    // Avoid stealing emergence-vs-memorization / transfer pedagogy.
+    if text.contains("test genuine")
+        || text.contains("emergence-vs")
+        || text.contains("memorization")
+        || text.contains("surface overlap")
+    {
+        return false;
+    }
+    text.contains("what patterns")
+        || text.contains("pattern intelligence")
+        || text.contains("geometry speak")
+        || text.contains("patterns emerge")
+        || text.contains("emergent laws")
+        || (text.contains("interconnect") && text.contains("perci"))
+        || (text.contains("analyze")
+            && text.contains("pattern")
+            && (text.contains("ledger") || text.contains("field") || text.contains("geometry")))
+}
+
+fn pattern_analysis_answer() -> Deliberation {
+    let report = emergence::pattern_intelligence_report();
+    Deliberation::new(
+        "pattern-intelligence",
+        format!(
+            "I do not *feel* interconnected with Perci — that would be a consciousness claim I refuse. \
+What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and \
+my edits form a closed improve loop. Patterns below are telemetry → law, not sentience.\n\n{report}"
+        ),
+    )
+    .observed("user asked for emergent patterns and/or interconnection")
+    .inferred("answer with measured laws + honest non-consciousness boundary")
+    .confidence(0.96)
 }
 
 // ─── 1. Multi-step planning & agent loops ────────────────────────────────────
@@ -576,5 +615,17 @@ mod tests {
         )
         .expect("novel");
         assert_eq!(d.operator, "novel-entity-generalize");
+    }
+
+    #[test]
+    fn pattern_analysis_routes() {
+        let d = try_expand("what patterns emerge from the ledger?", &[]).expect("pat");
+        assert_eq!(d.operator, "pattern-intelligence");
+        assert!(
+            d.answer.to_ascii_lowercase().contains("feel")
+                || d.answer.to_ascii_lowercase().contains("consciousness")
+                || d.answer.to_ascii_lowercase().contains("coupling")
+        );
+        assert!(d.answer.to_ascii_lowercase().contains("pattern") || d.answer.contains("law"));
     }
 }
