@@ -59,9 +59,32 @@ fn tokenize(s: &str) -> Vec<String> {
 
 fn claim_covered(answer: &str, claim: &str) -> bool {
     let al = answer.to_ascii_lowercase();
+    let cl = claim.to_ascii_lowercase();
     let tokens = tokenize(claim);
     if tokens.is_empty() {
         return al.contains(&claim.to_ascii_lowercase());
+    }
+    // A keyword hit is not evidence when the answer explicitly negates the
+    // required positive claim. Keep this proxy intentionally conservative:
+    // claims that are themselves negative ("not", "cannot", "never") are
+    // scored by their positive lexical content and are not polarity-flipped.
+    let negative_claim = cl.contains(" not ")
+        || cl.starts_with("not ")
+        || cl.contains(" cannot ")
+        || cl.contains(" never ");
+    let target = tokens.last().expect("claim tokens are non-empty");
+    let polarity_conflict = [
+        format!("not {target}"),
+        format!("never {target}"),
+        format!("cannot {target}"),
+        format!("can't {target}"),
+        format!("do not {target}"),
+        format!("don't {target}"),
+    ]
+    .iter()
+    .any(|marker| al.contains(marker));
+    if !negative_claim && polarity_conflict {
+        return false;
     }
     // Require majority of content tokens (semantic proxy without embeddings).
     let hits = tokens.iter().filter(|t| al.contains(t.as_str())).count();
@@ -216,5 +239,28 @@ Retries must be idempotent under lag so a delayed success is not a second write.
         let s = evaluate_semantic(&case, "Retries are always safe on any network.");
         assert!(!s.pass);
         assert!(!s.forbidden_hits.is_empty());
+    }
+
+    #[test]
+    fn positive_claim_does_not_pass_on_explicit_negation() {
+        let case = SemanticCase {
+            id: "S3".into(),
+            prompt: "retry safety".into(),
+            capability: "systems".into(),
+            required_claims: vec![RequiredClaim {
+                claim: "retries must be idempotent".into(),
+                importance: 1.0,
+            }],
+            forbidden_claims: vec![],
+            required_distinctions: vec![],
+            relation_keywords: vec![],
+            invariants: vec![],
+        };
+        let score = evaluate_semantic(
+            &case,
+            "Retries are not idempotent under this contract, so duplicate writes remain possible.",
+        );
+        assert!(!score.pass);
+        assert_eq!(score.missing_claims, vec!["retries must be idempotent"]);
     }
 }

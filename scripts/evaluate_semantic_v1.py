@@ -109,9 +109,31 @@ def tokenize(s: str) -> list[str]:
 
 def claim_covered(answer: str, claim: str) -> bool:
     al = answer.lower()
+    cl = claim.lower()
     toks = tokenize(claim)
     if not toks:
         return claim.lower() in al
+    negative_claim = (
+        " not " in f" {cl} "
+        or cl.startswith("not ")
+        or " cannot " in f" {cl} "
+        or " never " in f" {cl} "
+    )
+    if not negative_claim:
+        target = toks[-1]
+        negation_markers = tuple(
+            marker.format(token=target)
+            for marker in (
+                "not {token}",
+                "never {token}",
+                "cannot {token}",
+                "can't {token}",
+                "do not {token}",
+                "don't {token}",
+            )
+        )
+        if any(marker in al for marker in negation_markers):
+            return False
     hits = sum(1 for t in toks if t in al)
     need = max(1, (len(toks) + 1) // 2)
     return hits >= need
@@ -123,9 +145,18 @@ def ask(prompt: str) -> str:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
     )
     return (p.stdout or "") + (p.stderr or "")
+
+
+def configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def score(case: dict, answer: str) -> dict:
@@ -177,6 +208,7 @@ def score(case: dict, answer: str) -> dict:
 
 
 def main() -> int:
+    configure_stdio()
     if not EXE.is_file():
         print("missing release binary", EXE)
         return 2

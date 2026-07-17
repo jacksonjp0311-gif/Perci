@@ -23,12 +23,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def configure_stdio() -> None:
+    """Keep Windows console output UTF-8 even when the active code page is legacy."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def run(cmd: list[str], timeout: int = 600) -> tuple[int, str]:
     p = subprocess.run(
         cmd,
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=timeout,
         shell=False,
     )
@@ -37,6 +47,7 @@ def run(cmd: list[str], timeout: int = 600) -> tuple[int, str]:
 
 
 def main() -> int:
+    configure_stdio()
     print("=== Perci release gates ===")
     print(f"root: {ROOT}")
     failures: list[str] = []

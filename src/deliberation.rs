@@ -1108,7 +1108,7 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         return Some(
             Deliberation::new(
                 "layer-change-plan",
-                "Operators: add or repair composition paths when a named capability fails transfer (new frames, synthesis guards, OOD traps)—evidence is hardness cases turning green without regressions. Weights: rebuild Bitwork only after approved curriculum fold and sealed eval when routing/prototype coverage is the bottleneck—evidence is operational + transfer receipts. Tools: extend deterministic solvers when exact work is guessed in language—evidence is exact numeric/symbolic probes. Promote nothing automatically; stage → evaluate → authorize.",
+                "Operators: add or repair composition paths when a named capability fails transfer (new frames, synthesis guards, OOD traps)—evidence is hardness cases turning green without regressions. Weights: rebuild Bitwork only after approved curriculum fold and sealed eval when routing/prototype coverage is the bottleneck—evidence is operational + transfer receipts. Tools: extend deterministic solvers when exact work is guessed in language—evidence is exact numeric/symbolic probes. Evidence determines the layer: operator, weight, or tool. Promote nothing automatically; stage → evaluate → authorize.",
             )
             .observed("the prompt asks what should change across layers")
             .inferred("each layer has a distinct failure signature and evidence gate")
@@ -4563,6 +4563,21 @@ mod tests {
         );
         assert_eq!(new_domains.operator, "cross-domain-synthesis");
         assert!(new_domains.answer.contains("structure"));
+    }
+
+    #[test]
+    fn introspection_and_geometry_life_followups_keep_their_operation() {
+        let sensing = run("What are you sensing?", &[]);
+        assert_eq!(sensing.operator, "self-observation");
+        assert!(sensing.answer.contains("not sensing anything subjectively"));
+        assert!(sensing.answer.contains("routing results"));
+
+        let insight = run("Give me an original insight about geometry and life.", &[]);
+        assert_eq!(insight.operator, "cross-domain-compose");
+        let lower = insight.answer.to_ascii_lowercase();
+        assert!(lower.contains("geometry"));
+        assert!(lower.contains("life"));
+        assert!(lower.contains("boundary"));
     }
 
     #[test]

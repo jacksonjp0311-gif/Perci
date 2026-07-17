@@ -126,25 +126,18 @@ fn local_synthesize(req: &LanguageRequest, seed_body: &str) -> LanguageResponse 
         }
         b
     };
-    let plan = if req.operator_plan.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "\n\nGoverning plan: {}.",
-            req.operator_plan.join(" → ")
-        )
-    };
+    // Keep the seed answer in the foreground. The former fixed headers,
+    // plan dump, and boundary footer made every long answer sound like a
+    // diagnostic preset. Routing and authority remain available in `/trace`;
+    // the sidecar's display text should read like a human answer.
     let task = req.task.as_str();
     let lead = match task {
-        "summarize" => "In short:",
-        "explain" => "Here is a clear account:",
-        _ => "Answer:",
+        "summarize" => "In short.\n\n",
+        _ => "",
     };
     let body = seed_body.trim();
     let text = format!(
-        "{lead}\n\n{body}{plan}{evidence_block}\n\n\
-Boundaries: no consciousness claims; no automatic weight promotion; \
-Perci remains governor of acceptance."
+        "{lead}{body}{evidence_block}"
     );
     let mut resp = LanguageResponse::local(text);
     resp.claims = claims;
@@ -204,7 +197,8 @@ mod tests {
         let r = generate(&req, "Timeouts need idempotent retries under lag.");
         assert!(r.ok);
         assert!(r.text.contains("idempotent"));
-        assert!(r.text.contains("governor") || r.text.contains("Boundaries"));
+        assert!(r.text.starts_with("Timeouts need"));
+        assert!(!r.text.contains("Here is a clear account"));
     }
 
     #[test]

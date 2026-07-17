@@ -1,7 +1,7 @@
 {
   "status": "PASS",
-  "passed": 3,
-  "total": 3,
+  "passed": 8,
+  "total": 8,
   "cases": [
     {
       "id": "S001",
@@ -25,6 +25,56 @@
     },
     {
       "id": "S003",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S004",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S005",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S006",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S007",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S008",
       "pass": true,
       "claim_score": 1.0,
       "distinction_score": 1.0,

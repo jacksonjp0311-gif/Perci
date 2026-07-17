@@ -538,7 +538,7 @@ engines: {:?}\n\
 needs_external_facts={} needs_proof={} needs_code={}\n\
 notes: {}\n\
 capability write_repo={} network={} git_push={}\n\n\
-## Phase status (v0.7.1 — all phases live)\n\
+## Phase status (v0.7.3 — all phases live)\n\
   Phase 1: daemon token + loopback · fail-closed · budgets · semantic eval\n\
   Phase 2: language_sidecar + knowledge_fabric; PERCI_LANGUAGE_SIDECAR optional\n\
   Phase 3: agent worktrees (PERCI_AGENT_WORKTREE=1) · capability tokens · budgets\n\

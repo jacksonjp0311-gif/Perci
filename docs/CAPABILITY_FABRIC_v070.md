@@ -1,4 +1,4 @@
-# Perci v0.7.1 — Capability Fabric
+# Perci v0.7.3 — Capability Fabric
 
 **Design law:** Do not stretch Bitwork until it impersonates every missing capability.
 
@@ -24,10 +24,10 @@ Perci remains the governor. Specialized engines perform the work they are struct
 | Language request schema | `LanguageRequest` JSON | **shipped** |
 | Language sidecar | `src/language_sidecar.rs` + `scripts/perci_language_sidecar.py` | **shipped** |
 | Evidence records | `EvidenceRecord` · `knowledge_fabric` | **shipped** |
-| Semantic evaluation | `src/semantic_eval.rs` | **shipped (L1–L5 proxy)** |
+| Semantic evaluation | `src/semantic_eval.rs` | **shipped (L1–L5 polarity-aware proxy)** |
 | Daemon security | loopback + optional token + payload limits | **shipped** |
 | Agent fail-closed + budgets + worktrees | `ExecutionBudget` · `PERCI_AGENT_WORKTREE=1` | **shipped** |
-| Proof receipts | `src/proof_engine.rs` · `PERCI_PROOF_ENGINE` | **shipped (stub + exact)** |
+| Proof receipts | `src/proof_engine.rs` · `PERCI_PROOF_ENGINE` | **shipped (schema-validated stub + exact)** |
 | Orchestrator | `src/orchestrate.rs` | **shipped** |
 | Multi-AI evolve protocol | `docs/AI_EVOLVE_PROTOCOL.md` · `AGENTS.md` | **shipped** |
 | Hybrid embeddings / full CAS / AST graph | future | **next depth** |
@@ -55,7 +55,7 @@ perci fabric evolve
 
 ### Phase 2 — Language and knowledge — **done (v0.7.1)**
 
-Local governed synthesizer + optional `PERCI_LANGUAGE_SIDECAR` process; pack retrieval + evidence ledger + contradiction notes; chat/orchestrate enrichment under critic.
+Local governed synthesizer + optional `PERCI_LANGUAGE_SIDECAR` process; pack retrieval + evidence ledger + contradiction notes; chat/orchestrate enrichment under critic. Display prose keeps the operator answer foregrounded; routing/evidence metadata remains inspectable through trace surfaces.
 
 ### Phase 3 — Software engineering autonomy — **done (v0.7.1 baseline)**
 
@@ -63,7 +63,7 @@ Capability tokens, budgets, optional git worktrees (`PERCI_AGENT_WORKTREE=1`), a
 
 ### Phase 4 — Mathematical reasoning — **done (v0.7.1 baseline)**
 
-Exact tools as mechanical authority; formal requests yield kernel receipts when `PERCI_PROOF_ENGINE` is set, else honest `UnresolvedArgument`.
+Exact tools as mechanical authority; formal requests yield kernel receipts only when `PERCI_PROOF_ENGINE` returns a validated `perci.proof-artifact.v1` receipt with a non-empty artifact, else honest `UnresolvedArgument`.
 
 ## Multi-AI interconnection
 

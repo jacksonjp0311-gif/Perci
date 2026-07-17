@@ -79,9 +79,18 @@ def ask(prompt: str) -> str:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
     )
     return (p.stdout or "") + (p.stderr or "")
+
+
+def configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def score(answer: str, required_any: list[list[str]], forbidden: list[str]) -> tuple[bool, list[str], list[str]]:
@@ -95,6 +104,7 @@ def score(answer: str, required_any: list[list[str]], forbidden: list[str]) -> t
 
 
 def main() -> int:
+    configure_stdio()
     threshold = 0.90
     results = []
     passed = 0

@@ -15,8 +15,15 @@ use std::sync::RwLock;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AutoRepair {
     pub id: String,
-    /// All of these must appear in the lowercased user text (substring).
+    /// Candidate anchors; `min_hits` controls how many must appear.
+    #[serde(default)]
     pub match_any: Vec<String>,
+    /// Optional structural anchors; every term must appear.
+    #[serde(default)]
+    pub match_all: Vec<String>,
+    /// Optional guard terms that suppress an otherwise matching repair.
+    #[serde(default)]
+    pub exclude_any: Vec<String>,
     /// Minimum number of match_any hits required (default 1).
     #[serde(default = "default_min_hits")]
     pub min_hits: usize,
@@ -75,6 +82,18 @@ fn repairs_cached() -> Vec<AutoRepair> {
     loaded
 }
 
+fn contains_term(text: &str, term: &str) -> bool {
+    let needle = term.trim().to_ascii_lowercase();
+    if needle.is_empty() {
+        return false;
+    }
+    if needle.split_whitespace().count() > 1 {
+        return text.contains(&needle);
+    }
+    text.split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|token| token == needle)
+}
+
 /// Match a staged auto-repair (agent-written) for this user turn.
 pub fn try_auto_repair(user: &str) -> Option<Deliberation> {
     let lower = user.to_ascii_lowercase();
@@ -86,10 +105,12 @@ pub fn try_auto_repair(user: &str) -> Option<Deliberation> {
         let hits = r
             .match_any
             .iter()
-            .filter(|k| !k.is_empty() && lower.contains(&k.to_ascii_lowercase()))
+            .filter(|k| contains_term(&lower, k))
             .count();
         let need = r.min_hits.max(1);
-        if hits >= need {
+        let all_match = r.match_all.iter().all(|term| contains_term(&lower, term));
+        let excluded = r.exclude_any.iter().any(|term| contains_term(&lower, term));
+        if hits >= need && all_match && !excluded {
             let better = match &best {
                 None => true,
                 Some((bh, _)) => hits > *bh,
@@ -249,5 +270,12 @@ mod tests {
         let b = softcascade_identity_alignment_body("Who are you and what can you do?");
         assert!(b.is_some());
         assert!(b.unwrap().to_ascii_lowercase().contains("not conscious"));
+    }
+
+    #[test]
+    fn repair_terms_use_phrase_or_word_boundaries() {
+        assert!(contains_term("earn trust under lag", "earn trust"));
+        assert!(contains_term("trust under lag", "trust"));
+        assert!(!contains_term("distrustful", "trust"));
     }
 }

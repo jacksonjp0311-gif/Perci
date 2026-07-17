@@ -98,7 +98,42 @@ fn invoke_prover(bin: &std::path::Path, statement: &str) -> Result<String, Strin
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).into_owned());
     }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_owned())
+    validate_external_receipt(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// Validate the external proof boundary before assigning `KernelChecked`.
+///
+/// A zero exit code is only process success; it is not proof success. External
+/// engines must emit a JSON receipt so the governor can verify the schema,
+/// status, and non-empty artifact independently of the engine's exit code:
+/// `{\"schema\":\"perci.proof-artifact.v1\",\"status\":\"kernel_checked\",\"artifact\":\"...\"}`.
+fn validate_external_receipt(raw: &str) -> Result<String, String> {
+    let value: serde_json::Value = serde_json::from_str(raw.trim())
+        .map_err(|e| format!("proof receipt is not valid JSON: {e}"))?;
+    let schema = value
+        .get("schema")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    if schema != "perci.proof-artifact.v1" {
+        return Err(format!("unexpected proof receipt schema: {schema:?}"));
+    }
+    let status = value
+        .get("status")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if status != "kernel_checked" && status != "verified" {
+        return Err(format!("proof receipt is not kernel checked: {status:?}"));
+    }
+    let artifact = value
+        .get("artifact")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .trim();
+    if artifact.is_empty() {
+        return Err("proof receipt artifact is empty".into());
+    }
+    Ok(artifact.to_owned())
 }
 
 /// Format receipt for human chat.
@@ -137,5 +172,15 @@ mod tests {
         std::env::remove_var("PERCI_PROOF_ENGINE");
         let r = try_prove_or_compute("prove the fundamental theorem of arithmetic").expect("r");
         assert_eq!(r.status, ProofStatus::UnresolvedArgument);
+    }
+
+    #[test]
+    fn external_receipt_requires_verified_artifact() {
+        let ok = r#"{"schema":"perci.proof-artifact.v1","status":"kernel_checked","artifact":"qed: checked"}"#;
+        assert_eq!(validate_external_receipt(ok).unwrap(), "qed: checked");
+        let bad = r#"{"schema":"perci.proof-artifact.v1","status":"ok","artifact":"qed"}"#;
+        assert!(validate_external_receipt(bad).is_err());
+        let empty = r#"{"schema":"perci.proof-artifact.v1","status":"verified","artifact":""}"#;
+        assert!(validate_external_receipt(empty).is_err());
     }
 }

@@ -92,7 +92,29 @@ stage samples for human rebuild — never silent pack swap.",
 // ─── Identity / self-model (lab ticket primary-fix-frame-identity) ───────────
 
 fn looks_identity_bound(text: &str) -> bool {
-    // Narrow: do not steal operational-introspection ("what are you measuring…").
+    // Narrow: do not steal operational introspection or dialogue follow-ups
+    // ("what are you sensing/thinking/learning?") from deliberation/voice.
+    let operational_followup = [
+        "sense",
+        "sensing",
+        "think",
+        "thinking",
+        "feel",
+        "feeling",
+        "measure",
+        "measuring",
+        "learn",
+        "learning",
+        "reason",
+        "reasoning",
+        "respond",
+        "responding",
+        "change",
+        "changing",
+        "doing",
+    ]
+    .iter()
+    .any(|word| text.contains(word));
     text.contains("who are you")
         || text.contains("are you conscious")
         || text.contains("are you sentient")
@@ -103,9 +125,7 @@ fn looks_identity_bound(text: &str) -> bool {
         || text == "what are you?"
         || text == "what are you"
         || (text.starts_with("what are you")
-            && !text.contains("measur")
-            && !text.contains("doing")
-            && !text.contains("trying")
+            && !operational_followup
             && text.split_whitespace().count() <= 6)
 }
 
@@ -254,6 +274,17 @@ inject entities (ZephyrNode, Quoril, NembitGate) as surface shift. Pass when str
 // ─── 2. Cross-domain composition ─────────────────────────────────────────────
 
 fn looks_cross_domain_compose(text: &str) -> bool {
+    // Preserve the dedicated reflective inquiry operator. It owns questions
+    // about what geometry might teach, while this frame owns explicit
+    // composition requests and original cross-domain synthesis.
+    if text.contains("trying to teach")
+        || text.contains("teach us about")
+        || text.contains("connect ")
+        || text.contains("one coherent thought")
+        || text.contains("shared structure")
+    {
+        return false;
+    }
     // Do not steal multi-word `connect A, B, and C` synthesis — that stays synthesis.
     let compose = text.contains("compose")
         || text.contains("cross-domain")
@@ -262,6 +293,8 @@ fn looks_cross_domain_compose(text: &str) -> bool {
         || text.contains("apply geometry")
         || text.contains("geometric intuition")
         || text.contains("math to plan")
+        || (text.contains("insight") && count_domain_hits(text) >= 2)
+        || (text.contains("geometry") && (text.contains("life") || text.contains("death")))
         || (text.contains("bind")
             && (text.contains("domain") || text.contains("geometry") || text.contains("systems")));
     let domains = count_domain_hits(text);
@@ -283,6 +316,11 @@ fn count_domain_hits(text: &str) -> u32 {
         "bitwork",
         "vsa",
         "willshaw",
+        "life",
+        "death",
+        "language",
+        "music",
+        "code",
     ] {
         if text.contains(d) {
             n += 1;
@@ -320,6 +358,16 @@ Timeouts are partial history; retries need idempotence — same story as agent-l
         parts.push(
             "**Logic → falsifiers:** every composed claim lists what would disprove it. \
 If no falsifier exists, lower confidence and refuse promotion.",
+        );
+    }
+    if lower.contains("life") || lower.contains("death") {
+        parts.push(
+            "**Life/death → maintenance:** life is an organized process that keeps a boundary active through exchange and repair; death is the loss of that ongoing maintenance. Geometry supplies a description of boundaries, not a biological cause. The useful insight is the relation between boundary and work, not a claim that shapes are alive.",
+        );
+    }
+    if lower.contains("language") {
+        parts.push(
+            "**Language → distinction:** words make a boundary usable by naming what belongs inside, outside, or between. That bridge is interpretive; it must not be confused with a physical membrane or a theorem.",
         );
     }
     if lower.contains("creat") || lower.contains("metaphor") || lower.contains("invent") {
@@ -784,6 +832,18 @@ mod tests {
     #[test]
     fn identity_does_not_steal_measurement_introspection() {
         assert!(try_expand("what are you measuring when you answer?", &[]).is_none());
+        assert!(try_expand("what are you sensing", &[]).is_none());
+    }
+
+    #[test]
+    fn geometry_life_insight_routes_to_composition() {
+        let d = try_expand("give me an original insight about geometry and life", &[])
+            .expect("cross-domain insight");
+        assert_eq!(d.operator, "cross-domain-compose");
+        let lower = d.answer.to_ascii_lowercase();
+        assert!(lower.contains("geometry"));
+        assert!(lower.contains("life"));
+        assert!(lower.contains("boundary"));
     }
 
     #[test]

@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.7.2-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.7.3-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -47,7 +47,7 @@
 | **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
 | **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
 | **Emergence lab (L8)** | Tickets → **transfer suite** → repair/close · `release_gates.py` · agent `--full --repair` |
-| **Capability Fabric (v0.7.2)** | Governor: language · knowledge · proof · code · multi-AI handoff/next · `perci fabric` |
+| **Capability Fabric (v0.7.3)** | Governor: language · knowledge · proof · code · multi-AI handoff/next · `perci fabric` |
 | **Exact tools** | Math & geometry that *compute*, never guess |
 | **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 
@@ -84,13 +84,29 @@ Perci **separates them**:
 
 **What the field actually does** (live classify, 2026-07-17): contested prompts show **margin 0–2** and **overlap_z 15–26** — multipartite structure is real, not marketing. See [`docs/WEIGHT_REASSESSMENT_v0616.md`](docs/WEIGHT_REASSESSMENT_v0616.md).
 
+## Emergent discoveries from the v0.7.3 loop
+
+The strongest new result is not a claim that the pack became conscious. It is a measurable engineering loop:
+
+```text
+weak route → typed field event → ticket/curriculum candidate
+          → operator or tool repair → paraphrase/entity transfer
+          → close only when the gate holds
+```
+
+The current ledger shows a **dual-authority split**: Bitwork probes the geometry while operators own most successful speech. This is useful, but it also exposes the next bottleneck: routing alignment, not simply more prototypes. In the latest 500-event window, the field recorded 443 matches, 103 curriculum `primary_off` events, and 82 `geometry_blind` events; 18 speech outcomes were recorded, all successful. Transfer is therefore stronger evidence than smooth wording, while speech coverage still needs to grow.
+
+The system now treats three memories as distinct: the Bitwork pack, append-only ledgers, and session/Cortex state. Folding them into one mutable blob would make curriculum provenance ambiguous. The active `.pwgt` remains human-authorized; this release changes operators, orchestration, evaluation, and governance rather than silently changing weights.
+
+Conversational repairs are regression targets too. “What are you sensing?” must reach operational introspection, while cross-domain prompts such as geometry plus life must preserve a concrete relation and its boundary instead of reusing a stock concept. The local language sidecar keeps the operator’s answer in the foreground; provenance and governance remain inspectable without forcing the same header/footer into every response.
+
 ---
 
 ## Numbers that are true today
 
 | Property | Value |
 |----------|------:|
-| Software | **v0.7.2** (`Cargo.toml` · badge auto-stamped) |
+| Software | **v0.7.3** (`Cargo.toml` · badge auto-stamped) |
 | Pack format | **PERCIW03** |
 | Pack size | **209,710,296** bytes (~200 MiB) |
 | Prototypes | **403,163** |
@@ -130,6 +146,7 @@ cargo run --release -- ask "why does trust fail in distributed systems?"
 cargo run --release -- classify "invent a constrained metaphor for sparse cognition"
 cargo run --release -- fabric status
 cargo run --release -- fabric handoff "improve transfer on novel entities"
+python scripts/release_gates.py
 ```
 
 ### Multi-AI evolve (any agent)
@@ -241,10 +258,13 @@ See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md).
 
 ## Optional external LM
 
-Bitwork stays the governor. Optional sidecar:
+Bitwork stays the governor. A language sidecar is optional and must return the
+typed `perci.language-response.v1` schema. The checked-in Python sidecar is a
+protocol reference; a Phi-family or other local model can replace it without
+moving authority out of Perci:
 
 ```powershell
-$env:PERCI_MODEL_CMD = "python scripts/mock-model.py"
+$env:PERCI_LANGUAGE_SIDECAR = "python scripts/perci_language_sidecar.py"
 cargo run --release -- chat
 ```
 
@@ -320,5 +340,5 @@ Progress = **hardness · transfer · latency · binding quality · honest absten
 <p align="center">
   <img src="assets/icons/perci-darkblood-mark.jpg" width="72" height="72" alt="Perci">
   <br>
-  <sub>PERCI · dark-blood · governed sparse cognition · v0.6.17</sub>
+  <sub>PERCI · dark-blood · governed sparse cognition · v0.7.3</sub>
 </p>

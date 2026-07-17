@@ -37,7 +37,15 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
 
     // Language sidecar under critic when plan includes it or user asks for explanation fluency.
     if plan.language.is_some() || language_sidecar::should_invoke_language(user) {
-        let evidence = knowledge_fabric::retrieve_evidence(user, 3);
+        let lower = user.to_ascii_lowercase();
+        let wants_provenance = ["evidence", "source", "provenance", "according to", "show support"]
+            .iter()
+            .any(|term| lower.contains(term));
+        let evidence = if plan.needs_external_facts || wants_provenance {
+            knowledge_fabric::retrieve_evidence(user, 3)
+        } else {
+            Vec::new()
+        };
         let req = language_sidecar::request_from(user, operator, evidence);
         let resp = language_sidecar::generate(&req, &body);
         if resp.ok {
