@@ -142,31 +142,28 @@ with **integer channels**, not token sampling:
 **Tightens:** residual α mass floor (hop-weighted) so second thoughts don’t vanish
 under softmax-like permille; residual novelty bonus for different label/concept.
 
-## 5b. Cognition Trace + length law (v0.6.9)
+## 5b. Cognition Trace + length law (v0.6.11)
 
-Visible, inspectable fluency (not private CoT):
+**Human chat is clean** — no `[Cognition Trace]` prefix. Plans are **backend-only** via
+`/think` (and operator audit via `/trace`).
 
-```text
-[Cognition Trace] α=42% · hops=1 · domains=systems+governance · L=186 words (cascade·B=120)
-```
-
-Integer length budget (fixed-point permille, no floats on the hot path):
+Integer length budget (still applied silently to SoftCascade / operator bodies):
 
 \[
-L = \min\!\big(L_{\max},\; \lceil B(1 + \alpha_{\mathrm{lead}} + H_r\cdot 0.8 + C_d + I_u)\rceil\big)
+L = \min\!\big(L_{\max},\; \lceil B(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I_u)\rceil\big)
 \]
 
 | Symbol | Meaning |
 |--------|---------|
 | \(B\) | base words (30 tool / ~120 open) |
-| \(\alpha_{\mathrm{lead}}\) | `primary_attention_pm / 1000` |
+| \(\alpha\) | lead attention 0–1 |
 | \(H_r\) | residual hop depth 0–2 |
-| \(C_d\) | domain/frame/composition complexity (capped) |
+| \(C\) | domain/frame/composition units |
 | \(I_u\) | intent (1.0 default, 1.5+ explain/why, 1.8 detailed) |
-| \(L_{\max}\) | 420 |
+| \(L_{\max}\) | 420 default · 600 when deep intent |
 
-`/think` shows the last verbose plan; `--verbose-cognition <msg>` or `/think on` for full
-deliberation. SoftCascade applies \(L\) **before** speaking the body.
+`/think` shows the last sealed plan (Lead / residual / VSA / length band). SoftCascade
+applies \(L\) **before** speaking; body only is returned.
 
 ## 5. Free-form fluency path (v0.6.8)
 

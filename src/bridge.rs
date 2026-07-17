@@ -441,10 +441,10 @@ pub fn compose_soft_cascade(
         out = out.replace("  ", " ");
     }
 
-    // Length scalar + short [Cognition Trace] (integer-friendly SoftCascade envelope).
+    // Length scalar silently; cognition plan is backend-only (/think), never chat prefix.
     let plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
     let body = apply_word_budget(&out, plan.words);
-    plan.envelope(&body, false)
+    plan.seal_backend(&body)
 }
 
 // ─── Response length budget + cognition trace ───────────────────────────────
@@ -459,10 +459,10 @@ pub enum CognitionPath {
     Open,
 }
 
-/// Integer length plan:
-/// \( L = \min(L_{\max}, \lceil B(1 + \alpha_{\mathrm{lead}} + H_r\cdot 0.8 + C_d + I_u)\rceil) \)
+/// Integer length plan (nuanced, still float-free):
+/// \( L = \min(L_{\max}, \lceil B(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I_u)\rceil) \)
 ///
-/// All terms use fixed-point permille so the hot path stays float-free.
+/// Floor: social ≥ 1 short sentence; cap L_max unless deep intent.
 #[derive(Clone, Debug)]
 pub struct LengthPlan {
     pub words: usize,
@@ -484,7 +484,8 @@ pub struct LengthPlan {
 }
 
 impl LengthPlan {
-    const L_MAX: u32 = 420;
+    const L_MAX: u32 = 600;
+    const L_MAX_DEFAULT: u32 = 420;
 
     pub fn from_bitwork(
         user: &str,
@@ -508,24 +509,17 @@ impl LengthPlan {
             }
         }
         let experts = domains.len() as u32;
-        // C_d ≈ (experts + frames + composition slots) / 10, capped (~0.60).
         let cd_units = experts
             + (packet.frame_n as u32).min(4)
             + (matched.composition.len() as u32).min(4);
-        let complexity_pm = ((cd_units * 100) / 10).min(600);
         let alpha_pm = matched.primary_attention_pm as u32;
         let intent_pm = intent_multiplier_pm(user);
         let base_b = base_words(path, user);
-        // factor = 1 + α + H_r*0.8 + C_d + I_u  (permille)
-        let factor_pm = 1000u32
-            .saturating_add(alpha_pm)
-            .saturating_add(residual_hops.saturating_mul(800))
-            .saturating_add(complexity_pm)
-            .saturating_add(intent_pm);
-        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
-        let words = (raw as u32).min(Self::L_MAX) as usize;
+        let (factor_pm, complexity_pm) =
+            length_factor_pm(alpha_pm, residual_hops, cd_units, intent_pm);
+        let words = finalize_words(base_b, factor_pm, path, intent_pm);
         Self {
-            words: words.max(12),
+            words,
             base_b,
             alpha_pm,
             residual_hops,
@@ -548,14 +542,11 @@ impl LengthPlan {
     pub fn from_light(user: &str, path: CognitionPath, domains: &[&str], operator: &str) -> Self {
         let intent_pm = intent_multiplier_pm(user);
         let base_b = base_words(path, user);
-        let complexity_pm = ((domains.len() as u32).saturating_mul(100) / 10).min(400);
-        let factor_pm = 1000u32
-            .saturating_add(complexity_pm)
-            .saturating_add(intent_pm);
-        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
-        let words = (raw as u32).min(Self::L_MAX) as usize;
+        let cd_units = domains.len() as u32;
+        let (factor_pm, complexity_pm) = length_factor_pm(0, 0, cd_units, intent_pm);
+        let words = finalize_words(base_b, factor_pm, path, intent_pm);
         Self {
-            words: words.max(8),
+            words,
             base_b,
             alpha_pm: 0,
             residual_hops: 0,
@@ -611,22 +602,21 @@ impl LengthPlan {
             }
         }
         plan.domains = domains;
-        // Recompute L: operator base B with Bitwork α/hops/C_d so trace is honest.
+        // Recompute L: operator base B with Bitwork α/hops so backend plan is honest.
         let base_b = base_words(path, user);
-        let intent_pm = plan.intent_pm;
-        let factor_pm = 1000u32
-            .saturating_add(plan.alpha_pm)
-            .saturating_add(plan.residual_hops.saturating_mul(800))
-            .saturating_add(plan.complexity_pm)
-            .saturating_add(intent_pm);
-        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+        let cd_units = plan.domains.len() as u32
+            + (plan.frame_n as u32).min(4)
+            + (plan.composition.len() as u32).min(4);
+        let (factor_pm, complexity_pm) =
+            length_factor_pm(plan.alpha_pm, plan.residual_hops, cd_units, plan.intent_pm);
         plan.base_b = base_b;
         plan.factor_pm = factor_pm;
-        plan.words = (raw as u32).min(Self::L_MAX).max(8) as usize;
+        plan.complexity_pm = complexity_pm;
+        plan.words = finalize_words(base_b, factor_pm, path, plan.intent_pm);
         plan
     }
 
-    /// Short visible prefix for most replies.
+    /// One-line backend summary (never prefixed to chat).
     pub fn short_trace(&self) -> String {
         let alpha_pct = self.alpha_pm / 10; // 0–100
         let domains = if self.domains.is_empty() {
@@ -640,92 +630,151 @@ impl LengthPlan {
                 .join("+")
         };
         let path = if self.label.contains('|') {
-            // operator|bitwork-label — dual path
             format!("{}+bitwork", path_tag(self.path))
         } else {
             path_tag(self.path).to_owned()
         };
         format!(
-            "[Cognition Trace] α={alpha_pct}% · hops={} · domains={domains} · L={} words ({path}·B={})",
+            "α={alpha_pct}% · hops={} · domains={domains} · L={} ({path}·B={})",
             self.residual_hops, self.words, self.base_b
         )
     }
 
-    /// Fuller deliberation for /think or --verbose-cognition.
+    /// Rich backend plan for `/think` only — human chat never sees this.
     pub fn verbose_trace(&self) -> String {
         let alpha_pct = self.alpha_pm / 10;
-        let factor_x100 = self.factor_pm / 10; // e.g. 260 → 2.60× as 260/100
-        let mut out = String::new();
-        out.push_str("[Cognition · verbose]\n");
+        let alpha_fixed = self.alpha_pm; // ‰
+        let factor_x100 = self.factor_pm / 10;
+        let length_band = if self.words <= 40 {
+            "tight"
+        } else if self.words <= 120 {
+            "medium"
+        } else if self.words <= 240 {
+            "expanded"
+        } else {
+            "deep"
+        };
         let path_disp = if self.label.contains('|') {
             format!("{}+bitwork", path_tag(self.path))
         } else {
             path_tag(self.path).to_owned()
         };
+        let domains = if self.domains.is_empty() {
+            "—".to_owned()
+        } else {
+            self.domains.iter().take(5).cloned().collect::<Vec<_>>().join(" + ")
+        };
+        let mut out = String::new();
+        out.push_str("[Cognition Trace · backend]\n");
         out.push_str(&format!(
-            "path={} · label={} · margin={}\n",
-            path_disp, self.label, self.margin
+            "• Lead: 0.{:02}α ({domains})\n",
+            alpha_pct.min(99)
         ));
+        if self.residual_hops > 0 {
+            out.push_str(&format!(
+                "• Residual hop {}: multipartite second thought (n={})\n",
+                self.residual_hops, self.residual_n
+            ));
+        } else {
+            out.push_str("• Residual hop: none (locked or operator-only)\n");
+        }
         out.push_str(&format!(
-            "α_lead={}‰ ({}%) · residual_hops={} · mixture={} · residual_n={} · frames={}\n",
-            self.alpha_pm, alpha_pct, self.residual_hops, self.mixture_n, self.residual_n, self.frame_n
-        ));
-        out.push_str(&format!(
-            "domains: {}\n",
-            if self.domains.is_empty() {
-                "—".into()
-            } else {
-                self.domains.join(", ")
-            }
+            "• Concepts: mix={} · frames={} · margin={}\n",
+            self.mixture_n, self.frame_n, self.margin
         ));
         if !self.composition.is_empty() {
-            out.push_str(&format!("VSA bind: {}\n", self.composition.join(" · ")));
+            out.push_str(&format!(
+                "• VSA bind: {}\n",
+                self.composition.iter().take(4).cloned().collect::<Vec<_>>().join(" · ")
+            ));
         }
         out.push_str(&format!(
-            "length: L={} · B={} · C_d={}‰ · I_u={}‰ · factor≈{}.{:02} · L_max={}\n",
-            self.words,
-            self.base_b,
-            self.complexity_pm,
-            self.intent_pm,
+            "• Length decision: {length_band} (×{}.{:02}) → L={} words (B={} · path={path_disp})\n",
             factor_x100 / 100,
             factor_x100 % 100,
-            Self::L_MAX
+            self.words,
+            self.base_b
         ));
         out.push_str(&format!(
-            "L = min({}, ceil(B·(1+α+H_r·0.8+C_d+I_u)))\n",
-            Self::L_MAX
+            "• Law: L=min({}, ceil(B·(1+0.6α+1.2H_r+C_d_log+I_u))) · α={}‰ · H_r={} · C_d={}‰ · I_u={}‰\n",
+            Self::L_MAX,
+            alpha_fixed,
+            self.residual_hops,
+            self.complexity_pm,
+            self.intent_pm
         ));
         if let Some(ref lead) = self.lead_snippet {
-            out.push_str(&format!("lead: {lead}\n"));
+            out.push_str(&format!("• Lead snippet: {lead}\n"));
         }
-        out.push_str("note: inspectable Bitwork geometry — not private chain-of-thought.");
+        out.push_str(&format!("• Route label: {}\n", self.label));
+        out.push_str("note: inspectable Bitwork geometry — not private chain-of-thought; never shown in chat.");
         out
     }
 
-    /// Prefix short (or verbose) trace + body, respecting budget already applied to body.
-    pub fn envelope(&self, body: &str, verbose: bool) -> String {
+    /// Apply length budget, store plan for `/think`, return **human body only**.
+    pub fn seal_backend(&self, body: &str) -> String {
         store_last_verbose(self);
-        if !cognition_trace_enabled() {
-            return body.to_owned();
-        }
-        let verbose = verbose || turn_verbose();
-        if verbose {
-            format!("{}\n\n{}", self.verbose_trace(), body)
-        } else {
-            format!("{}\n{}", self.short_trace(), body)
-        }
+        // Human-facing output never includes cognition prefixes.
+        let _ = turn_verbose(); // consume flag without prepending
+        body.to_owned()
+    }
+
+    /// Backward-compatible name: human body only; plan stays backend.
+    pub fn envelope(&self, body: &str, _verbose: bool) -> String {
+        self.seal_backend(body)
     }
 }
 
-/// Whether short [Cognition Trace] prefixes are emitted (default on).
-pub fn cognition_trace_enabled() -> bool {
+/// Explicit opt-in to surface cognition in chat (default **off** — human-facing clean).
+/// Set `PERCI_COGNITION_TRACE=chat` only for debug dumps; normal path is backend-only.
+pub fn cognition_trace_in_chat() -> bool {
     match std::env::var("PERCI_COGNITION_TRACE") {
         Ok(v) => {
             let l = v.to_ascii_lowercase();
-            !matches!(l.as_str(), "0" | "off" | "false" | "no")
+            matches!(l.as_str(), "1" | "on" | "true" | "chat" | "debug")
         }
-        Err(_) => true,
+        Err(_) => false,
     }
+}
+
+/// \(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I_u\) in permille.
+fn length_factor_pm(alpha_pm: u32, residual_hops: u32, cd_units: u32, intent_pm: u32) -> (u32, u32) {
+    // 0.6 * α  → alpha_pm * 600 / 1000
+    let alpha_term = (alpha_pm.saturating_mul(600)) / 1000;
+    // 1.2 * H_r → hops * 1200 (H_r is dimensionless count 0–2)
+    let hop_term = residual_hops.min(2).saturating_mul(1200);
+    // 0.4 * log2(1+C) → log2(1+C) * 400
+    let log_c = integer_log2_floor(1u32.saturating_add(cd_units));
+    let complexity_pm = log_c.saturating_mul(400).min(500);
+    let factor_pm = 1000u32
+        .saturating_add(alpha_term)
+        .saturating_add(hop_term)
+        .saturating_add(complexity_pm)
+        .saturating_add(intent_pm);
+    (factor_pm, complexity_pm)
+}
+
+fn integer_log2_floor(n: u32) -> u32 {
+    if n <= 1 {
+        0
+    } else {
+        31 - n.leading_zeros()
+    }
+}
+
+fn finalize_words(base_b: u32, factor_pm: u32, path: CognitionPath, intent_pm: u32) -> usize {
+    let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+    let l_max = if intent_pm >= 1800 {
+        LengthPlan::L_MAX
+    } else {
+        LengthPlan::L_MAX_DEFAULT
+    };
+    let floor = match path {
+        CognitionPath::Social => 6,
+        CognitionPath::ExactTool => 4,
+        _ => 12,
+    };
+    (raw as u32).min(l_max).max(floor) as usize
 }
 
 fn base_words(path: CognitionPath, user: &str) -> u32 {
@@ -1185,9 +1234,10 @@ mod tests {
             0,
         );
         let low = out.to_ascii_lowercase();
+        // Human chat must stay clean — no cognition dump.
         assert!(
-            low.contains("[cognition trace]") || low.contains("[cognition · verbose]"),
-            "expected cognition trace prefix, got: {out}"
+            !low.contains("[cognition"),
+            "cognition leaked into human output: {out}"
         );
         assert!(
             low.contains("because")
@@ -1198,6 +1248,9 @@ mod tests {
                 || low.contains("permission"),
             "got: {out}"
         );
+        // Backend plan still available.
+        let plan = peek_last_verbose_trace().expect("plan sealed");
+        assert!(plan.contains("Lead:") || plan.contains("α") || plan.contains("Length"));
     }
 
     #[test]
@@ -1220,7 +1273,11 @@ mod tests {
         assert!(open.intent_pm >= 1500);
         assert!(brief.intent_pm <= 1000 || brief.words <= open.words);
         assert!(open.short_trace().contains("α="));
-        assert!(open.verbose_trace().contains("α_lead="));
+        let v = open.verbose_trace();
+        assert!(
+            v.contains("Lead:") || v.contains("0.") || v.contains("α"),
+            "got: {v}"
+        );
     }
 
     #[test]
@@ -1257,9 +1314,10 @@ mod tests {
         assert!(plan.label.contains('|'));
         let short = plan.short_trace();
         assert!(short.contains("bitwork") || short.contains("α="));
-        assert!(!short.contains("α=0%") || plan.alpha_pm == 0);
-        // sample primary_attention_pm is 400 → 40%
-        assert!(short.contains("α=40%") || plan.alpha_pm == 400);
+        assert!(plan.alpha_pm == 400);
+        let sealed = plan.seal_backend("Human facing only.");
+        assert_eq!(sealed, "Human facing only.");
+        assert!(!sealed.contains("[Cognition"));
     }
 
     #[test]

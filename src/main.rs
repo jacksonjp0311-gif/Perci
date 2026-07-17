@@ -287,16 +287,16 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
                     "on" => {
                         engine.set_verbose_cognition(true);
                         println!(
-                            "verbose cognition ON — replies use [Cognition · verbose] until /think off"
+                            "deep backend plans ON — chat stays clean; /think shows richer geometry"
                         );
                     }
                     "off" => {
                         engine.set_verbose_cognition(false);
-                        println!("verbose cognition OFF — short [Cognition Trace] only");
+                        println!("deep backend plans OFF — /think still shows last plan");
                     }
                     "" => println!("{}", engine.cognition_think()),
                     _ => println!(
-                        "usage: /think | /think on | /think off\n{}",
+                        "usage: /think | /think on | /think off\n(chat never shows cognition traces)\n{}",
                         engine.cognition_think()
                     ),
                 }

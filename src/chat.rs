@@ -33,7 +33,7 @@ pub struct ChatEngine {
     learning: Option<InteractionLearner>,
     /// Last bounded cognitive audit; operational trace, never hidden reasoning.
     last_deliberation: Option<Deliberation>,
-    /// Session flag: full [Cognition · verbose] on every reply until `/think off`.
+    /// Session flag: richer backend plans for `/think` (never prefixes chat).
     verbose_cognition: bool,
 }
 
@@ -58,23 +58,25 @@ impl ChatEngine {
         }
     }
 
-    /// Toggle or query session verbose cognition (`/think on|off`).
+    /// Toggle session preference for richer **backend** plans (`/think on|off`).
+    /// Never prefixes chat — only affects what `/think` reports after a turn.
     pub fn set_verbose_cognition(&mut self, on: bool) {
         self.verbose_cognition = on;
+        crate::bridge::set_turn_verbose(on);
     }
 
     pub fn verbose_cognition(&self) -> bool {
         self.verbose_cognition
     }
 
-    /// Last SoftCascade/Bitwork verbose plan (inspectable geometry).
+    /// Last SoftCascade/Bitwork plan (backend-only; never mixed into chat replies).
     pub fn cognition_think(&self) -> String {
         if let Some(v) = crate::bridge::peek_last_verbose_trace() {
             return v;
         }
         let audit = self.deliberation_trace();
         format!(
-            "[Cognition · verbose]\nsession_verbose={}\nNo SoftCascade plan stored yet this process.\n\nLast operator audit:\n{audit}",
+            "[Cognition Trace · backend]\nNo plan stored yet this process.\n(session deep-plan={})\n\nLast operator audit:\n{audit}",
             self.verbose_cognition
         )
     }
@@ -157,9 +159,11 @@ impl ChatEngine {
 
     pub fn respond(&mut self, input: &str) -> io::Result<ChatResponse> {
         self.last_deliberation = None;
+        // Flags only request deeper **backend** storage for /think — never chat prefixes.
         let (flag_verbose, clean) = crate::bridge::strip_cognition_flags(input);
         let input = clean.as_str();
         crate::bridge::set_turn_verbose(flag_verbose || self.verbose_cognition);
+        let _flag_verbose = flag_verbose; // reserved: richer plan retention
 
         let route = self.router.route(input);
         match route {
@@ -250,7 +254,7 @@ impl ChatEngine {
                 &[result.operator],
                 result.operator,
                 &raw,
-                flag_verbose || self.verbose_cognition,
+                false,
                 bitwork.as_ref(),
             );
             result.answer = text.clone();
@@ -282,7 +286,7 @@ impl ChatEngine {
                 &["dialogue"],
                 "dialogue-act",
                 &text,
-                flag_verbose || self.verbose_cognition,
+                false,
                 bitwork.as_ref(),
             );
             self.last_deliberation = Some(
@@ -325,7 +329,7 @@ impl ChatEngine {
                     &["math"],
                     "exact-arithmetic",
                     &raw,
-                    flag_verbose || self.verbose_cognition,
+                    false,
                 );
                 deliberation.answer = text.clone();
                 crate::decision_trace::append(input, &deliberation);
@@ -385,7 +389,7 @@ impl ChatEngine {
                     &["geometry"],
                     "exact-geometry",
                     &raw,
-                    flag_verbose || self.verbose_cognition,
+                    false,
                 );
                 deliberation.answer = text.clone();
                 crate::decision_trace::append(input, &deliberation);
@@ -429,7 +433,7 @@ impl ChatEngine {
                     &["greeting"],
                     "social-reflex",
                     &text,
-                    flag_verbose || self.verbose_cognition,
+                    false,
                 );
                 self.last_deliberation = Some(
                     Deliberation::new("social-reflex", text.clone())
@@ -729,7 +733,7 @@ fn strip_prefixes<'a>(input: &'a str, prefixes: &[&str]) -> &'a str {
 }
 
 pub fn help_text() -> &'static str {
-    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /think [on|off]     show last cognition plan, or toggle verbose traces\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nFlags:\n  --verbose-cognition <msg>   one-shot full [Cognition · verbose] plan\n  think: <msg>                same one-shot verbose ask\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nCognition:\n  most replies show [Cognition Trace] α · hops · domains · L (word budget)\n  L = min(420, ceil(B·(1+α+H_r·0.8+C_d+I_u)))  integer fixed-point\n  PERCI_COGNITION_TRACE=off disables the short prefix\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
+    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /think [on|off]     show last backend cognition plan (never mixed into chat)\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nFlags:\n  --verbose-cognition <msg>   ask + store richer backend plan (chat still clean)\n  think: <msg>                same\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nCognition:\n  chat = human answer only; /think = backend plan (α · hops · domains · L)\n  L = min(cap, ceil(B·(1+0.6α+1.2H_r+0.4log2(1+C)+I_u)))  integer fixed-point\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
 }
 
 #[cfg(test)]
