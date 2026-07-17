@@ -174,6 +174,18 @@ speaking; body only is returned.
 | `/concise` · `/deep` · `/balanced` | Durable dialogue-profile style memory (length + tone prefs) |
 | Prototype tree in `/think` | ASCII `◆ lead / ├─ mix / residual / vsa` from Bitwork mass |
 
+### v0.6.13 — thought arc (breakthrough path)
+
+SoftCascade speaks a **thought arc** emergent from Bitwork mass, not free association:
+
+```text
+thesis (lead α) → warrant (mixture) → boundary (residual/mechanism) → check (contested)
+```
+
+Session **premise bind**: first sentence of the last human answer is held and soft-linked
+on follow-ups (“Building on that…”). Contested margin widens length. Patterns emerge from
+geometry + arc structure + critique — still no token decoder.
+
 ## 5. Free-form fluency path (v0.6.8)
 
 Honest claim: Perci is **not** a free-form LM. Fluency here means **paragraph

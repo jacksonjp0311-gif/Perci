@@ -28,6 +28,8 @@ thread_local! {
     static LAST_CRITIQUE: RefCell<Option<String>> = RefCell::new(None);
     /// Last visual prototype tree for /think.
     static LAST_TREE: RefCell<Option<String>> = RefCell::new(None);
+    /// Load-bearing premise from the previous human-facing answer (session thought continuity).
+    static LAST_PREMISE: RefCell<Option<String>> = RefCell::new(None);
 }
 
 /// 0 = balanced, 1 = concise, 2 = deep (from `/concise` · `/deep` style memory).
@@ -86,6 +88,32 @@ fn peek_tree() -> Option<String> {
 /// Peek last verbose cognition block (for `/think`).
 pub fn peek_last_verbose_trace() -> Option<String> {
     LAST_VERBOSE.with(|c| c.borrow().clone())
+}
+
+/// Store the load-bearing first sentence of the last reply (session continuity).
+pub fn remember_premise(answer: &str) {
+    let premise = first_sentence_premise(answer);
+    if premise.chars().count() >= 20 {
+        LAST_PREMISE.with(|c| *c.borrow_mut() = Some(premise));
+    }
+}
+
+fn peek_premise() -> Option<String> {
+    LAST_PREMISE.with(|c| c.borrow().clone())
+}
+
+fn first_sentence_premise(text: &str) -> String {
+    let t = text.trim();
+    // Skip any accidental cognition lines if present.
+    let t = t
+        .lines()
+        .find(|l| !l.trim_start().starts_with('[') && l.split_whitespace().count() >= 4)
+        .unwrap_or(t);
+    let end = t
+        .find(['.', '!', '?'])
+        .map(|i| i + 1)
+        .unwrap_or_else(|| t.len().min(180));
+    t[..end].trim().to_owned()
 }
 
 /// Evidence packet assembled for one soft-cascade reply.
@@ -246,11 +274,11 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
     }
 }
 
-/// Compose a multi-hypothesis answer as **continuous free-form prose**.
+/// Compose a multi-hypothesis answer as **thoughtful free-form prose**.
 ///
-/// Target: LM-like paragraph fluency from scored Bitwork values — no token
-/// sampling, no section labels ("Lattice:", "Mixture read:", "residual stream").
-/// Facets are fused into a single reasoning paragraph.
+/// Emergent arc (no section labels):
+/// **thesis → warrant → boundary → check**, drawn from Bitwork α / residual / frames.
+/// Session premise may soft-bind when the user is continuing a thread.
 pub fn compose_soft_cascade(
     user: &str,
     matched: &CognitiveMatch,
@@ -267,206 +295,17 @@ pub fn compose_soft_cascade(
     let ask = ask_shape(user);
 
     if !packet.rich {
-        return domain_body.to_owned();
+        let body = domain_body.to_owned();
+        remember_premise(&body);
+        return body;
     }
 
-    // Collect claim sentences (strip trailing periods for rejoin).
-    let mut claims: Vec<String> = Vec::new();
-    let push_claim = |claims: &mut Vec<String>, s: &str| {
-        let t = s.trim().trim_end_matches('.').trim();
-        if t.len() < 12 {
-            return;
-        }
-        let low = t.to_ascii_lowercase();
-        if claims
-            .iter()
-            .any(|c| c.to_ascii_lowercase().contains(&low[..low.len().min(40)]))
-        {
-            return;
-        }
-        claims.push(t.to_owned());
-    };
+    let arc = ThoughtArc::from_packet(&packet, domain_body, matched.margin, style_depth());
+    let mut out = arc.speak(user, &topic, ask, variant, peek_premise().as_deref());
 
-    if let Some(ref lead) = packet.lead {
-        push_claim(&mut claims, lead);
-    } else if domain_body.split_whitespace().count() >= 6 {
-        push_claim(&mut claims, domain_body);
-    }
-    for s in &packet.supports {
-        push_claim(&mut claims, s);
-        if claims.len() >= 4 {
-            break;
-        }
-    }
-    // Residual stream claims — spoken as plain second thoughts, not jargon.
-    let mut residual_claims: Vec<String> = Vec::new();
-    for s in &packet.residual_supports {
-        let t = s.trim().trim_end_matches('.').trim();
-        if t.len() >= 12 {
-            residual_claims.push(t.to_owned());
-        }
-    }
-    for f in &packet.frames {
-        push_claim(&mut claims, f);
-        if claims.len() >= 5 {
-            break;
-        }
-    }
-    if packet.contested {
-        if let Some(m) = packet.mechanisms.first() {
-            push_claim(&mut claims, m);
-        }
-    }
-
-    if claims.is_empty() && residual_claims.is_empty() {
-        return domain_body.to_owned();
-    }
-
-    // Free-form openings — lead with content, not a fixed shell.
-    let mut out = String::new();
-    let open_claim = claims
-        .first()
-        .cloned()
-        .or_else(|| residual_claims.first().cloned())
-        .unwrap_or_else(|| domain_body.to_owned());
-    let c0 = decapitalize_if_mid(&open_claim);
-    match (ask, variant % 5) {
-        (AskShape::Why, 0) => {
-            out.push_str(&format!("{open_claim}."));
-        }
-        (AskShape::Why, 1) => {
-            out.push_str(&format!("For {topic}, {c0}."));
-        }
-        (AskShape::Why, 2) => {
-            out.push_str(&format!("Because {c0}."));
-        }
-        (AskShape::Why, _) => {
-            out.push_str(&format!(
-                "The short answer is that {c0} — and that is what makes {topic} brittle or robust."
-            ));
-        }
-        (AskShape::How, 0) => {
-            out.push_str(&format!("{open_claim}."));
-        }
-        (AskShape::How, 1) => {
-            out.push_str(&format!("In practice for {topic}, {c0}."));
-        }
-        (AskShape::How, 2) => {
-            out.push_str(&format!("It tends to work when {c0}."));
-        }
-        (AskShape::How, _) => {
-            out.push_str(&format!("Start from this: {open_claim}."));
-        }
-        (AskShape::What, 0) => {
-            out.push_str(&format!("{open_claim}."));
-        }
-        (AskShape::What, 1) => {
-            out.push_str(&format!("Think of {topic} as {c0}."));
-        }
-        (AskShape::What, _) => {
-            out.push_str(&format!("{open_claim} — that is the cleanest read of {topic}."));
-        }
-        (AskShape::Connect, 0) => {
-            out.push_str(&format!("{open_claim}."));
-        }
-        (AskShape::Connect, _) => {
-            out.push_str(&format!(
-                "A bridge across {topic} looks like this: {c0}."
-            ));
-        }
-        (AskShape::Open, 0) => {
-            out.push_str(&format!("{open_claim}."));
-        }
-        (AskShape::Open, 1) => {
-            out.push_str(&format!("On {topic}: {c0}."));
-        }
-        (AskShape::Open, _) => {
-            out.push_str(&format!("{open_claim} That is the main thread on {topic}."));
-        }
-    }
-
-    // Soft mid-paragraph connectors (LM-ish, not section headers).
-    let soft = match variant % 6 {
-        0 => [" ", " And ", " So "],
-        1 => [" ", " More carefully, ", " In short, "],
-        2 => [" ", " At the same time, ", " That is why "],
-        3 => [" ", " Relatedly, ", " Under pressure, "],
-        4 => [" ", " Another way to put it: ", " The check is "],
-        _ => [" ", " Still, ", " Altogether, "],
-    };
-
-    let skip_first = claims.first().is_some();
-    for (i, claim) in claims
-        .iter()
-        .skip(if skip_first { 1 } else { 0 })
-        .enumerate()
-    {
-        if i >= 3 {
-            break;
-        }
-        let body = decapitalize_if_mid(claim);
-        // Free-form: sometimes fuse with a soft connector, sometimes a new sentence.
-        if i == 0 && variant % 2 == 0 && body.chars().count() < 90 {
-            out.push_str(soft[1]);
-            out.push_str(&body);
-            if !out.ends_with('.') {
-                out.push('.');
-            }
-        } else {
-            out.push_str(soft[i.min(2)]);
-            // Capitalize after a sentence boundary if we just ended a period.
-            if out.ends_with(". ") || out.ends_with('.') {
-                if out.ends_with('.') {
-                    out.push(' ');
-                }
-                out.push_str(claim);
-            } else {
-                out.push_str(&body);
-            }
-            if !out.ends_with('.') {
-                out.push('.');
-            }
-        }
-    }
-
-    // Second-thought residual — plain language, never "residual stream" jargon.
-    let residual_lead = match variant % 4 {
-        0 => " There's another layer that often gets skipped: ",
-        1 => " Holding a second angle: ",
-        2 => " Also in play: ",
-        _ => " One more thread: ",
-    };
-    for (i, claim) in residual_claims.iter().enumerate() {
-        if i >= 2 {
-            break;
-        }
-        if claims
-            .first()
-            .map(|c| c.eq_ignore_ascii_case(claim))
-            .unwrap_or(false)
-        {
-            continue;
-        }
-        let body = decapitalize_if_mid(claim);
-        out.push_str(if i == 0 { residual_lead } else { " And " });
-        out.push_str(&body);
-        if !out.ends_with('.') {
-            out.push('.');
-        }
-    }
-
-    // VSA soft binding — only when it reads as structure, not a schema dump.
-    // Prefer quieter weave (variant styles that avoid checklist tags).
+    // VSA soft binding — only when structural and not a checklist dump.
     if packet.composition.len() >= 2 && (variant % 3 != 2 || packet.supports.is_empty()) {
         out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
-    }
-
-    // Contested honesty without meta-ceremony.
-    if packet.contested
-        && (claims.len() + residual_claims.len()) >= 3
-        && variant % 3 == 1
-    {
-        out.push_str(" More than one frame still fits; these are the ones that hold together best.");
     }
 
     // Bind user topic if diluted.
@@ -480,22 +319,250 @@ pub fn compose_soft_cascade(
         ));
     }
 
-    // Collapse accidental double spaces from soft fusion.
     while out.contains("  ") {
         out = out.replace("  ", " ");
     }
 
-    // Self-critique residual loop: if draft is thin, weave one natural second thought
-    // from residual/mechanism mass (metacognition without token sampling).
+    // Self-critique residual loop (second pass on thin drafts).
     let (refined, critique) = self_critique_refine(user, &out, &packet, matched);
     store_critique(&critique);
     store_tree(&render_prototype_tree(matched, &packet));
 
-    // Length scalar silently; cognition plan is backend-only (/think), never chat prefix.
     let mut plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
     plan = plan.apply_style_depth(style_depth());
+    // Contested geometry → slightly more room to think.
+    if packet.contested && style_depth() != 1 {
+        plan.words = (plan.words.saturating_add(24)).min(LengthPlan::L_MAX as usize);
+    }
     let body = apply_word_budget(&refined, plan.words);
+    remember_premise(&body);
     plan.seal_backend(&body)
+}
+
+/// Load-bearing thought roles emergent from Bitwork mass (not free association).
+#[derive(Clone, Debug, Default)]
+struct ThoughtArc {
+    thesis: String,
+    warrant: Option<String>,
+    boundary: Option<String>,
+    check: Option<String>,
+    contested: bool,
+}
+
+impl ThoughtArc {
+    fn from_packet(
+        packet: &BridgePacket,
+        domain_body: &str,
+        margin: i32,
+        depth: u8,
+    ) -> Self {
+        let clean = |s: &str| -> String {
+            s.trim().trim_end_matches('.').trim().to_owned()
+        };
+        let mut thesis = packet
+            .lead
+            .as_ref()
+            .map(|s| clean(s))
+            .filter(|s| s.chars().count() >= 16)
+            .or_else(|| {
+                packet
+                    .supports
+                    .first()
+                    .map(|s| clean(s))
+                    .filter(|s| s.chars().count() >= 16)
+            })
+            .unwrap_or_else(|| clean(domain_body));
+
+        if thesis.chars().count() < 12 {
+            thesis = clean(domain_body);
+        }
+
+        // Warrant = best same-geometry support distinct from thesis.
+        let warrant = packet.supports.iter().find_map(|s| {
+            let c = clean(s);
+            if c.chars().count() >= 16 && !near_dup(&c, &thesis) {
+                Some(c)
+            } else {
+                None
+            }
+        });
+
+        // Boundary = residual second thought OR mechanism (when the claim could fail).
+        let boundary = packet
+            .residual_supports
+            .first()
+            .map(|s| clean(s))
+            .filter(|s| s.chars().count() >= 16 && !near_dup(s, &thesis))
+            .or_else(|| {
+                packet
+                    .mechanisms
+                    .first()
+                    .map(|s| clean(s))
+                    .filter(|s| s.chars().count() >= 20 && !near_dup(s, &thesis))
+            })
+            .or_else(|| {
+                packet.frames.first().map(|s| clean(s)).filter(|s| {
+                    s.chars().count() >= 16 && !near_dup(s, &thesis)
+                })
+            });
+
+        // Check = second residual / second support when contested or deep style.
+        let need_check = packet.contested || margin < 14 || depth == 2;
+        let check = if need_check {
+            packet
+                .residual_supports
+                .get(1)
+                .map(|s| clean(s))
+                .filter(|s| s.chars().count() >= 16)
+                .or_else(|| {
+                    packet.supports.get(1).map(|s| clean(s)).filter(|s| {
+                        s.chars().count() >= 16
+                            && !near_dup(s, &thesis)
+                            && warrant.as_ref().map(|w| !near_dup(s, w)).unwrap_or(true)
+                    })
+                })
+        } else {
+            None
+        };
+
+        // Concise style: keep thesis + one of warrant/boundary.
+        let (warrant, boundary, check) = if depth == 1 {
+            (warrant.or(boundary), None, None)
+        } else {
+            (warrant, boundary, check)
+        };
+
+        Self {
+            thesis,
+            warrant,
+            boundary,
+            check,
+            contested: packet.contested || margin < 12,
+        }
+    }
+
+    fn speak(
+        &self,
+        user: &str,
+        topic: &str,
+        ask: AskShape,
+        variant: usize,
+        prior_premise: Option<&str>,
+    ) -> String {
+        let mut out = String::new();
+        let lower = user.to_ascii_lowercase();
+        let follow =
+            lower.contains("what about")
+                || lower.contains("and ")
+                || lower.starts_with("also")
+                || lower.contains("still")
+                || lower.contains("then ")
+                || lower.contains("under partition")
+                || lower.contains("more carefully");
+
+        // Soft session continuity — only when continuing, not on cold opens.
+        if follow {
+            if let Some(p) = prior_premise {
+                if p.chars().count() >= 24 && p.chars().count() <= 160 {
+                    let p0 = decapitalize_if_mid(p.trim_end_matches('.'));
+                    match variant % 3 {
+                        0 => out.push_str(&format!("Building on that — {p0}. ")),
+                        1 => out.push_str(&format!("Keeping the last thread in view: {p0}. ")),
+                        _ => out.push_str(&format!("From where we left off: {p0}. ")),
+                    }
+                }
+            }
+        }
+
+        let t = self.thesis.trim_end_matches('.').to_owned();
+        let t0 = decapitalize_if_mid(&t);
+
+        // Thesis — answer first, human natural.
+        match (ask, variant % 4) {
+            (AskShape::Why, 0) => out.push_str(&format!("{t}.")),
+            (AskShape::Why, 1) => out.push_str(&format!("For {topic}, {t0}.")),
+            (AskShape::Why, _) => out.push_str(&format!(
+                "It comes down to this: {t0}."
+            )),
+            (AskShape::How, 0) => out.push_str(&format!("{t}.")),
+            (AskShape::How, 1) => out.push_str(&format!("In practice, {t0}.")),
+            (AskShape::How, _) => out.push_str(&format!("The workable path is when {t0}.")),
+            (AskShape::What, 0) => out.push_str(&format!("{t}.")),
+            (AskShape::What, _) => out.push_str(&format!(
+                "The cleanest read of {topic}: {t0}."
+            )),
+            (AskShape::Connect, 0) => out.push_str(&format!("{t}.")),
+            (AskShape::Connect, _) => out.push_str(&format!(
+                "A bridge for {topic}: {t0}."
+            )),
+            (AskShape::Open, 0) => out.push_str(&format!("{t}.")),
+            (AskShape::Open, _) => out.push_str(&format!("On {topic}: {t0}.")),
+        }
+
+        // Warrant — why the thesis holds (mechanism, not slogan).
+        if let Some(ref w) = self.warrant {
+            let w0 = decapitalize_if_mid(w.trim_end_matches('.'));
+            let bridge = match variant % 5 {
+                0 => " That holds because ",
+                1 => " The reason it lands is that ",
+                2 => " Underneath that, ",
+                3 => " You can see it when ",
+                _ => " What makes it real is that ",
+            };
+            out.push_str(bridge);
+            out.push_str(&w0);
+            if !out.ends_with('.') {
+                out.push('.');
+            }
+        }
+
+        // Boundary — when it fails / what it is not (honest thought).
+        if let Some(ref b) = self.boundary {
+            let b0 = decapitalize_if_mid(b.trim_end_matches('.'));
+            let bridge = match variant % 4 {
+                0 => " It frays when ",
+                1 => " The edge case is that ",
+                2 => " Still, that only stays true if ",
+                _ => " Where this gets fragile: ",
+            };
+            out.push_str(bridge);
+            out.push_str(&b0);
+            if !out.ends_with('.') {
+                out.push('.');
+            }
+        }
+
+        // Check — discriminating test / next thought under contest.
+        if let Some(ref c) = self.check {
+            let c0 = decapitalize_if_mid(c.trim_end_matches('.'));
+            let bridge = match variant % 3 {
+                0 => " A useful check is whether ",
+                1 => " You can pressure-test it by asking if ",
+                _ => " If that shifted, you'd also see that ",
+            };
+            out.push_str(bridge);
+            out.push_str(&c0);
+            if !out.ends_with('.') {
+                out.push('.');
+            }
+        } else if self.contested && style_depth() != 1 {
+            out.push_str(
+                " I'm holding more than one working frame; these are the pieces that still cohere.",
+            );
+        }
+
+        out
+    }
+}
+
+fn near_dup(a: &str, b: &str) -> bool {
+    let al = a.to_ascii_lowercase();
+    let bl = b.to_ascii_lowercase();
+    if al == bl {
+        return true;
+    }
+    let take = |s: &str| s.chars().take(36).collect::<String>();
+    take(&al) == take(&bl) || al.contains(&take(&bl)) || bl.contains(&take(&al))
 }
 
 // ─── Response length budget + cognition trace ───────────────────────────────
@@ -724,6 +791,13 @@ impl LengthPlan {
         } else {
             "deep"
         };
+        let thought_mode = if self.margin < 12 {
+            "contested multipartite"
+        } else if self.residual_hops > 0 {
+            "thesis+residual"
+        } else {
+            "locked attractor"
+        };
         let path_disp = if self.label.contains('|') {
             format!("{}+bitwork", path_tag(self.path))
         } else {
@@ -736,6 +810,7 @@ impl LengthPlan {
         };
         let mut out = String::new();
         out.push_str("[Cognition Trace · backend]\n");
+        out.push_str(&format!("• Thought mode: {thought_mode}\n"));
         out.push_str(&format!(
             "• Lead: 0.{:02}α ({domains})\n",
             alpha_pct.min(99)
@@ -784,6 +859,7 @@ impl LengthPlan {
     /// Apply length budget, store plan for `/think`, return **human body only**.
     pub fn seal_backend(&self, body: &str) -> String {
         store_last_verbose(self);
+        remember_premise(body);
         // Human-facing output never includes cognition prefixes.
         let _ = turn_verbose(); // consume flag without prepending
         body.to_owned()
@@ -1534,15 +1610,45 @@ mod tests {
         assert!(
             low.contains("because")
                 || low.contains("comes down")
-                || low.contains("structural reason")
+                || low.contains("structural")
                 || low.contains("trust")
                 || low.contains("interface")
-                || low.contains("permission"),
+                || low.contains("permission")
+                || low.contains("holds because")
+                || low.contains("frays"),
             "got: {out}"
         );
         // Backend plan still available.
         let plan = peek_last_verbose_trace().expect("plan sealed");
-        assert!(plan.contains("Lead:") || plan.contains("α") || plan.contains("Length"));
+        assert!(plan.contains("Lead:") || plan.contains("α") || plan.contains("Length") || plan.contains("Thought mode"));
+    }
+
+    #[test]
+    fn thought_arc_has_thesis_and_warrant() {
+        let m = sample_match();
+        let packet = assemble(&m, "why does trust fail in distributed systems?");
+        let arc = ThoughtArc::from_packet(&packet, "fallback body long enough", 8, 0);
+        assert!(arc.thesis.chars().count() >= 16);
+        // sample has mixture support → warrant likely
+        assert!(arc.warrant.is_some() || arc.boundary.is_some());
+        let spoken = arc.speak(
+            "why does trust fail in distributed systems?",
+            "trust distributed",
+            AskShape::Why,
+            0,
+            None,
+        );
+        assert!(spoken.split_whitespace().count() >= 10);
+        assert!(!spoken.contains("Lattice:"));
+    }
+
+    #[test]
+    fn session_premise_remembered() {
+        remember_premise(
+            "Trust fails when authority and evidence drift out of sync across nodes. Next sentence.",
+        );
+        let p = peek_premise().expect("premise");
+        assert!(p.to_ascii_lowercase().contains("trust") || p.contains("authority"));
     }
 
     #[test]
