@@ -831,6 +831,18 @@ impl LengthPlan {
         let mut out = String::new();
         out.push_str("[Cognition Trace · backend]\n");
         out.push_str(&format!("• Thought mode: {thought_mode}\n"));
+        // Emergent field phase from margin (locked / contested).
+        let phase = if self.margin < 4 {
+            "contested (multipartite read)"
+        } else if self.margin < 14 {
+            "soft lock"
+        } else {
+            "locked attractor"
+        };
+        out.push_str(&format!(
+            "• Field phase: {phase} · margin={} · mix={} · residual_n={}\n",
+            self.margin, self.mixture_n, self.residual_n
+        ));
         out.push_str(&format!(
             "• Lead: 0.{:02}α ({domains})\n",
             alpha_pct.min(99)

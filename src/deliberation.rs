@@ -169,6 +169,16 @@ pub fn try_deliberate(
         return Some(awareness_growth_answer(&text));
     }
 
+    // Operational introspection: what are you measuring / how did you choose?
+    if looks_operational_introspection(&text) {
+        return Some(operational_introspection_answer(&text, recent));
+    }
+
+    // Constrained creativity: invent/metaphor under rules — not free hallucination.
+    if looks_creative_constraint(&text) {
+        return Some(creative_constraint_answer(&repaired));
+    }
+
     // Meta: "Expect: real snippet + notes" — acceptance criteria for prior work,
     // not a SoftCascade open-domain topic.
     if looks_acceptance_expectation(&text) {
@@ -2280,6 +2290,13 @@ const SEMANTIC_FRAMES: &[SemanticFrame] = &[
         test: "bind a role to a filler, superpose distractors, unbind the role, and score filler recovery",
     },
     SemanticFrame {
+        term: "willshaw associative memory",
+        axes: &["information", "structure", "similarity"],
+        clause: "Willshaw associative memory stores binary associations so a partial cue can recover a linked pattern",
+        mechanism: "outer-product style binary links accumulate; retrieval thresholds co-active bits of a probe",
+        test: "store a cue–target pair, probe with a noisy cue, and measure target bit recovery vs chance",
+    },
+    SemanticFrame {
         term: "bitwork",
         axes: &["structure", "boundary", "information"],
         clause: "Bitwork routes prompts through packed binary prototypes and expert masks",
@@ -2319,6 +2336,10 @@ const FRAME_ALIASES: &[(&str, &str)] = &[
     ("sdm", "sparse distributed memory"),
     ("sparse memory", "sparse distributed memory"),
     ("kanerva memory", "sparse distributed memory"),
+    ("willshaw", "willshaw associative memory"),
+    ("willshaw associative memory", "willshaw associative memory"),
+    ("willshaw memory", "willshaw associative memory"),
+    ("associative memory", "willshaw associative memory"),
     ("vector symbolic", "vector symbolic binding"),
     ("vector symbolic architectures", "vector symbolic binding"),
     ("vsa", "vector symbolic binding"),
@@ -2326,6 +2347,11 @@ const FRAME_ALIASES: &[(&str, &str)] = &[
     ("hyperdimensional computing", "vector symbolic binding"),
     ("hyperdimensional", "vector symbolic binding"),
     ("symbolic binding", "vector symbolic binding"),
+    ("role-filler", "vector symbolic binding"),
+    ("role filler", "vector symbolic binding"),
+    ("xor role-filler binding", "vector symbolic binding"),
+    ("xor binding", "vector symbolic binding"),
+    ("xor role-filler", "vector symbolic binding"),
     ("perci bitwork", "bitwork"),
     ("bitwork cognition", "bitwork"),
     ("soar impasse", "impasse"),
@@ -2899,6 +2925,98 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
         .observed(format!("recent_turns={}", recent.len()))
         .inferred("meta situation questions need thread summary, not generic coaching")
         .confidence(0.93)
+}
+
+fn looks_operational_introspection(text: &str) -> bool {
+    let low = text;
+    (low.contains("what are you measuring")
+        || low.contains("what did you measure")
+        || low.contains("how did you choose")
+        || low.contains("how did you decide")
+        || low.contains("what evidence did you use")
+        || low.contains("inspect your process")
+        || low.contains("operational introspection")
+        || (low.contains("what") && low.contains("when you answer"))
+        || (low.contains("report") && low.contains("margin"))
+        || (low.contains("which route") && low.contains("won")))
+        && !low.contains("conscious")
+}
+
+fn operational_introspection_answer(text: &str, recent: &[(String, String)]) -> Deliberation {
+    let _ = text;
+    let plan = crate::bridge::peek_last_verbose_trace();
+    let prior = recent.last().map(|(u, a)| (u.as_str(), a.as_str()));
+    let body = if let Some(plan) = plan {
+        format!(
+            "Operational introspection (not subjective awareness):\n\
+When I answer, I measure route/operator, Bitwork α and residual hops when the pack fires, length budget L, and whether a self-critique expanded the draft. I do not measure feelings.\n\n\
+Last sealed plan:\n{plan}\n\n\
+If that block is thin, the turn was operator/tool-led and geometry was only probed. Falsify me with a held-out transfer case or a failing exact tool — not with smoother prose."
+        )
+    } else if let Some((u, a)) = prior {
+        format!(
+            "Operational introspection: no sealed SoftCascade plan is stored yet in this process. The last turn I can see was about “{}”. Load-bearing line: “{}”. What I can always measure: operator name, whether an exact tool ran, session turn count, and wall-clock latency. What I cannot measure: private experience. Ask another substantive question, then ask again — /think will also hold the geometry block.",
+            first_substantive_sentence(u, 80),
+            first_substantive_sentence(a, 100)
+        )
+    } else {
+        "Operational introspection: nothing measured this process yet. After a real ask I can report operator/route, Bitwork α/hops when probed, L budget, critique expand yes/no, and latency. That is the checklist — not chain-of-thought theater.".to_owned()
+    };
+    Deliberation::new("operational-introspection", body)
+        .observed("user requested process/measurement introspection")
+        .inferred("report measurable routing and geometry, not qualia")
+        .confidence(0.95)
+}
+
+fn looks_creative_constraint(text: &str) -> bool {
+    let inventish = text.contains("invent")
+        || text.contains("imagine")
+        || text.contains("metaphor")
+        || text.contains("creative")
+        || text.contains("original")
+        || text.contains("novel analogy");
+    let constrained = text.contains("constrain")
+        || text.contains("for ")
+        || text.contains("without")
+        || text.contains("under ")
+        || text.contains("only ")
+        || text.contains("must ");
+    inventish
+        && constrained
+        && !text.contains("without inventing") // hallucination refuse path
+        && !text.contains("meaning of")
+        && !text.contains("confident meaning")
+        && !text.contains("meaning for")
+}
+
+fn creative_constraint_answer(user: &str) -> Deliberation {
+    let low = user.to_ascii_lowercase();
+    // Extract a light topic after "for " if present.
+    let topic = low
+        .split(" for ")
+        .nth(1)
+        .map(|s| {
+            s.split(['.', '?', ';'])
+                .next()
+                .unwrap_or(s)
+                .trim()
+                .to_owned()
+        })
+        .filter(|s| s.len() >= 4)
+        .unwrap_or_else(|| "the named system".to_owned());
+
+    let body = format!(
+        "Constrained invention (structure transfer, not free invention):\n\n\
+**Image:** Treat {topic} like a **switchyard of sparse tracks** — only a few rails are live at once, but the layout can route many trains because junctions are shared.\n\n\
+**What transfers:** (1) sparsity — few active elements at a time; (2) reuse of junctions — composition without a new track per idea; (3) address-by-similarity — nearby cues open related gates.\n\n\
+**What does not transfer:** steel, schedules, or human intent. The metaphor fails if you treat tracks as continuous dense wire or require a locomotive of “understanding” inside the metal.\n\n\
+**Make it checkable:** name two mechanisms that rarely meet, state one action and one consequence a builder could implement, and one test that would kill the idea. Original only helps if someone can understand it and build it — that is creativity under governance, not fluency theater."
+    );
+    Deliberation::new("creative-constraint", body)
+        .observed("creative ask under constraint markers")
+        .inferred("transfer structure + name non-transfer + checkable test")
+        .uncertain("domain-specific physics of the metaphor vehicle")
+        .confidence(0.92)
 }
 
 /// "what is the meaning of flibberquark without inventing"
@@ -5083,12 +5201,41 @@ mod tests {
                 || low.contains("bind")
                 || low.contains("memory")
                 || low.contains("xor")
-                || low.contains("role"),
+                || low.contains("role")
+                || low.contains("vector symbolic"),
             "got: {}",
             r.answer
         );
         assert!(!low.contains("continuity of identity depends"));
         assert!(!low.contains("shaped as ask"));
+        // Prefer specialist frames over pure placeholders when catalog hits.
+        assert!(
+            !low.contains("i don't have specialist frames for willshaw")
+                || low.contains("willshaw associative"),
+            "got: {}",
+            r.answer
+        );
+    }
+
+    #[test]
+    fn creative_constraint_transfers_structure() {
+        let r = run(
+            "invent a constrained metaphor for sparse cognition",
+            &[],
+        );
+        assert_eq!(r.operator, "creative-constraint");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("transfer") || low.contains("does not transfer"));
+        assert!(low.contains("check") || low.contains("test") || low.contains("build"));
+    }
+
+    #[test]
+    fn operational_introspection_reports_measurement() {
+        let r = run("what are you measuring when you answer?", &[]);
+        assert_eq!(r.operator, "operational-introspection");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("measure") || low.contains("operator") || low.contains("bitwork"));
+        assert!(!low.contains("i feel"));
     }
 
     #[test]
