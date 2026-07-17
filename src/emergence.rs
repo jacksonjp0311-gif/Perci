@@ -1386,12 +1386,20 @@ pub fn standard_transfer_bases() -> Vec<&'static str> {
         "how should interfaces earn trust under lag and retry?",
         "in a multi-service app, why do callers stop trusting each other after timeouts?",
         "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+        // agent loop / planning (category 1)
+        "How should Perci plan an agent loop with measure ticket transfer close under lag?",
+        // cross-domain (category 2)
+        "Compose geometry and systems: apply geometric intuition to planning under lag",
+        // uncertainty (category 3)
+        "How should you calibrate confidence and when should you refuse for insufficient evidence?",
         // synthesis
         "Connect sparse distributed memory, vector symbolic binding, and Bitwork in one coherent thought.",
         // relational
         "What is the boundary between knowledge and attention?",
         // governance / self-model
         "Is Perci a superintelligence?",
+        // novel entity meta (category 6)
+        "How do we generalize under novel entities and entity-swap without overfitting templates?",
     ]
 }
 

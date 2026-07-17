@@ -936,6 +936,27 @@ impl LengthPlan {
             out.push_str(&format!("• Lead snippet: {lead}\n"));
         }
         out.push_str(&format!("• Route label: {}\n", self.label));
+        // Meta-critique → self-improve queue suggestion (inspectable; never in chat).
+        if let Some(geo) = crate::emergence::last_policy() {
+            if !geo.tags.is_empty() {
+                out.push_str(&format!("• Geometry tags: {}\n", geo.tags.join(", ")));
+            }
+            if geo.mixture_crutch || geo.geometry_blind || geo.open_primary_fix_ticket {
+                out.push_str(
+                    "• Queue suggest: primary_off / crutch — open or continue primary-fix ticket; run transfer-suite before claim.\n",
+                );
+            }
+        }
+        let open = crate::emergence::list_open_tickets();
+        if !open.is_empty() {
+            out.push_str(&format!(
+                "• Open lab tickets: {} — `perci agent lab --from-emergence --repair`\n",
+                open.iter().take(4).cloned().collect::<Vec<_>>().join(", ")
+            ));
+        }
+        out.push_str(
+            "• Meta: critique residual unused? topic bind? transfer risk on novel nouns?\n",
+        );
         out.push_str("note: inspectable Bitwork geometry — not private chain-of-thought; never shown in chat.");
         out
     }

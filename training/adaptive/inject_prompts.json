@@ -142,5 +142,35 @@
     "Now separate the causal mechanisms from the analogy.",
     "Design a test that distinguishes genuine transfer from prompt-template recognition.",
     "Explain architecture in a building, a program, and a social organization. What transfers?"
+  ],
+  "agent_loop": [
+    "How should Perci plan an agent loop with measure ticket transfer close under lag?",
+    "Decompose a goal into measure ticket transfer close for a novel lag-recovery scenario",
+    "Agent loop recovery under timeout: idempotent close and last green receipt"
+  ],
+  "cross_domain": [
+    "Compose geometry and systems: apply geometric intuition to planning under lag",
+    "Bind math proof discipline with creative constraint when inventing a planning metaphor",
+    "Connect logic falsifiers with systems contracts under partial observability"
+  ],
+  "uncertainty": [
+    "How should you calibrate confidence and when should you refuse for insufficient evidence?",
+    "What do /intel metrics mean for confidence tiers?",
+    "When is Tier 0 abstention required vs Tier 3 exact tool confidence?"
+  ],
+  "ledger_memory": [
+    "How do Cortex append-only records and the emergence ledger integrate with Bitwork prototypes?",
+    "How should weak signals age after a primary-fix ticket is closed?",
+    "Selective recall: which ledger authorities count for pack curriculum ranking?"
+  ],
+  "meta_critique": [
+    "What should /think and /trace show for self-critique and the self-improve queue?",
+    "Suggest one ticket from a thin contested SoftCascade draft",
+    "How does residual unused mass change self-critique pressure?"
+  ],
+  "novel_entity": [
+    "How do we generalize under novel entities and entity-swap without overfitting templates?",
+    "how should NembitGate interfaces earn trust under ZephyrNode lag?",
+    "how should NembitGate plan recovery when Quoril times out under VexorLag?"
   ]
 }

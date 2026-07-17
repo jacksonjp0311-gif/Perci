@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.21-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.22-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">

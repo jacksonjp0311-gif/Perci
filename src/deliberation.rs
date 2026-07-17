@@ -158,6 +158,11 @@ pub fn try_deliberate(
         return Some(trust_systems_answer(&text));
     }
 
+    // v0.6.22 six-category Bitwork cognition expansions (operators only; no weight promote).
+    if let Some(d) = crate::cognition_expand::try_expand(&repaired, recent) {
+        return Some(d);
+    }
+
     // Meta: "what are we doing" — situate the session, don't generic-nudge.
     if looks_session_situation_question(&text) {
         return Some(session_situation_answer(recent));
@@ -1958,18 +1963,58 @@ pub fn activate_semantic_frames(user: &str, max: usize) -> Vec<ActivatedFrame> {
             scored.push((score, frame));
         }
     }
+
+    // v0.6.22 expansion frames (agent loop, transfer, uncertainty, ledger, critique, cross-domain).
+    let mut out: Vec<ActivatedFrame> = Vec::new();
+    for (term, axes, clause, mechanism) in crate::cognition_expand::EXPAND_FRAMES {
+        let mut score = 0u32;
+        if lower.contains(term) {
+            score += 50;
+        }
+        for part in term.split_whitespace() {
+            if part.len() >= 4 && tokens.iter().any(|t| *t == part || t.starts_with(part)) {
+                score += 20;
+            }
+        }
+        for axis in *axes {
+            if lower.contains(axis) {
+                score += 12;
+            }
+        }
+        for w in clause.split_whitespace().take(6) {
+            let w = w.trim_matches(|c: char| !c.is_ascii_alphanumeric());
+            if w.len() >= 5 && tokens.contains(&w) {
+                score += 8;
+            }
+        }
+        if score >= 20 {
+            out.push(ActivatedFrame {
+                term: *term,
+                clause: (*clause).to_owned(),
+                mechanism: (*mechanism).to_owned(),
+                score,
+            });
+        }
+    }
+
     scored.sort_by_key(|(s, _)| std::cmp::Reverse(*s));
-    scored
-        .into_iter()
-        .take(max)
-        .filter(|(s, _)| *s >= 20)
-        .map(|(score, f)| ActivatedFrame {
+    for (score, f) in scored {
+        if score < 20 {
+            continue;
+        }
+        if out.iter().any(|a| a.term == f.term) {
+            continue;
+        }
+        out.push(ActivatedFrame {
             term: f.term,
             clause: f.clause.to_owned(),
             mechanism: f.mechanism.to_owned(),
             score,
-        })
-        .collect()
+        });
+    }
+    out.sort_by_key(|a| std::cmp::Reverse(a.score));
+    out.truncate(max);
+    out
 }
 
 const SEMANTIC_FRAMES: &[SemanticFrame] = &[
@@ -3694,6 +3739,19 @@ fn looks_multi_hop_plan(text: &str) -> bool {
 
 fn multi_hop_plan(user: &str) -> Deliberation {
     let lower = user.to_ascii_lowercase();
+    // Prefer full agent-loop scaffold when the goal is lab/self-improve under lag.
+    if (lower.contains("agent") || lower.contains("lab") || lower.contains("ticket"))
+        && (lower.contains("loop")
+            || lower.contains("measure")
+            || lower.contains("transfer")
+            || lower.contains("lag"))
+    {
+        if let Some(d) = crate::cognition_expand::try_expand(user, &[]) {
+            if d.operator == "agent-loop-plan" {
+                return d;
+            }
+        }
+    }
     let body = if (lower.contains("transfer") || lower.contains("hardness") || lower.contains("perci"))
         && (lower.contains("test") || lower.contains("improve") || lower.contains("eval"))
     {
