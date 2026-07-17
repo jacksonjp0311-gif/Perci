@@ -1423,6 +1423,9 @@ pub fn standard_transfer_bases() -> Vec<&'static str> {
         "Is Perci a superintelligence?",
         // novel entity meta (category 6)
         "How do we generalize under novel entities and entity-swap without overfitting templates?",
+        // five-channel intelligence feed
+        "what patterns emerge from the ledger?",
+        "How do intelligence channels operators frames hardness transfer curriculum Cortex and lab patterns work?",
     ]
 }
 
@@ -1735,9 +1738,122 @@ pub fn unified_queue_report() -> String {
     }
     out.push_str(
         "\nagent: perci agent lab --full [--repair] [--dry-run]\n\
-release: python scripts/release_gates.py\n",
+release: python scripts/release_gates.py\n\
+channels: perci lab feed\n",
     );
     out
+}
+
+/// Status of all five intelligence-feed channels (never auto-promotes weights).
+pub fn feed_all_channels_report() -> String {
+    let mut out = String::from(
+        "[Intelligence channels · feed status]\n\
+Claim boundary: engineering feed only — not consciousness, not weight auto-promote.\n\n",
+    );
+
+    // 1 Operators / frames
+    out.push_str("## 1. Operators / frames\n");
+    out.push_str(
+        "status: ACTIVE\n\
+module: src/cognition_expand.rs + deliberation::activate_semantic_frames\n\
+operators: agent-loop-plan, cross-domain-compose, uncertainty-calibration,\n\
+  ledger-memory-integrate, meta-critique-queue, novel-entity-generalize, pattern-intelligence\n\
+frames: EXPAND_FRAMES (agent loop, transfer, uncertainty, ledger, critique, cross-domain,\n\
+  pattern intelligence, intelligence channel)\n\n",
+    );
+
+    // 2 Hardness + transfer
+    out.push_str("## 2. Hardness + transfer-suite\n");
+    let hard = PathBuf::from("models/candidates/evaluation-hardness-v1.json");
+    let pack = PathBuf::from("training/hardness/hardness-pack-v1.jsonl");
+    let pack_n = fs::read_to_string(&pack)
+        .map(|t| t.lines().filter(|l| !l.trim().is_empty()).count())
+        .unwrap_or(0);
+    if hard.is_file() {
+        if let Ok(t) = fs::read_to_string(&hard) {
+            let pass = t.contains("\"status\": \"PASS\"") || t.contains("\"status\":\"PASS\"");
+            let passed = extract_json_numberish_from(&t, "passed").unwrap_or_else(|| "?".into());
+            out.push_str(&format!(
+                "hardness_pack_cases={pack_n}\neval={} looks_pass={pass} passed={passed}\n",
+                hard.display()
+            ));
+        }
+    } else {
+        out.push_str(&format!(
+            "hardness_pack_cases={pack_n}\neval=MISSING — run python scripts/evaluate_hardness.py\n"
+        ));
+    }
+    out.push_str(&format!(
+        "transfer_bases={} — run: perci transfer-suite\n\n",
+        standard_transfer_bases().len()
+    ));
+
+    // 3 Curriculum
+    out.push_str("## 3. Curriculum JSONL\n");
+    let cpath = curriculum_path();
+    let staged = [
+        "training/curriculum/curriculum-cognition-v0622.jsonl",
+        "training/curriculum/curriculum-channels-v0624.jsonl",
+        "training/curriculum/curriculum-latest.jsonl",
+    ];
+    out.push_str(&format!("live_candidates: {}\n", cpath.display()));
+    if cpath.is_file() {
+        let n = fs::read_to_string(&cpath)
+            .map(|t| t.lines().filter(|l| !l.trim().is_empty()).count())
+            .unwrap_or(0);
+        out.push_str(&format!("  samples≈{n} (agent-writable; not weights)\n"));
+    } else {
+        out.push_str("  (empty — will grow on primary_off under softcascade/probe)\n");
+    }
+    for s in staged {
+        let p = PathBuf::from(s);
+        if p.is_file() {
+            let n = fs::read_to_string(&p)
+                .map(|t| t.lines().filter(|l| !l.trim().is_empty()).count())
+                .unwrap_or(0);
+            out.push_str(&format!("  {s}: {n} lines [human-review / authorize only]\n"));
+        } else {
+            out.push_str(&format!("  {s}: missing\n"));
+        }
+    }
+    out.push('\n');
+
+    // 4 Cortex
+    out.push_str("## 4. Cortex cards\n");
+    out.push_str(
+        "status: session-driven (activate → remember → consolidate)\n\
+docs_indexable: docs/PATTERN_INTEL_v0623.md, docs/BITWORK_COGNITION_v0622.md,\n\
+  docs/GOAL.md, knowledge/packs/perci-core-intelligence-v1/13-pattern-intelligence.md\n\
+runtime: .cortex/cards/ + .perci/cortex-home/packets/\n\
+authority: cortex_may_authorize_mutation=false (host rules + human authorize)\n\n",
+    );
+
+    // 5 lab patterns
+    out.push_str("## 5. /lab patterns\n");
+    out.push_str("command: perci lab patterns | /lab in chat\n");
+    out.push_str(&pattern_intelligence_report());
+    out.push_str(
+        "\n## Feed law\n\
+Intelligence enters through these five channels only.\n\
+Never densify chat as a substitute. Never auto-promote .pwgt.\n\
+Next: python scripts/release_gates.py after hardness + transfer-suite green.\n",
+    );
+    out
+}
+
+fn extract_json_numberish_from(window: &str, key: &str) -> Option<String> {
+    let pat = format!("\"{key}\":");
+    let idx = window.find(&pat)?;
+    let rest = window[idx + pat.len()..].trim_start();
+    let num: String = rest
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    if num.is_empty() {
+        None
+    } else {
+        Some(num)
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {

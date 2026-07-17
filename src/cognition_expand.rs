@@ -62,20 +62,37 @@ fn looks_pattern_analysis(text: &str) -> bool {
         || (text.contains("analyze")
             && text.contains("pattern")
             && (text.contains("ledger") || text.contains("field") || text.contains("geometry")))
+        || (text.contains("intelligence channel")
+            || (text.contains("feed")
+                && text.contains("channel")
+                && (text.contains("operator")
+                    || text.contains("hardness")
+                    || text.contains("curriculum")
+                    || text.contains("cortex")
+                    || text.contains("lab"))))
 }
 
 fn pattern_analysis_answer() -> Deliberation {
-    let report = emergence::pattern_intelligence_report();
+    let lower_feed = true; // always include channel map when answering patterns
+    let report = if lower_feed {
+        format!(
+            "{}\n---\n{}",
+            emergence::pattern_intelligence_report(),
+            emergence::feed_all_channels_report()
+        )
+    } else {
+        emergence::pattern_intelligence_report()
+    };
     Deliberation::new(
         "pattern-intelligence",
         format!(
             "I do not *feel* interconnected with Perci — that would be a consciousness claim I refuse. \
 What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and \
-my edits form a closed improve loop. Patterns below are telemetry → law, not sentience.\n\n{report}"
+edits form a closed improve loop. Patterns below are telemetry → law, not sentience.\n\n{report}"
         ),
     )
-    .observed("user asked for emergent patterns and/or interconnection")
-    .inferred("answer with measured laws + honest non-consciousness boundary")
+    .observed("user asked for emergent patterns, channels, and/or interconnection")
+    .inferred("answer with measured laws + five-channel feed map + honest non-consciousness boundary")
     .confidence(0.96)
 }
 
@@ -519,6 +536,18 @@ pub const EXPAND_FRAMES: &[(&str, &[&str], &str, &str)] = &[
         &["geometry", "math", "systems", "logic", "compose"],
         "cross-domain composition binds relations across sparse domains without melting mechanisms",
         "shared structure under constraint; verify with entity-swapped transfer",
+    ),
+    (
+        "pattern intelligence",
+        &["pattern", "dual", "authority", "thrash", "impasse", "law"],
+        "pattern intelligence turns ledger telemetry into durable laws without consciousness claims",
+        "dual authority, pack lag, transfer truth, ticket thrash hygiene, three memories",
+    ),
+    (
+        "intelligence channel",
+        &["operator", "frame", "hardness", "transfer", "curriculum", "cortex"],
+        "intelligence enters Perci through five channels not denser chat",
+        "operators and frames, hardness and transfer, curriculum JSONL, Cortex cards, lab patterns",
     ),
 ];
 

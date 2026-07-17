@@ -151,6 +151,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "patterns" | "pattern" | "intel-patterns" => {
                     println!("{}", perci::emergence::pattern_intelligence_report());
                 }
+                "feed" | "channels" => {
+                    println!("{}", perci::emergence::feed_all_channels_report());
+                }
                 "hygiene" => {
                     println!("{}", perci::emergence::hygiene_dual_tickets());
                 }
@@ -183,6 +186,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                            perci lab unified               hardness + emergence + curriculum\n\
                            perci lab curriculum            pack-debt cluster by label\n\
                            perci lab patterns              emergent laws from ledger\n\
+                           perci lab feed                  all five intelligence channels\n\
                            perci lab hygiene               drop open tickets if closed exists\n\
                            perci lab field                 geometry (curriculum view)\n\
                            perci lab close <id> --reason   resolve ticket\n\
@@ -399,6 +403,12 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             "/lab" | "/tickets" => {
                 println!("{}", perci::emergence::lab_report());
                 println!("{}", perci::emergence::next_queue_item());
+            }
+            "/patterns" => {
+                println!("{}", perci::emergence::pattern_intelligence_report());
+            }
+            "/feed" | "/channels" => {
+                println!("{}", perci::emergence::feed_all_channels_report());
             }
             "/prompt" => println!("{}", engine.personality().prompt),
             "/intel" | "/intelligence" | "/probe" => {
