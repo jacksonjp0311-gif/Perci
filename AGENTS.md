@@ -85,6 +85,7 @@ human         → durable weight promote and high-risk merge
 perci fabric status
 perci fabric handoff "your task"    # preferred: machine-readable entry packet
 perci fabric next                  # open lab tickets → recommended engines
+perci fabric regress               # transfer + SoftCascade pack-align snapshot
 perci fabric evolve                # multi-AI loop summary
 perci fabric plan "your task"
 perci fabric knowledge "query"

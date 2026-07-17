@@ -236,11 +236,80 @@ deliberate store — not hidden surveillance.",
     )
 }
 
-/// Prefer the first matching SoftCascade alignment body (trust → governance → identity).
+/// SoftCascade pack-alignment for geometry/boundary conceptual speech (geometry_blind debt).
+pub fn softcascade_geometry_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let geo = t.contains("geometry")
+        || t.contains("boundary")
+        || t.contains("manifold")
+        || t.contains("topology")
+        || (t.contains("shape") && (t.contains("space") || t.contains("form")));
+    if !geo {
+        return None;
+    }
+    // Exact tools own calculable triangle/area prompts — stay conceptual here.
+    if t.contains("calculate") || t.contains("area of") || t.contains("degrees") {
+        return None;
+    }
+    Some(
+        "Geometry here is relation under constraint: a boundary separates inside from outside and \
+makes exchange, repair, and measurement possible. Shapes are not causes by themselves — they are \
+descriptions of contact, containment, and path. When geometry meets life, systems, or language, \
+keep mechanisms distinct: membranes maintain, contracts name acceptance, words mark distinctions. \
+Prefer a checkable relation (what crosses the boundary, what fails if it fails) over a pretty metaphor.",
+    )
+}
+
+/// SoftCascade pack-alignment for planning / agent-loop conceptual speech.
+pub fn softcascade_planning_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = (t.contains("plan") || t.contains("roadmap") || t.contains("milestone"))
+        && (t.contains("next")
+            || t.contains("step")
+            || t.contains("goal")
+            || t.contains("objective")
+            || t.contains("agent")
+            || t.contains("improve")
+            || t.contains("ticket")
+            || t.contains("transfer"));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Planning under constraint: name the objective, list constraints, pick the smallest end-to-end \
+slice that leaves a usable state, measure it, then widen. For Perci self-improve: measure → ticket → \
+transfer → close. Each milestone should be roll-back-safe; lag and partial history require idempotent \
+retries and explicit acceptance tests. Do not densify the pack to fake progress — change the owning engine.",
+    )
+}
+
+/// SoftCascade pack-alignment for logic / falsification speech.
+pub fn softcascade_logic_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = t.contains("falsif")
+        || t.contains("counterexample")
+        || t.contains("premise")
+        || (t.contains("logic") && (t.contains("derive") || t.contains("infer") || t.contains("valid")))
+        || (t.contains("if every") && t.contains("then"));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Logic discipline: list premises, mark assumptions, derive only what follows, then hunt a \
+counterexample. Correlation, possibility, and necessity stay in separate buckets. A claim without a \
+falsifier is not ready for promotion — lower confidence or refuse. Transfer tests are the live \
+counterexample engine for Perci speech, not prose force.",
+    )
+}
+
+/// Prefer the first matching SoftCascade alignment body (specialized → structural).
 pub fn softcascade_pack_alignment_body(user: &str) -> Option<&'static str> {
     softcascade_trust_alignment_body(user)
         .or_else(|| softcascade_governance_alignment_body(user))
         .or_else(|| softcascade_identity_alignment_body(user))
+        .or_else(|| softcascade_geometry_alignment_body(user))
+        .or_else(|| softcascade_planning_alignment_body(user))
+        .or_else(|| softcascade_logic_alignment_body(user))
 }
 
 #[cfg(test)]
@@ -277,5 +346,23 @@ mod tests {
         assert!(contains_term("earn trust under lag", "earn trust"));
         assert!(contains_term("trust under lag", "trust"));
         assert!(!contains_term("distrustful", "trust"));
+    }
+
+    #[test]
+    fn softcascade_geometry_body_hits() {
+        let b = softcascade_geometry_alignment_body(
+            "what does geometry teach about boundary and life?",
+        );
+        assert!(b.is_some());
+        assert!(b.unwrap().to_ascii_lowercase().contains("boundary"));
+    }
+
+    #[test]
+    fn softcascade_planning_body_hits() {
+        let b = softcascade_planning_alignment_body(
+            "plan the next step to improve transfer tickets under lag",
+        );
+        assert!(b.is_some());
+        assert!(b.unwrap().to_ascii_lowercase().contains("measure"));
     }
 }

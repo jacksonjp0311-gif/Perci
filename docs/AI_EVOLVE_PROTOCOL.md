@@ -92,6 +92,7 @@ perci fabric handoff "your task here"
 # → stdout: perci.ai-handoff.v1 JSON
 # → disk:   .perci/ai-handoff-latest.json
 perci fabric next     # open tickets + recommended engines (fabric ↔ lab)
+perci fabric regress  # operator transfer + SoftCascade pack-align + queue
 perci fabric evolve   # human-readable multi-AI loop
 ```
 

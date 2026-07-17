@@ -22,14 +22,32 @@ pub fn retrieve_evidence(query: &str, limit: usize) -> Vec<EvidenceRecord> {
     if let Ok(extra) = load_ledger_evidence(query, limit.saturating_sub(out.len())) {
         out.extend(extra);
     }
-    // Rank: authority * freshness * simple lexical overlap.
+    // Rank: authority * freshness * lexical overlap with the query (hybrid-ready).
+    let q_terms: Vec<String> = query
+        .to_ascii_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| w.len() >= 3)
+        .map(|s| s.to_owned())
+        .take(12)
+        .collect();
     out.sort_by(|a, b| {
-        let sa = a.authority * a.freshness;
-        let sb = b.authority * b.freshness;
+        let sa = rank_evidence(a, &q_terms);
+        let sb = rank_evidence(b, &q_terms);
         sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
     });
     out.truncate(limit);
     out
+}
+
+fn rank_evidence(e: &EvidenceRecord, q_terms: &[String]) -> f64 {
+    let blob = format!("{} {} {}", e.claim, e.source, e.supports.join(" ")).to_ascii_lowercase();
+    let overlap = if q_terms.is_empty() {
+        0.5
+    } else {
+        let hits = q_terms.iter().filter(|t| blob.contains(t.as_str())).count();
+        hits as f64 / q_terms.len() as f64
+    };
+    e.authority * e.freshness.max(0.1) * (0.35 + 0.65 * overlap)
 }
 
 fn hit_to_evidence(i: usize, h: PackHit, now: &str) -> EvidenceRecord {

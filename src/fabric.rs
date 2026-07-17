@@ -538,15 +538,17 @@ engines: {:?}\n\
 needs_external_facts={} needs_proof={} needs_code={}\n\
 notes: {}\n\
 capability write_repo={} network={} git_push={}\n\n\
-## Phase status (v0.7.3 — all phases live)\n\
+## Phase status (v0.7.4 — all phases live + SoftCascade pack-align breadth)\n\
   Phase 1: daemon token + loopback · fail-closed · budgets · semantic eval\n\
   Phase 2: language_sidecar + knowledge_fabric; PERCI_LANGUAGE_SIDECAR optional\n\
   Phase 3: agent worktrees (PERCI_AGENT_WORKTREE=1) · capability tokens · budgets\n\
   Phase 4: proof_engine receipts · exact tools · PERCI_PROOF_ENGINE optional\n\
-  Multi-AI: perci fabric handoff · docs/AI_EVOLVE_PROTOCOL.md · AGENTS.md\n\n\
+  SoftCascade align: trust · governance · identity · geometry · planning · logic\n\
+  Multi-AI: handoff · next · evolve · regress\n\n\
 ## Any-AI entry\n\
   perci fabric handoff \"your task\"   # machine-readable packet\n\
   perci fabric next                   # lab open tickets ↔ recommended engines\n\
+  perci fabric regress                # transfer + SoftCascade pack-align snapshot\n\
   perci fabric evolve                 # optimized multi-AI loop summary\n",
         env!("CARGO_PKG_VERSION"),
         sample.engines,
@@ -584,6 +586,8 @@ Never:
 
 Commands:
   perci fabric handoff "<task>"
+  perci fabric next
+  perci fabric regress
   perci fabric plan "<task>"
   perci fabric knowledge "<query>"
   perci fabric orchestrate "<prompt>"
@@ -594,6 +598,31 @@ Commands:
 See: docs/AI_EVOLVE_PROTOCOL.md · AGENTS.md · docs/CAPABILITY_FABRIC_v070.md
 "#
     .to_owned()
+}
+
+/// One-shot regression snapshot for multi-AI sessions (no weight promote).
+pub fn regress_report() -> String {
+    let (op_ok, op_report) = crate::emergence::run_transfer_suite();
+    let (sc_ok, sc_report) = crate::emergence::run_softcascade_trust_transfer();
+    let next = crate::emergence::next_work_report();
+    let mut out = format!(
+        "[Fabric regress · v{}]\n\
+claim boundary: engineering gates only — not AGI, not auto-promote\n\n",
+        env!("CARGO_PKG_VERSION")
+    );
+    out.push_str(&op_report);
+    out.push('\n');
+    out.push_str(&sc_report);
+    out.push('\n');
+    out.push_str(&next);
+    out.push_str(&format!(
+        "\nregress_ok={} (operator_transfer={} softcascade_align={})\n\
+next: if fail → patch owning engine · if pass → idle depth or live /field\n",
+        op_ok && sc_ok,
+        op_ok,
+        sc_ok
+    ));
+    out
 }
 
 /// Critic: may language output be shown?

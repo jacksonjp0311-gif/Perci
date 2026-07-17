@@ -195,9 +195,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         );
                     }
                 }
+                "regress" | "regression" => {
+                    println!("{}", perci::fabric::regress_report());
+                }
                 other => {
                     return Err(format!(
-                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|next|evolve)"
+                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|next|regress|evolve)"
                     )
                     .into());
                 }

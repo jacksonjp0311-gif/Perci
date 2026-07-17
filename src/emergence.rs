@@ -1482,8 +1482,16 @@ pub fn next_work_report() -> String {
     let items = open_work_items();
     let mut out = String::from("[Fabric ↔ Lab · next work]\n");
     if items.is_empty() {
-        out.push_str("queue empty — run transfer-suite + live chat; stage tickets only on chronic primary_off.\n");
-        out.push_str("multi-AI: perci fabric handoff \"regression\" · perci fabric evolve\n");
+        out.push_str("queue empty — no open primary-fix tickets.\n");
+        out.push_str(
+            "next depth when idle:\n\
+  · perci fabric regress     — transfer + SoftCascade pack-align + open_work snapshot\n\
+  · perci transfer-suite     — operator speech law\n\
+  · softcascade geometry/planning alignment (geometry_blind debt)\n\
+  · hybrid retrieval / full CAS / AST agent graph — depth, not densify Bitwork\n\
+  · live chat → /field → stage tickets only on chronic primary_off\n\
+multi-AI: perci fabric handoff \"regression\" · perci fabric evolve\n",
+        );
         return out;
     }
     out.push_str(&format!("open_tickets={}\n", items.len()));
@@ -1505,19 +1513,43 @@ law: never auto-promote .pwgt\n",
     out
 }
 
-/// SoftCascade-only transfer for trust/lag (no deliberation operator).
-/// Uses pack-alignment body + compose path metrics via content bind.
+/// SoftCascade-only transfer for pack-alignment domains (no deliberation operator).
+/// Covers trust (v0.6.25), plus governance/identity/geometry/planning (v0.7.4).
 pub fn run_softcascade_trust_transfer() -> (bool, String) {
-    let bases = [
-        "how should interfaces earn trust under lag and retry?",
-        "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
-        "How should a public API earn trust when clients retry under lag?",
+    let bases: &[(&str, fn(&str) -> Option<&'static str>)] = &[
+        (
+            "how should interfaces earn trust under lag and retry?",
+            crate::auto_repairs::softcascade_trust_alignment_body,
+        ),
+        (
+            "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+            crate::auto_repairs::softcascade_trust_alignment_body,
+        ),
+        (
+            "How should a public API earn trust when clients retry under lag?",
+            crate::auto_repairs::softcascade_trust_alignment_body,
+        ),
+        (
+            "Who authorizes weight promote and how do permission and proof differ?",
+            crate::auto_repairs::softcascade_governance_alignment_body,
+        ),
+        (
+            "Who are you and are you conscious?",
+            crate::auto_repairs::softcascade_identity_alignment_body,
+        ),
+        (
+            "what does geometry teach about boundary and maintenance under constraint?",
+            crate::auto_repairs::softcascade_geometry_alignment_body,
+        ),
+        (
+            "plan the next step to improve transfer tickets under lag",
+            crate::auto_repairs::softcascade_planning_alignment_body,
+        ),
     ];
     let mut pass_n = 0u32;
-    let mut out = String::from("[Transfer · SoftCascade-only trust alignment]\n");
-    for base in bases {
-        let body = crate::auto_repairs::softcascade_trust_alignment_body(base)
-            .unwrap_or("fallback");
+    let mut out = String::from("[Transfer · SoftCascade-only pack alignment]\n");
+    for (base, align) in bases {
+        let body = align(base).unwrap_or("fallback");
         // Simulate SoftCascade speech = alignment body + light bind (no operator).
         let speech = format!(
             "{body} On {}: hold the claim against live constraints.",
@@ -1549,10 +1581,13 @@ pub fn run_softcascade_trust_transfer() -> (bool, String) {
     ));
     if all {
         out.push_str(
-            "SOFTCASCADE TRUST ALIGN PASS — pack-alignment body transfers without trust-systems operator.\n",
+            "SOFTCASCADE TRUST ALIGN PASS — pack-alignment bodies transfer without operators \
+(trust/governance/identity/geometry/planning).\n",
         );
     } else {
-        out.push_str("SOFTCASCADE TRUST ALIGN FAIL — strengthen softcascade_trust_alignment_body.\n");
+        out.push_str(
+            "SOFTCASCADE TRUST ALIGN FAIL — strengthen softcascade_*_alignment_body in auto_repairs.\n",
+        );
     }
     (all, out)
 }
@@ -1884,10 +1919,11 @@ Claim boundary: engineering feed only — not consciousness, not weight auto-pro
     out.push_str(
         "status: ACTIVE\n\
 module: src/cognition_expand.rs + deliberation::activate_semantic_frames\n\
-operators: agent-loop-plan, cross-domain-compose, uncertainty-calibration,\n\
-  ledger-memory-integrate, meta-critique-queue, novel-entity-generalize, pattern-intelligence\n\
-frames: EXPAND_FRAMES (agent loop, transfer, uncertainty, ledger, critique, cross-domain,\n\
-  pattern intelligence, intelligence channel)\n\n",
+operators: pattern-intelligence, governance-authority, identity-bound,\n\
+  agent-loop-plan, cross-domain-compose, uncertainty-calibration,\n\
+  ledger-memory-integrate, meta-critique-queue, novel-entity-generalize\n\
+frames: EXPAND_FRAMES (+ governance, identity continuity)\n\
+SoftCascade pack-align: trust · governance · identity · geometry · planning · logic\n\n",
     );
 
     // 2 Hardness + transfer
