@@ -1,6 +1,7 @@
 use perci::backend::{CompositeBackend, LanguageBackend};
 use perci::chat::help_text;
 use perci::cortex::CortexBridge;
+use perci::deliberation;
 use perci::memory::MemoryStore;
 use perci::{ChatEngine, Personality};
 use std::env;
@@ -151,8 +152,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let plan = perci::fabric::plan_for_prompt(prompt.trim(), "cli");
                     println!("{}", serde_json::to_string_pretty(&plan)?);
                 }
+                "knowledge" => {
+                    let q = args.collect::<Vec<_>>().join(" ");
+                    println!("{}", perci::knowledge_fabric::status_report(q.trim()));
+                }
+                "orchestrate" => {
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    if prompt.trim().is_empty() {
+                        return Err("usage: perci fabric orchestrate <prompt>".into());
+                    }
+                    println!("{}", perci::orchestrate::plan_json(prompt.trim()));
+                    let seed = deliberation::try_deliberate(prompt.trim(), &[], &[])
+                        .map(|d| d.answer)
+                        .unwrap_or_else(|| "No operator match; SoftCascade/pack path applies.".into());
+                    let out = perci::orchestrate::enrich_answer(prompt.trim(), "fabric-cli", &seed);
+                    println!("---\n{out}");
+                }
+                "handoff" | "entry" => {
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    let task = if prompt.trim().is_empty() {
+                        "general evolution — read lab queue and improve next gap".to_owned()
+                    } else {
+                        prompt.trim().to_owned()
+                    };
+                    let packet = perci::fabric::build_handoff(&task);
+                    match perci::fabric::write_handoff_latest(&packet) {
+                        Ok(p) => eprintln!("wrote {}", p.display()),
+                        Err(e) => eprintln!("handoff persist warning: {e}"),
+                    }
+                    println!("{}", serde_json::to_string_pretty(&packet)?);
+                }
+                "evolve" | "loop" => {
+                    println!("{}", perci::fabric::evolve_loop_report());
+                }
                 other => {
-                    return Err(format!("unknown fabric subcommand: {other} (try: status|plan)").into());
+                    return Err(format!(
+                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|evolve)"
+                    )
+                    .into());
                 }
             }
         }

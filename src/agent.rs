@@ -179,6 +179,45 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
     });
 
     let started = SystemTime::now();
+    // Optional isolated worktree (Phase 3) — PERCI_AGENT_WORKTREE=1
+    let mut worktree_path: Option<PathBuf> = None;
+    if !opts.dry_run
+        && env::var("PERCI_AGENT_WORKTREE").ok().as_deref() == Some("1")
+        && needs_branch
+    {
+        let wt = root.join(".perci").join("worktrees").join(format!("agent-{stamp}"));
+        let _ = fs::create_dir_all(wt.parent().unwrap_or(Path::new(".perci")));
+        match git(
+            &root,
+            &[
+                "worktree",
+                "add",
+                "-b",
+                &format!("agent/wt-{stamp}"),
+                wt.to_str().unwrap_or(".perci/worktrees/tmp"),
+                "HEAD",
+            ],
+        ) {
+            Ok(out) => {
+                worktree_path = Some(wt.clone());
+                report.steps.push(AgentStep {
+                    name: "git.worktree".into(),
+                    detail: format!("{} · {out}", wt.display()),
+                    ok: true,
+                });
+            }
+            Err(err) => {
+                report.steps.push(AgentStep {
+                    name: "git.worktree".into(),
+                    detail: format!("worktree failed (continue in-repo): {err}"),
+                    ok: true, // non-fatal: fall back to in-place allowlist edits
+                });
+            }
+        }
+    }
+
+    let edit_root = worktree_path.clone().unwrap_or_else(|| root.clone());
+
     let mut edits = 0usize;
     for action in &plan.actions {
         if started
@@ -205,7 +244,7 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
         }
         match action {
             PlannedAction::AppendHardness { case_json, note } => {
-                let path = root.join("training/hardness/hardness-pack-v1.jsonl");
+                let path = edit_root.join("training/hardness/hardness-pack-v1.jsonl");
                 if opts.dry_run {
                     report.steps.push(AgentStep {
                         name: "repo.edit".into(),
@@ -250,7 +289,7 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                         ok: true,
                     });
                 } else {
-                    let full = root.join(rel_path);
+                    let full = edit_root.join(rel_path);
                     if let Some(parent) = full.parent() {
                         let _ = fs::create_dir_all(parent);
                     }

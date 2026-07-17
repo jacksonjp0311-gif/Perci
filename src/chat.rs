@@ -285,12 +285,14 @@ impl ChatEngine {
             if let Some(ref m) = bitwork {
                 crate::emergence::record_match(input, m, result.operator);
             }
+            // Capability Fabric: knowledge + language sidecar under critic (governor retains control).
+            let enriched = crate::orchestrate::enrich_answer(input, result.operator, &raw);
             let text = crate::bridge::envelope_with_bitwork(
                 input,
                 crate::bridge::CognitionPath::Operator,
                 &[result.operator],
                 result.operator,
-                &raw,
+                &enriched,
                 false,
                 bitwork.as_ref(),
             );
@@ -303,6 +305,39 @@ impl ChatEngine {
                 route: Route::Chat,
                 text,
             });
+        }
+
+        // Formal proof fabric path only (exact arithmetic still handled below with richer receipts).
+        let lower_in = input.to_ascii_lowercase();
+        if lower_in.contains("prove")
+            || lower_in.contains("theorem")
+            || lower_in.contains("formal proof")
+        {
+            if let Some(proof) = crate::orchestrate::try_proof_or_exact(input) {
+                self.backend.set_dialogue_history(&self.recent);
+                let bitwork = self.backend.probe_cognition(input);
+                let text = crate::bridge::envelope_with_bitwork(
+                    input,
+                    crate::bridge::CognitionPath::ExactTool,
+                    &["proof"],
+                    "proof-engine",
+                    &proof,
+                    false,
+                    bitwork.as_ref(),
+                );
+                self.last_deliberation = Some(
+                    Deliberation::new("proof-engine", text.clone())
+                        .observed("fabric formal proof path")
+                        .inferred("kernel-checked or explicitly unresolved")
+                        .confidence(0.9),
+                );
+                self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
+                return Ok(ChatResponse {
+                    route: Route::Chat,
+                    text,
+                });
+            }
         }
 
         // Relational dialogue acts must be resolved before exact-tool parsing.

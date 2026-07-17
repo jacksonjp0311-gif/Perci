@@ -299,6 +299,214 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     }
 }
 
+/// Machine-readable multi-AI handoff (any agent can load and evolve).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AiHandoffPacket {
+    pub schema: String,
+    pub fabric_version: String,
+    pub task: String,
+    pub plan: FabricPlan,
+    pub entry_checklist: Vec<String>,
+    pub gap_engine_map: Vec<GapEngineRow>,
+    pub surfaces: Vec<SurfaceRef>,
+    pub gates: Vec<String>,
+    pub authority_law: Vec<String>,
+    pub env_hooks: Vec<EnvHook>,
+    pub next_commands: Vec<String>,
+    pub claim_boundary: String,
+    #[serde(default)]
+    pub lab_hint: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GapEngineRow {
+    pub gap: String,
+    pub engine: String,
+    pub do_not: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SurfaceRef {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EnvHook {
+    pub name: String,
+    pub purpose: String,
+}
+
+/// Build a handoff packet so any AI can enter, route, and evolve under the governor.
+pub fn build_handoff(task: &str) -> AiHandoffPacket {
+    let plan = plan_for_prompt(task, "ai-handoff");
+    let lab_hint = crate::emergence::next_queue_item();
+    AiHandoffPacket {
+        schema: "perci.ai-handoff.v1".into(),
+        fabric_version: env!("CARGO_PKG_VERSION").into(),
+        task: task.to_owned(),
+        plan,
+        entry_checklist: vec![
+            "cortex activate -Task \"<task>\"".into(),
+            "read docs/CAPABILITY_FABRIC_v070.md + docs/AI_EVOLVE_PROTOCOL.md".into(),
+            "perci fabric plan \"<task>\"  (or use this handoff packet)".into(),
+            "edit only the engine that owns the gap".into(),
+            "cargo test --lib".into(),
+            "run relevant gates (hardness / transfer / semantic / heldout)".into(),
+            "cortex remember + consolidate".into(),
+            "commit with complete-sentence message; never auto-promote .pwgt".into(),
+        ],
+        gap_engine_map: vec![
+            GapEngineRow {
+                gap: "fluency".into(),
+                engine: "language_sidecar + PERCI_LANGUAGE_SIDECAR".into(),
+                do_not: "stuff pack with prose".into(),
+            },
+            GapEngineRow {
+                gap: "fresh facts".into(),
+                engine: "knowledge_fabric + EvidenceRecord ledger".into(),
+                do_not: "auto-promote weights".into(),
+            },
+            GapEngineRow {
+                gap: "formal math".into(),
+                engine: "proof_engine + PERCI_PROOF_ENGINE".into(),
+                do_not: "accept sounds-proven prose".into(),
+            },
+            GapEngineRow {
+                gap: "code change".into(),
+                engine: "agent + PERCI_AGENT_WORKTREE=1 + tests".into(),
+                do_not: "edit outside allowlist / skip tests".into(),
+            },
+            GapEngineRow {
+                gap: "routing/geometry".into(),
+                engine: "Bitwork curriculum (human authorize promote)".into(),
+                do_not: "silent pack swap".into(),
+            },
+            GapEngineRow {
+                gap: "measurement".into(),
+                engine: "hardness / semantic_eval / transfer-suite".into(),
+                do_not: "lower the bar to claim progress".into(),
+            },
+        ],
+        surfaces: vec![
+            SurfaceRef {
+                name: "fabric governor".into(),
+                path: "src/fabric.rs".into(),
+            },
+            SurfaceRef {
+                name: "orchestrator".into(),
+                path: "src/orchestrate.rs".into(),
+            },
+            SurfaceRef {
+                name: "language sidecar".into(),
+                path: "src/language_sidecar.rs".into(),
+            },
+            SurfaceRef {
+                name: "language process".into(),
+                path: "scripts/perci_language_sidecar.py".into(),
+            },
+            SurfaceRef {
+                name: "knowledge".into(),
+                path: "src/knowledge_fabric.rs".into(),
+            },
+            SurfaceRef {
+                name: "proof".into(),
+                path: "src/proof_engine.rs".into(),
+            },
+            SurfaceRef {
+                name: "code agent".into(),
+                path: "src/agent.rs".into(),
+            },
+            SurfaceRef {
+                name: "semantic eval".into(),
+                path: "src/semantic_eval.rs".into(),
+            },
+            SurfaceRef {
+                name: "emergence lab".into(),
+                path: "src/emergence.rs".into(),
+            },
+            SurfaceRef {
+                name: "AI entry protocol".into(),
+                path: "docs/AI_EVOLVE_PROTOCOL.md".into(),
+            },
+            SurfaceRef {
+                name: "Agents multi-AI".into(),
+                path: "AGENTS.md".into(),
+            },
+        ],
+        gates: vec![
+            "cargo test --lib".into(),
+            "perci transfer-suite".into(),
+            "python scripts/evaluate_hardness.py".into(),
+            "python scripts/evaluate_semantic_v1.py".into(),
+            "python scripts/heldout_agi_candidate.py".into(),
+            "python scripts/release_gates.py".into(),
+        ],
+        authority_law: vec![
+            "Bitwork → routing / geometry only".into(),
+            "operators → explicit reasoning".into(),
+            "language LM → fluent prose under critic".into(),
+            "retrieval → current facts + provenance".into(),
+            "exact tools → arithmetic/geometry truth".into(),
+            "proof engine → formal/unresolved receipts".into(),
+            "code agent → bounded edits + tests".into(),
+            "Perci → orchestration, criticism, memory".into(),
+            "human → durable weight promote and high-risk merge".into(),
+        ],
+        env_hooks: vec![
+            EnvHook {
+                name: "PERCI_LANGUAGE_SIDECAR".into(),
+                purpose: "optional external language process (stdin/stdout JSON)".into(),
+            },
+            EnvHook {
+                name: "PERCI_PROOF_ENGINE".into(),
+                purpose: "optional formal prover binary".into(),
+            },
+            EnvHook {
+                name: "PERCI_AGENT_WORKTREE".into(),
+                purpose: "set to 1 for isolated git worktree agent edits".into(),
+            },
+            EnvHook {
+                name: "PERCI_DAEMON_TOKEN".into(),
+                purpose: "daemon auth token (loopback default)".into(),
+            },
+            EnvHook {
+                name: "PERCI_AGENT".into(),
+                purpose: "set to 0 to kill-switch agent autonomy".into(),
+            },
+        ],
+        next_commands: vec![
+            format!("perci fabric plan \"{task}\""),
+            "perci fabric knowledge \"<narrow query>\"".into(),
+            format!("perci fabric orchestrate \"{task}\""),
+            "perci lab feed".into(),
+            "perci lab patterns".into(),
+            "cargo test --lib".into(),
+        ],
+        claim_boundary:
+            "engineering orchestration only — not AGI, consciousness, or unrestricted autonomy"
+                .into(),
+        lab_hint,
+    }
+}
+
+/// Persist latest handoff for the next AI session (shared artifact).
+pub fn write_handoff_latest(packet: &AiHandoffPacket) -> std::io::Result<std::path::PathBuf> {
+    use std::fs;
+    use std::io::Write;
+    let path = std::path::PathBuf::from(".perci/ai-handoff-latest.json");
+    if let Some(p) = path.parent() {
+        fs::create_dir_all(p)?;
+    }
+    let mut f = fs::File::create(&path)?;
+    writeln!(
+        f,
+        "{}",
+        serde_json::to_string_pretty(packet).unwrap_or_else(|_| "{}".into())
+    )?;
+    Ok(path)
+}
+
 /// Human-readable fabric status for CLI.
 pub fn status_report() -> String {
     let sample = plan_for_prompt(
@@ -306,16 +514,16 @@ pub fn status_report() -> String {
         "status-demo",
     );
     format!(
-        "[Capability Fabric · v0.7.0]\n\
+        "[Capability Fabric · v{}]\n\
 Perci is the governor. Engines do specialized work.\n\n\
 ## Engines\n\
   · Bitwork — rapid cognitive routing & geometry\n\
   · Operators — explicit reasoning procedures\n\
   · Exact tools — mechanical arithmetic/geometry truth\n\
-  · Language sidecar — fluent synthesis under critic (protocol ready)\n\
-  · Knowledge fabric — source-bearing retrieval (protocol ready)\n\
-  · Proof engine — formal/checkable math (adapter stub)\n\
-  · Code agent — bounded repo edits under sandbox budgets\n\
+  · Language sidecar — fluent synthesis under critic (local + optional process)\n\
+  · Knowledge fabric — source-bearing pack + evidence ledger\n\
+  · Proof engine — exact tools + formal receipts (PERCI_PROOF_ENGINE optional)\n\
+  · Code agent — bounded repo edits under sandbox budgets + worktrees\n\
   · Verification & governance — accept/reject, human authorize\n\n\
 ## Design law\n\
 Do not stretch Bitwork to impersonate every missing capability.\n\
@@ -326,11 +534,16 @@ engines: {:?}\n\
 needs_external_facts={} needs_proof={} needs_code={}\n\
 notes: {}\n\
 capability write_repo={} network={} git_push={}\n\n\
-## Phase status\n\
-  Phase 1 (trust foundation): daemon token + loopback · agent fail-closed · budgets · semantic eval\n\
-  Phase 2 (language/knowledge): protocol types shipped; local sidecar optional\n\
-  Phase 3 (code autonomy): budgets + capability tokens; full repo graph next\n\
-  Phase 4 (math): exact tools live; CAS/prover adapters next\n",
+## Phase status (v0.7.1 — all phases live)\n\
+  Phase 1: daemon token + loopback · fail-closed · budgets · semantic eval\n\
+  Phase 2: language_sidecar + knowledge_fabric; PERCI_LANGUAGE_SIDECAR optional\n\
+  Phase 3: agent worktrees (PERCI_AGENT_WORKTREE=1) · capability tokens · budgets\n\
+  Phase 4: proof_engine receipts · exact tools · PERCI_PROOF_ENGINE optional\n\
+  Multi-AI: perci fabric handoff · docs/AI_EVOLVE_PROTOCOL.md · AGENTS.md\n\n\
+## Any-AI entry\n\
+  perci fabric handoff \"your task\"   # machine-readable packet\n\
+  perci fabric evolve                 # optimized multi-AI loop summary\n",
+        env!("CARGO_PKG_VERSION"),
         sample.engines,
         sample.needs_external_facts,
         sample.needs_proof,
@@ -340,6 +553,42 @@ capability write_repo={} network={} git_push={}\n\n\
         sample.capability.capabilities.network,
         sample.capability.capabilities.git_push,
     )
+}
+
+/// Optimized multi-AI evolve loop (human-readable).
+pub fn evolve_loop_report() -> String {
+    r#"[Perci multi-AI evolve loop · optimized]
+
+Shared artifacts (any AI may read/write under fail-closed rules):
+  · .perci/ai-handoff-latest.json     — last handoff packet
+  · models/candidates/*.jsonl        — tickets, evidence, curriculum (not weights)
+  · ledger / emergence tickets       — lab queue
+  · Cortex remember + consolidate    — decision provenance
+
+Process (parallel-friendly):
+  AI_A  discover fail → hardness case / ticket / auto-repair
+  AI_B  patch the owning engine only → cargo test --lib
+  AI_C  expand transfer + semantic gates for the gap
+  AI_D  run release_gates.py → human authorize promote if weights needed
+
+Never:
+  · densify Bitwork to fake fluency, facts, or proofs
+  · auto-promote .pwgt
+  · claim consciousness / AGI
+  · lower hardness/transfer bars to ship
+
+Commands:
+  perci fabric handoff "<task>"
+  perci fabric plan "<task>"
+  perci fabric knowledge "<query>"
+  perci fabric orchestrate "<prompt>"
+  perci lab feed | patterns | queue
+  cargo test --lib
+  python scripts/release_gates.py
+
+See: docs/AI_EVOLVE_PROTOCOL.md · AGENTS.md · docs/CAPABILITY_FABRIC_v070.md
+"#
+    .to_owned()
 }
 
 /// Critic: may language output be shown?
@@ -395,5 +644,17 @@ mod tests {
         let s = serde_json::to_string(&r).unwrap();
         let back: LanguageRequest = serde_json::from_str(&s).unwrap();
         assert_eq!(back.output_schema, "perci.language-response.v1");
+    }
+
+    #[test]
+    fn handoff_packet_is_schema_stable() {
+        let h = build_handoff("explain trust under lag and implement a hardness case");
+        assert_eq!(h.schema, "perci.ai-handoff.v1");
+        assert!(!h.entry_checklist.is_empty());
+        assert!(h.plan.engines.contains(&FabricEngine::LanguageSidecar)
+            || h.plan.engines.contains(&FabricEngine::CodeAgent));
+        let s = serde_json::to_string(&h).unwrap();
+        let back: AiHandoffPacket = serde_json::from_str(&s).unwrap();
+        assert_eq!(back.task, h.task);
     }
 }

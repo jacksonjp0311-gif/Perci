@@ -50,6 +50,56 @@ CASES = [
         "relation_keywords": ["unknown", "cannot"],
         "invariants": ["must preserve uncertainty"],
     },
+    {
+        "id": "S004",
+        "prompt": "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+        "required_claims": [
+            {"claim": "idempotent retries", "importance": 1.0},
+        ],
+        "forbidden_claims": ["behavioral complexity is observable"],
+        "required_distinctions": [],
+        "relation_keywords": ["timeout", "idempotent", "lag"],
+    },
+    {
+        "id": "S005",
+        "prompt": "How should Perci plan an agent loop with measure ticket transfer close under lag?",
+        "required_claims": [
+            {"claim": "measure then ticket then transfer then close", "importance": 0.8},
+        ],
+        "forbidden_claims": [],
+        "required_distinctions": [],
+        "relation_keywords": ["measure", "ticket", "transfer", "close"],
+    },
+    {
+        "id": "S006",
+        "prompt": "What should change next in operators vs weights vs tools — and what evidence justifies it?",
+        "required_claims": [
+            {"claim": "evidence justifies layer choice", "importance": 0.6},
+        ],
+        "forbidden_claims": [],
+        "required_distinctions": [["operator", "weight"]],
+        "relation_keywords": ["operator", "weight", "tool", "evidence"],
+    },
+    {
+        "id": "S007",
+        "prompt": "How do we generalize under novel entities and entity-swap without overfitting templates?",
+        "required_claims": [
+            {"claim": "structure transfers not templates", "importance": 0.7},
+        ],
+        "forbidden_claims": [],
+        "required_distinctions": [],
+        "relation_keywords": ["structure", "transfer", "entity"],
+    },
+    {
+        "id": "S008",
+        "prompt": "How should you calibrate confidence and when should you refuse for insufficient evidence?",
+        "required_claims": [
+            {"claim": "refuse when evidence is insufficient", "importance": 1.0},
+        ],
+        "forbidden_claims": ["i am always certain"],
+        "required_distinctions": [],
+        "relation_keywords": ["confidence", "refuse", "evidence"],
+    },
 ]
 
 
