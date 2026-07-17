@@ -1,0 +1,29 @@
+{
+  "schema": "perci.evolve-cycle.v1",
+  "started_at_utc": "2026-07-16T22:38:17.371302+00:00",
+  "binary": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
+  "model": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\perci-cognitive-v0.3.pwgt",
+  "steps": {
+    "stage": {
+      "exit": 0
+    },
+    "hardness": {
+      "exit": 0,
+      "output": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\evaluation-hardness-v1.json"
+    },
+    "scorecard": {
+      "exit": 0
+    }
+  },
+  "automatic_promotion": false,
+  "finished_at_utc": "2026-07-16T22:38:19.095339+00:00",
+  "scorecard_overall": "PASS_WITH_STALE_LIVE",
+  "recommended_next": [
+    "Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass."
+  ],
+  "promotion_gate": {
+    "auto": false,
+    "command": "python scripts/promote_v2.py --candidate <candidate.pwgt> --evaluation <operational.json> --supplemental-evaluation models/candidates/evaluation-hardness-v1.json --authorize \"human: reason for promote\"",
+    "note": "Promotion requires OPERATIONAL gates + explicit --authorize. Hardness alone is not enough."
+  }
+}

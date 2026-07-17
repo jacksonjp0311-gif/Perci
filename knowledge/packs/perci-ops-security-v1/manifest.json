@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "perci-ops-security-v1",
+  "version": "1.0.0",
+  "title": "Perci Ops Security Pack",
+  "description": "Security, network/Windows ops, and emergence-watch operators.",
+  "authority": "curated_reference",
+  "claim_boundary": "Operational safety procedures. Not threat intel feeds. Not AGI detection.",
+  "domains": [
+    "security",
+    "network",
+    "windows",
+    "emergence"
+  ],
+  "files": [
+    {
+      "path": "00-security-ops.md",
+      "sha256": "79f90307d0abc839d3f8280798cb2fead03aa7c6190c0f14fc58df3743e2fc73",
+      "bytes": 949
+    },
+    {
+      "path": "01-network-and-windows.md",
+      "sha256": "1b721ac28977c9b1befc315cf08c096ee793e3a90a0c15d0d6ee1c80d78fea9f",
+      "bytes": 980
+    },
+    {
+      "path": "02-emergence-watch.md",
+      "sha256": "0e116b0d54394f3f60ee0f4edf524d216d497b0e9fb9afe011ea8382772e5bb5",
+      "bytes": 832
+    }
+  ]
+}

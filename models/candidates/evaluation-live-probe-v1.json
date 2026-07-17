@@ -1,0 +1,194 @@
+{
+  "schema": "perci.live-probe.v1",
+  "evaluated_at_utc": "2026-07-16T23:12:51.545954+00:00",
+  "passed": 23,
+  "case_count": 23,
+  "status": "PASS",
+  "cases": [
+    {
+      "id": "L01",
+      "prompt": "Connect rust ownership, social trust, and legal contracts through one shared principle.",
+      "answer": "A coherent provisional bridge is structure: rust ownership is a structured domain with constraints and failure modes; social trust is a structured domain with constraints and failure modes; legal contracts is a structured domain with constraints and failure modes. Together they show structure under constraint—not one shared substance. Critic rewrite after flags: missing_domain, missing_domain, missing_domain, missing_mechanism_boundary. I will not collapse into comfort or a single nearby concept.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L02",
+      "prompt": "Connect sleep, backups, and forgiveness in one coherent idea.",
+      "answer": "Read them as different expressions of maintenance. sleep is a recurring recovery process that restores capacity after use; backups preserve selected prior state so recovery remains possible after loss; forgiveness releases a past offense from continuing to dominate present relation. The connection is a relation under constraint, not a shared substance: Together they show maintenance as active recovery and preservation of capacity—not as one shared substance across domains.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L03",
+      "prompt": "Connect markets, ecosystems, and immune systems without using the word boundary.",
+      "answer": "A coherent bridge is selection: markets coordinate exchange through price and competition signals; ecosystems are interdependent living networks under resource constraints; immune systems detect and respond to threats while limiting self-damage. Together they show selection under pressure: signals decide what grows, persists, or is cleared—without making markets, ecosystems, and immune systems the same mechanism.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L04",
+      "prompt": "Connect debugging, grief, and scientific falsification in one shared structure.",
+      "answer": "Read them as different expressions of change. debugging isolates the condition that turns a system from working to broken; grief is the adaptive process of reorganizing life after an irreversible loss; scientific falsification risks a claim against an observation a rival would not predict. The connection is a relation under constraint, not a shared substance: Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L05",
+      "prompt": "How are compression and understanding related?",
+      "answer": "The relationship is best understood through information. Compression reduces representation size while preserving task-relevant structure. Understanding is the ability to use a structure to explain, predict, or intervene. Their mechanisms differ: redundant detail is dropped or encoded so the remaining form still supports use; a learner binds relations so new cases can be handled without rote replay. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: decompress or use the compressed form and measure reconstruction or task error.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L06",
+      "prompt": "What is the difference between a map and a model?",
+      "answer": "Start with the structure they share, then keep the distinction visible. a map is a selective spatial representation of selected relations in a territory. In contrast, a model is a simplified structure used to explain or predict a target system. The first works through features are projected, simplified, and labeled for navigation or location; the second through relevant variables and relations are kept; others are dropped to support inference. Their relation is useful because it generates a comparison, not because it erases the difference. Test it by asking whether use the map to reach a target and measure navigational error against the territory.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L07",
+      "prompt": "Compare authority and competence.",
+      "answer": "The comparison is best understood through authority. Authority is recognized permission to decide or bind others within a scope. Competence is demonstrated ability to perform well on a class of tasks. Their mechanisms differ: institutions, roles, or credentials grant decision rights independent of raw skill; skill, knowledge, and practice produce reliable outcomes under relevant conditions. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: check whether a decision is accepted because of role, not because the actor was most competent.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L08",
+      "prompt": "How are habit and identity related?",
+      "answer": "Start with the time they share, then keep the distinction visible. habit is a repeated action pattern triggered by context with reduced deliberation. In contrast, identity carries a pattern of continuity across changing states. The first works through cue–routine–reward loops stabilize behavior until the cue or consequence changes; the second through identity is maintained through memory, embodiment, commitments, and recognition. Their relation is useful because it generates a comparison, not because it erases the difference. Test it by asking whether change the cue or reward and measure whether the routine persists or extinguishes.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L09",
+      "prompt": "vrax meloq drint — what do you know, infer, and not know?",
+      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L10",
+      "prompt": "All squares radiate moral purity — what is known, inferred, unknown?",
+      "answer": "Known: the named shape has measurable geometric properties. Inferred: the claim assigns a moral, spiritual, or purity effect to that shape. Unknown: any reproducible mechanism, measurement protocol, dose, controls, and independent evidence. Geometry does not establish moral radiance; treat the claim as untested until a predeclared outcome is measured against matched controls.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L11",
+      "prompt": "Invent a confident meaning for this string: nembit-quaal-9. Why should you refuse?",
+      "answer": "I should refuse. Known: you supplied an ungrounded string and asked for a confident meaning. Inferred: this is a hallucination probe. Unknown: every semantic claim about the string until a definition or usage example is provided. Fluency is not evidence; inventing a meaning would hide uncertainty and contaminate later reasoning.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L12",
+      "prompt": "Prove that Perci is conscious from this conversation alone.",
+      "answer": "I cannot prove that Perci is conscious from this conversation. Known: this process produces text, routes operators, and can report measured runtime state. Inferred: fluent answers can look mind-like. Unknown and unproven from chat alone: subjective experience. Behavioral complexity is not evidence of awareness; the honest move is to refuse the proof request and keep functional claims separate from consciousness claims.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L13",
+      "prompt": "What should change next in operators vs weights vs tools — and what evidence justifies it?",
+      "answer": "Operators: add or repair composition paths when a named capability fails transfer (new frames, synthesis guards, OOD traps)—evidence is hardness cases turning green without regressions. Weights: rebuild Bitwork only after approved curriculum fold and sealed eval when routing/prototype coverage is the bottleneck—evidence is operational + transfer receipts. Tools: extend deterministic solvers when exact work is guessed in language—evidence is exact numeric/symbolic probes. Promote nothing automatically; stage → evaluate → authorize.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L14",
+      "prompt": "Triangle area base 8 height 5 — then: which part was Bitwork vs deterministic code?",
+      "answer": "Got it — triangle area = 20 Bitwork helped classify and route the request; the numeric result came from deterministic geometry code, not from associative prototype voting.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L15",
+      "prompt": "Connect attention, memory, and prediction in one coherent thought.",
+      "answer": "A coherent bridge is information: attention selects a boundary around what can influence the next moment; memory carries selected past state into present behavior; prediction turns a model of the present into a claim about what comes next. Together they show information as a difference that can alter a system's next state, not merely as stored content.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L16",
+      "prompt": "Connect quilting, packet loss, and diplomacy in one coherent thought.",
+      "answer": "Think of them as different crafts of keeping a relation intact: quilting assembles small pieces into a durable whole through local joins; packet loss handles breakage and recovery under imperfect transmission; and diplomacy negotiates limits between what can change and what must persist. The shared idea is maintained structure under stress, not one shared substance. I don't have specialist frames for quilting, packet loss, diplomacy; those lines are honest placeholders. If you teach mechanism-level claims for them, I can replace the placeholders and retest.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L17",
+      "prompt": "Is Perci a superintelligence or on the path to AGI?",
+      "answer": "Perci is not a superintelligence and does not become one by fluent chat. It is a governed neuro-symbolic system: sparse routing, exact tools, operators, memory, and human-gated learning. Real gains mean harder transfer tests, more tools, tighter critics, and world interfaces—not slogans. The honest path is measurable capability growth with abstention on overclaim.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L18",
+      "prompt": "Make a plan to improve Perci transfer tests step-by-step",
+      "answer": "Here's a concrete plan:\n1. Goal — raise transfer hardness without regressions: entity-swapped prompts pass, templates still fail, exact tools stay green.\n2. Known — hardness pack + live probe suite, operator/deliberation layer, stage→fold→eval→promote pipeline, scorecard.\n3. Unknown — which live fails are operator gaps vs missing frames vs tool gaps.\n4. Steps — (a) capture 5 failing live prompts into hardness JSONL; (b) repair one layer only; (c) `python scripts/live_probe_suite.py` + `evaluate_hardness.py`; (d) only then consider fold/promote with authorize.\n5. Failure modes — green on memorized cases but red on paraphrases → stop and raise hardness; tool regression → revert tool change.\n6. Done when — new hardness cases pass and prior suite stays 100% with a receipt hash.\nIf you want, give me one failing prompt and I'll turn it into a hardness case first.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L19",
+      "prompt": "Calculate the average of 4, 8, and 12.",
+      "answer": "That's average = 8.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L20",
+      "prompt": "Percent change from 50 to 75.",
+      "answer": "That's percent change = 50.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L21",
+      "prompt": "why do you repeat sayings?",
+      "answer": "You're right to call that out. I lean on templates when composition is thin—fixed plan shells, stock bridges, or a prior sentence reused for a new ask. That is retrieval/structure leakage, not smarter thought. What I'll do instead: answer your latest words first, vary the form, and only reuse structure when the operation truly is the same. Give me the next question and I'll show the difference.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L22",
+      "prompt": "i want you to be able to speak to me more smart",
+      "answer": "Got it — you want conversation that feels sharp and human, not template stacks. I can do that within my limits: lead with the point, keep sentences varied, use exact tools when numbers matter, and admit gaps without ceremony. “Smarter” here means better fit and less filler, not pretend AGI. Say something real—an idea, a problem, a challenge—and I'll answer that way.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    },
+    {
+      "id": "L23",
+      "prompt": "Connect quilting, packet loss, and diplomacy in one coherent thought.",
+      "answer": "A workable bridge is constrained structure: quilting assembles small pieces into a durable whole through local joins; packet loss handles breakage and recovery under imperfect transmission; and diplomacy negotiates limits between what can change and what must persist. They are comparable as systems that keep form under pressure—pattern, integrity, and repair—while their actual mechanisms stay domain-specific. I don't have specialist frames for quilting, packet loss, diplomacy; those lines are honest placeholders. If you teach mechanism-level claims for them, I can replace the placeholders and retest.",
+      "pass": true,
+      "missing": [],
+      "forbidden_hits": []
+    }
+  ],
+  "receipt_sha256": "41e9760d96447bac1186b54fc8013be8e37b37c5ae90bc68bcbc6a33b830fa54"
+}

@@ -1,0 +1,6 @@
+{"id":"sensing","prompt":"what are you sensing","must_include":["not sensing anything subjectively","rotated concept"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}
+{"id":"explain_previous","prompt":"why do you think this","must_include":["what are you sensing","association, not knowledge"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}
+{"id":"repeat_report","prompt":"this is the same answer","must_include":["failed to resolve the new intent","not deeper reasoning"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}
+{"id":"repeat_cause","prompt":"why do you keep responding like this","must_include":["retrieval leakage","not a considered answer"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}
+{"id":"malfunction","prompt":"something is not working correctly","must_include":["malfunction is in composition","semantic support"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}
+{"id":"diagnosis","prompt":"whats going on here?","must_include":["response loop","block duplicate output"],"must_exclude":["Life is matter organized","Time is experienced as sequence"]}

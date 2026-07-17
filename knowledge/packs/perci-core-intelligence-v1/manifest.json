@@ -1,0 +1,76 @@
+{
+    "schema_version":  "1.0",
+    "pack_id":  "perci-core-intelligence-v1",
+    "version":  "1.0.0",
+    "title":  "Perci Core Intelligence Pack",
+    "description":  "Observable high-value reasoning, verification, engineering, scientific, memory, governance, and communication procedures.",
+    "authority":  "curated_reference",
+    "claim_boundary":  "This pack encodes explicit behavioral procedures. It is not a copy of proprietary model weights, hidden chain of thought, private training data, or automatic truth.",
+    "files":  [
+                  {
+                      "path":  "00-control-loop.md",
+                      "sha256":  "cac54a206b3d78adcc06d7f37a5327a508886863c0f1194f2176900e73367ff3",
+                      "bytes":  1649
+                  },
+                  {
+                      "path":  "01-intent-and-constraints.md",
+                      "sha256":  "1eac8015eee133d8e277e56a7ab396b57843c61fab2b44319ee7551689f2a50c",
+                      "bytes":  1934
+                  },
+                  {
+                      "path":  "02-decomposition-and-representation.md",
+                      "sha256":  "eac62b05916e2b76da45a62501d18bda12423f12c4cb4cecc212337ae37ba171",
+                      "bytes":  1666
+                  },
+                  {
+                      "path":  "03-evidence-and-uncertainty.md",
+                      "sha256":  "4107fedae1bfd638a60ade4b7e64ada420eb1261c09e68a5943afc0903c36c56",
+                      "bytes":  1641
+                  },
+                  {
+                      "path":  "04-reasoning-strategies.md",
+                      "sha256":  "f282f942b1e9c004cc84da18d0a6cfcc577e0cecf18c881c1d63f3e9ada49162",
+                      "bytes":  1675
+                  },
+                  {
+                      "path":  "05-counterexamples-and-boundaries.md",
+                      "sha256":  "1dee420766b66c580bc684798405fe922ebec4bad1a3d9dfcfc5c01058b3386a",
+                      "bytes":  1407
+                  },
+                  {
+                      "path":  "06-tools-and-verification.md",
+                      "sha256":  "609320959ebef18ab5dadc2bf8a8a997d3b7f9675549e8e1758e87650deaad85",
+                      "bytes":  1381
+                  },
+                  {
+                      "path":  "07-debugging-and-engineering.md",
+                      "sha256":  "fe88f383a8fec9a3e281a11bdfbe12a5050c7420daa508059ecec91441a5584c",
+                      "bytes":  1514
+                  },
+                  {
+                      "path":  "08-architecture-and-planning.md",
+                      "sha256":  "1882ce473af49b1775f37b7decbd75c2805f068a8650e388ccc1911174e1c131",
+                      "bytes":  1512
+                  },
+                  {
+                      "path":  "09-math-and-science.md",
+                      "sha256":  "3e865c497ea960f2df05d7c06e69885674b2eac435de0fdc5f315fdbd2eb0cba",
+                      "bytes":  1377
+                  },
+                  {
+                      "path":  "10-memory-and-learning.md",
+                      "sha256":  "dcef7a996e506a4411237715c934b741de76eefafff55a91e14bdaaf63df9d94",
+                      "bytes":  1310
+                  },
+                  {
+                      "path":  "11-communication-and-creativity.md",
+                      "sha256":  "3a1ba5782d5bbcb9f3e612fc50ddb8956394fbc401bc7d43e2becfac80faeec7",
+                      "bytes":  1235
+                  },
+                  {
+                      "path":  "12-self-monitoring.md",
+                      "sha256":  "271b5a36537d6e920448193f15362a5646d0745f33af3329ed3515e3610bb624",
+                      "bytes":  1235
+                  }
+              ]
+}

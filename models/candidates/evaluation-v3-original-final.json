@@ -1,0 +1,67 @@
+{
+  "schema": "perci.evaluation.v2",
+  "evaluated_at_utc": "2026-07-16T15:31:17.796314+00:00",
+  "model_sha256": "3028d1013032152cc54d20a9b2ee62d56f8c7be9f315ba4aadd29fd4d66b5145",
+  "runtime_sha256": "2f39a0396ba685457234b143c9c210e049a66a96ac0c0bed0091f59ba0a4ef9a",
+  "policy_source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\scripts\\evaluate_v2.py",
+  "policy_source_kind": "evaluator-embedded-v2",
+  "policy_source_sha256": "c9403eca3feff5e0822b5b88555b7e320a43e7b66db82e331b3d55d42aeb7a35",
+  "evaluator_sha256": "c9403eca3feff5e0822b5b88555b7e320a43e7b66db82e331b3d55d42aeb7a35",
+  "manifest_sha256": "6ecefb28a0db96a5c56208c54f63de0228577af4a4f8e6f4c054d0b11ff3e1a5",
+  "dataset_sha256": "48f3d5ec53d5019aa2ad2b486f32df07174883e2dd453eb1ab7953fcd9036aae",
+  "case_count": 36,
+  "metrics": {
+    "domain_accuracy": 0.875,
+    "keyword_baseline_accuracy": 0.625,
+    "baseline_advantage": 0.25,
+    "shifted_label_control_accuracy": 0.0,
+    "local_precision": 1.0,
+    "local_recall": 0.875,
+    "trap_abstention": 1.0,
+    "local_coverage": 0.19444444444444445,
+    "false_local_count": 0,
+    "latency_p50_ms": 50.505,
+    "latency_p95_ms": 65.542
+  },
+  "gates": {
+    "model_integrity": true,
+    "domain_accuracy": true,
+    "local_precision": true,
+    "local_recall": true,
+    "trap_abstention": true,
+    "negative_control_separation": true
+  },
+  "status": "OPERATIONAL_CANDIDATE",
+  "baseline_supremacy_point_estimate": true,
+  "confidence_bound_required": true,
+  "independent_replication_required": true,
+  "automatic_promotion": false,
+  "phenomenology_proven": false,
+  "failures": [
+    {
+      "id": "fresh-identity",
+      "suite": "domain",
+      "expected_domain": "identity",
+      "actual_domain": "systems",
+      "expected_local": true,
+      "actual_local": false,
+      "latency_ms": 43.948,
+      "margin": 66,
+      "overlap_z": 15.364925418131293,
+      "jaccard": 0.15721649484536082
+    },
+    {
+      "id": "fresh-geometry",
+      "suite": "domain",
+      "expected_domain": "geometry",
+      "actual_domain": "general",
+      "expected_local": false,
+      "actual_local": false,
+      "latency_ms": 35.148,
+      "margin": 72,
+      "overlap_z": 26.109449699764426,
+      "jaccard": 0.28463476070528965
+    }
+  ],
+  "receipt_sha256": "9060a7b0dbc6578bd50a048760685f67e78eee1d74e4540a9e58c33435978e3d"
+}

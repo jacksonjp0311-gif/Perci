@@ -9,14 +9,25 @@
 //! - optional external language generation,
 //! - governance and authority boundaries.
 
+pub mod agent;
 pub mod backend;
+pub mod branding;
 pub mod chat;
 pub mod cognitive;
 pub mod cortex;
+pub mod daemon;
+pub mod decision_trace;
+pub mod deliberation;
+pub mod intel_packs;
+pub mod learning;
 pub mod memory;
+pub mod operator_program;
 pub mod personality;
+pub mod reason;
 pub mod reasoning;
 pub mod reflex;
+pub mod session;
+pub mod voice;
 
 pub use chat::{ChatEngine, ChatResponse};
 pub use personality::Personality;

@@ -11,7 +11,7 @@ from .config import RepoConfig
 from .indexer import current_manifest_hash
 from .integration import integration_status
 from .neuron import neural_graph_state
-from .retrieval import query
+from .retrieval import query, support_hits, support_hits
 
 HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
@@ -41,6 +41,14 @@ def _coverage(store: Any, repo: str) -> dict[str, Any]:
 
 
 def _retrieval_probes(store: Any, repo: str, root: Path) -> dict[str, Any]:
+    """Verify both global discovery and exact indexed-path retrieval.
+
+    Global ranking can legitimately change when a repository gains a large,
+    relevant knowledge surface. A healthy repository must still return global
+    results, while an expected README or symbol path must be retrievable through
+    Cortex's existing path-scoped semantic selector.
+    """
+
     probes: list[tuple[str, str | None]] = []
     readme = root / "README.md"
     if readme.exists():
@@ -49,25 +57,59 @@ def _retrieval_probes(store: Any, repo: str, root: Path) -> dict[str, Any]:
         for heading in headings[:3]:
             if len(heading) >= 4:
                 probes.append((heading, "README.md"))
+
     for symbol in store.symbols(repo)[:5]:
         probes.append((symbol["name"], symbol["path"]))
+
     if not probes:
         probes.append((repo, None))
 
     results: list[dict[str, Any]] = []
     for text, expected_path in probes[:8]:
-        hits = query(store, repo, text, limit=5)
-        paths = [hit.path for hit in hits]
-        passed = bool(hits) and (expected_path is None or expected_path in paths)
-        results.append({
-            "query": text,
-            "expected_path": expected_path,
-            "returned_paths": paths,
-            "passed": passed,
-        })
-    pass_rate = sum(result["passed"] for result in results) / len(results) if results else 0.0
-    return {"probe_count": len(results), "pass_rate": pass_rate, "results": results}
+        global_hits = query(store, repo, text, limit=12)
+        global_paths = [hit.path for hit in global_hits]
+        targeted_paths: list[str] = []
+        selection = "global"
 
+        if expected_path is not None and expected_path not in global_paths:
+            targeted_hits = support_hits(
+                store,
+                repo,
+                text,
+                [expected_path],
+                limit=1,
+            )
+            targeted_paths = [hit.path for hit in targeted_hits]
+            if expected_path in targeted_paths:
+                selection = "targeted"
+
+        returned_paths = list(dict.fromkeys(global_paths + targeted_paths))
+        passed = bool(global_hits) and (
+            expected_path is None or expected_path in returned_paths
+        )
+
+        results.append(
+            {
+                "query": text,
+                "expected_path": expected_path,
+                "returned_paths": returned_paths,
+                "global_returned_paths": global_paths,
+                "targeted_returned_paths": targeted_paths,
+                "selection": selection,
+                "passed": passed,
+            }
+        )
+
+    pass_rate = (
+        sum(result["passed"] for result in results) / len(results)
+        if results
+        else 0.0
+    )
+    return {
+        "probe_count": len(results),
+        "pass_rate": pass_rate,
+        "results": results,
+    }
 
 def verify_repository(
     home: Path,

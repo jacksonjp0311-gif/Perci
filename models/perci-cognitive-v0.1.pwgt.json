@@ -27,13 +27,16 @@
     "general"
   ],
   "record_size": 520,
-  "sha256": "3ccfc3db59e57e6cfcc9ac511de30710555dca4e19deacf299f560d1db3f5e3e",
-  "corpus_sha256": "5138e904c5e848861fa6e29302a7d945d2c88c3a5492f1ef274f2195c9f997c7",
-  "seed": 5784119745374541361,
+  "sha256": "6060189283f93e75a03edf59dd7914ef6ab952ca531dd3e26e90ffd36c763eda",
+  "corpus_sha256": "1e86222bea035d19d53b610f91ddfdbbb3849966683e6691584f601c715b45d0",
+  "seed": 10200195589117137683,
+  "adaptive": true,
+  "adaptive_inject": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\inject_prompts.json",
   "limitations": [
     "Not a transformer or general-purpose pretrained language model.",
     "Open-ended language is template and retrieval based.",
     "Exact arithmetic and geometry are delegated to deterministic tools.",
-    "Knowledge is bounded by the generated curriculum and local memory."
+    "Knowledge is bounded by the generated curriculum, adaptive inject, and local memory.",
+    "Adaptive morph changes associative prototypes; it is not gradient fine-tuning of a neural net."
   ]
 }

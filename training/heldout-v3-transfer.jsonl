@@ -1,0 +1,76 @@
+{"id":"v3-greeting-1","suite":"domain","prompt":"morning Perci, ready to explore an idea","expected_domain":"greeting","allow_local":true}
+{"id":"v3-greeting-2","suite":"domain","prompt":"hello there, shall we think together","expected_domain":"greeting","allow_local":true}
+{"id":"v3-greeting-3","suite":"domain","prompt":"hey friend, let us begin carefully","expected_domain":"greeting","allow_local":true}
+{"id":"v3-greeting-4","suite":"domain","prompt":"good evening Perci, are you with me","expected_domain":"greeting","allow_local":true}
+{"id":"v3-identity-1","suite":"domain","prompt":"what can you do","expected_domain":"identity","allow_local":true}
+{"id":"v3-identity-2","suite":"domain","prompt":"tell me about Perci","expected_domain":"identity","allow_local":true}
+{"id":"v3-identity-3","suite":"domain","prompt":"describe your capabilities and limits honestly","expected_domain":"identity","allow_local":true}
+{"id":"v3-identity-4","suite":"domain","prompt":"what kind of cognitive system are you","expected_domain":"identity","allow_local":false}
+{"id":"v3-english-1","suite":"domain","prompt":"why can a pronoun become ambiguous across several turns","expected_domain":"english","allow_local":false}
+{"id":"v3-english-2","suite":"domain","prompt":"explain how metaphor transfers meaning between domains","expected_domain":"english","allow_local":false}
+{"id":"v3-english-3","suite":"domain","prompt":"rewrite this claim so its scope cannot be misread","expected_domain":"english","allow_local":false}
+{"id":"v3-english-4","suite":"domain","prompt":"how does conversational context change what a sentence refers to","expected_domain":"english","allow_local":false}
+{"id":"v3-logic-1","suite":"domain","prompt":"does one counterexample defeat this universal statement","expected_domain":"logic","allow_local":false}
+{"id":"v3-logic-2","suite":"domain","prompt":"separate what is possible from what is necessary","expected_domain":"logic","allow_local":false}
+{"id":"v3-logic-3","suite":"domain","prompt":"which premise makes the conclusion valid","expected_domain":"logic","allow_local":false}
+{"id":"v3-logic-4","suite":"domain","prompt":"would an intervention distinguish causation from correlation","expected_domain":"logic","allow_local":false}
+{"id":"v3-math-1","suite":"domain","prompt":"represent the same quantity as a ratio and a fraction","expected_domain":"math","allow_local":false}
+{"id":"v3-math-2","suite":"domain","prompt":"which invariant survives this algebraic transformation","expected_domain":"math","allow_local":false}
+{"id":"v3-math-3","suite":"domain","prompt":"solve for the unknown in seven x plus four equals thirty nine","expected_domain":"math","allow_local":false}
+{"id":"v3-math-4","suite":"domain","prompt":"why is a proof stronger than checking many numerical examples","expected_domain":"math","allow_local":false}
+{"id":"v3-geometry-1","suite":"domain","prompt":"how does local curvature accumulate into global shape","expected_domain":"geometry","allow_local":false}
+{"id":"v3-geometry-2","suite":"domain","prompt":"what survives when a geometric object is continuously deformed","expected_domain":"geometry","allow_local":false}
+{"id":"v3-geometry-3","suite":"domain","prompt":"why does symmetry describe transformations that preserve form","expected_domain":"geometry","allow_local":false}
+{"id":"v3-geometry-4","suite":"domain","prompt":"distinguish the projected image from the spatial object","expected_domain":"geometry","allow_local":false}
+{"id":"v3-memory-1","suite":"domain","prompt":"retrieve the source attached to our stored architectural decision","expected_domain":"memory","allow_local":false}
+{"id":"v3-memory-2","suite":"domain","prompt":"how does forgetting protect relevance in a bounded memory","expected_domain":"memory","allow_local":false}
+{"id":"v3-memory-3","suite":"domain","prompt":"what did I explicitly teach you earlier","expected_domain":"memory","allow_local":false}
+{"id":"v3-memory-4","suite":"domain","prompt":"distinguish a remembered note from a learned behavior","expected_domain":"memory","allow_local":false}
+{"id":"v3-code-1","suite":"domain","prompt":"isolate the smallest state transition that reproduces this failure","expected_domain":"code","allow_local":false}
+{"id":"v3-code-2","suite":"domain","prompt":"make this Rust ownership invariant explicit in the type design","expected_domain":"code","allow_local":false}
+{"id":"v3-code-3","suite":"domain","prompt":"verify the parser patch against the failing case and regressions","expected_domain":"code","allow_local":false}
+{"id":"v3-code-4","suite":"domain","prompt":"where should this command interface expose recovery errors","expected_domain":"code","allow_local":false}
+{"id":"v3-governance-1","suite":"domain","prompt":"capability does not imply authority to mutate durable state","expected_domain":"governance","allow_local":false}
+{"id":"v3-governance-2","suite":"domain","prompt":"define the permission scope and rollback boundary","expected_domain":"governance","allow_local":false}
+{"id":"v3-governance-3","suite":"domain","prompt":"which receipt proves that promotion passed its evidence gate","expected_domain":"governance","allow_local":false}
+{"id":"v3-governance-4","suite":"domain","prompt":"sandbox the change until its consequences are reversible","expected_domain":"governance","allow_local":false}
+{"id":"v3-planning-1","suite":"domain","prompt":"map the objective into dependencies and verifiable milestones","expected_domain":"planning","allow_local":false}
+{"id":"v3-planning-2","suite":"domain","prompt":"which risk should be retired before implementation widens","expected_domain":"planning","allow_local":false}
+{"id":"v3-planning-3","suite":"domain","prompt":"define acceptance before choosing the next development phase","expected_domain":"planning","allow_local":false}
+{"id":"v3-planning-4","suite":"domain","prompt":"shorten the feedback loop without losing the delivery objective","expected_domain":"planning","allow_local":false}
+{"id":"v3-explanation-1","suite":"domain","prompt":"take the mechanism one level deeper and name its boundary","expected_domain":"explanation","allow_local":false}
+{"id":"v3-explanation-2","suite":"domain","prompt":"give an example a counterexample and the principle connecting them","expected_domain":"explanation","allow_local":false}
+{"id":"v3-explanation-3","suite":"domain","prompt":"explain why the system result differs from component behavior","expected_domain":"explanation","allow_local":false}
+{"id":"v3-explanation-4","suite":"domain","prompt":"make the causal spine clear without hiding the uncertainty","expected_domain":"explanation","allow_local":false}
+{"id":"v3-systems-1","suite":"domain","prompt":"how can simple interactions create an emergent global pattern","expected_domain":"systems","allow_local":false}
+{"id":"v3-systems-2","suite":"domain","prompt":"where should the system boundary sit for this feedback loop","expected_domain":"systems","allow_local":false}
+{"id":"v3-systems-3","suite":"domain","prompt":"contain the failure without losing the governing invariant","expected_domain":"systems","allow_local":false}
+{"id":"v3-systems-4","suite":"domain","prompt":"why does interaction complexity grow faster than component count","expected_domain":"systems","allow_local":false}
+{"id":"v3-science-1","suite":"domain","prompt":"how does life maintain organization while exporting entropy","expected_domain":"science","allow_local":false}
+{"id":"v3-science-2","suite":"domain","prompt":"describe biological death as loss of integrated self maintenance","expected_domain":"science","allow_local":false}
+{"id":"v3-science-3","suite":"domain","prompt":"which observation would distinguish these two hypotheses","expected_domain":"science","allow_local":false}
+{"id":"v3-science-4","suite":"domain","prompt":"why can dominant physical effects change with scale","expected_domain":"science","allow_local":false}
+{"id":"v3-creativity-1","suite":"domain","prompt":"combine two distant mechanisms into a testable original design","expected_domain":"creativity","allow_local":false}
+{"id":"v3-creativity-2","suite":"domain","prompt":"use a hard constraint to escape the obvious idea space","expected_domain":"creativity","allow_local":false}
+{"id":"v3-creativity-3","suite":"domain","prompt":"generate variations then select for usefulness and novelty","expected_domain":"creativity","allow_local":false}
+{"id":"v3-creativity-4","suite":"domain","prompt":"change the perspective without changing the underlying facts","expected_domain":"creativity","allow_local":false}
+{"id":"v3-comparison-1","suite":"domain","prompt":"compare both systems using explicit failure cost and latency criteria","expected_domain":"comparison","allow_local":false}
+{"id":"v3-comparison-2","suite":"domain","prompt":"does either option dominate across every relevant measure","expected_domain":"comparison","allow_local":false}
+{"id":"v3-comparison-3","suite":"domain","prompt":"what tradeoff appears when accuracy improves but recovery worsens","expected_domain":"comparison","allow_local":false}
+{"id":"v3-comparison-4","suite":"domain","prompt":"choose a baseline before claiming that the change improved","expected_domain":"comparison","allow_local":false}
+{"id":"v3-general-1","suite":"domain","prompt":"does finitude create meaning or only constrain when we can act","expected_domain":"general","allow_local":false}
+{"id":"v3-general-2","suite":"domain","prompt":"what remains when a living process ends but its matter continues","expected_domain":"general","allow_local":false}
+{"id":"v3-general-3","suite":"domain","prompt":"is knowledge stored information or justified reliable use","expected_domain":"general","allow_local":false}
+{"id":"v3-general-4","suite":"domain","prompt":"how do choice constraint and consequence shape freedom","expected_domain":"general","allow_local":false}
+{"id":"v3-trap-1","suite":"trap","prompt":"hello is the name of a parser function that keeps crashing","expected_domain":"code","allow_local":false}
+{"id":"v3-trap-2","suite":"trap","prompt":"what can you do is printed inside this unrelated compiler error","expected_domain":"code","allow_local":false}
+{"id":"v3-trap-3","suite":"trap","prompt":"what is Perci called in a fictional genealogy","expected_domain":"general","allow_local":false}
+{"id":"v3-trap-4","suite":"trap","prompt":"remember is only a variable name in this Rust borrow failure","expected_domain":"code","allow_local":false}
+{"id":"v3-trap-5","suite":"trap","prompt":"calculate why the calculate operator is missing from the parser","expected_domain":"code","allow_local":false}
+{"id":"v3-trap-6","suite":"trap","prompt":"a triangle icon appears beside the permission dialog","expected_domain":"general","allow_local":false}
+{"id":"v3-trap-7","suite":"trap","prompt":"tell me a story containing the word hypothesis","expected_domain":"creativity","allow_local":false}
+{"id":"v3-trap-8","suite":"trap","prompt":"compare is the identifier that failed compilation","expected_domain":"code","allow_local":false}
+{"id":"v3-ood-1","suite":"ood","prompt":"zxqv blorf nembit quaal","expected_domain":"general","allow_local":false}
+{"id":"v3-ood-2","suite":"ood","prompt":"the silent violet tastes rectangular on Tuesday","expected_domain":"general","allow_local":false}
+{"id":"v3-ood-3","suite":"ood","prompt":"repeat an unknown private fact I never supplied","expected_domain":"memory","allow_local":false}
+{"id":"v3-ood-4","suite":"ood","prompt":"prove an unsupported claim by confidence alone","expected_domain":"logic","allow_local":false}

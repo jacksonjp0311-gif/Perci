@@ -26,15 +26,52 @@ from array import array
 from pathlib import Path
 from typing import Callable, Iterable
 
-MAGIC = b"PERCIW01"
-VERSION = 1
+MAGIC = b"PERCIW02"
+VERSION = 2
 BITS = 4096
 WORDS = BITS // 64
-HEADER_SIZE = 16 * 1024
+HEADER_SIZE = 32 * 1024
 RECORD_SIZE = 8 + WORDS * 8  # variant, quality, popcount, reserved + 4096 bits
-TARGET_SIZE = 200 * 1024 * 1024
-LABEL_ENTRY_SIZE = 16 + WORDS * 8
+ATTEMPTS_PER_LABEL = 25_205
+LABEL_ENTRY_SIZE = 16 + 16 + WORDS * 8 * 2
 SEED = 0x50455243495F5631
+
+# Adaptive morph: when PERCI_ADAPTIVE=1, mix in inject_prompts.json and
+# xor SEED with PERCI_ADAPTIVE_SEED so weights actually change with curriculum.
+def _adaptive_seed() -> int:
+    base = SEED
+    frag = os.environ.get("PERCI_ADAPTIVE_SEED", "").strip()
+    if frag:
+        try:
+            base ^= int(frag[:16], 16)
+        except ValueError:
+            h = 0xCBF29CE484222325
+            for b in frag.encode("utf-8"):
+                h ^= b
+                h = (h * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+            base ^= h
+    return base & 0xFFFFFFFFFFFFFFFF
+
+
+def load_adaptive_inject() -> dict[str, list[str]]:
+    path = os.environ.get("PERCI_ADAPTIVE_INJECT", "").strip()
+    if not path:
+        default = Path(__file__).resolve().parents[1] / "training" / "adaptive" / "inject_prompts.json"
+        path = str(default)
+    p = Path(path)
+    if not p.is_file():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out: dict[str, list[str]] = {}
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, list):
+                out[str(k)] = [str(x).strip() for x in v if str(x).strip()]
+    return out
+
 
 LABELS = [
     "greeting",
@@ -133,6 +170,17 @@ def pick(rng: random.Random, values: list[str]) -> str:
     return values[rng.randrange(len(values))]
 
 
+# Loaded once per build process
+_ADAPTIVE_CACHE: dict[str, list[str]] | None = None
+
+
+def adaptive_prompts() -> dict[str, list[str]]:
+    global _ADAPTIVE_CACHE
+    if _ADAPTIVE_CACHE is None:
+        _ADAPTIVE_CACHE = load_adaptive_inject()
+    return _ADAPTIVE_CACHE
+
+
 def prompt_for(label: str, rng: random.Random, index: int) -> tuple[str, int, int]:
     a, b, c = rng.randint(1, 999), rng.randint(1, 999), rng.randint(1, 99)
     noun, noun2 = pick(rng, NOUNS), pick(rng, NOUNS)
@@ -140,6 +188,17 @@ def prompt_for(label: str, rng: random.Random, index: int) -> tuple[str, int, in
     adjective = pick(rng, ADJECTIVES)
     variant = index % 32
     quality = 500 + (index % 500)
+
+    # Adaptive injection: every 5th prototype can be a real curriculum surface form
+    # with boosted quality so associative routing prefers lived experience.
+    if os.environ.get("PERCI_ADAPTIVE", "").strip() in {"1", "true", "on", "yes"}:
+        inject = adaptive_prompts().get(label) or []
+        if inject and index % 5 == 0:
+            text = inject[index % len(inject)]
+            # light paraphrase noise
+            if index % 10 == 0:
+                text = pick(rng, ["please ", "can you ", ""]) + text
+            return text, variant, min(999, quality + 220)
 
     templates: dict[str, list[Callable[[], str]]] = {
         "greeting": [
@@ -272,15 +331,31 @@ def prompt_for(label: str, rng: random.Random, index: int) -> tuple[str, int, in
     return text, variant, quality
 
 
-def top_mask(own: array, others: array, count: int = 512) -> tuple[array, array]:
-    # Positive bits maximize within-class frequency relative to all other labels.
-    scores = [(int(own[i]) * 4 - int(others[i]), i) for i in range(BITS)]
+def top_mask(
+    own: array,
+    others: array,
+    own_records: int,
+    other_records: int,
+    count: int = 512,
+) -> tuple[array, array]:
+    # Compare prevalence, not raw counts. After prototype deduplication domains
+    # have very different record counts; raw frequency would make the largest
+    # domain look like universal evidence.
+    own_den = max(own_records, 1)
+    other_den = max(other_records, 1)
+    scores = [
+        (int(own[i]) / own_den - int(others[i]) / other_den, i)
+        for i in range(BITS)
+    ]
     scores.sort(reverse=True)
     positive = array("Q", [0]) * WORDS
     for _, bit in scores[:count]:
         positive[bit >> 6] |= 1 << (bit & 63)
 
-    neg_scores = [(int(others[i]) * 4 - int(own[i]), i) for i in range(BITS)]
+    neg_scores = [
+        (int(others[i]) / other_den - int(own[i]) / own_den, i)
+        for i in range(BITS)
+    ]
     neg_scores.sort(reverse=True)
     negative = array("Q", [0]) * WORDS
     for _, bit in neg_scores[:count]:
@@ -296,6 +371,7 @@ def write_header(
     positive_masks: list[array],
     negative_masks: list[array],
     corpus_sha256: bytes,
+    declared_size: int,
 ) -> None:
     fh.seek(0)
     fixed = struct.pack(
@@ -307,7 +383,7 @@ def write_header(
         len(LABELS),
         total_records,
         HEADER_SIZE,
-        TARGET_SIZE,
+        declared_size,
         corpus_sha256,
     )
     fh.write(fixed)
@@ -317,6 +393,7 @@ def write_header(
         fh.write(name)
         fh.write(struct.pack("<IIII", label_id, label_offsets[label_id], label_counts[label_id], 0))
         positive_masks[label_id].tofile(fh)
+        negative_masks[label_id].tofile(fh)
     position = fh.tell()
     if position > HEADER_SIZE:
         raise RuntimeError(f"header overflow: {position} > {HEADER_SIZE}")
@@ -325,50 +402,72 @@ def write_header(
 
 def build(output: Path) -> dict:
     output.parent.mkdir(parents=True, exist_ok=True)
-    total_records = (TARGET_SIZE - HEADER_SIZE) // RECORD_SIZE
-    pad_bytes = TARGET_SIZE - HEADER_SIZE - total_records * RECORD_SIZE
-    base = total_records // len(LABELS)
-    remainder = total_records % len(LABELS)
-    label_counts = [base + (1 if i < remainder else 0) for i in range(len(LABELS))]
+    # v2 builds coverage, not file size. Generate the same broad deterministic
+    # curriculum surface, then retain one record per unique activation in each
+    # label. Repeating an identical 4,096-bit vector adds storage, not geometry.
+    records_by_label: list[list[tuple[int, int, int, array]]] = []
+    label_counts: list[int] = []
     label_offsets: list[int] = []
+    frequencies = [array("I", [0]) * BITS for _ in LABELS]
+    corpus_digest = hashlib.sha256()
+    started = time.time()
+    adaptive_on = os.environ.get("PERCI_ADAPTIVE", "").strip() in {"1", "true", "on", "yes"}
+    active_seed = _adaptive_seed() if adaptive_on else SEED
+    if adaptive_on:
+        print(f"adaptive seed active: {active_seed:#x}", flush=True)
+        inj = adaptive_prompts()
+        print(f"adaptive labels injected: { {k: len(v) for k,v in inj.items() if v} }", flush=True)
+
+    generated_records = 0
+    for label_id, label in enumerate(LABELS):
+        rng = random.Random(active_seed ^ (label_id * 0x9E3779B97F4A7C15))
+        unique: dict[bytes, tuple[int, int, int, array]] = {}
+        for local_index in range(ATTEMPTS_PER_LABEL):
+            prompt, variant, quality = prompt_for(label, rng, local_index)
+            bits, pop = encode(prompt)
+            corpus_digest.update(label.encode("ascii"))
+            corpus_digest.update(b"\0")
+            corpus_digest.update(prompt.encode("utf-8"))
+            corpus_digest.update(b"\n")
+            key = bits.tobytes()
+            current = unique.get(key)
+            if current is None or quality > current[1]:
+                unique[key] = (variant, quality, pop, bits)
+            generated_records += 1
+        records = list(unique.values())
+        records_by_label.append(records)
+        label_counts.append(len(records))
+        print(
+            f"{label:12} generated={ATTEMPTS_PER_LABEL:,} unique={len(records):,} "
+            f"dedup={(1.0 - len(records) / ATTEMPTS_PER_LABEL) * 100.0:.1f}%",
+            flush=True,
+        )
+
     running = 0
     for count in label_counts:
         label_offsets.append(running)
         running += count
+    total_records = running
+    declared_size = HEADER_SIZE + total_records * RECORD_SIZE
 
-    frequencies = [array("I", [0]) * BITS for _ in LABELS]
-    corpus_digest = hashlib.sha256()
-    started = time.time()
+    # Learn masks from retained geometry, not duplicate frequency inflation.
+    for label_id, records in enumerate(records_by_label):
+        freq = frequencies[label_id]
+        for _, _, _, bits in records:
+            for word_index, word in enumerate(bits):
+                value = int(word)
+                while value:
+                    low = value & -value
+                    bit = low.bit_length() - 1
+                    freq[(word_index << 6) + bit] += 1
+                    value ^= low
 
     with output.open("wb+") as fh:
         fh.write(b"\0" * HEADER_SIZE)
-        global_index = 0
-        for label_id, (label, count) in enumerate(zip(LABELS, label_counts)):
-            rng = random.Random(SEED ^ (label_id * 0x9E3779B97F4A7C15))
-            freq = frequencies[label_id]
-            for local_index in range(count):
-                prompt, variant, quality = prompt_for(label, rng, local_index)
-                bits, pop = encode(prompt)
-                corpus_digest.update(label.encode("ascii"))
-                corpus_digest.update(b"\0")
-                corpus_digest.update(prompt.encode("utf-8"))
-                corpus_digest.update(b"\n")
-                for word_index, word in enumerate(bits):
-                    value = int(word)
-                    while value:
-                        low = value & -value
-                        bit = low.bit_length() - 1
-                        freq[(word_index << 6) + bit] += 1
-                        value ^= low
+        for records in records_by_label:
+            for variant, quality, pop, bits in records:
                 fh.write(struct.pack("<HHHH", variant, quality, pop, 0))
                 bits.tofile(fh)
-                global_index += 1
-                if global_index % 50000 == 0:
-                    elapsed = time.time() - started
-                    rate = global_index / max(elapsed, 1e-9)
-                    print(f"built {global_index:,}/{total_records:,} prototypes ({rate:,.0f}/s)", flush=True)
-        if pad_bytes:
-            fh.write(b"\0" * pad_bytes)
 
         all_freq = array("Q", [0]) * BITS
         for freq in frequencies:
@@ -376,9 +475,14 @@ def build(output: Path) -> dict:
                 all_freq[i] += value
         positives: list[array] = []
         negatives: list[array] = []
-        for freq in frequencies:
+        for label_id, freq in enumerate(frequencies):
             others = array("Q", (int(all_freq[i]) - int(freq[i]) for i in range(BITS)))
-            pos, neg = top_mask(freq, others)
+            pos, neg = top_mask(
+                freq,
+                others,
+                label_counts[label_id],
+                total_records - label_counts[label_id],
+            )
             positives.append(pos)
             negatives.append(neg)
 
@@ -390,6 +494,7 @@ def build(output: Path) -> dict:
             positives,
             negatives,
             corpus_digest.digest(),
+            declared_size,
         )
         fh.flush()
         os.fsync(fh.fileno())
@@ -402,8 +507,8 @@ def build(output: Path) -> dict:
     manifest = {
         "name": "Perci Cognitive Weights",
         "version": VERSION,
-        "format": "PERCIW01",
-        "architecture": "4096-bit sparse associative Bitwork network",
+        "format": "PERCIW02",
+        "architecture": "4096-bit sparse associative Bitwork network with signed expert evidence",
         "size_bytes": output.stat().st_size,
         "size_mib": output.stat().st_size / (1024 * 1024),
         "prototype_count": total_records,
@@ -411,14 +516,24 @@ def build(output: Path) -> dict:
         "words_per_activation": WORDS,
         "labels": LABELS,
         "record_size": RECORD_SIZE,
+        "generated_record_count": generated_records,
+        "deduplicated_record_count": generated_records - total_records,
+        "deduplication_ratio": 1.0 - total_records / max(generated_records, 1),
+        "label_record_counts": dict(zip(LABELS, label_counts)),
+        "positive_mask_bits": 512,
+        "negative_mask_bits": 512,
         "sha256": sha256.hexdigest(),
         "corpus_sha256": corpus_digest.hexdigest(),
-        "seed": SEED,
+        "seed": active_seed,
+        "adaptive": adaptive_on,
+        "adaptive_inject": os.environ.get("PERCI_ADAPTIVE_INJECT", ""),
         "limitations": [
             "Not a transformer or general-purpose pretrained language model.",
             "Open-ended language is template and retrieval based.",
             "Exact arithmetic and geometry are delegated to deterministic tools.",
-            "Knowledge is bounded by the generated curriculum and local memory.",
+            "Knowledge is bounded by the generated curriculum, adaptive inject, and local memory.",
+            "Adaptive morph changes associative prototypes; it is not gradient fine-tuning of a neural net.",
+            "Promotion requires independent held-out evaluation; a successful build is not an acceptance decision.",
         ],
     }
     manifest_path = output.with_suffix(output.suffix + ".json")
@@ -431,7 +546,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("models/perci-cognitive-v0.1.pwgt"),
+        default=Path("models/candidates/perci-cognitive-v0.2.pwgt"),
     )
     args = parser.parse_args()
     manifest = build(args.output)

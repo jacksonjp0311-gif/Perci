@@ -2,37 +2,45 @@ use crate::cognitive::{CognitiveMatch, CognitiveWeights};
 use serde::Serialize;
 use std::env;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 pub trait LanguageBackend: Send {
     fn generate(&mut self, system: &str, context: &[String], user: &str) -> io::Result<String>;
     fn name(&self) -> &str;
+    /// Optional multi-turn dialogue for natural continuity.
+    fn set_dialogue_history(&mut self, _recent: &[(String, String)]) {}
+    fn opening_insight(&self, _seed: u64) -> Option<String> {
+        None
+    }
 }
 
 pub struct CognitiveBackend {
     weights: CognitiveWeights,
     backend_name: String,
+    /// Recent turns for CTX bind into classify (session KV analog).
+    recent: Vec<(String, String)>,
 }
 
 impl CognitiveBackend {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let weights = CognitiveWeights::load(path)?;
         let backend_name = format!(
-            "perci-cognitive-v0.1 Â· {:.1} MiB Â· {} prototypes",
+            "Bitwork v{} | {:.1} MiB mapped | {} prototypes | {} concepts",
+            weights.version(),
             weights.size_bytes() as f64 / (1024.0 * 1024.0),
-            weights.prototype_count()
+            weights.prototype_count(),
+            weights.concept_count(),
         );
         Ok(Self {
             weights,
             backend_name,
+            recent: Vec::new(),
         })
     }
 
     pub fn discover() -> io::Result<Option<Self>> {
-        let path = env::var_os("PERCI_WEIGHTS")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("models/perci-cognitive-v0.1.pwgt"));
+        let path = crate::cognitive::default_weight_path();
 
         if !path.exists() {
             return Ok(None);
@@ -42,18 +50,50 @@ impl CognitiveBackend {
     }
 
     fn classify(&self, user: &str) -> io::Result<CognitiveMatch> {
-        self.weights.classify(user)
+        // Session context tokens = lightweight transformer KV analog for Bitwork.
+        let ctx: Vec<String> = self
+            .recent
+            .iter()
+            .rev()
+            .take(3)
+            .flat_map(|(u, _)| {
+                u.split_whitespace()
+                    .filter(|w| w.len() >= 4)
+                    .map(|w| {
+                        w.trim_matches(|c: char| !c.is_ascii_alphanumeric())
+                            .to_ascii_lowercase()
+                    })
+                    .filter(|w| w.len() >= 4)
+                    .collect::<Vec<_>>()
+            })
+            .take(6)
+            .collect();
+        let refs: Vec<&str> = ctx.iter().map(|s| s.as_str()).collect();
+        self.weights.classify_with_context(user, &refs)
     }
 }
 
 impl LanguageBackend for CognitiveBackend {
     fn generate(&mut self, _system: &str, context: &[String], user: &str) -> io::Result<String> {
         let matched = self.classify(user)?;
-        Ok(render_cognitive_response(&matched, context, user))
+        Ok(render_cognitive_response_with_history(
+            &matched,
+            context,
+            user,
+            &self.recent,
+        ))
+    }
+
+    fn set_dialogue_history(&mut self, recent: &[(String, String)]) {
+        self.recent = recent.to_vec();
     }
 
     fn name(&self) -> &str {
         &self.backend_name
+    }
+
+    fn opening_insight(&self, seed: u64) -> Option<String> {
+        self.weights.opening_insight(seed)
     }
 }
 
@@ -61,16 +101,14 @@ pub struct DeterministicBackend;
 
 impl LanguageBackend for DeterministicBackend {
     fn generate(&mut self, _system: &str, context: &[String], user: &str) -> io::Result<String> {
-        let memory_note = if context.is_empty() {
-            String::new()
-        } else {
-            format!(" I found {} bounded context item(s).", context.len())
-        };
-
+        let bits = crate::voice::weave_guidance(context, 1);
+        let tip = bits
+            .first()
+            .map(|b| format!(" Practical angle: {b}"))
+            .unwrap_or_default();
         Ok(format!(
-            "I understand the request: \"{}\".{} Perci's cognitive weights are unavailable, so I am using the deterministic fallback. Exact tools and explicit memory remain available.",
-            user.trim(),
-            memory_note
+            "I hear you: \"{}\". Weights aren't loaded, but exact tools and memory still work.{tip}",
+            user.trim()
         ))
     }
 
@@ -160,14 +198,12 @@ impl LanguageBackend for CommandBackend {
     }
 }
 
-/// Composition keeps Bitwork active when an external language model is attached.
-///
-/// The cognitive match becomes a bounded routing hint for the external backend.
-/// If the external process fails, Perci falls back to its own cognitive response.
 pub struct CompositeBackend {
     cognitive: Option<CognitiveBackend>,
     external: Option<CommandBackend>,
     backend_name: String,
+    /// Multi-turn (user, assistant) pairs for natural continuity.
+    recent: Vec<(String, String)>,
 }
 
 impl CompositeBackend {
@@ -177,10 +213,10 @@ impl CompositeBackend {
 
         let backend_name = match (cognitive.as_ref(), external.as_ref()) {
             (Some(cognitive), Some(_)) => {
-                format!("composite Â· {} + external model", cognitive.name())
+                format!("composite | {} + external model", cognitive.name())
             }
             (Some(cognitive), None) => cognitive.name().to_owned(),
-            (None, Some(_)) => "external model Â· deterministic fallback".to_owned(),
+            (None, Some(_)) => "external model | deterministic fallback".to_owned(),
             (None, None) => "deterministic fallback".to_owned(),
         };
 
@@ -188,7 +224,12 @@ impl CompositeBackend {
             cognitive,
             external,
             backend_name,
+            recent: Vec::new(),
         })
+    }
+
+    pub fn set_recent(&mut self, recent: &[(String, String)]) {
+        self.recent = recent.to_vec();
     }
 }
 
@@ -203,10 +244,40 @@ impl LanguageBackend for CompositeBackend {
         if let Some(external) = self.external.as_mut() {
             let mut enriched = context.to_vec();
             if let Some(match_result) = matched.as_ref() {
+                let skeleton = match_result.concept_skeleton(3);
+                let frame = match_result.composition_frame(4);
+                let mix = if skeleton.is_empty() {
+                    String::new()
+                } else {
+                    format!("; mixture={}", skeleton.join(" | "))
+                };
+                let comp = if frame.is_empty() {
+                    String::new()
+                } else {
+                    format!("; composition={}", frame.join(" · "))
+                };
                 enriched.push(format!(
-                    "[Perci Bitwork hint: domain={} score={} overlap={}; use as routing evidence, not truth]",
-                    match_result.label, match_result.score, match_result.overlap
+                    "[Perci Bitwork hint: domain={} score={} overlap={} margin={}{}{}]; routing evidence, not truth]",
+                    match_result.label,
+                    match_result.score,
+                    match_result.overlap,
+                    match_result.margin,
+                    mix,
+                    comp,
                 ));
+            }
+            // Brief dialogue memory for external models
+            if !self.recent.is_empty() {
+                let hist: String = self
+                    .recent
+                    .iter()
+                    .rev()
+                    .take(3)
+                    .rev()
+                    .map(|(u, a)| format!("User: {u}\nPerci: {a}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                enriched.push(format!("[Recent dialogue]\n{hist}"));
             }
 
             if let Ok(response) = external.generate(system, &enriched, user) {
@@ -215,7 +286,12 @@ impl LanguageBackend for CompositeBackend {
         }
 
         if let Some(match_result) = matched.as_ref() {
-            return Ok(render_cognitive_response(match_result, context, user));
+            return Ok(render_cognitive_response_with_history(
+                match_result,
+                context,
+                user,
+                &self.recent,
+            ));
         }
 
         let mut fallback = DeterministicBackend;
@@ -225,138 +301,260 @@ impl LanguageBackend for CompositeBackend {
     fn name(&self) -> &str {
         &self.backend_name
     }
+
+    fn set_dialogue_history(&mut self, recent: &[(String, String)]) {
+        self.set_recent(recent);
+    }
+
+    fn opening_insight(&self, seed: u64) -> Option<String> {
+        self.cognitive
+            .as_ref()
+            .and_then(|cognitive| cognitive.opening_insight(seed))
+    }
 }
 
+#[allow(dead_code)]
 fn render_cognitive_response(matched: &CognitiveMatch, context: &[String], user: &str) -> String {
+    render_cognitive_response_with_history(matched, context, user, &[])
+}
+
+/// Natural voice path with optional multi-turn history.
+pub fn render_cognitive_response_with_history(
+    matched: &CognitiveMatch,
+    context: &[String],
+    user: &str,
+    recent: &[(String, String)],
+) -> String {
     let variant = matched.variant as usize;
-    let memory_note = if context.is_empty() {
-        String::new()
+    let ul = user.to_ascii_lowercase();
+    // Continuity: follow-up on a code/debug thread stays in code even if Bitwork drifts.
+    let prior_code = recent.iter().rev().take(3).any(|(u, a)| {
+        let t = format!("{u} {a}").to_ascii_lowercase();
+        t.contains("error")
+            || t.contains("cargo")
+            || t.contains("rust")
+            || t.contains("debug")
+            || t.contains("compile")
+            || a.contains("Reproduce")
+            || a.contains("Re-run the same verify")
+    });
+    let followup = ul.contains("still")
+        || ul.contains("failing")
+        || ul.contains("what next")
+        || ul.contains("same")
+        || ul == "why?"
+        || ul == "and then?";
+    // Frustration + technical signal: prefer code craft over random mis-route (e.g. comparison).
+    let label = if (crate::voice::detect_social(user) == crate::voice::SocialKind::Frustration
+        && ul.split_whitespace().any(|w| {
+            matches!(
+                w,
+                "bug" | "error" | "compile" | "cargo" | "rust" | "fail" | "panic" | "test"
+            ) || w.contains("error")
+        }))
+        || (prior_code && followup)
+        || (prior_code && (ul.contains("error") || ul.contains("bug") || ul.contains("fail")))
+    {
+        "code"
+    } else if ul.contains("capable")
+        || ul.contains("what can you")
+        || ul.contains("what do you do")
+        || ul.contains("abilities")
+        || (ul.contains("what are you") && ul.contains("do"))
+    {
+        "identity" // richer capability copy below
+    } else if ul.contains("trying to do") || ul.contains("what are we") || ul.contains("our goal") {
+        "planning"
     } else {
-        format!(
-            "\n\nI found {} bounded context item(s). They are evidence, not automatically verified truth.",
-            context.len()
-        )
+        matched.label.as_str()
+    };
+    // Concept insight is seasoning for fluid prose — not a forced body dump.
+    let concept = matched.insight.as_deref();
+    let body = domain_body(label, variant);
+    let woven = crate::voice::weave_guidance(context, 2);
+
+    // Deep craft loops only when the user is clearly in debug/plan/code mode.
+    // Open conversation uses fluid composition so we don't sound like a checklist.
+    let text = if crate::reason::needs_reason_loop(label, user)
+        && crate::voice::user_has_tech_signal(user)
+    {
+        let seed_body = concept.unwrap_or(body);
+        let (reasoned, _score, _flags) =
+            crate::reason::enhance_deep_answer(label, user, seed_body, &woven);
+        if let Some((_, prev)) = recent.last() {
+            if user.to_ascii_lowercase().contains("still")
+                || user.to_ascii_lowercase().contains("again")
+            {
+                format!("Still on it. {reasoned}")
+            } else if prev.len() > 40
+                && user
+                    .to_ascii_lowercase()
+                    .split_whitespace()
+                    .any(|w| matches!(w, "that" | "it" | "same"))
+            {
+                format!("Building on the last thread. {reasoned}")
+            } else {
+                reasoned
+            }
+        } else {
+            reasoned
+        }
+    } else {
+        crate::voice::compose_reply(matched, user, body, context, recent)
     };
 
-    let body = match matched.label.as_str() {
+    // Final anti-generic guard: must bind the user's words when possible.
+    let text = crate::voice::ensure_user_binding(user, &text, label, concept, recent);
+    // Re-apply mixture skeleton after binding rewrite (may have dropped supports).
+    let skeleton = matched.concept_skeleton(3);
+    let text =
+        crate::voice::weave_mixture_skeleton(user, &text, &skeleton, matched.variant as usize);
+    let residual = matched.residual_skeleton(1);
+    let text = if let Some(lat) = residual.first() {
+        crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
+    } else {
+        text
+    };
+
+    let mut text = text;
+    if diagnostics_enabled() {
+        let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
+        text.push_str(&format!(
+            "\n\n[Bitwork match: {} | score {} | overlap {} | mixture={} residual={} | input {} bytes]",
+            matched.label,
+            matched.score,
+            matched.overlap,
+            matched.mixture.len(),
+            residual_n,
+            user.len()
+        ));
+    }
+    text
+}
+
+fn domain_body(label: &str, variant: usize) -> &'static str {
+    match label {
         "greeting" => choose(
             variant,
             &[
-                "Hello. I am Perci. Give me the problem, constraint, or idea you want examined.",
-                "I am here. We can reason, inspect memory, solve exact math, or structure a build.",
-                "Ready. I will separate what is known, inferred, and still unverified.",
+                "I can help with exact math, debug loops, memory, plans, or how this stack fits together.",
+                "We can reason, check something exact, or map a next step.",
+                "Tell me the problem, constraint, or idea — I'll keep it grounded.",
             ],
         ),
         "identity" => choose(
             variant,
             &[
-                "I am Perci, a compact local cognitive control layer. My 200 MiB model is a binary associative network, not a transformer. I combine learned routing, Cortex evidence, exact tools, explicit memory, and governance boundaries.",
-                "Perci coordinates forms of intelligence. Bitwork recognizes domains, Cortex supplies bounded provenance-bearing context, deterministic tools handle exact operations, and an optional model can provide richer language.",
-                "My strengths are local operation, inspectability, selective memory, exact tools, and candid limits. My built-in prose remains narrower than a pretrained language model.",
+                "I'm Perci — local Bitwork routing, exact math/geometry, intelligence packs, and selective memory. In Lumen I first-hop so GROK/NEMO/PHI can take deep work.",
+                "I'm a local tool, not a cloud LLM and not conscious. I classify, do exact math, run short reason-loops, and remember only what you teach deliberately.",
+                "Ask me to calculate, plan a fix, explain a system boundary, or store a short fact. For open chat fluency, use a full mind when keys allow — I cover the offline path.",
             ],
         ),
         "english" => choose(
             variant,
             &[
-                "Preserve intended meaning, remove ambiguity, tighten sentence structure, and choose concrete verbs. Provide the passage when you need a direct rewrite.",
-                "For clear English, identify the subject, action, object, and intended tone. Then remove filler and resolve unclear references.",
-                "I can classify grammar, explain vocabulary, and structure concise prose. A direct rewrite requires the original text.",
+                "Keep the meaning, cut ambiguity, prefer concrete verbs, and drop filler.",
+                "Name the subject, action, and object, then tighten until the sentence can't be misread.",
+                "Rewrite for clarity without inventing a stronger claim than the original.",
             ],
         ),
         "logic" => choose(
             variant,
             &[
-                "List the premises, separate assumptions, derive only supported consequences, test for contradiction, then state the conclusion with uncertainty.",
-                "Do not confuse correlation, possibility, and necessity. A valid conclusion must follow without importing an unstated rule.",
-                "Evaluate the chain as evidence â†’ assumptions â†’ inference rule â†’ conclusion â†’ counterexample check.",
+                "List premises, mark assumptions, only derive what follows, then hunt a counterexample.",
+                "Keep correlation, possibility, and necessity in separate buckets.",
+                "Walk evidence → assumptions → rule → conclusion → what would falsify it.",
             ],
         ),
-        "math" => "This is mathematical. When the request matches a supported exact form, Perci executes it deterministically; otherwise it remains a conceptual language question.",
-        "geometry" => "This is geometric. Exact formulas run only when the requested shape, operation, and required measurements are present.",
-        "memory" => "Use `remember that ...` for an explicit append and `recall ...` for selective retrieval. Cortex evidence retains provenance and remains subordinate to current source and tests.",
+        "math" => {
+            "If you give numbers and an operation I support, I'll compute it exactly; otherwise I'll stay conceptual."
+        }
+        "geometry" => {
+            "When the figure and measurements are clear, I can apply the exact formula; otherwise I'll ask for the missing piece."
+        }
+        "memory" => {
+            "Memory is evidence you store on purpose — not automatic truth and not a hidden diary."
+        }
         "code" => choose(
             variant,
             &[
-                "Reproduce the behavior, isolate the smallest failing path, inspect the exact error, patch the smallest coherent surface, then run focused tests before integration.",
-                "Make invariants explicit, validate boundaries, avoid hidden allocation in hot paths, and benchmark release builds rather than inferring performance from source.",
-                "A reliable patch needs the relevant files, compiler output, and expected behavior. Without them, design the approach but do not claim verification.",
+                "Reproduce it, isolate the smallest failing path, read the exact error, patch one surface, then re-verify.",
+                "Make the invariant explicit, check boundaries, and trust the compiler/tests over guesses.",
+                "I need the failing output, the expected behavior, and a verify command when we go surgical.",
             ],
         ),
         "governance" => choose(
             variant,
             &[
-                "Establish authority, load current origin state, classify observe/sandbox/durable scope, define rollback, validate, then append evidence.",
-                "No durable mutation should compound from an unaligned or unverified state. Permission and successful validation are separate gates.",
-                "Block or sandbox until scope, authority, expected effect, validation, and recovery are explicit.",
+                "Check authority, scope, rollback, and validation before anything durable.",
+                "Permission and proof are different gates — neither replaces the other.",
+                "If scope or recovery is fuzzy, sandbox or stop until it's explicit.",
             ],
         ),
         "planning" => choose(
             variant,
             &[
-                "Plan in five layers: objective, constraints, dependencies, executable milestones, and acceptance tests.",
-                "Start with the smallest end-to-end vertical slice. Prove the loop, measure it, then expand one unknown at a time.",
-                "Define success, failure detection, and the route back to a known-good state.",
+                "Objective, constraints, dependencies, small milestones, acceptance tests — in that order.",
+                "Ship the smallest end-to-end slice first, measure it, then widen.",
+                "Each milestone should leave a usable state you can roll back.",
             ],
         ),
         "explanation" => choose(
             variant,
             &[
-                "Begin with the central mechanism, then give one concrete example, one boundary case, and the practical implication.",
-                "Separate the concept's name from what it does, then connect cause to effect without skipping the intermediate step.",
-                "Make the target concept explicit so the answer does not sound confident while missing the intended question.",
+                "Start with the mechanism, then one example, one edge case, and why it matters.",
+                "Name the thing, say what it does, then connect cause to effect without skipping the middle.",
+                "Define the target first so extra detail doesn't hide a category error.",
             ],
         ),
         "systems" => choose(
             variant,
             &[
-                "A coherent stack uses Perci as coordinator, Cortex as selective memory, Bitwork as learned cognition, exact tools for mechanical truth, and governance before durable execution.",
-                "The key boundary is suggestion versus mutation: Perci can classify and propose, while permission, tests, provenance, and rollback control durability.",
-                "Use language for interpretation, Bitwork for cognitive hints, Cortex for rehydration, and exact tools for mechanically verifiable claims.",
+                "Give each piece one job and one authority limit.",
+                "Suggestions can be cheap; mutations need permission, tests, and a way back.",
+                "Language interprets, Bitwork routes, cortex recalls, tools verify — keep those lanes clear.",
             ],
         ),
         "science" => choose(
             variant,
             &[
-                "Define measurable variables, identify the mechanism, state a falsifiable prediction, control alternatives, and distinguish observation from interpretation.",
-                "A model is not evidence by itself. Use hypothesis â†’ measurement â†’ uncertainty â†’ comparison â†’ reproducible conclusion.",
-                "State units and boundary conditions; many contradictions are scale or definition mismatches.",
+                "Define what you'd measure, the mechanism, a falsifiable prediction, then compare results with uncertainty.",
+                "Models aren't evidence by themselves — hypothesis, measure, compare, reproduce.",
+                "Check units and boundaries; a lot of 'contradictions' are scale mismatches.",
             ],
         ),
         "creativity" => choose(
             variant,
             &[
-                "Combine mechanisms that normally remain separate, then give the user a clear action and visible consequence.",
-                "Push toward a distinctive rule rather than a visual reskin: define what changes, why, and what can be discovered.",
-                "Originality becomes valuable when the concept remains understandable, interactive, and achievable.",
+                "Combine two mechanisms that don't usually meet, then make the action and consequence obvious.",
+                "Aim for a real rule of the system, not a reskin.",
+                "Original only helps if someone can understand it and build it.",
             ],
         ),
         "comparison" => choose(
             variant,
             &[
-                "Compare capability, correctness, latency, memory, adaptability, interpretability, failure modes, and operating cost.",
-                "Identify the workload and cost of a wrong answer, then choose the architecture whose tradeoffs fit that regime.",
-                "Separate theoretical capability from measured implementation quality.",
+                "Compare on capability, correctness, latency, cost of being wrong, and failure modes.",
+                "Name the workload before crowning a winner.",
+                "Separate the brochure from the measured implementation.",
             ],
         ),
         _ => choose(
             variant,
             &[
-                "Define the desired outcome and available evidence; I will separate facts, assumptions, options, and the next testable action.",
-                "Avoid scaling complexity before demonstrating the core mechanism. Establish the smallest falsifiable version first.",
-                "I can examine the idea, but should not manufacture certainty. Identify the claim that can be tested directly.",
+                "What outcome do you want, and what evidence do we already have?",
+                "Let's find the smallest version we can test next.",
+                "I won't fake certainty — what's the claim we can check directly?",
             ],
         ),
-    };
+    }
+}
 
-    format!(
-        "{}\n\n[Bitwork match: {} Â· score {} Â· overlap {} Â· input {} bytes]{}",
-        body,
-        matched.label,
-        matched.score,
-        matched.overlap,
-        user.len(),
-        memory_note
-    )
+fn diagnostics_enabled() -> bool {
+    env::var("PERCI_DIAGNOSTICS")
+        .ok()
+        .map(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "on"))
+        .unwrap_or(false)
 }
 
 fn choose<'a>(variant: usize, values: &'a [&'a str]) -> &'a str {
@@ -365,4 +563,22 @@ fn choose<'a>(variant: usize, values: &'a [&'a str]) -> &'a str {
 
 fn json_error(error: serde_json::Error) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, error)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::voice::weave_guidance;
+
+    #[test]
+    fn pack_guidance_is_woven() {
+        let context = vec![
+            "[Cortex evidence: src/main.rs:1-2 | abc] unrelated code".to_owned(),
+            "[Pack: knowledge/packs/x.md | def] Prefer executable evidence over recollection."
+                .to_owned(),
+        ];
+        let woven = weave_guidance(&context, 2);
+        assert!(woven
+            .iter()
+            .any(|s| s.contains("Prefer executable evidence")));
+    }
 }

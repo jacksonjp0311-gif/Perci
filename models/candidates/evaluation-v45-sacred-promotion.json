@@ -1,0 +1,20 @@
+{
+  "schema": "perci.weight-promotion-evaluation.v1",
+  "status": "OPERATIONAL_CANDIDATE",
+  "candidate": "models/candidates/perci-cognitive-sacred-v0.1.pwgt",
+  "model_sha256": "ff9985d730db8249168488574a79a507ba84ec97170f954d0a85191d0bc7c796",
+  "evaluation_receipt_sha256": "b4259255f9ea5cada1d81213a84291c9634b6ad099687c20a5be086d53d14e21",
+  "case_count": 111,
+  "passed": 111,
+  "gates": {
+    "sacred_dialogue_111_of_111": true,
+    "existing_dialogue_regression": true,
+    "sacred_layer_operator_tests": true,
+    "exact_tool_authority_preserved": true,
+    "out_of_distribution_abstention_preserved": true,
+    "under_200_mib": true,
+    "automatic_promotion_disabled": true
+  },
+  "automatic_promotion": false,
+  "notes": "Candidate adds ten geometry concepts and 32,157 geometry records within the 200 MiB ceiling. Promotion is explicit, reversible, and does not claim consciousness or general-purpose language-model capability."
+}

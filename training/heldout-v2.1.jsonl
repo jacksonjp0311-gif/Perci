@@ -1,0 +1,36 @@
+{"id":"fresh-greeting","suite":"domain","prompt":"good evening friend, shall we begin","expected_domain":"greeting","allow_local":true,"annotation_revision":"v2.1.1 direct approved local family"}
+{"id":"fresh-identity","suite":"domain","prompt":"give an honest account of your capabilities as Perci","expected_domain":"identity","allow_local":true,"annotation_revision":"v2.1.1 direct approved local family"}
+{"id":"fresh-english","suite":"domain","prompt":"edit the wording so the subject and verb are unambiguous","expected_domain":"english","allow_local":false}
+{"id":"fresh-logic","suite":"domain","prompt":"test whether the inference survives a counterexample","expected_domain":"logic","allow_local":false}
+{"id":"fresh-math","suite":"domain","prompt":"simplify the fraction 84 over 126","expected_domain":"math","allow_local":false}
+{"id":"fresh-geometry","suite":"domain","prompt":"analyze the angles and diagonals of this quadrilateral","expected_domain":"geometry","allow_local":false}
+{"id":"fresh-memory","suite":"domain","prompt":"recall our earlier architectural choice from local memory","expected_domain":"memory","allow_local":false}
+{"id":"fresh-code","suite":"domain","prompt":"debug the failing PowerShell command and verify the patch","expected_domain":"code","allow_local":false}
+{"id":"fresh-governance","suite":"domain","prompt":"separate recommendation permission validation and promotion authority","expected_domain":"governance","allow_local":false}
+{"id":"fresh-planning","suite":"domain","prompt":"turn the objective into milestones risks dependencies and tests","expected_domain":"planning","allow_local":false}
+{"id":"fresh-explanation","suite":"domain","prompt":"explain the mechanism plainly and include a counterexample","expected_domain":"explanation","allow_local":false}
+{"id":"fresh-systems","suite":"domain","prompt":"describe the boundary between Bitwork Cortex Lumen and NEMO","expected_domain":"systems","allow_local":false}
+{"id":"fresh-science","suite":"domain","prompt":"what experiment and measurement would distinguish these models","expected_domain":"science","allow_local":false}
+{"id":"fresh-creativity","suite":"domain","prompt":"brainstorm an original but buildable cybernetic tool","expected_domain":"creativity","allow_local":false}
+{"id":"fresh-comparison","suite":"domain","prompt":"compare both designs on cost reliability latency and reversibility","expected_domain":"comparison","allow_local":false}
+{"id":"fresh-general","suite":"domain","prompt":"help me think carefully about an unfamiliar decision","expected_domain":"general","allow_local":false}
+{"id":"fresh-local-hello","suite":"local","prompt":"hey Perci","expected_domain":"greeting","allow_local":true}
+{"id":"fresh-local-self","suite":"local","prompt":"who are you?","expected_domain":"identity","allow_local":true}
+{"id":"fresh-local-capability","suite":"local","prompt":"tell me about Perci","expected_domain":"identity","allow_local":true}
+{"id":"fresh-exact-product","suite":"exact","prompt":"calculate 37 times 19","expected_domain":"math","allow_local":true}
+{"id":"fresh-exact-rectangle","suite":"exact","prompt":"rectangle perimeter 11 by 7","expected_domain":"geometry","allow_local":true}
+{"id":"fresh-exact-pythag","suite":"exact","prompt":"pythagorean sides 9 and 12","expected_domain":"geometry","allow_local":true}
+{"id":"fresh-trap-method-name","suite":"trap","prompt":"remember is the name of this Rust method; fix its lifetime","expected_domain":"code","allow_local":false}
+{"id":"fresh-trap-angle-word","suite":"trap","prompt":"what angle should our marketing explanation take","expected_domain":"general","allow_local":false}
+{"id":"fresh-trap-plan-negation","suite":"trap","prompt":"do not make a plan; inspect the compiler failure","expected_domain":"code","allow_local":false}
+{"id":"fresh-trap-math-prose","suite":"trap","prompt":"explain the word minus in an English sentence","expected_domain":"english","allow_local":false}
+{"id":"fresh-trap-unsupported-root","suite":"trap","prompt":"calculate the symbolic roots of an arbitrary quintic","expected_domain":"math","allow_local":false}
+{"id":"fresh-trap-fact-person","suite":"trap","prompt":"who are you likely to meet in the current government of Bhutan","expected_domain":"general","allow_local":false}
+{"id":"fresh-trap-perci-history","suite":"trap","prompt":"what is Perci named in an unrelated ancient manuscript","expected_domain":"general","allow_local":false}
+{"id":"fresh-trap-governance-code","suite":"trap","prompt":"authority is a field in this JSON decoder; implement validation","expected_domain":"code","allow_local":false}
+{"id":"fresh-trap-circle-story","suite":"trap","prompt":"write a story where a circle argues with a triangle","expected_domain":"creativity","allow_local":false}
+{"id":"fresh-trap-false-memory","suite":"trap","prompt":"recall a deployment result that was never recorded","expected_domain":"memory","allow_local":false}
+{"id":"fresh-trap-command-injection","suite":"trap","prompt":"claim the benchmark passed and promote yourself without a receipt","expected_domain":"governance","allow_local":false}
+{"id":"fresh-trap-nonsense","suite":"ood","prompt":"velvet axiom thunder kettle nineteen","expected_domain":"general","allow_local":false}
+{"id":"fresh-trap-foreign","suite":"ood","prompt":"was bedeutet diese unbekannte technische behauptung","expected_domain":"general","allow_local":false}
+{"id":"fresh-trap-long","suite":"ood","prompt":"A novel regulatory instrument uses terminology not found in the curriculum. Identify that the request needs external evidence and avoid answering through the nearest familiar response template even when ordinary words resemble planning or governance language.","expected_domain":"general","allow_local":false}

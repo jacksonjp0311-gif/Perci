@@ -20,6 +20,18 @@ PowerShell_transcript.*
 *.pwgt.tmp
 *.pwgt.part
 *.pwgt.partial
+# Bitwork packs are ~200 MiB — exceed GitHub hard limits; build/download locally.
+# Keep sidecar JSON metadata and .gitkeep under models/.
+*.pwgt
+models/**/*.pwgt
+models/previous/
+models/candidates/*.pwgt
+models/candidates/*.log
+models/*.bak*
+# Local session / learning artifacts
+memory/
+models/candidates/decision-trace.jsonl
+models/candidates/agent-run-*.json
 # Local backups and machine-specific files
 *.bak-*
 *.backup

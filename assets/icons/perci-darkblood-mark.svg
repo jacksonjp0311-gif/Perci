@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Perci Dark-Blood mark (version-agnostic). Version badge is generated at build. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Perci Dark Blood mark">
+  <defs>
+    <radialGradient id="void" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#1a0a0c"/>
+      <stop offset="100%" stop-color="#050203"/>
+    </radialGradient>
+    <linearGradient id="blood" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF334F"/>
+      <stop offset="55%" stop-color="#B11226"/>
+      <stop offset="100%" stop-color="#6B0A14"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF6A7E"/>
+      <stop offset="100%" stop-color="#8B0E1C"/>
+    </linearGradient>
+  </defs>
+  <!-- void disc -->
+  <circle cx="256" cy="256" r="248" fill="url(#void)" stroke="#3a1018" stroke-width="8"/>
+  <!-- sparse lattice -->
+  <g stroke="#5c1824" stroke-width="1.2" opacity="0.55">
+    <path d="M96 160 H416 M96 220 H416 M96 280 H416 M96 340 H416"/>
+    <path d="M160 96 V416 M220 96 V416 M280 96 V416 M340 96 V416"/>
+  </g>
+  <!-- diamond core -->
+  <path d="M256 88 L400 256 L256 424 L112 256 Z" fill="url(#blood)" stroke="url(#edge)" stroke-width="10" stroke-linejoin="round"/>
+  <!-- inner lattice on diamond -->
+  <g stroke="#2a060a" stroke-width="2" opacity="0.45" fill="none">
+    <path d="M256 140 L340 256 L256 372 L172 256 Z"/>
+    <path d="M200 220 H312 M200 292 H312"/>
+    <path d="M230 180 V332 M282 180 V332"/>
+  </g>
+  <!-- bright diamond highlight -->
+  <path d="M256 128 L320 256 L256 280 L192 256 Z" fill="#FF334F" opacity="0.22"/>
+  <!-- blood tip droplet -->
+  <path d="M256 392 C256 392 236 418 236 436 C236 450 245 458 256 458 C267 458 276 450 276 436 C276 418 256 392 256 392 Z" fill="#B11226" stroke="#FF334F" stroke-width="3"/>
+</svg>

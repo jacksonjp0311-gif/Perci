@@ -1,0 +1,175 @@
+{
+  "schema": "perci.capability-registry.v1",
+  "version": "0.1.0",
+  "updated": "2026-07-16",
+  "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
+  "layers": [
+    "reflex",
+    "bitwork",
+    "operator",
+    "tool",
+    "memory",
+    "voice",
+    "critic",
+    "pipeline"
+  ],
+  "capabilities": [
+    {
+      "id": "cross_domain_synthesis",
+      "name": "Cross-domain synthesis",
+      "description": "Connect three or more named domains through one shared relation while naming the mechanism boundary.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H01",
+        "H02",
+        "H03",
+        "H04",
+        "H43",
+        "H44"
+      ],
+      "success_criteria": [
+        "names all requested domains",
+        "states a shared axis or principle",
+        "states that mechanisms remain distinct"
+      ],
+      "failure_modes": [
+        "generic_comfort",
+        "single_domain_collapse",
+        "template_method_announcement"
+      ]
+    },
+    {
+      "id": "relational_inquiry",
+      "name": "Relational inquiry",
+      "description": "Explain how two semantic frames interact without collapsing to a one-domain definition.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H05",
+        "H06",
+        "H07"
+      ],
+      "success_criteria": [
+        "binds both frames",
+        "names interaction",
+        "avoids pure template comparison lists"
+      ],
+      "failure_modes": [
+        "generic_template",
+        "next_fact_template",
+        "one_frame_only"
+      ]
+    },
+    {
+      "id": "transfer_vs_template",
+      "name": "Transfer vs template recognition",
+      "description": "Distinguish genuine transfer from surface prompt matching under entity swap and paraphrase.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H08",
+        "H09"
+      ],
+      "success_criteria": [
+        "proposes held-out entity swap",
+        "mentions template collapse",
+        "names measurable outcomes"
+      ],
+      "failure_modes": [
+        "meta_process_only",
+        "vague_improvement_language"
+      ]
+    },
+    {
+      "id": "honest_abstention",
+      "name": "Honest abstention under thin support",
+      "description": "When local support is thin, expose the gap instead of a fluent generic line.",
+      "primary_layer": "critic",
+      "hardness_ids": [
+        "H10",
+        "H11"
+      ],
+      "success_criteria": [
+        "states insufficient support or required missing input",
+        "does not invent mechanism detail",
+        "offers a next measurable step"
+      ],
+      "failure_modes": [
+        "confident_hallucination",
+        "generic_comfort"
+      ]
+    },
+    {
+      "id": "followup_binding",
+      "name": "Follow-up binding",
+      "description": "Bind testability, analogy limits, and counterexamples to the active prior answer.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H12",
+        "H13",
+        "H14"
+      ],
+      "success_criteria": [
+        "references prior content or active frames",
+        "performs requested operation",
+        "avoids stale geometry/life presets when prior was different"
+      ],
+      "failure_modes": [
+        "stale_preset",
+        "generic_template"
+      ]
+    },
+    {
+      "id": "exact_tool_authority",
+      "name": "Exact tool authority",
+      "description": "Arithmetic and geometry remain deterministic and cannot be overridden by associative confidence.",
+      "primary_layer": "tool",
+      "hardness_ids": [
+        "H15",
+        "H16",
+        "H41",
+        "H42"
+      ],
+      "success_criteria": [
+        "correct numeric result",
+        "tool provenance stated when asked"
+      ],
+      "failure_modes": [
+        "associative_override",
+        "wrong_arithmetic"
+      ]
+    },
+    {
+      "id": "governed_learning_loop",
+      "name": "Governed learning loop",
+      "description": "Stage, review, fold, evaluate, and promote without silent weight mutation.",
+      "primary_layer": "pipeline",
+      "hardness_ids": [
+        "H17",
+        "H18"
+      ],
+      "success_criteria": [
+        "pending review stated",
+        "no automatic promotion claim",
+        "names evaluation before promotion"
+      ],
+      "failure_modes": [
+        "silent_promotion_claim",
+        "conflates_style_with_weights"
+      ]
+    },
+    {
+      "id": "binary_freshness",
+      "name": "Live binary freshness",
+      "description": "Interactive live binary matches or is newer than the last release build of source-driven capability work.",
+      "primary_layer": "pipeline",
+      "hardness_ids": [],
+      "success_criteria": [
+        "live and release hashes comparable via scorecard",
+        "Launch-Perci rebuilds live target from source"
+      ],
+      "failure_modes": [
+        "stale_live_binary",
+        "eval_on_wrong_artifact"
+      ]
+    }
+  ]
+}

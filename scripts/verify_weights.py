@@ -4,12 +4,12 @@ from __future__ import annotations
 import argparse, hashlib, json, struct
 from pathlib import Path
 
-MAGIC=b'PERCIW01'
+MAGICS={1:b'PERCIW01',2:b'PERCIW02',3:b'PERCIW03'}
 FIXED=struct.Struct('<8sIIIIQQQ32s')
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--model',type=Path,default=Path('models/perci-cognitive-v0.1.pwgt'))
+    ap.add_argument('--model',type=Path,default=Path('models/candidates/perci-cognitive-v0.2.pwgt'))
     ns=ap.parse_args()
     manifest_path=ns.model.with_suffix(ns.model.suffix+'.json')
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
@@ -25,7 +25,7 @@ def main():
         for chunk in iter(lambda:fh.read(4*1024*1024),b''): h.update(chunk)
     magic,version,bits,words,labels,records,header_size,target_size,corpus=values
     checks={
-      'magic':magic==MAGIC,
+      'magic':magic==MAGICS.get(version),
       'version':version==manifest['version'],
       'bits':bits==manifest['bits_per_activation'],
       'words':words==manifest['words_per_activation'],

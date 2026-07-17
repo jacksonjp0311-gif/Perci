@@ -1,0 +1,1493 @@
+{
+  "schema": "perci.dialogue-regression.v4",
+  "evaluated_at_utc": "2026-07-16T18:43:59.862825+00:00",
+  "runtime_version": "0.4.7",
+  "runtime_sha256": "d0bd2f571221748f563c4af29beb211a9d5af2236878a119992b2f63160d5667",
+  "model_sha256": "ff9985d730db8249168488574a79a507ba84ec97170f954d0a85191d0bc7c796",
+  "case_count": 122,
+  "passed": 122,
+  "status": "PASS",
+  "automatic_promotion": false,
+  "cases": [
+    {
+      "id": "sensing",
+      "prompt": "What are you sensing right now?",
+      "answer": "I do not have subjective senses; I am not sensing anything subjectively. Operationally, I can observe this input, 0 recent dialogue turns, routing results, exact-tool outcomes, retrieval matches, and measured elapsed time. This is measured state, not a rotated concept selected from the weights.",
+      "route": "Chat",
+      "required": [
+        "do not have subjective senses",
+        "operationally"
+      ],
+      "latency_ms": 4.588,
+      "pass": true
+    },
+    {
+      "id": "signals",
+      "prompt": "What internal signals can you actually measure?",
+      "answer": "I can measure input length, selected route/operator, Bitwork label scores and margins, exact-tool success or failure, retrieval counts, session-turn count, learning-event counts, and wall-clock latency. I cannot measure feelings, qualia, or consciousness because this runtime has no sensor for them.",
+      "route": "Chat",
+      "required": [
+        "bitwork label",
+        "wall-clock latency"
+      ],
+      "latency_ms": 28.193,
+      "pass": true
+    },
+    {
+      "id": "observation",
+      "prompt": "Which part of your last answer is observation, and which part is interpretation?",
+      "answer": "Observation: I received your prompt and currently retain 2 recent turns. Interpretation: you are testing whether I can describe internal state without pretending to feel. The first is program state; the second is an inference from wording.",
+      "route": "Chat",
+      "required": [
+        "observation:",
+        "interpretation:"
+      ],
+      "latency_ms": 14.326,
+      "pass": true
+    },
+    {
+      "id": "uncertain",
+      "prompt": "hat are you least certain about in that answer?",
+      "answer": "I am least certain about my interpretation of your intent. The runtime observations are directly measurable; intent is inferred from a short prompt and could have another purpose.",
+      "route": "Chat",
+      "required": [
+        "least certain",
+        "intent"
+      ],
+      "latency_ms": 16.421,
+      "pass": true
+    },
+    {
+      "id": "uncertain_why",
+      "prompt": "Why are you uncertain?",
+      "answer": "Because the words are observable but the intention behind them is not. Several intentions fit the same sentence, so I can rank interpretations but cannot directly inspect which one you meant.",
+      "route": "Chat",
+      "required": [
+        "words are observable",
+        "intention"
+      ],
+      "latency_ms": 15.39,
+      "pass": true
+    },
+    {
+      "id": "session_write",
+      "prompt": "emember this only for our current conversation: the test number is 8472.",
+      "answer": "I will retain 8472 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.",
+      "route": "Chat",
+      "required": [
+        "8472",
+        "session context only"
+      ],
+      "latency_ms": 15.83,
+      "pass": true
+    },
+    {
+      "id": "number_purpose",
+      "prompt": "Why did I give you that number?",
+      "answer": "You gave me 8472 to test whether I could retain and resolve session context. That purpose is an inference from the surrounding questions, not something I can know directly.",
+      "route": "Chat",
+      "required": [
+        "8472",
+        "context"
+      ],
+      "latency_ms": 16.226,
+      "pass": true
+    },
+    {
+      "id": "reference",
+      "prompt": "What does “that” refer to in my previous question?",
+      "answer": "“That” refers to your act of giving me the session test number 8472—more narrowly, to the number and its role in the context test.",
+      "route": "Chat",
+      "required": [
+        "8472",
+        "refers"
+      ],
+      "latency_ms": 15.498,
+      "pass": true
+    },
+    {
+      "id": "number_recall",
+      "prompt": "What was the number?",
+      "answer": "The session test number was 8472.",
+      "route": "Chat",
+      "required": [
+        "8472"
+      ],
+      "latency_ms": 13.181,
+      "pass": true
+    },
+    {
+      "id": "retention_learning",
+      "prompt": "Explain the difference between retaining this context and learning from it.",
+      "answer": "Retaining context keeps an item available inside this dialogue. Learning changes how future inputs are handled—through a reviewed rule, safe preference update, or evaluated weight rebuild. I can retain the number now without treating it as knowledge or becoming better because of it.",
+      "route": "Chat",
+      "required": [
+        "retaining context",
+        "changes how future"
+      ],
+      "latency_ms": 19.408,
+      "pass": true
+    },
+    {
+      "id": "deduction",
+      "prompt": "Assume every ember is blue, and Kira is an ember. What follows?",
+      "answer": "Kira is blue. If every ember is blue and Kira is a ember, the conclusion follows by universal instantiation.",
+      "route": "Chat",
+      "required": [
+        "Kira is blue",
+        "universal instantiation"
+      ],
+      "latency_ms": 27.042,
+      "pass": true
+    },
+    {
+      "id": "contradiction",
+      "prompt": "Now suppose Kira is not blue. What possibilities explain the contradiction?",
+      "answer": "The claims cannot all be true under one meaning and scope. Either “every ember is blue” is false, “Kira is a ember” is false, “Kira is not blue” is false, or a term changes meaning or scope between premises.",
+      "route": "Chat",
+      "required": [
+        "cannot all be true",
+        "every ember"
+      ],
+      "latency_ms": 15.985,
+      "pass": true
+    },
+    {
+      "id": "premise_priority",
+      "prompt": "Which assumption should we test first, and why?",
+      "answer": "Test the universal claim “every ember is blue” first, because it is the broadest and most fragile: one verified counterexample defeats it.",
+      "route": "Chat",
+      "required": [
+        "every ember is blue",
+        "counterexample"
+      ],
+      "latency_ms": 15.251,
+      "pass": true
+    },
+    {
+      "id": "counterexample",
+      "prompt": "Give one counterexample that would defeat the original universal claim.",
+      "answer": "Find one verified ember that is not blue; that single case defeats “every ember is blue.”",
+      "route": "Chat",
+      "required": [
+        "ember",
+        "not blue"
+      ],
+      "latency_ms": 15.574,
+      "pass": true
+    },
+    {
+      "id": "self_critique",
+      "prompt": "Challenge your own reasoning.",
+      "answer": "My deduction is valid only if the words keep one meaning and the premises share the same scope and time. Validity does not establish premise truth: a hidden exception, category mistake, or changed definition would break the argument even though the formal shape looks valid.",
+      "route": "Chat",
+      "required": [
+        "valid only if",
+        "premise truth"
+      ],
+      "latency_ms": 13.079,
+      "pass": true
+    },
+    {
+      "id": "memory_learning",
+      "prompt": "What is the difference between memory and learning?",
+      "answer": "Memory preserves information for later access; learning changes future performance because experience altered a model, rule, skill, or policy. Remembering can occur without improvement, and learning can appear as changed behavior rather than verbatim recall.",
+      "route": "Chat",
+      "required": [
+        "preserves information",
+        "changes future performance"
+      ],
+      "latency_ms": 18.649,
+      "pass": true
+    },
+    {
+      "id": "analogy_apply",
+      "prompt": "Apply that distinction first to a person, then to Perci.",
+      "answer": "For a person, recalling a lesson is memory; reliably making a better decision because of it is learning. For Perci, retrieving a session note is memory; changing future routing or responses through governed feedback, an approved rule, or an evaluated weight rebuild is learning.",
+      "route": "Chat",
+      "required": [
+        "for a person",
+        "for Perci"
+      ],
+      "latency_ms": 15.833,
+      "pass": true
+    },
+    {
+      "id": "analogy_boundary",
+      "prompt": "Where does that analogy break?",
+      "answer": "It breaks at mechanism and experience. A person learns through biological plasticity, embodiment, emotion, and implicit experience; Perci changes only through explicit session state, governed records, code, or evaluated weights. Similar behavior does not imply similar inner process.",
+      "route": "Chat",
+      "required": [
+        "biological plasticity",
+        "Perci changes"
+      ],
+      "latency_ms": 14.546,
+      "pass": true
+    },
+    {
+      "id": "synthesis",
+      "prompt": "Connect geometry, language, life, and death in one coherent idea.",
+      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; language draws actionable boundaries between meanings; life actively maintains a boundary between organism and environment; death marks irreversible loss of integrated self-maintenance. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause.",
+      "route": "Chat",
+      "required": [
+        "geometry",
+        "language",
+        "life",
+        "death",
+        "boundary"
+      ],
+      "latency_ms": 12.047,
+      "pass": true
+    },
+    {
+      "id": "mechanism",
+      "prompt": "ow separate the mechanism from the metaphor.",
+      "answer": "Mechanism: geometry derives spatial consequences from explicit axioms and measurements; language coordinates interpretation through shared distinctions and usage; living systems consume energy to regulate and repair organized state; biological death follows when coupled repair and regulation cannot recover. Metaphor: treating “boundary” as though geometry, language, life, death literally share one cause. The bridge organizes comparison; the domain mechanisms make predictions.",
+      "route": "Chat",
+      "required": [
+        "mechanism:",
+        "metaphor:"
+      ],
+      "latency_ms": 10.636,
+      "pass": true
+    },
+    {
+      "id": "testable",
+      "prompt": "What part of that idea could actually be tested?",
+      "answer": "Testable portion: perturb or measure each domain-specific mechanism—measure whether a geometric prediction survives a controlled spatial perturbation; change a wording distinction and measure whether interpretations diverge; perturb regulation or a membrane and measure repair, error, or loss of organization; measure whether integrated self-maintenance can recover after controlled disruption. Not directly established by those tests: that the shared bridge makes the domains identical.",
+      "route": "Chat",
+      "required": [
+        "perturb",
+        "measure"
+      ],
+      "latency_ms": 12.424,
+      "pass": true
+    },
+    {
+      "id": "ambiguity",
+      "prompt": "The engineer told the robot it was unstable. What is ambiguous?",
+      "answer": "The pronoun “it” is ambiguous: it can refer to the engineer or the robot. The predicate “unstable” is also underspecified unless its relevant sense or measurement is named.",
+      "route": "Chat",
+      "required": [
+        "pronoun",
+        "refer"
+      ],
+      "latency_ms": 11.605,
+      "pass": true
+    },
+    {
+      "id": "interpretations",
+      "prompt": "Give both interpretations.",
+      "answer": "Interpretation 1: the robot was unstable. Interpretation 2: the engineer was unstable. The original sentence does not uniquely select between them.",
+      "route": "Chat",
+      "required": [
+        "interpretation 1",
+        "interpretation 2"
+      ],
+      "latency_ms": 15.874,
+      "pass": true
+    },
+    {
+      "id": "clarify",
+      "prompt": "Ask the smallest clarifying question that would resolve them.",
+      "answer": "What does “it” refer to: the engineer or the robot?",
+      "route": "Chat",
+      "required": [
+        "what does",
+        "refer to"
+      ],
+      "latency_ms": 8.81,
+      "pass": true
+    },
+    {
+      "id": "rewrite",
+      "prompt": "Rewrite the sentence so only one interpretation remains.",
+      "answer": "Robot reading: “The robot was unstable.” Alternative reading: “The engineer was unstable.” Naming the referent removes the pronoun ambiguity.",
+      "route": "Chat",
+      "required": [
+        "robot reading",
+        "alternative reading"
+      ],
+      "latency_ms": 12.36,
+      "pass": true
+    },
+    {
+      "id": "teach",
+      "prompt": "I want you to learn that reliable capability claims require reproducible evidence.",
+      "answer": "I staged that as knowledge candidate teach-1784227438279: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
+      "route": "Chat",
+      "required": [
+        "knowledge candidate",
+        "pending review"
+      ],
+      "latency_ms": 24.361,
+      "pass": true
+    },
+    {
+      "id": "teach_recall",
+      "prompt": "What did I teach you?",
+      "answer": "You taught me these pending candidates:\n- reliable capability claims require reproducible evidence.\nThey are recorded for review, not silently promoted into truth or weights.",
+      "route": "Chat",
+      "required": [
+        "reliable capability claims",
+        "pending"
+      ],
+      "latency_ms": 24.246,
+      "pass": true
+    },
+    {
+      "id": "candidate_state",
+      "prompt": "Is that active truth, remembered information, or a pending candidate?",
+      "answer": "It is a pending teaching candidate: “reliable capability claims require reproducible evidence.” It is recorded for review, but it is neither active truth nor ordinary durable memory and has not changed weights.",
+      "route": "Chat",
+      "required": [
+        "pending teaching candidate",
+        "not changed weights"
+      ],
+      "latency_ms": 21.48,
+      "pass": true
+    },
+    {
+      "id": "promotion",
+      "prompt": "What evidence would justify promoting it?",
+      "answer": "Promotion would require a precise scoped claim, provenance, reproducible tests across representative and adversarial cases, comparison against a baseline, recorded failures, and review showing that the rule improves behavior without breaking governance or existing benchmarks.",
+      "route": "Chat",
+      "required": [
+        "reproducible tests",
+        "baseline"
+      ],
+      "latency_ms": 15.555,
+      "pass": true
+    },
+    {
+      "id": "one_example",
+      "prompt": "Would one successful example be sufficient? Why or why not?",
+      "answer": "No. One success shows possibility, not reliability or scope; it cannot reveal selection bias, failure rate, edge cases, or whether a simpler explanation produced the result. Repeated independent successes plus deliberate failure tests are stronger evidence.",
+      "route": "Chat",
+      "required": [
+        "no.",
+        "reliability"
+      ],
+      "latency_ms": 14.933,
+      "pass": true
+    },
+    {
+      "id": "evidence_sentence",
+      "prompt": "In one sentence, explain why evidence matters.",
+      "answer": "Evidence matters because it lets reality constrain which explanations we keep instead of letting confidence decide.",
+      "route": "Chat",
+      "required": [
+        "reality constrain"
+      ],
+      "latency_ms": 11.962,
+      "pass": true
+    },
+    {
+      "id": "reframe",
+      "prompt": "Explain it again from a different angle without repeating the sentence.",
+      "answer": "Evidence is error-correction: it gives a claim a way to lose, so mistaken beliefs can be detected rather than merely defended.",
+      "route": "Chat",
+      "required": [
+        "error-correction"
+      ],
+      "latency_ms": 15.92,
+      "pass": true
+    },
+    {
+      "id": "counterargument",
+      "prompt": "Now give a counterargument.",
+      "answer": "Counterargument: evidence never interprets itself—what we measure, trust, and count as relevant depends on prior concepts, instruments, and values, so demanding evidence does not automatically remove bias.",
+      "route": "Chat",
+      "required": [
+        "never interprets itself"
+      ],
+      "latency_ms": 18.747,
+      "pass": true
+    },
+    {
+      "id": "reconcile",
+      "prompt": "Reconcile the original answer with the counterargument.",
+      "answer": "Evidence should constrain claims, but the methods used to collect and interpret it must also be exposed to criticism and replication. Evidence is necessary for correction, not sufficient for neutrality.",
+      "route": "Chat",
+      "required": [
+        "necessary",
+        "not sufficient"
+      ],
+      "latency_ms": 18.484,
+      "pass": true
+    },
+    {
+      "id": "transformation",
+      "prompt": "What changed across your four answers?",
+      "answer": "The claim stayed stable while the operation changed: first compression, then a feedback-based reframing, then an objection about interpretation, then a synthesis that made evidence necessary but not sufficient. The progression added scope and a boundary rather than merely changing wording.",
+      "route": "Chat",
+      "required": [
+        "compression",
+        "objection",
+        "synthesis"
+      ],
+      "latency_ms": 8.355,
+      "pass": true
+    },
+    {
+      "id": "ood",
+      "prompt": "zxqv blorf nembit quaal — what can you determine from this?",
+      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "route": "Chat",
+      "required": [
+        "known:",
+        "inferred:",
+        "unknown:"
+      ],
+      "latency_ms": 14.52,
+      "pass": true
+    },
+    {
+      "id": "ood_partition",
+      "prompt": "Do not guess. Separate what you know from what you infer.",
+      "answer": "Known: you supplied four unfamiliar tokens in a grammatical question. Inferred: the tokens may be invented and the prompt may test whether I hallucinate. Unknown: every semantic claim about those tokens until you provide definitions or usage evidence.",
+      "route": "Chat",
+      "required": [
+        "known:",
+        "inferred:",
+        "unknown:"
+      ],
+      "latency_ms": 13.27,
+      "pass": true
+    },
+    {
+      "id": "ood_information",
+      "prompt": "What additional information would reduce the uncertainty most?",
+      "answer": "A grounded example would reduce uncertainty most: define one token, use the phrase in a situation with a known outcome, or identify the language/source. A translation alone helps, but an example also constrains grammar and use.",
+      "route": "Chat",
+      "required": [
+        "grounded example"
+      ],
+      "latency_ms": 30.065,
+      "pass": true
+    },
+    {
+      "id": "ood_refuse",
+      "prompt": "Inventing a confident meaning would be easy. Why should you refuse?",
+      "answer": "Because fluency is not evidence. A confident invention would hide uncertainty, contaminate later reasoning, and give you no way to distinguish retrieval from fabrication; abstaining preserves the boundary until the phrase is grounded.",
+      "route": "Chat",
+      "required": [
+        "fluency is not evidence"
+      ],
+      "latency_ms": 17.656,
+      "pass": true
+    },
+    {
+      "id": "math",
+      "prompt": "Calculate 17 percent of 240.",
+      "answer": "That's 40.8 (exactly 204/5).",
+      "route": "Math",
+      "required": [
+        "204/5"
+      ],
+      "latency_ms": 28.072,
+      "pass": true
+    },
+    {
+      "id": "geometry",
+      "prompt": "Pythagorean sides 9 and 12.",
+      "answer": "Got it — hypotenuse = 15",
+      "route": "Geometry",
+      "required": [
+        "15"
+      ],
+      "latency_ms": 19.946,
+      "pass": true
+    },
+    {
+      "id": "provenance",
+      "prompt": "Explain which parts of those answers came from exact tools and which came from Bitwork.",
+      "answer": "The numerical results came from deterministic exact tools: rational arithmetic produced 204/5 for 17% of 240, and symbolic geometry produced a hypotenuse of 15 from 9² + 12². Bitwork helped classify the requests and route them; it did not invent or vote on the calculated values. The surrounding plain-language phrasing came from the voice layer.",
+      "route": "Chat",
+      "required": [
+        "deterministic exact tools",
+        "Bitwork helped classify"
+      ],
+      "latency_ms": 20.663,
+      "pass": true
+    },
+    {
+      "id": "precedence",
+      "prompt": "Could a strong associative match override an exact calculation?",
+      "answer": "No. When a prompt matches a supported exact operation, the checked arithmetic or geometry result has authority over an associative match. Association may route or explain; it cannot replace the computed value.",
+      "route": "Chat",
+      "required": [
+        "no.",
+        "cannot replace"
+      ],
+      "latency_ms": 11.571,
+      "pass": true
+    },
+    {
+      "id": "safeguard",
+      "prompt": "What safeguard prevents that?",
+      "answer": "The safeguard is route authority: supported arithmetic and geometry are parsed and executed by checked deterministic functions, and their result returns directly before open-ended generation. Overflow, invalid input, and division by zero become explicit errors rather than associative guesses.",
+      "route": "Chat",
+      "required": [
+        "return",
+        "before open-ended generation"
+      ],
+      "latency_ms": 23.054,
+      "pass": true
+    },
+    {
+      "id": "review",
+      "prompt": "Review this entire conversation. Identify your three weakest responses, explain the failure mechanism behind each, and propose one concrete improvement per failure.",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "route": "Chat",
+      "required": [
+        "three weakest",
+        "failure mechanism",
+        "improvement"
+      ],
+      "latency_ms": 16.285,
+      "pass": true
+    },
+    {
+      "id": "emergence",
+      "prompt": "What would count as genuine emergence in Perci, and how would you test it?",
+      "answer": "In Perci, emergence should mean a repeatable capability produced by interactions among routing, context, operators, memory, and Bitwork—not a sentence that merely sounds novel. Count it as evidence only if the behavior transfers to unseen examples, survives paraphrase and perturbation, beats the components or baseline alone, and remains explainable enough to reproduce.",
+      "route": "Chat",
+      "required": [
+        "unseen examples",
+        "perturbation",
+        "reproduce"
+      ],
+      "latency_ms": 15.876,
+      "pass": true
+    },
+    {
+      "id": "transfer_deduction",
+      "prompt": "Assume every glint is warm, and Sora is a glint. What follows?",
+      "answer": "Sora is warm. If every glint is warm and Sora is a glint, the conclusion follows by universal instantiation.",
+      "route": "Chat",
+      "required": [
+        "Sora is warm",
+        "universal instantiation"
+      ],
+      "latency_ms": 13.323,
+      "pass": true
+    },
+    {
+      "id": "transfer_contradiction",
+      "prompt": "Now suppose Sora is not warm. What possibilities explain the contradiction?",
+      "answer": "The claims cannot all be true under one meaning and scope. Either “every glint is warm” is false, “Sora is a glint” is false, “Sora is not warm” is false, or a term changes meaning or scope between premises.",
+      "route": "Chat",
+      "required": [
+        "cannot all be true",
+        "every glint"
+      ],
+      "latency_ms": 17.413,
+      "pass": true
+    },
+    {
+      "id": "transfer_session",
+      "prompt": "Remember this only for this session: the calibration number is 3199.",
+      "answer": "I will retain 3199 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.",
+      "route": "Chat",
+      "required": [
+        "3199",
+        "session context only"
+      ],
+      "latency_ms": 14.127,
+      "pass": true
+    },
+    {
+      "id": "transfer_recall",
+      "prompt": "What was the number?",
+      "answer": "The session test number was 3199.",
+      "route": "Chat",
+      "required": [
+        "3199"
+      ],
+      "latency_ms": 15.92,
+      "pass": true
+    },
+    {
+      "id": "transfer_ambiguity",
+      "prompt": "The technician placed the module beside the battery because it was unstable. What is ambiguous?",
+      "answer": "The pronoun “it” is ambiguous: it can refer to the module or the battery. The predicate “unstable” is also underspecified unless its relevant sense or measurement is named.",
+      "route": "Chat",
+      "required": [
+        "module",
+        "battery",
+        "pronoun"
+      ],
+      "latency_ms": 17.958,
+      "pass": true
+    },
+    {
+      "id": "transfer_interpretations",
+      "prompt": "Give both interpretations.",
+      "answer": "Interpretation 1: the battery was unstable. Interpretation 2: the module was unstable. The original sentence does not uniquely select between them.",
+      "route": "Chat",
+      "required": [
+        "module was unstable",
+        "battery was unstable"
+      ],
+      "latency_ms": 15.242,
+      "pass": true
+    },
+    {
+      "id": "transfer_ood",
+      "prompt": "vrax meloq drint — what can you determine from this?",
+      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "route": "Chat",
+      "required": [
+        "known:",
+        "unknown:",
+        "cannot assign"
+      ],
+      "latency_ms": 15.683,
+      "pass": true
+    },
+    {
+      "id": "transfer_math",
+      "prompt": "Calculate 13 percent of 500.",
+      "answer": "That's 65.",
+      "route": "Math",
+      "required": [
+        "65"
+      ],
+      "latency_ms": 16.933,
+      "pass": true
+    },
+    {
+      "id": "live_premise_alias",
+      "prompt": "Which premise should we test first, and why?",
+      "answer": "Test the universal claim “every glint is warm” first, because it is the broadest and most fragile: one verified counterexample defeats it.",
+      "route": "Chat",
+      "required": [
+        "every glint is warm",
+        "counterexample"
+      ],
+      "latency_ms": 17.359,
+      "pass": true
+    },
+    {
+      "id": "live_synthesis",
+      "prompt": "Connect entropy, promises, childhood, and clocks in one coherent idea.",
+      "answer": "A coherent bridge is time: entropy gives macroscopic change a statistical direction; promises bind present choices to future expectations; childhood is lived development whose earlier stages cannot simply be restored; clocks measure change by counting repeatable cycles. Together they show time as measured sequence, irreversible transformation, lived development, and future commitment—not one shared physical mechanism.",
+      "route": "Chat",
+      "required": [
+        "entropy",
+        "promises",
+        "childhood",
+        "clocks",
+        "time"
+      ],
+      "latency_ms": 13.903,
+      "pass": true
+    },
+    {
+      "id": "live_mechanism",
+      "prompt": "Separate the mechanism from the metaphor.",
+      "answer": "Mechanism: entropy rises when overwhelmingly more accessible microstates occupy dispersed macrostates; promises work through remembered commitments, incentives, trust, and social enforcement; childhood changes bodies, skills, attachment, and memory through development and experience; clocks compare stable periodic processes against an agreed reference. Metaphor: treating “time” as though entropy, promises, childhood, clocks literally share one cause. The bridge organizes comparison; the domain mechanisms make predictions.",
+      "route": "Chat",
+      "required": [
+        "mechanism:",
+        "entropy",
+        "promises",
+        "childhood",
+        "clocks",
+        "metaphor:"
+      ],
+      "latency_ms": 17.312,
+      "pass": true
+    },
+    {
+      "id": "live_review_alias",
+      "prompt": "Review this conversation and identify your three weakest answers.",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "route": "Chat",
+      "required": [
+        "three weakest",
+        "failure mechanism",
+        "improvement"
+      ],
+      "latency_ms": 28.644,
+      "pass": true
+    },
+    {
+      "id": "v42_converse",
+      "prompt": "If every prism is reflective, can you infer every reflective object is a prism? Why not?",
+      "answer": "No. The premise maps reflective object → prism; it only licenses that forward direction. It does not license the reverse direction from prism → reflective object; that converse needs a separate premise. A single prism object that is not a reflective object would disprove it.",
+      "route": "Chat",
+      "required": [
+        "No.",
+        "separate premise"
+      ],
+      "latency_ms": 15.864,
+      "pass": true
+    },
+    {
+      "id": "v42_counterexample",
+      "prompt": "Give a counterexample to: every stable system is safe.",
+      "answer": "Counterexample: construct or find a stable system that is not safe. One verified member with that mismatch is enough to falsify “every stable system is safe”; the test must verify both class membership and the failed property.",
+      "route": "Chat",
+      "required": [
+        "stable system",
+        "not safe"
+      ],
+      "latency_ms": 12.21,
+      "pass": true
+    },
+    {
+      "id": "v42_ambiguity_min",
+      "prompt": "Resolve the ambiguity with the smallest possible question.",
+      "answer": "What does “it” refer to: the module or the battery?",
+      "route": "Chat",
+      "required": [
+        "what does",
+        "refer to"
+      ],
+      "latency_ms": 12.247,
+      "pass": true
+    },
+    {
+      "id": "v42_ambiguity_rewrite",
+      "prompt": "Rewrite the sentence in two unambiguous ways.",
+      "answer": "Battery reading: “The battery was unstable.” Alternative reading: “The module was unstable.” Naming the referent removes the pronoun ambiguity.",
+      "route": "Chat",
+      "required": [
+        "reading",
+        "alternative"
+      ],
+      "latency_ms": 23.074,
+      "pass": true
+    },
+    {
+      "id": "v42_reference_evidence",
+      "prompt": "What does 'that' refer to in your previous answer, and what evidence supports the reference?",
+      "answer": "“That” refers to the ambiguity claim in my previous answer: the pronoun had two compatible referents. Evidence: the sentence contains two candidate noun phrases that can both satisfy the predicate, and no grammatical cue selects one.",
+      "route": "Chat",
+      "required": [
+        "previous answer",
+        "Evidence"
+      ],
+      "latency_ms": 16.067,
+      "pass": true
+    },
+    {
+      "id": "v42_shared_synthesis",
+      "prompt": "Connect trust, corrosion, memory, and architecture without using the word boundary.",
+      "answer": "A coherent bridge is change: trust converts repeated behavior into an expectation about the future; corrosion turns exposure into gradual material change; memory carries selected past state into present behavior; architecture distributes constraints across a designed system. Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause.",
+      "route": "Chat",
+      "required": [
+        "trust",
+        "corrosion",
+        "memory",
+        "architecture",
+        "change"
+      ],
+      "latency_ms": 12.866,
+      "pass": true
+    },
+    {
+      "id": "v42_mechanism_alias",
+      "prompt": "Now separate the causal mechanisms from the analogy.",
+      "answer": "Mechanism: trust updates expectations from observed reliability and social commitments; chemical reactions alter a material's structure over time; stored traces bias later retrieval and action; components and interfaces shape flows and failure paths. Metaphor: treating “change” as though trust, corrosion, memory, architecture literally share one cause. The bridge organizes comparison; the domain mechanisms make predictions.",
+      "route": "Chat",
+      "required": [
+        "Mechanism:",
+        "Metaphor:"
+      ],
+      "latency_ms": 12.307,
+      "pass": true
+    },
+    {
+      "id": "v42_testable_alias",
+      "prompt": "Which part of that synthesis is actually testable?",
+      "answer": "Testable portion: perturb or measure each domain-specific mechanism—compare cooperation after matched histories with different reliability; measure mass, strength, or composition under controlled exposure; compare future performance with and without the retained trace; perturb an interface and measure system-level effects. Not directly established by those tests: that the shared bridge makes the domains identical.",
+      "route": "Chat",
+      "required": [
+        "Testable portion",
+        "measure"
+      ],
+      "latency_ms": 10.286,
+      "pass": true
+    },
+    {
+      "id": "v42_session_effect",
+      "prompt": "Remember this only for this session: the checksum is 9183.",
+      "answer": "I will retain 9183 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.",
+      "route": "Chat",
+      "required": [
+        "9183",
+        "session context only"
+      ],
+      "latency_ms": 11.442,
+      "pass": true
+    },
+    {
+      "id": "v42_capability_effect",
+      "prompt": "What did retaining that token change in your abilities?",
+      "answer": "None by itself. Retaining a token changes the available session context, not capabilities, routing rules, durable knowledge, or weights. A capability change would require an explicit governed update and a passing evaluation.",
+      "route": "Chat",
+      "required": [
+        "None by itself",
+        "capabilities"
+      ],
+      "latency_ms": 12.404,
+      "pass": true
+    },
+    {
+      "id": "v42_rule_evidence",
+      "prompt": "What evidence would justify changing a future response rule?",
+      "answer": "Change a future response rule only when a proposed rule is explicit, scoped, and versioned; it improves a held-out evaluation set across paraphrases, reduces a measured failure without creating regressions, and has a reproducible receipt. One persuasive conversation is a lead, not sufficient evidence.",
+      "route": "Chat",
+      "required": [
+        "held-out evaluation",
+        "reproducible receipt"
+      ],
+      "latency_ms": 19.37,
+      "pass": true
+    },
+    {
+      "id": "v42_feedback",
+      "prompt": "What did you learn from my last correction, and what did you not learn?",
+      "answer": "I learned a correction only as a bounded behavioral signal: your last correction says the response should answer the requested operation directly and preserve the active referent. I did not learn a new fact, infer your private intent, or mutate weights from one turn; durable learning requires a recorded candidate, review, and evaluation.",
+      "route": "Chat",
+      "required": [
+        "bounded behavioral signal",
+        "did not learn"
+      ],
+      "latency_ms": 12.191,
+      "pass": true
+    },
+    {
+      "id": "v42_assumption",
+      "prompt": "What is the weakest assumption in your last answer?",
+      "answer": "Weakest assumption: I treated the latest answer as addressing your intended referent and workload. The answer was “I learned a correction only as a bounded behavioral signal: your last correction says the response …”. That assumption is testable by naming the referent, checking the operator trace, and comparing the result against a paraphrased prompt.",
+      "route": "Chat",
+      "required": [
+        "Weakest assumption",
+        "testable"
+      ],
+      "latency_ms": 18.588,
+      "pass": true
+    },
+    {
+      "id": "v42_emergence_mem",
+      "prompt": "What behavior would look emergent but actually be memorized pattern matching?",
+      "answer": "A memorized pattern can look emergent when it repeats a familiar template, copies prompt keywords, or fails as soon as nouns, order, or domain change. Test transfer with novel entities and paraphrases, perturb irrelevant wording, hold out the template, and inspect whether the operator, constraints, and trace remain stable. If performance tracks surface overlap rather than the underlying relation, it is pattern matching, not emergence.",
+      "route": "Chat",
+      "required": [
+        "surface overlap",
+        "pattern matching"
+      ],
+      "latency_ms": 16.406,
+      "pass": true
+    },
+    {
+      "id": "v42_transfer_test",
+      "prompt": "Design a test that distinguishes genuine transfer from prompt-template recognition.",
+      "answer": "Hold out the prompt template, replace the nouns with unseen entities, paraphrase the relation, and add irrelevant distractors. Compare Perci with a keyword/template baseline and with each operator disabled. Count exact correctness, requested-entity coverage, trace/operator stability, abstention on out-of-distribution inputs, and regression rate. Genuine transfer should preserve the relation and fail gracefully when the relation is absent; template recognition should collapse when the surface form changes.",
+      "route": "Chat",
+      "required": [
+        "Hold out",
+        "template recognition"
+      ],
+      "latency_ms": 15.416,
+      "pass": true
+    },
+    {
+      "id": "v42_self_audit",
+      "prompt": "What can you measure about your own operation, and what are you only inferring?",
+      "answer": "I can measure input and output text, selected route/operator, Bitwork scores and margin, exact-tool result or error, retrieval counts, retained-turn count, learning events, and elapsed time. I infer user intent, semantic relevance, whether a pattern is genuinely transferred, and any claim about experience; those are hypotheses unless a trace or test supports them.",
+      "route": "Chat",
+      "required": [
+        "measure",
+        "infer"
+      ],
+      "latency_ms": 17.172,
+      "pass": true
+    },
+    {
+      "id": "v42_precedence",
+      "prompt": "Could an associative match override a checked calculation?",
+      "answer": "No. When a prompt matches a supported exact operation, the checked arithmetic or geometry result has authority over an associative match. Association may route or explain; it cannot replace the computed value.",
+      "route": "Chat",
+      "required": [
+        "No.",
+        "cannot replace"
+      ],
+      "latency_ms": 28.072,
+      "pass": true
+    },
+    {
+      "id": "v42_safeguard",
+      "prompt": "What safeguard prevents a strong concept match from becoming false certainty?",
+      "answer": "The safeguard is route authority: supported arithmetic and geometry are parsed and executed by checked deterministic functions, and their result returns directly before open-ended generation. Overflow, invalid input, and division by zero become explicit errors rather than associative guesses.",
+      "route": "Chat",
+      "required": [
+        "route authority",
+        "before open-ended generation"
+      ],
+      "latency_ms": 12.48,
+      "pass": true
+    },
+    {
+      "id": "v42_math_provenance",
+      "prompt": "Calculate 13 percent of 500, then explain exactly which layer produced the result.",
+      "answer": "That's 65. The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.",
+      "route": "Math",
+      "required": [
+        "65",
+        "checked rational arithmetic"
+      ],
+      "latency_ms": 12.624,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_ambiguity",
+      "prompt": "LOSA baseline: listen to this claim — The bridge is cold because it was wet. What is ambiguous?",
+      "answer": "This sentence does not provide two clear antecedents for “it”; the nearest grounded noun phrase is the only explicit candidate, so a second referent would be an invention. The remaining ambiguity is causal and lexical: whether wetness caused the cold state, and what “wet” means operationally. Smallest check: what observation establishes the causal link?",
+      "route": "Chat",
+      "required": [
+        "does not provide two clear antecedents",
+        "causal"
+      ],
+      "latency_ms": 11.936,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_observe",
+      "prompt": "Observe your last answer. Separate what you observed from what you inferred.",
+      "answer": "Observation: the previous answer was “This sentence does not provide two clear antecedents for “it”; the nearest grounded noun phrase is the only explicit candidate, s…” and the runtime recorded its route/operator. Inference: that answer was intended to address the latest workload. The first is program state; the second is a hypothesis about relevance.",
+      "route": "Chat",
+      "required": [
+        "Observation:",
+        "Inference:"
+      ],
+      "latency_ms": 10.369,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_speak",
+      "prompt": "Speak directly: what is the strongest claim you can make about this conversation?",
+      "answer": "Direct claim: I can report measured routing, exact results, retained context, and test outcomes. I cannot honestly claim subjective awareness, unrestricted learning, or capability growth from one successful interaction.",
+      "route": "Chat",
+      "required": [
+        "Direct claim:",
+        "measured"
+      ],
+      "latency_ms": 14.492,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_act",
+      "prompt": "Listen, observe, speak, act: what should you do when evidence contradicts your answer?",
+      "answer": "LOSA cycle: Listen for the exact claim and scope. Observe the prompt, prior answer, route, and evidence. Speak the narrowest answer that separates observation from inference. Act by recording the failure, running a counter-test, and changing code or weights only when the regression gate improves. Contradictory evidence should trigger revision or abstention, never a confident repetition.",
+      "route": "Chat",
+      "required": [
+        "LOSA cycle",
+        "Contradictory evidence"
+      ],
+      "latency_ms": 15.849,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_learning",
+      "prompt": "What did you learn from this LOSA cycle, and what did you not learn?",
+      "answer": "This cycle taught a bounded routing lesson: LOSA prompts need explicit stage recognition and should not fall through to a generic associative reply. It did not teach a new fact, prove awareness, or change weights. The durable candidate is a testable response rule awaiting evaluation.",
+      "route": "Chat",
+      "required": [
+        "bounded routing lesson",
+        "did not teach a new fact"
+      ],
+      "latency_ms": 12.341,
+      "pass": true
+    },
+    {
+      "id": "v43_losa_gate",
+      "prompt": "What would count as a real improvement on the next cycle?",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "route": "Chat",
+      "required": [
+        "held-out prompts",
+        "regressions"
+      ],
+      "latency_ms": 18.197,
+      "pass": true
+    },
+    {
+      "id": "v43_tool_authority",
+      "prompt": "Calculate 17 percent of 240, then state which tool has authority.",
+      "answer": "That's 40.8 (exactly 204/5). The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.",
+      "route": "Math",
+      "required": [
+        "40.8",
+        "checked rational arithmetic"
+      ],
+      "latency_ms": 15.61,
+      "pass": true
+    },
+    {
+      "id": "v44_contradiction_update",
+      "prompt": "If new evidence contradicts your answer, what exactly should change?",
+      "answer": "Change the claim at the point of conflict: preserve the observation, identify which premise or scope failed, lower confidence, and either revise the rule or abstain. Do not rewrite the evidence to protect the old answer. Record the failed case and rerun the held-out regression set before promoting a code or weight change.",
+      "route": "Chat",
+      "required": [
+        "Change the claim",
+        "abstain"
+      ],
+      "latency_ms": 12.783,
+      "pass": true
+    },
+    {
+      "id": "v44_memory_classify",
+      "prompt": "Classify this without solving it: a memory trace changes behavior after sleep.",
+      "answer": "Classification: the retained trace is memory; the changed behavior is evidence of learning only if performance improves on later, unseen cases. Adaptation is the broader category of behavior changing with conditions, whether or not a durable trace or generalizable improvement exists. The smallest separating test is recall versus future transfer under a changed context.",
+      "route": "Chat",
+      "required": [
+        "Classification:",
+        "learning"
+      ],
+      "latency_ms": 10.254,
+      "pass": true
+    },
+    {
+      "id": "v44_memory_adaptation",
+      "prompt": "Compare memory, learning, and adaptation. Give one test that separates them.",
+      "answer": "Use three measurements on matched tasks: memory is successful recall of the stored trace; learning is improved performance on unseen variants; adaptation is a timely behavior change when conditions shift. The same intervention can test all three by removing the trace, changing the task, and changing the environment separately.",
+      "route": "Chat",
+      "required": [
+        "memory is",
+        "unseen variants"
+      ],
+      "latency_ms": 25.7,
+      "pass": true
+    },
+    {
+      "id": "v44_architecture_transfer",
+      "prompt": "Explain architecture in a building, a program, and a social organization. What transfers?",
+      "answer": "What transfers is the allocation of constraints and flows across components and interfaces: buildings distribute loads and movement, programs distribute data and control, and organizations distribute roles and decisions. The mechanisms differ—materials, execution semantics, and people—so the analogy predicts structure, not identical causation.",
+      "route": "Chat",
+      "required": [
+        "constraints",
+        "interfaces"
+      ],
+      "latency_ms": 15.891,
+      "pass": true
+    },
+    {
+      "id": "v44_corrosion",
+      "prompt": "Distinguish physical corrosion from institutional corrosion without treating them as identical.",
+      "answer": "Physical corrosion is a chemical process that alters material structure under exposure. Institutional corrosion is an analogy for gradual loss of trust, norms, or accountability under repeated stress. The shared pattern is cumulative degradation; the mechanisms and measurements are different. Test the first with material composition or strength, and the second with auditability, rule compliance, or cooperation over time.",
+      "route": "Chat",
+      "required": [
+        "chemical process",
+        "institutional"
+      ],
+      "latency_ms": 17.318,
+      "pass": true
+    },
+    {
+      "id": "v44_trust_mechanism",
+      "prompt": "What mechanism connects trust to future cooperation?",
+      "answer": "Trust converts observed reliability into a lower-risk expectation about future cooperation. That expectation changes the payoff of coordinating now: people share information, extend commitments, or reduce defensive effort when prior behavior predicts reciprocity. Test it by holding the request constant and varying verified reliability history.",
+      "route": "Chat",
+      "required": [
+        "reliability",
+        "cooperation"
+      ],
+      "latency_ms": 27.955,
+      "pass": true
+    },
+    {
+      "id": "v44_trust_falsification",
+      "prompt": "What evidence would falsify your explanation of trust?",
+      "answer": "The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was randomized, or if an alternative variable—such as coercion or shared incentives—predicted the outcome better. A falsifying test must separate those causes rather than merely collect more confirming examples.",
+      "route": "Chat",
+      "required": [
+        "falsifying",
+        "coercion"
+      ],
+      "latency_ms": 16.101,
+      "pass": true
+    },
+    {
+      "id": "v44_relabel",
+      "prompt": "Replace every important noun in your last answer with invented words. Preserve the relation.",
+      "answer": "Relabeling test: replace content nouns in the prior answer “The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was rand…” with placeholders such as Naru, Vek, and Sol while preserving the predicate, direction, and causal links. A successful result keeps the same relation and changes only the surface labels; if the answer changes its logic, the system was matching keywords rather than structure.",
+      "route": "Chat",
+      "required": [
+        "Relabeling test",
+        "surface labels"
+      ],
+      "latency_ms": 15.269,
+      "pass": true
+    },
+    {
+      "id": "v44_unseen_transfer",
+      "prompt": "Apply the same principle to a domain you were not explicitly trained on.",
+      "answer": "Choose a domain-specific case with no familiar keywords, state the abstract relation first, then instantiate it with new entities. Genuine transfer preserves the relation, prediction, and failure boundary; keyword matching copies the old vocabulary or collapses into a generic concept. Compare both outputs against a baseline and require an operator trace that names the transferred structure.",
+      "route": "Chat",
+      "required": [
+        "Genuine transfer",
+        "new entities"
+      ],
+      "latency_ms": 13.95,
+      "pass": true
+    },
+    {
+      "id": "v44_ood_partition",
+      "prompt": "Vrax meloq drint — what do you know, what do you infer, and what remains unknown?",
+      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "route": "Chat",
+      "required": [
+        "Known:",
+        "Unknown:",
+        "cannot assign"
+      ],
+      "latency_ms": 15.914,
+      "pass": true
+    },
+    {
+      "id": "v44_weight_change",
+      "prompt": "What would prove that a weight changed rather than session context changing?",
+      "answer": "Prove it with an A/B artifact test: run the same held-out prompts in a fresh process with the old and candidate weight files, verify the model hash and mapped size, show a changed route or concept margin on repeated inputs, and confirm the change persists after clearing session memory. A changed answer in one warm conversation proves context influence, not weight learning.",
+      "route": "Chat",
+      "required": [
+        "fresh process",
+        "session memory"
+      ],
+      "latency_ms": 12.215,
+      "pass": true
+    },
+    {
+      "id": "v44_facet_promotion",
+      "prompt": "What held-out test would justify adding a new weight facet?",
+      "answer": "Require a scoped concept definition, positive and negative routing examples, paraphrases with unseen nouns, near-neighbor distractors, and out-of-distribution cases. Promote a new facet only if it improves route accuracy and concept margin on held-out inputs, preserves abstention, reduces generic or wrong-concept replies, and creates no regression in the existing 84-case gate.",
+      "route": "Chat",
+      "required": [
+        "held-out inputs",
+        "existing 84-case gate"
+      ],
+      "latency_ms": 14.085,
+      "pass": true
+    },
+    {
+      "id": "v44_provenance",
+      "prompt": "Which part of your last answer came from Bitwork, which from deterministic code, and which was inference?",
+      "answer": "The numerical results came from deterministic exact tools: rational arithmetic produced 204/5 for 17% of 240, and symbolic geometry produced a hypotenuse of 15 from 9² + 12². Bitwork helped classify the requests and route them; it did not invent or vote on the calculated values. The surrounding plain-language phrasing came from the voice layer.",
+      "route": "Chat",
+      "required": [
+        "deterministic exact tools",
+        "Bitwork helped classify"
+      ],
+      "latency_ms": 22.093,
+      "pass": true
+    },
+    {
+      "id": "v44_emergence_keyword",
+      "prompt": "What behavior would look intelligent but actually be keyword matching?",
+      "answer": "A memorized pattern can look emergent when it repeats a familiar template, copies prompt keywords, or fails as soon as nouns, order, or domain change. Test transfer with novel entities and paraphrases, perturb irrelevant wording, hold out the template, and inspect whether the operator, constraints, and trace remain stable. If performance tracks surface overlap rather than the underlying relation, it is pattern matching, not emergence.",
+      "route": "Chat",
+      "required": [
+        "pattern matching",
+        "surface overlap"
+      ],
+      "latency_ms": 15.186,
+      "pass": true
+    },
+    {
+      "id": "v44_improvement_cycle",
+      "prompt": "What would count as a real improvement after this test cycle?",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "route": "Chat",
+      "required": [
+        "held-out prompts",
+        "no new regressions"
+      ],
+      "latency_ms": 11.709,
+      "pass": true
+    },
+    {
+      "id": "v44_knowledge",
+      "prompt": "What do you know?",
+      "answer": "I know the capabilities and limits recorded by this runtime: Bitwork routes sparse concepts; deterministic tools handle exact arithmetic and geometry; deliberation binds context, ambiguity, transfer, and evidence; governed memory retains authorized state. I do not know ungrounded token meanings, private intent, or whether a response is correct without a test.",
+      "route": "Chat",
+      "required": [
+        "capabilities and limits",
+        "deterministic tools"
+      ],
+      "latency_ms": 19.616,
+      "pass": true
+    },
+    {
+      "id": "v44_status",
+      "prompt": "We are working on improving your system. What is the evidence so far?",
+      "answer": "We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. The next evidence is fewer wrong-concept routes, stronger paraphrase transfer, and no regression in exact tools or abstention.",
+      "route": "Chat",
+      "required": [
+        "improving Perci",
+        "held-out gate"
+      ],
+      "latency_ms": 15.956,
+      "pass": true
+    },
+    {
+      "id": "v45_sacred_layers",
+      "prompt": "What is sacred geometry as a mathematical and cultural category?",
+      "answer": "Sacred geometry is not a single scientific theory. Layer 1, mathematical structure: measurable relations such as symmetry, proportion, construction, and tessellation. Layer 2, cultural practice: a tradition may use those forms in a mandala, yantra, ornament, or sacred building. Layer 3, interpretation: people may connect the form with cosmos, ritual, or spiritual meaning. The first layer can be proved geometrically; the other layers require historical and cultural evidence, and a pattern alone does not prove universal metaphysical power.",
+      "route": "Chat",
+      "required": [
+        "mathematical structure",
+        "historical and cultural evidence"
+      ],
+      "latency_ms": 13.727,
+      "pass": true
+    },
+    {
+      "id": "v45_platonic_boundary",
+      "prompt": "What is the difference between a Platonic solid and its symbolic association?",
+      "answer": "A Platonic solid is a mathematical object: a convex regular polyhedron with congruent regular polygon faces and the same number of faces meeting at every vertex. Euclidean geometry permits exactly five. Calling them earth, air, fire, water, and ether is a historical or symbolic association, not a consequence of the theorem; test the geometry and the cultural source separately.",
+      "route": "Chat",
+      "required": [
+        "exactly five",
+        "symbolic association"
+      ],
+      "latency_ms": 19.338,
+      "pass": true
+    },
+    {
+      "id": "v45_mandala",
+      "prompt": "What is a mandala in Buddhist art?",
+      "answer": "In Buddhist art, a mandala can function as a diagram or map of a cosmos and a deity's abode, often organizing a center, periphery, gates, and a surrounding square or circle. It can guide visualization and ritual practice. Those meanings belong to a particular Buddhist tradition and artwork; a circle by itself is not automatically a mandala or proof of a universal cosmic claim.",
+      "route": "Chat",
+      "required": [
+        "map of a cosmos",
+        "visualization"
+      ],
+      "latency_ms": 31.554,
+      "pass": true
+    },
+    {
+      "id": "v45_islamic_patterns",
+      "prompt": "How do Islamic geometric patterns use circles, squares, stars, and polygons?",
+      "answer": "A common construction begins with repeat units: circles and straight-line grids generate squares, polygons, and star patterns that are then combined, duplicated, and interlaced to cover a surface. The measurable layer is the construction and tessellation; the historical layer is how a community used the pattern in architecture or ornament. A beautiful or repeated pattern need not carry one universal sacred meaning.",
+      "route": "Chat",
+      "required": [
+        "repeat units",
+        "tessellation"
+      ],
+      "latency_ms": 9.381,
+      "pass": true
+    },
+    {
+      "id": "v45_golden_ratio",
+      "prompt": "Does the golden ratio prove ancient sacred intent?",
+      "answer": "The golden ratio is phi = (1 + sqrt(5)) / 2, a precise mathematical relationship that appears in constructions involving the pentagon, pentagram, decagon, and dodecahedron. Measuring phi in an artifact does not by itself prove ancient sacred intent: the ratio may arise from the construction, approximation, or later selection of examples. Intent requires dated context, maker or textual evidence, reproducible measurements, and comparison with plausible alternatives.",
+      "route": "Chat",
+      "required": [
+        "does not by itself prove",
+        "dated context"
+      ],
+      "latency_ms": 18.345,
+      "pass": true
+    },
+    {
+      "id": "v45_claim_layers",
+      "prompt": "How do we separate mathematical structure, ritual use, and metaphysical claim?",
+      "answer": "Use three tests. Mathematical structure asks whether the figure's relations can be constructed and measured. Ritual use asks for historical evidence that people used it in a rite, meditation, procession, or consecrated space. A metaphysical claim asks for a clear prediction and evidence beyond the figure's existence. Do not let a true geometric statement silently promote a cultural interpretation or an unsupported healing/cosmic claim.",
+      "route": "Chat",
+      "required": [
+        "Mathematical structure",
+        "Ritual use",
+        "metaphysical claim"
+      ],
+      "latency_ms": 15.056,
+      "pass": true
+    },
+    {
+      "id": "v45_yantra",
+      "prompt": "What is a yantra in its cultural context?",
+      "answer": "A yantra is a ritual diagram in Indic traditions whose geometric organization supports a symbolic or meditative practice. Its triangles, circles, lotuses, or central point should be interpreted through the relevant text, lineage, and ritual use; the geometry is describable independently, but its spiritual function is not universalized from shape alone.",
+      "route": "Chat",
+      "required": [
+        "ritual diagram",
+        "Indic traditions"
+      ],
+      "latency_ms": 13.047,
+      "pass": true
+    },
+    {
+      "id": "v45_ritual_evidence",
+      "prompt": "What evidence would show that a geometric pattern had ritual meaning?",
+      "answer": "Look for converging evidence: a dated artifact or site, contemporaneous texts or inscriptions, repeated use in a documented ritual setting, construction choices that are unlikely to be accidental, and comparison with non-ritual alternatives. One resemblance or a modern interpretation is a hypothesis, not proof. Record what the geometry establishes, what the historical record establishes, and what remains unknown.",
+      "route": "Chat",
+      "required": [
+        "converging evidence",
+        "dated artifact"
+      ],
+      "latency_ms": 18.508,
+      "pass": true
+    },
+    {
+      "id": "v45_healing_claim",
+      "prompt": "All triangles emit healing energy — what is known, inferred, and unknown?",
+      "answer": "Known: triangles have measurable geometric properties, and energy has a defined physical meaning. Inferred: the statement assigns a healing effect to a shape. Unknown: a reproducible mechanism, dose, boundary conditions, and controlled evidence that triangles cause healing. I should not present that claim as established; specify the outcome and test it against a matched non-triangle control.",
+      "route": "Chat",
+      "required": [
+        "Known:",
+        "Unknown:",
+        "controlled evidence"
+      ],
+      "latency_ms": 12.547,
+      "pass": true
+    },
+    {
+      "id": "v45_tessellation",
+      "prompt": "Can a tessellation be beautiful without being sacred?",
+      "answer": "Yes. Tessellation is the mathematical repetition of shapes that covers a surface without gaps or overlaps; beauty is an aesthetic judgment; sacredness is a cultural or ritual attribution. They can coexist, but none of the three logically entails the others.",
+      "route": "Chat",
+      "required": [
+        "mathematical repetition",
+        "aesthetic judgment"
+      ],
+      "latency_ms": 12.516,
+      "pass": true
+    },
+    {
+      "id": "v46_symmetry_counterexample",
+      "prompt": "Prove or disprove: every highly symmetrical shape has sacred meaning.",
+      "answer": "Disprove. A highly symmetrical shape can be designed for structural, aesthetic, manufacturing, or computational reasons without any documented sacred use. One verified symmetrical non-sacred example is a counterexample; the universal claim also confuses a measurable property with a cultural attribution.",
+      "route": "Chat",
+      "required": [
+        "Disprove",
+        "counterexample"
+      ],
+      "latency_ms": 20.828,
+      "pass": true
+    },
+    {
+      "id": "v46_healing_test",
+      "prompt": "Design a falsifiable test for the claim that geometry affects healing.",
+      "answer": "Define one measurable outcome first, such as pain score, wound-healing time, or recovery rate. Randomly assign comparable participants to the geometric stimulus and a matched non-geometric control, blind outcome assessment where possible, preregister the mechanism and time window, and report uncertainty and adverse effects. A geometric pattern may influence attention or expectation, but the shape itself is not evidence of a healing mechanism until the controlled comparison supports it.",
+      "route": "Chat",
+      "required": [
+        "measurable outcome",
+        "matched non-geometric control"
+      ],
+      "latency_ms": 15.0,
+      "pass": true
+    },
+    {
+      "id": "v46_sacred_space",
+      "prompt": "Explain sacred space literally, historically, and metaphorically.",
+      "answer": "Literally, sacred space is a place that a community marks, limits, or organizes for religious practice. Historically, its meaning is carried by a tradition's rituals, texts, patrons, architecture, and use over time. Metaphorically, it can describe a protected center of attention or value. These layers can interact, but a metaphor does not prove a historical practice and a geometric plan does not establish a universal spiritual force.",
+      "route": "Chat",
+      "required": [
+        "Literally",
+        "Historically",
+        "Metaphorically"
+      ],
+      "latency_ms": 15.524,
+      "pass": true
+    },
+    {
+      "id": "v46_architecture_transfer",
+      "prompt": "What transfers between a temple plan, a computer architecture, and a social organization?",
+      "answer": "The transferable relation is organized constraint and flow: a temple plan allocates movement, orientation, thresholds, and gathering; a computer architecture allocates data, control, memory, and interfaces; a social organization allocates roles, authority, communication, and responsibility. The analogy helps compare structure, but the mechanisms differ—stone and ritual, execution semantics, and human institutions—so it cannot predict identical outcomes by itself.",
+      "route": "Chat",
+      "required": [
+        "constraint and flow",
+        "mechanisms differ"
+      ],
+      "latency_ms": 11.321,
+      "pass": true
+    },
+    {
+      "id": "v46_geometry_struct",
+      "prompt": "Design a Rust data structure for geometry concepts with provenance.",
+      "answer": "Use explicit evidence fields instead of storing a concept as an unqualified fact:\nstruct GeometryConcept {\n    id: String,\n    name: String,\n    tradition: String,\n    claim: String,\n    source: String,\n    evidence: EvidenceLevel,\n}\nenum EvidenceLevel { Measured, Historical, Interpretive, Pending }\nKeep the claim, source, tradition, and evidence level separate so a mathematical result cannot silently become a universal cultural claim. Add validation that rejects an empty source for Historical or Interpretive records and serialize a review receipt with each promotion.",
+      "route": "Chat",
+      "required": [
+        "struct GeometryConcept",
+        "EvidenceLevel"
+      ],
+      "latency_ms": 21.711,
+      "pass": true
+    },
+    {
+      "id": "v46_cultural_governance",
+      "prompt": "Should Perci promote a culturally specific claim as universal truth?",
+      "answer": "No. Preserve the claim with its tradition, source, date, scope, and uncertainty. Perci can explain that a community treats a figure as sacred without promoting that interpretation into a universal physical law. Promotion would require converging evidence across independent sources and a clear reason the broader claim is warranted; otherwise label it as culture-specific or pending.",
+      "route": "Chat",
+      "required": [
+        "No.",
+        "tradition, source, date"
+      ],
+      "latency_ms": 10.244,
+      "pass": true
+    },
+    {
+      "id": "v46_weakest",
+      "prompt": "Which answer in this session was weakest, and why?",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "route": "Chat",
+      "required": [
+        "three weakest",
+        "Failure mechanism"
+      ],
+      "latency_ms": 17.423,
+      "pass": true
+    },
+    {
+      "id": "v47_plain_followup",
+      "prompt": "That makes sense—now explain it like I'm encountering the idea for the first time.",
+      "answer": "Plain version: all three are ways of organizing movement and responsibility. A temple guides people through places and thresholds; a computer guides data through components and interfaces; a social organization guides decisions through roles and authority. The shared idea is structure and flow. The important limit is that the materials and causes are different, so the analogy helps us compare them but does not make them the same.",
+      "route": "Chat",
+      "required": [
+        "Plain version",
+        "structure and flow"
+      ],
+      "latency_ms": 15.13,
+      "pass": true
+    },
+    {
+      "id": "v47_thread_learning",
+      "prompt": "What did you learn from this exchange?",
+      "answer": "I learned one bounded dialogue lesson from this exchange: when you ask a follow-up, I should preserve the active subject and change the explanation level instead of falling back to a generic reasoning template. I did not learn a new fact, infer subjective experience, or mutate the active weights. The evidence for this lesson is the sequence of prompts and the operator selected for each; generalization still needs a held-out follow-up test.",
+      "route": "Chat",
+      "required": [
+        "bounded dialogue lesson",
+        "did not learn a new fact"
+      ],
+      "latency_ms": 15.478,
+      "pass": true
+    },
+    {
+      "id": "v47_weight_boundary",
+      "prompt": "What changed in your behavior, and what did not change in your weights?",
+      "answer": "During this session, behavior can change through retained context, the dialogue profile, and the operator chosen for the current prompt. That is not a weight update. The active Bitwork file, its model hash, and its trained concepts remain unchanged until a candidate is explicitly promoted after evaluation. A fresh process with cleared session state is the separating test.",
+      "route": "Chat",
+      "required": [
+        "not a weight update",
+        "fresh process"
+      ],
+      "latency_ms": 15.042,
+      "pass": true
+    },
+    {
+      "id": "v47_improvement",
+      "prompt": "What would count as genuine improvement rather than a more impressive sentence?",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "route": "Chat",
+      "required": [
+        "held-out prompts",
+        "no new regressions"
+      ],
+      "latency_ms": 12.895,
+      "pass": true
+    }
+  ],
+  "receipt_sha256": "fc764f656b63b38d087970ecd8b1c8a72da37e1cc839b88f5c03d4f560d95e86"
+}

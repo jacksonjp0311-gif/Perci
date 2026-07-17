@@ -1,0 +1,27 @@
+{
+  "at": "2026-07-15T17:54:23.451859+00:00",
+  "tasks": 24,
+  "wins": 24,
+  "win_rate": 1.0,
+  "reason_score_avg": 0.7,
+  "reason_score_deep_avg": 0.946,
+  "inject_labels": {
+    "greeting": 1,
+    "identity": 3,
+    "english": 1,
+    "logic": 3,
+    "math": 2,
+    "geometry": 2,
+    "memory": 3,
+    "code": 10,
+    "governance": 6,
+    "planning": 4,
+    "explanation": 1,
+    "systems": 40,
+    "science": 4,
+    "comparison": 2,
+    "general": 12
+  },
+  "traces": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\traces.jsonl",
+  "inject": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\inject_prompts.json"
+}

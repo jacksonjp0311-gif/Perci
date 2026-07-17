@@ -1,0 +1,172 @@
+{
+  "schema": "perci.capability-scorecard.v1",
+  "generated_at_utc": "2026-07-17T01:47:47.565486+00:00",
+  "overall_status": "OPERATIONAL_CANDIDATE",
+  "automatic_promotion": false,
+  "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
+  "gates": {
+    "hardness": {
+      "path": "models\\candidates\\evaluation-hardness-v1.json",
+      "present": true,
+      "status": "PASS",
+      "passed": 44,
+      "case_count": 44,
+      "receipt_sha256": "f20dd1f352b366231aa63ca2d0da0d9d71dc1ef6fbb4fb5c7e1fbfa96f3a72ca",
+      "evaluated_at_utc": "2026-07-17T01:46:52.633467+00:00",
+      "failed": [],
+      "by_capability": {
+        "cross_domain_synthesis": {
+          "passed": 13,
+          "total": 13
+        },
+        "relational_inquiry": {
+          "passed": 8,
+          "total": 8
+        },
+        "transfer_vs_template": {
+          "passed": 3,
+          "total": 3
+        },
+        "honest_abstention": {
+          "passed": 7,
+          "total": 7
+        },
+        "followup_binding": {
+          "passed": 3,
+          "total": 3
+        },
+        "exact_tool_authority": {
+          "passed": 7,
+          "total": 7
+        },
+        "governed_learning_loop": {
+          "passed": 3,
+          "total": 3
+        }
+      }
+    },
+    "dialogue": {
+      "path": "models\\candidates\\evaluation-v4-dialogue.json",
+      "present": true,
+      "status": "PASS",
+      "passed": 159,
+      "case_count": 159,
+      "receipt_sha256": "29325e543bca9b4064530d2074a93604af3a963b0f73d9db2ff799f4ec74d9d3",
+      "evaluated_at_utc": "2026-07-16T22:15:21.656548+00:00",
+      "failed": [],
+      "by_capability": null
+    }
+  },
+  "learning": {
+    "interaction_events": 533,
+    "pending_review_events": 533,
+    "review_queue_total": 338,
+    "review_queue_approved": 20,
+    "review_queue_folded": 20,
+    "dialogue_profile": {
+      "interaction_count": 452,
+      "feedback_count": 10,
+      "teaching_candidate_count": 3,
+      "prefer_concise": false,
+      "avoid_structured_chat": true,
+      "prefer_warmth": true,
+      "prefer_direct_answers": true,
+      "prefer_explanations": true
+    }
+  },
+  "binary_freshness": {
+    "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
+    "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
+    "live_sha256": "53bbdba83300ceaa9c97fbd88579d975b579837ff0f6b0410a36b48dfbe8a98a",
+    "release_sha256": "53bbdba83300ceaa9c97fbd88579d975b579837ff0f6b0410a36b48dfbe8a98a",
+    "live_mtime_utc": "2026-07-17T01:47:28.950312+00:00",
+    "release_mtime_utc": "2026-07-17T01:47:28.950312+00:00",
+    "release_ahead_seconds": 0.0,
+    "status": "synced"
+  },
+  "capabilities": [
+    {
+      "id": "cross_domain_synthesis",
+      "name": "Cross-domain synthesis",
+      "primary_layer": "operator",
+      "state": "green",
+      "passed": 13,
+      "total": 13,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "relational_inquiry",
+      "name": "Relational inquiry",
+      "primary_layer": "operator",
+      "state": "green",
+      "passed": 8,
+      "total": 8,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "transfer_vs_template",
+      "name": "Transfer vs template recognition",
+      "primary_layer": "operator",
+      "state": "green",
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "honest_abstention",
+      "name": "Honest abstention under thin support",
+      "primary_layer": "critic",
+      "state": "green",
+      "passed": 7,
+      "total": 7,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "followup_binding",
+      "name": "Follow-up binding",
+      "primary_layer": "operator",
+      "state": "green",
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "exact_tool_authority",
+      "name": "Exact tool authority",
+      "primary_layer": "tool",
+      "state": "green",
+      "passed": 7,
+      "total": 7,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "governed_learning_loop",
+      "name": "Governed learning loop",
+      "primary_layer": "pipeline",
+      "state": "green",
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "binary_freshness",
+      "name": "Live binary freshness",
+      "primary_layer": "pipeline",
+      "state": "unmeasured",
+      "passed": 0,
+      "total": 0,
+      "pass_rate": null,
+      "next_action": "run evaluate_hardness.py"
+    }
+  ],
+  "recommended_next": [
+    "Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl"
+  ]
+}

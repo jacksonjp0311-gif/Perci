@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "perci-deep-intelligence-v2",
+  "version": "2.1.0",
+  "title": "Perci Deep Intelligence Pack",
+  "description": "Compressed high-density operators for math, coding, reasoning, science, language, introspection, self-awareness, governance, learning, and transfer.",
+  "authority": "curated_reference",
+  "claim_boundary": "Explicit behavioral procedures and operators. Not proprietary weights, not consciousness, not automatic truth.",
+  "domains": [
+    "math",
+    "coding",
+    "reasoning",
+    "science",
+    "language",
+    "introspection",
+    "self-awareness",
+    "governance",
+    "learning",
+    "compression"
+  ],
+  "files": [
+    {
+      "path": "00-meta-control.md",
+      "sha256": "1fd2ce339218e989c7ccb0d399b1fef6af73becd68af8d990f179052474d3d49",
+      "bytes": 1538
+    },
+    {
+      "path": "01-math-operators.md",
+      "sha256": "d940312967b8f1d7bb6f38d8226f6c96545f0ebccc19a0f053c4f5f3ae5639ec",
+      "bytes": 1523
+    },
+    {
+      "path": "02-coding-craft.md",
+      "sha256": "30fc1dd061311af35f88e443d61d1036544c00c84daecbac2db5c67b3c7498c7",
+      "bytes": 1370
+    },
+    {
+      "path": "03-reasoning-engines.md",
+      "sha256": "c486a3320b91b17786e0a806e0c52617ea7bb2d407838ef40856f602c3ebf718",
+      "bytes": 1362
+    },
+    {
+      "path": "04-science-method.md",
+      "sha256": "62804f384a5b93ee3dd02ae1e10e8d02b37a1380e3cf4af5b846b599b0525bff",
+      "bytes": 1248
+    },
+    {
+      "path": "05-language-precision.md",
+      "sha256": "31155eaa50eac94364ee938f2e25c89daad98b71e1cd8c5533f962afb05cd46e",
+      "bytes": 1105
+    },
+    {
+      "path": "06-introspective-thought.md",
+      "sha256": "7e4b9ea2127a6bcc8c531787f74c9d2631a3264c0fdbedeabe253f55e3215a00",
+      "bytes": 1189
+    },
+    {
+      "path": "07-self-awareness.md",
+      "sha256": "70533e89d14c74cde24295bd0c1b363eb1896c332ea1bbceb84dd200218113e9",
+      "bytes": 1335
+    },
+    {
+      "path": "08-systems-and-governance.md",
+      "sha256": "71b905f4228fd479a21d7ac83f667fbde1f2c97d85257d6601dd641668368d26",
+      "bytes": 960
+    },
+    {
+      "path": "09-learning-and-memory.md",
+      "sha256": "fb797536dbebcc9b50de0147d1a20804d746d89c650da5eb6ca735a1b0e618d5",
+      "bytes": 994
+    },
+    {
+      "path": "10-compression-and-transfer.md",
+      "sha256": "1565b85d6103603df18f63ad514eef0159a574c506d3b9ff6b3c6db04dfdb57d",
+      "bytes": 1026
+    },
+    {
+      "path": "11-lumen-smart-context.md",
+      "sha256": "f4b7f2e7dedb83a98a9fd96a5ffa60f8659d6da406fce8cbb54493e26c9ec73b",
+      "bytes": 970
+    }
+  ]
+}

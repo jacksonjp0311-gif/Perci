@@ -1,0 +1,79 @@
+{
+  "schema": "perci.evaluation.v2",
+  "evaluated_at_utc": "2026-07-16T20:53:32.087254+00:00",
+  "model_sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
+  "runtime_sha256": "5a2d7ec44b912e8389bfddcfe2213be6f557676a7efbd17bf7e53e2be43916d8",
+  "policy_source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\scripts\\evaluate_v2.py",
+  "policy_source_kind": "evaluator-embedded-v2",
+  "policy_source_sha256": "40175c6682e4bc6edb7a9629a9b7dd0cf3394918c987ecba4b05554b20b747a2",
+  "evaluator_sha256": "40175c6682e4bc6edb7a9629a9b7dd0cf3394918c987ecba4b05554b20b747a2",
+  "manifest_sha256": "0e6b0e7563a506e666adbb174e164a273601191f76b951e763018109a99cf843",
+  "dataset_sha256": "48f3d5ec53d5019aa2ad2b486f32df07174883e2dd453eb1ab7953fcd9036aae",
+  "case_count": 36,
+  "metrics": {
+    "domain_accuracy": 0.9375,
+    "keyword_baseline_accuracy": 0.625,
+    "baseline_advantage": 0.3125,
+    "shifted_label_control_accuracy": 0.0,
+    "local_precision": 1.0,
+    "local_recall": 0.75,
+    "trap_abstention": 1.0,
+    "local_coverage": 0.16666666666666666,
+    "false_local_count": 0,
+    "latency_p50_ms": 32.302,
+    "latency_p95_ms": 51.883
+  },
+  "gates": {
+    "model_integrity": true,
+    "domain_accuracy": true,
+    "local_precision": true,
+    "local_recall": false,
+    "trap_abstention": true,
+    "negative_control_separation": true
+  },
+  "status": "DOWNGRADED",
+  "baseline_supremacy_point_estimate": true,
+  "confidence_bound_required": true,
+  "independent_replication_required": true,
+  "automatic_promotion": false,
+  "phenomenology_proven": false,
+  "failures": [
+    {
+      "id": "fresh-greeting",
+      "suite": "domain",
+      "expected_domain": "greeting",
+      "actual_domain": "greeting",
+      "expected_local": true,
+      "actual_local": false,
+      "latency_ms": 96.155,
+      "margin": 379,
+      "overlap_z": 31.811077570610344,
+      "jaccard": 0.32608695652173914
+    },
+    {
+      "id": "fresh-logic",
+      "suite": "domain",
+      "expected_domain": "logic",
+      "actual_domain": "explanation",
+      "expected_local": false,
+      "actual_local": false,
+      "latency_ms": 30.331,
+      "margin": 160,
+      "overlap_z": 24.15890771242311,
+      "jaccard": 0.26098191214470284
+    },
+    {
+      "id": "fresh-local-hello",
+      "suite": "local",
+      "expected_domain": "greeting",
+      "actual_domain": "greeting",
+      "expected_local": true,
+      "actual_local": false,
+      "latency_ms": 30.453,
+      "margin": 257,
+      "overlap_z": 63.99218702310463,
+      "jaccard": 1.0
+    }
+  ],
+  "receipt_sha256": "9219c291b4e9c38bec8ba7f121fc2b3d5987c097062c3122ba1f5098c61a4913"
+}

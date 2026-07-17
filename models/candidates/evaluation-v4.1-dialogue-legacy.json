@@ -1,0 +1,92 @@
+{
+  "schema": "perci.dialogue-regression.v3.1",
+  "evaluated_at_utc": "2026-07-16T16:54:38.109581+00:00",
+  "model_sha256": "3028d1013032152cc54d20a9b2ee62d56f8c7be9f315ba4aadd29fd4d66b5145",
+  "runtime_sha256": "39872786fec5281cb2fda979afc146e06a8eaa30bea3fd0e51434d4fe3b62b20",
+  "case_count": 6,
+  "passed": 6,
+  "unique_outputs": true,
+  "status": "PASS",
+  "automatic_promotion": false,
+  "cases": [
+    {
+      "id": "sensing",
+      "prompt": "what are you sensing",
+      "answer": "I do not have subjective senses; I am not sensing anything subjectively. Operationally, I can observe this input, 0 recent dialogue turns, routing results, exact-tool outcomes, retrieval matches, and measured elapsed time. This is measured state, not a rotated concept selected from the weights.",
+      "required": [
+        "not sensing anything subjectively",
+        "rotated concept"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "id": "explain_previous",
+      "prompt": "why do you think this",
+      "answer": "I don't hold that as a private belief. In response to “what are you sensing”, my last output was “I do not have subjective senses; I am not sensing anything subjectively”. That output came from a local Bitwork route plus the response layer. I can justify the claim itself only with a mechanism, evidence, or test; otherwise I should label it as an association, not knowledge.",
+      "required": [
+        "what are you sensing",
+        "association, not knowledge"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "id": "repeat_report",
+      "prompt": "this is the same answer",
+      "answer": "You're right. Repeating the same sentence for a different prompt means I failed to resolve the new intent; it is not deeper reasoning. I should acknowledge the miss, use the previous turn as context, and abstain from emitting an unrelated nearest concept.",
+      "required": [
+        "failed to resolve the new intent",
+        "not deeper reasoning"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "id": "repeat_cause",
+      "prompt": "why do you keep responding like this",
+      "answer": "Because the response layer was accepting the nearest weight concept without first proving that the concept matched your question. The repeated life sentence was retrieval leakage, not a considered answer or an internal preoccupation.",
+      "required": [
+        "retrieval leakage",
+        "not a considered answer"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "id": "malfunction",
+      "prompt": "something is not working correctly",
+      "answer": "Correct. The malfunction is in composition: classification found a nearby region, but the renderer promoted that region's concept into prose without enough semantic support. The safe behavior is to abstain and resolve the conversation instead.",
+      "required": [
+        "malfunction is in composition",
+        "semantic support"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "id": "diagnosis",
+      "prompt": "whats going on here?",
+      "answer": "You're seeing a response loop, not coherent continuation. Your last report was “something is not working correctly”; before that, distinct prompts were collapsing onto one concept sentence. The fix is to gate concept prose, resolve references such as “this”, and block duplicate output across different questions.",
+      "required": [
+        "response loop",
+        "block duplicate output"
+      ],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "exit_code": 0,
+      "pass": true
+    }
+  ],
+  "receipt_sha256": "ed36686369900fcf4432a68816146e34c5df9a5911d30692d0e4c5e5cf9c1ef9"
+}

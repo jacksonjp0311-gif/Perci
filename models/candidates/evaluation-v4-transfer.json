@@ -1,0 +1,42 @@
+{
+  "schema": "perci.evaluation.v2",
+  "evaluated_at_utc": "2026-07-16T16:26:48.363281+00:00",
+  "model_sha256": "3028d1013032152cc54d20a9b2ee62d56f8c7be9f315ba4aadd29fd4d66b5145",
+  "runtime_sha256": "ec3ba6d8db40c8eec82e231ab8bb872a5f172c18b3431a1df68ca8fe495aa01c",
+  "policy_source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\scripts\\evaluate_v2.py",
+  "policy_source_kind": "evaluator-embedded-v2",
+  "policy_source_sha256": "29d948e8bf637ab9559071fe9621191f2d905bfb56de92244d30be1e6d5d2d79",
+  "evaluator_sha256": "29d948e8bf637ab9559071fe9621191f2d905bfb56de92244d30be1e6d5d2d79",
+  "manifest_sha256": "6ecefb28a0db96a5c56208c54f63de0228577af4a4f8e6f4c054d0b11ff3e1a5",
+  "dataset_sha256": "f1ef5cf23530677fe146017083d274ed39c04b4e9bccf30bf9ca18e106c0dcc5",
+  "case_count": 76,
+  "metrics": {
+    "domain_accuracy": 1.0,
+    "keyword_baseline_accuracy": 0.3125,
+    "baseline_advantage": 0.6875,
+    "shifted_label_control_accuracy": 0.0,
+    "local_precision": 1.0,
+    "local_recall": 1.0,
+    "trap_abstention": 1.0,
+    "local_coverage": 0.09210526315789473,
+    "false_local_count": 0,
+    "latency_p50_ms": 31.029,
+    "latency_p95_ms": 51.404
+  },
+  "gates": {
+    "model_integrity": true,
+    "domain_accuracy": true,
+    "local_precision": true,
+    "local_recall": true,
+    "trap_abstention": true,
+    "negative_control_separation": true
+  },
+  "status": "OPERATIONAL_CANDIDATE",
+  "baseline_supremacy_point_estimate": true,
+  "confidence_bound_required": true,
+  "independent_replication_required": true,
+  "automatic_promotion": false,
+  "phenomenology_proven": false,
+  "failures": [],
+  "receipt_sha256": "6172f8de14c17799b6d588e0c79153c9656bcc1b9043426572b47f8ddee51482"
+}

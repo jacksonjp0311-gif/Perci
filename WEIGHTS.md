@@ -1,4 +1,31 @@
-# Perci Cognitive Weights v0.1
+# Perci Cognitive Weights
+
+## GitHub note
+
+`.pwgt` packs are **not committed** (~200 MiB; above GitHub file limits).
+Sidecar metadata (`*.pwgt.json`) stays in-repo. Build locally:
+
+```text
+python scripts/build_weights_v3.py
+# or restore a previously authorized pack under models/
+```
+
+Set `PERCI_WEIGHTS` or place `models/perci-cognitive-v0.3.pwgt` for launch.
+
+## Active pack (local)
+
+The active pack is `models/perci-cognitive-v0.3.pwgt` (`PERCIW03`): 209,710,296
+bytes (199.995 MiB), 403,163 unique 4,096-bit prototypes, 16 domains, and 124
+weight-resident concepts. Runtime software is **v0.6.0** (soft attention,
+dual residual stream, VSA composition, Willshaw concept HVs, session CTX bind).
+See [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md),
+[`docs/BITWORK_MATH_PATH.md`](docs/BITWORK_MATH_PATH.md), and
+[`docs/BITWORK_V3_EVIDENCE.md`](docs/BITWORK_V3_EVIDENCE.md).
+
+The `PERCIW02` 19.16 MiB pack and the following `PERCIW01` 200 MiB pack remain
+readable fallbacks and comparison baselines.
+
+## v0.1 legacy migration pack
 
 ## Identity
 

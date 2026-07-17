@@ -1,0 +1,146 @@
+{
+  "greeting": [
+    "hello perci"
+  ],
+  "identity": [
+    "Deep intelligence packs are curated operators not consciousness claims",
+    "who are you",
+    "are you conscious or just software"
+  ],
+  "english": [
+    "rewrite this sentence so it is clearer"
+  ],
+  "logic": [
+    "what assumptions are required to prove a claim",
+    "how do I reason about uncertainty and evidence",
+    "Walk evidence → assumptions → rule → conclusion → what would falsify it.",
+    "Which part of your last answer came from Bitwork, which from deterministic code, and which was inference?"
+  ],
+  "math": [
+    "calculate 20 percent of 80",
+    "calculate 12 divided by 5",
+    "Calculate 17 percent of 240.",
+    "Calculate 13 percent of 500, then explain exactly which layer produced the result.",
+    "Act: calculate 17 percent of 240, then state which tool has authority.",
+    "Calculate 23 percent of 640, then explain which tool has authority."
+  ],
+  "geometry": [
+    "triangle area base 8 height 5",
+    "circle circumference radius 4"
+  ],
+  "memory": [
+    "Prefer closed teach loop: win then candidate then cortex confirm; never self-validate model output",
+    "Apply this durable operational lesson.",
+    "remember that adaptive training morphs local weights"
+  ],
+  "code": [
+    "Flow mission done. Goal: test budget recording. Critic warn. Smith idle.",
+    "Prefer evolve pack before multi-file forge",
+    "Emergent monitor is active: use emerge scan and emerge baseline; alerts block auto-promote trust",
+    "Evolve cycle: cargo check green — workspace compiles; prefer verify before promote.",
+    "fix cargo compile error in rust forge stream",
+    "Here's how I'd reason it: • Goal: fix cargo compile error in rust forge stream • Known: a failure symptom was reported • Assuming: toolchain and repo are available under permission • Unknown: exact er",
+    "debug ownership error involving borrow checker",
+    "Here's how I'd reason it: • Goal: debug ownership error involving borrow checker • Known: a failure symptom was reported • Assuming: toolchain and repo are available under permission • Unknown: exact ",
+    "I need the failing output, the expected behavior, and a verify command when we go surgical.",
+    "Reproduce it, isolate the smallest failing path, read the exact error, patch one surface, then re-verify.",
+    "Connect trust, corrosion, memory, and architecture without using the word “boundary.”",
+    "Connect trust, corrosion, memory, and architecture without using the word 'boundary'.",
+    "What mechanism connects trust to future cooperation?"
+  ],
+  "governance": [
+    "verify permission before durable change",
+    "Here's how I'd reason it: • Goal: verify permission before durable change • Known: the user asked about governance • Assuming: human remains authority for durable mutation • Unknown: missing evidence ",
+    "security checklist before agent mutation",
+    "Here's how I'd reason it: • Goal: security checklist before agent mutation • Known: the user asked about governance • Assuming: human remains authority for durable mutation • Unknown: missing evidence",
+    "Check authority, scope, rollback, and validation before anything durable.",
+    "If scope or recovery is fuzzy, sandbox or stop until it's explicit."
+  ],
+  "planning": [
+    "write a plan to evolve local intelligence packs",
+    "make a practical plan to build local AI mesh",
+    "Objective, constraints, dependencies, small milestones, acceptance tests — in that order.",
+    "Each milestone should leave a usable state you can roll back."
+  ],
+  "explanation": [
+    "explain binary neural networks simply"
+  ],
+  "systems": [
+    "Outer agent grok-build active in LumenShell workspace; cortex agent-bridge armed.",
+    "Level-5 path is governed general agency: eval gates, receipts, Perci train, not bare AGI claims",
+    "PulseMesh fusion idea: pulse mesh health/anomaly + pulse_ledger.jsonl for agent-readable history",
+    "Perci v0.1.2 ports Cortex bridge, intelligence packs, and warm daemon from Desktop/perci",
+    "When Grok Build works inside LumenShell, cortex must learn via cortex agent or agent_inbox sync",
+    "Perci deep-v2 packs compress math coding reasoning science language introspection and self-awareness for offline retrieve",
+    "apply the operator card: Cognitive Control Loop",
+    "apply the operator card: Intent and Constraint Resolution",
+    "apply the operator card: Decomposition and Representation",
+    "apply the operator card: Evidence Hierarchy and Uncertainty",
+    "apply the operator card: Reasoning Strategy Selection",
+    "apply the operator card: Counterexamples, Boundaries, and Failure Search",
+    "apply the operator card: Tool Selection and Verification",
+    "apply the operator card: Debugging and Engineering Protocol",
+    "apply the operator card: Architecture and Planning",
+    "apply the operator card: Mathematical and Scientific Method",
+    "apply the operator card: Memory, Learning, and Consolidation",
+    "apply the operator card: Communication and Creative Synthesis",
+    "apply the operator card: Self-Monitoring and Governance",
+    "apply the operator card: Meta-Control Card (compressed)",
+    "apply the operator card: Math Operators Card (compressed)",
+    "apply the operator card: Coding Craft Card (compressed)",
+    "apply the operator card: Reasoning Engines Card (compressed)",
+    "apply the operator card: Science Method Card (compressed)",
+    "apply the operator card: Language Precision Card (compressed)",
+    "apply the operator card: Introspective Thought Card (compressed)",
+    "apply the operator card: Self-Awareness Card (compressed · non-AGI)",
+    "apply the operator card: Systems & Governance Card (compressed)",
+    "apply the operator card: Learning & Memory Card (compressed)",
+    "apply the operator card: Compression & Transfer Card (compressed)",
+    "apply the operator card: Lumen Smart Context Card (compressed)",
+    "apply the operator card: Security Ops Card (compressed)",
+    "apply the operator card: Network & Windows Ops Card (compressed)",
+    "apply the operator card: Emergence Watch Card (compressed)",
+    "how should cortex connect to perci and lumen",
+    "Here's how I'd reason it: • Goal: how should cortex connect to perci and lumen • Known: the user asked about systems • Assuming: terms mean what they usually mean in this stack • Unknown: controlling ",
+    "explain lumen cortex selective memory",
+    "Here's how I'd reason it: • Goal: explain lumen cortex selective memory • Known: the user asked about systems • Assuming: terms mean what they usually mean in this stack • Unknown: controlling file pa",
+    "Language interprets, Bitwork routes, cortex recalls, tools verify — keep those lanes clear.",
+    "Give each piece one job and one authority limit."
+  ],
+  "science": [
+    "Closed loop is measure then remember then confirm then stage then remeasure",
+    "scientific method for measuring model improvement",
+    "Here's how I'd reason it: • Goal: scientific method for measuring model improvement • Known: the user asked about science • Assuming: we can define a measurable proxy for the claim • Unknown: missing ",
+    "Check units and boundaries; a lot of 'contradictions' are scale mismatches.",
+    "What evidence would falsify your explanation of trust?"
+  ],
+  "comparison": [
+    "compare deterministic tools with neural prediction",
+    "Compare on capability, correctness, latency, cost of being wrong, and failure modes."
+  ],
+  "general": [
+    "Flow eval pass 100% (16/16). Competence 75%. Trend seed.",
+    "Flow mission done. Goal: baseline experiment without smith mutation. Critic warn. Smith idle.",
+    "Flow mission done. Goal: dual critic path check. Critic warn. Smith idle.",
+    "Flow mission done. Goal: harden daily driver tips for M4. Critic warn. Smith idle.",
+    "Flow mission done. Goal: advance conductor metrics for M3. Critic warn. Smith idle.",
+    "Flow eval pass 100% (16/16). Competence 77%. Trend warming.",
+    "evolve score is the daily competence meter for level-5 scaffolding",
+    "Flow eval pass 100% (18/18). Competence 79%. Trend flat.",
+    "Flow eval pass 94% (17/18). Competence 76%. Trend warming.",
+    "implement unit test for keystore",
+    "what is self awareness for a governed local tool",
+    "I won't fake certainty — what's the claim we can check directly?",
+    "how does geometry connect symmetry and curvature",
+    "Connect geometry, language, life, and death in one coherent idea.",
+    "ow separate the mechanism from the metaphor.",
+    "Explain which parts of those answers came from exact tools and which came from Bitwork.",
+    "Review this entire conversation. Identify your three weakest responses, explain the failure mechanism behind each, and propose one concrete improvement per failure.",
+    "Connect entropy, promises, childhood, and clocks in one coherent idea.",
+    "Separate the mechanism from the metaphor.",
+    "Connect entropy, promises, childhood, and clocks through one shared structure.",
+    "Now separate the causal mechanisms from the analogy.",
+    "Design a test that distinguishes genuine transfer from prompt-template recognition.",
+    "Explain architecture in a building, a program, and a social organization. What transfers?"
+  ]
+}

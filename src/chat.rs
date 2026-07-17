@@ -1,10 +1,17 @@
 use crate::backend::LanguageBackend;
 use crate::cortex::CortexBridge;
+use crate::deliberation::{self, Deliberation};
+use crate::learning::InteractionLearner;
 use crate::memory::MemoryStore;
 use crate::personality::Personality;
 use crate::reasoning::{try_solve_arithmetic, try_solve_geometry};
 use crate::reflex::{ReflexRouter, Route};
+use crate::voice::{self, natural_exact};
+use std::env;
 use std::io;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+const MAX_TURNS: usize = 48;
 
 #[derive(Debug)]
 pub struct ChatResponse {
@@ -18,6 +25,14 @@ pub struct ChatEngine {
     router: ReflexRouter,
     backend: Box<dyn LanguageBackend>,
     cortex: Option<CortexBridge>,
+    /// Recent (user, assistant) turns for continuity.
+    recent: Vec<(String, String)>,
+    /// Optional disk session for CLI continuity across process exits.
+    session: Option<crate::session::SessionStore>,
+    /// Governed interaction evidence + safe dialogue preference adaptation.
+    learning: Option<InteractionLearner>,
+    /// Last bounded cognitive audit; operational trace, never hidden reasoning.
+    last_deliberation: Option<Deliberation>,
 }
 
 impl ChatEngine {
@@ -33,11 +48,76 @@ impl ChatEngine {
             router: ReflexRouter,
             backend,
             cortex,
+            recent: Vec::new(),
+            session: None,
+            learning: None,
+            last_deliberation: None,
         }
+    }
+
+    /// Attach persistent session and preload recent turns.
+    pub fn with_session(mut self, store: crate::session::SessionStore) -> Self {
+        if let Ok(turns) = store.load_recent() {
+            self.recent = turns;
+        }
+        self.session = Some(store);
+        self
+    }
+
+    pub fn with_learning(mut self, learner: InteractionLearner) -> Self {
+        self.learning = Some(learner);
+        self
+    }
+
+    pub fn learning_status(&self) -> String {
+        self.learning
+            .as_ref()
+            .map(InteractionLearner::status_label)
+            .unwrap_or_else(|| "disabled".to_owned())
+    }
+
+    pub fn learning_path(&self) -> Option<String> {
+        self.learning
+            .as_ref()
+            .map(|learner| learner.events_path().display().to_string())
+    }
+
+    pub fn stage_teaching(&mut self, claim: &str) -> io::Result<String> {
+        let learner = self.learning.as_mut().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Unsupported,
+                "interaction learning is disabled",
+            )
+        })?;
+        learner.stage_teaching(claim)
+    }
+
+    pub fn session_path(&self) -> Option<String> {
+        self.session
+            .as_ref()
+            .map(|s| s.path().display().to_string())
+    }
+
+    pub fn deliberation_trace(&self) -> String {
+        self.last_deliberation
+            .as_ref()
+            .map(Deliberation::trace)
+            .unwrap_or_else(|| "No cognitive operator has run in this process yet.".to_owned())
     }
 
     pub fn backend_name(&self) -> &str {
         self.backend.name()
+    }
+
+    pub fn opening_insight(&self) -> String {
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64
+            ^ std::process::id() as u64;
+        self.backend
+            .opening_insight(seed)
+            .unwrap_or_else(|| crate::voice::offline_opening_insight(seed))
     }
 
     pub fn personality(&self) -> &Personality {
@@ -52,77 +132,321 @@ impl ChatEngine {
     }
 
     pub fn respond(&mut self, input: &str) -> io::Result<ChatResponse> {
-        match self.router.route(input) {
+        self.last_deliberation = None;
+        let route = self.router.route(input);
+        match route {
             Route::Help => {
                 return Ok(ChatResponse {
                     route: Route::Help,
                     text: help_text().into(),
                 });
             }
-            Route::MemoryWrite => return self.remember(input),
+            Route::MemoryWrite if !deliberation::is_session_only_instruction(input) => {
+                return self.remember(input)
+            }
+            Route::MemoryWrite => {}
             Route::MemorySearch => return self.recall(input),
             Route::Chat | Route::Math | Route::Geometry => {}
         }
 
+        if voice::is_teaching_recall(input) {
+            let claims = self
+                .learning
+                .as_ref()
+                .map(|learner| learner.recent_teaching_claims(5))
+                .transpose()?
+                .unwrap_or_default();
+            let text = if claims.is_empty() {
+                "You have not staged any teaching candidates in this learning record yet."
+                    .to_owned()
+            } else {
+                format!(
+                    "You taught me these pending candidates:\n- {}\nThey are recorded for review, not silently promoted into truth or weights.",
+                    claims.join("\n- ")
+                )
+            };
+            self.last_deliberation = Some(
+                Deliberation::new("teaching-state-recall", text.clone())
+                    .observed(format!("pending_candidates={}", claims.len()))
+                    .confidence(1.0),
+            );
+            self.push_turn(input, &text);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
+        // Natural teaching is the primary human interface. `/teach` remains a
+        // transparent CLI shortcut, but ordinary conversation can stage the
+        // same governed candidate without requiring command syntax.
+        if let Some(claim) = voice::extract_teaching_claim(input) {
+            let text = match self.stage_teaching(claim) {
+                Ok(id) => format!(
+                    "I staged that as knowledge candidate {id}: “{claim}.” It is pending review—not active truth or a weight change. Add a source or a test when you can."
+                ),
+                Err(error) => format!("I did not stage that claim: {error}."),
+            };
+            self.last_deliberation = Some(
+                Deliberation::new("governed-teaching-stage", text.clone())
+                    .observed("explicit natural-language teaching request")
+                    .inferred("record as pending; do not promote automatically")
+                    .confidence(0.99),
+            );
+            self.push_turn(input, &text);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
+        let teaching_claims = self
+            .learning
+            .as_ref()
+            .map(|learner| learner.recent_teaching_claims(5))
+            .transpose()?
+            .unwrap_or_default();
+        if let Some(mut result) =
+            deliberation::try_deliberate(input, &self.recent, &teaching_claims)
+        {
+            crate::operator_program::annotate_deliberation(input, &mut result);
+            let text = result.answer.clone();
+            crate::decision_trace::append(input, &result);
+            self.last_deliberation = Some(result);
+            self.push_turn(input, &text);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
+        // Relational dialogue acts must be resolved before exact-tool parsing.
+        // Natural phrases such as "defend the distinction" can contain token
+        // fragments that resemble arithmetic operators without asking for math.
+        let dialogue_act = voice::detect_dialogue_act(input);
+        if let Some(text) = voice::dialogue_reply(
+            dialogue_act,
+            input,
+            &self.recent,
+            self.learning.as_ref().map(|learner| learner.profile()),
+        ) {
+            self.last_deliberation = Some(
+                Deliberation::new("dialogue-act", text.clone())
+                    .observed(format!("dialogue_act={dialogue_act:?}"))
+                    .inferred("recent dialogue constrained the response")
+                    .confidence(0.90),
+            );
+            self.push_turn(input, &text);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
         match try_solve_arithmetic(input) {
             Ok(Some(value)) => {
+                let mut text = natural_exact("math", &value);
+                let lower = input.to_ascii_lowercase();
+                if lower.contains("which layer")
+                    || lower.contains("exactly which layer")
+                    || (lower.contains("tool") && lower.contains("authority"))
+                    || (lower.contains("bitwork") && lower.contains("calculate"))
+                {
+                    text.push_str(" The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.");
+                }
+                let mut deliberation = Deliberation::new("exact-arithmetic", text.clone())
+                    .observed(format!("checked rational result={value}"))
+                    .inferred(
+                        "deterministic parser and checked arithmetic established the value",
+                    )
+                    .confidence(1.0);
+                deliberation =
+                    crate::operator_program::apply_program_runtime(input, deliberation);
+                text = deliberation.answer.clone();
+                crate::decision_trace::append(input, &deliberation);
+                self.last_deliberation = Some(deliberation);
+                self.push_turn(input, &text);
                 return Ok(ChatResponse {
                     route: Route::Math,
-                    text: format!("Exact result: {value}"),
+                    text,
                 });
             }
             Ok(None) => {}
             Err(error) => {
+                // Never surface raw parser errors for non-calculation prompts.
+                // Explanatory math should have returned Ok(None); remaining
+                // errors are true tool failures on calculation-shaped inputs.
+                let text = format!("I couldn't complete that calculation: {error}");
+                let deliberation = Deliberation::new("exact-arithmetic-error", text.clone())
+                    .observed(error.to_string())
+                    .uncertain("parser rejected the arithmetic form")
+                    .confidence(0.4);
+                crate::decision_trace::append(input, &deliberation);
+                self.last_deliberation = Some(deliberation);
+                self.push_turn(input, &text);
                 return Ok(ChatResponse {
                     route: Route::Math,
-                    text: format!("Exact arithmetic error: {error}"),
+                    text,
                 });
             }
         }
 
         match try_solve_geometry(input) {
             Ok(Some(value)) => {
+                let mut text = natural_exact("geometry", &value);
+                let lower = input.to_ascii_lowercase();
+                if lower.contains("bitwork")
+                    || lower.contains("deterministic")
+                    || lower.contains("which part")
+                    || lower.contains("which layer")
+                    || lower.contains("provenance")
+                {
+                    text.push_str(
+                        " Bitwork helped classify and route the request; the numeric result came from deterministic geometry code, not from associative prototype voting.",
+                    );
+                }
+                let mut deliberation = Deliberation::new("exact-geometry", text.clone())
+                    .observed(format!("symbolic geometry result={value}"))
+                    .inferred("deterministic geometry rules established the value")
+                    .confidence(1.0);
+                deliberation =
+                    crate::operator_program::apply_program_runtime(input, deliberation);
+                text = deliberation.answer.clone();
+                crate::decision_trace::append(input, &deliberation);
+                self.last_deliberation = Some(deliberation);
+                self.push_turn(input, &text);
                 return Ok(ChatResponse {
                     route: Route::Geometry,
-                    text: value,
+                    text,
                 });
             }
             Ok(None) => {}
             Err(error) => {
+                let text = format!("Geometry check failed: {error}");
+                self.push_turn(input, &text);
                 return Ok(ChatResponse {
                     route: Route::Geometry,
-                    text: format!("Exact geometry error: {error}"),
+                    text,
                 });
             }
         }
 
-        let context = self.collect_context(input, 4, 800)?;
+        // Fast social path: pure greetings/thanks/bye without pack load.
+        let social = voice::detect_social(input);
+        let lower = input.to_ascii_lowercase();
+        if matches!(
+            social,
+            voice::SocialKind::Greeting
+                | voice::SocialKind::HowAreYou
+                | voice::SocialKind::Thanks
+                | voice::SocialKind::Goodbye
+                | voice::SocialKind::SmallTalk
+        ) && !lower.contains("bug")
+            && !lower.contains("error")
+            && !lower.contains("cargo")
+        {
+            if let Some(text) = voice::social_reply(social, self.recent.len()) {
+                let text = text.to_string();
+                self.last_deliberation = Some(
+                    Deliberation::new("social-reflex", text.clone())
+                        .observed(format!("social_kind={social:?}"))
+                        .confidence(0.97),
+                );
+                self.push_turn(input, &text);
+                return Ok(ChatResponse {
+                    route: Route::Chat,
+                    text,
+                });
+            }
+        }
+
+        let context = if should_load_context(input) {
+            self.collect_context(input, 4, context_budget(input))?
+        } else {
+            Vec::new()
+        };
+
+        let mut ctx = context;
+        if !self.recent.is_empty() {
+            let hist = self
+                .recent
+                .iter()
+                .rev()
+                .take(3)
+                .rev()
+                .map(|(u, a)| format!("User: {u} | Perci: {a}"))
+                .collect::<Vec<_>>()
+                .join(" || ");
+            ctx.insert(0, format!("[Recent dialogue] {hist}"));
+        }
+
+        self.backend.set_dialogue_history(&self.recent);
         let text = self
             .backend
-            .generate(&self.personality.prompt, &context, input)?;
+            .generate(&self.personality.prompt, &ctx, input)?;
+        // Style + anti-generic: fluid binding survives learned compression.
+        let text = if let Some(learner) = &self.learning {
+            let styled = voice::apply_learned_style(
+                &text,
+                learner.profile().prefer_concise,
+                learner.profile().avoid_structured_chat,
+            );
+            let aligned = voice::apply_profile_alignment(&styled, input, learner.profile());
+            voice::ensure_user_binding(input, &aligned, "general", None, &self.recent)
+        } else {
+            voice::ensure_user_binding(input, &text, "general", None, &self.recent)
+        };
 
+        let mut deliberation = Deliberation::new("fluid-associative", text.clone())
+            .observed(format!("context_items={}", ctx.len()))
+            .inferred("fluid composition bound reply to user content under Bitwork routing")
+            .uncertain("associative prose is not exact-tool evidence")
+            .confidence(0.78);
+        deliberation = crate::operator_program::apply_program_runtime(input, deliberation);
+        let text = deliberation.answer.clone();
+        crate::decision_trace::append(input, &deliberation);
+        self.last_deliberation = Some(deliberation);
+
+        self.push_turn(input, &text);
         Ok(ChatResponse {
             route: Route::Chat,
             text,
         })
     }
 
+    fn push_turn(&mut self, user: &str, assistant: &str) {
+        let previous = self.recent.last().cloned();
+        self.recent
+            .push((user.trim().to_string(), assistant.trim().to_string()));
+        while self.recent.len() > MAX_TURNS {
+            self.recent.remove(0);
+        }
+        if let Some(store) = &self.session {
+            let _ = store.append(user, assistant);
+        }
+        if let Some(learner) = &mut self.learning {
+            let _ = learner.observe(user, assistant, previous.as_ref());
+        }
+    }
+
     fn remember(&mut self, input: &str) -> io::Result<ChatResponse> {
         let content = strip_memory_prefix(input);
         self.memory.append_kind("note", content)?;
 
-        let cortex_note = match self.cortex.as_ref() {
+        let cortex_note = match self.cortex.as_mut() {
             Some(cortex) if cortex.ready() => match cortex.remember("note", content) {
-                Ok(()) => " Cortex episodic memory also recorded the explicit event.",
-                Err(_) => " Cortex sync was unavailable; local JSONL memory remains intact.",
+                Ok(()) => " Also noted in Cortex when the daemon is warm.",
+                Err(_) => " Local memory saved; Cortex sync was unavailable.",
             },
-            Some(_) => " Cortex is present but requires bootstrap; local JSONL memory was written.",
-            None => " Cortex is not attached; local JSONL memory was written.",
+            Some(_) => " Local memory saved; Cortex still needs bootstrap.",
+            None => " Saved to local memory.",
         };
 
+        let text = format!("Got it — I'll remember: {content}.{cortex_note}");
+        self.push_turn(input, &text);
         Ok(ChatResponse {
             route: Route::MemoryWrite,
-            text: format!("Stored explicit local memory: {content}.{cortex_note}"),
+            text,
         })
     }
 
@@ -131,11 +455,20 @@ impl ChatEngine {
         let found = self.collect_context(query, 5, 700)?;
 
         let text = if found.is_empty() {
-            "No matching local or Cortex memory was found.".to_owned()
+            "I don't have a matching local or pack note for that yet.".to_owned()
         } else {
-            format!("Relevant governed context:\n- {}", found.join("\n- "))
+            let lines: Vec<String> = found
+                .iter()
+                .take(4)
+                .map(|f| {
+                    f.split_once("] ")
+                        .map(|(_, b)| b.trim().to_string())
+                        .unwrap_or_else(|| f.clone())
+                })
+                .collect();
+            format!("Here's what I can pull up:\n- {}", lines.join("\n- "))
         };
-
+        self.push_turn(input, &text);
         Ok(ChatResponse {
             route: Route::MemorySearch,
             text,
@@ -143,14 +476,19 @@ impl ChatEngine {
     }
 
     fn collect_context(
-        &self,
+        &mut self,
         query: &str,
         local_limit: usize,
         cortex_budget: usize,
     ) -> io::Result<Vec<String>> {
         let mut context = self.memory.search(query, local_limit)?;
 
-        if let Some(cortex) = self.cortex.as_ref() {
+        let pack_limit = if cortex_budget >= 600 { 3 } else { 2 };
+        if let Ok(hits) = crate::intel_packs::retrieve(query, pack_limit) {
+            context.extend(crate::intel_packs::format_guidance(&hits));
+        }
+
+        if let Some(cortex) = self.cortex.as_mut() {
             if cortex.ready() {
                 if let Ok(mut evidence) = cortex.retrieve(query, cortex_budget) {
                     context.append(&mut evidence);
@@ -161,6 +499,105 @@ impl ChatEngine {
         context.dedup();
         Ok(context)
     }
+}
+
+fn should_load_context(input: &str) -> bool {
+    let mode = env::var("PERCI_CORTEX_MODE")
+        .unwrap_or_else(|_| "auto".to_owned())
+        .to_ascii_lowercase();
+
+    if mode == "off" || mode == "0" || mode == "false" {
+        return false;
+    }
+    if mode == "always" || mode == "on" || mode == "1" || mode == "true" {
+        return true;
+    }
+
+    if matches!(
+        voice::detect_social(input),
+        voice::SocialKind::Greeting
+            | voice::SocialKind::Thanks
+            | voice::SocialKind::Goodbye
+            | voice::SocialKind::HowAreYou
+            | voice::SocialKind::SmallTalk
+    ) {
+        return false;
+    }
+
+    let normalized = input
+        .trim()
+        .to_ascii_lowercase()
+        .trim_matches(|character: char| !character.is_ascii_alphanumeric())
+        .to_owned();
+
+    const FAST_PATHS: &[&str] = &[
+        "hello",
+        "hello perci",
+        "hi",
+        "hi perci",
+        "hey",
+        "hey perci",
+        "thanks",
+        "thank you",
+        "goodbye",
+        "bye",
+        "what can you do",
+        "who are you",
+        "what is your purpose",
+    ];
+
+    if FAST_PATHS.contains(&normalized.as_str()) {
+        return false;
+    }
+
+    const DEEP_SIGNALS: &[&str] = &[
+        "analyze",
+        "architecture",
+        "compare",
+        "contradiction",
+        "debug",
+        "design",
+        "evidence",
+        "explain",
+        "failure",
+        "how ",
+        "implement",
+        "investigate",
+        "memory",
+        "plan",
+        "prove",
+        "reason",
+        "repository",
+        "science",
+        "system",
+        "test",
+        "tradeoff",
+        "verify",
+        "why ",
+        "bug",
+        "error",
+        "stuck",
+    ];
+
+    if DEEP_SIGNALS
+        .iter()
+        .any(|signal| normalized.contains(signal))
+    {
+        return true;
+    }
+
+    normalized.split_whitespace().count() >= 7 || normalized.len() >= 52
+}
+
+fn context_budget(input: &str) -> usize {
+    let words = input.split_whitespace().count();
+    if words >= 24 {
+        return 1200;
+    }
+    if words >= 12 {
+        return 950;
+    }
+    700
 }
 
 fn strip_memory_prefix(input: &str) -> &str {
@@ -206,7 +643,7 @@ fn strip_prefixes<'a>(input: &'a str, prefixes: &[&str]) -> &'a str {
 }
 
 pub fn help_text() -> &'static str {
-    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nNatural tools:\n  calculate 12 divided by 5\n  calculate 20 percent of 80\n  triangle area base 8 height 5\n  circle circumference radius 4\n  remember that Perci uses governed memory\n  recall governed memory"
+    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
 }
 
 #[cfg(test)]
@@ -227,5 +664,21 @@ mod tests {
             strip_memory_prefix("remember that 2 plus 2 equals 4"),
             "2 plus 2 equals 4"
         );
+    }
+
+    #[test]
+    fn greetings_use_fast_path() {
+        assert!(!should_load_context("hello perci"));
+        assert!(!should_load_context("what can you do"));
+    }
+
+    #[test]
+    fn substantive_prompts_load_context() {
+        assert!(should_load_context(
+            "Analyze this architecture and identify its failure modes"
+        ));
+        assert!(should_load_context(
+            "How should I debug a Rust ownership error?"
+        ));
     }
 }
