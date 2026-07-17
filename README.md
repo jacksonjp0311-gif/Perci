@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.18-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.19-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -46,11 +46,11 @@
 | **SoftCascade thought arc** | thesis → warrant → boundary → check — spoken as human prose, not card dumps |
 | **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
 | **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
-| **Emergence ledger** | Geometry records itself → mixture thesis / multipartite force / speech-hit lessons |
+| **Emergence lab** | Typed ledger → mixture crutch + primary-fix tickets + transfer gate · `/field` `/lab` |
 | **Exact tools** | Math & geometry that *compute*, never guess |
 | **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 
-Chat is **clean** (no cognition dump). Inspect with **`/think`** (plan) and **`/field`** (emergence geometry). Style with **`/concise` · `/deep` · `/balanced`**.
+Chat is **clean** (no cognition dump). Inspect with **`/think`** (plan), **`/field`** (geometry laws), **`/lab`** (tickets). Style with **`/concise` · `/deep` · `/balanced`**.
 
 > Fluency without transfer gates is not intelligence.  
 > Consciousness claims without sensors are not honesty.

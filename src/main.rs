@@ -273,6 +273,9 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             "/field" | "/emergence" | "/geometry" => {
                 println!("{}", perci::emergence::status_report(24));
             }
+            "/lab" | "/tickets" => {
+                println!("{}", perci::emergence::lab_report());
+            }
             "/prompt" => println!("{}", engine.personality().prompt),
             "/intel" | "/intelligence" | "/probe" => {
                 if let Err(error) = run_intelligence_probe() {

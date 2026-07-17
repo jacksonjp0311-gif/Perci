@@ -322,7 +322,8 @@ pub fn compose_soft_cascade(
         arc.contested = true;
     }
     // Geometry blind: primary and mixture both miss user tokens — still force contested tone.
-    if geo.geometry_blind {
+    // Mixture crutch: UX temporary; lab ticket staged on record_match for primary fix.
+    if geo.geometry_blind || geo.mixture_crutch {
         arc.contested = true;
     }
     let mut out = arc.speak(user, &topic, ask, variant, peek_premise().as_deref());

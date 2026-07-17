@@ -32,6 +32,8 @@ models/*.bak*
 memory/
 models/candidates/decision-trace.jsonl
 models/candidates/emergence-geometry.jsonl
+models/candidates/emergence-curriculum.jsonl
+models/candidates/emergence-tickets/
 models/candidates/agent-run-*.json
 # Local backups and machine-specific files
 *.bak-*
