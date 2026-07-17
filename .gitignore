@@ -36,6 +36,8 @@ models/candidates/emergence-curriculum.jsonl
 models/candidates/emergence-tickets/
 models/candidates/agent-run-*.json
 models/candidates/agent-lab-*.json
+models/candidates/auto-repairs.jsonl
+models/candidates/agent-repair-*.json
 # Local backups and machine-specific files
 *.bak-*
 *.backup

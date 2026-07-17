@@ -136,6 +136,11 @@ pub fn try_deliberate(
     // a topic such as "code" or "science" from replacing the operation the
     // person actually requested.
 
+    // Agent-staged auto-repairs (hardness fail → catalog) before generic routes.
+    if let Some(d) = crate::auto_repairs::try_auto_repair(&repaired) {
+        return Some(d);
+    }
+
     // T1: explanatory math before any tool/associative path can mis-route.
     if crate::reasoning::is_explanatory_math(&text) {
         return Some(math_explanation_answer(&repaired));

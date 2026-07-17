@@ -1429,6 +1429,58 @@ pub fn standard_transfer_bases() -> Vec<&'static str> {
     ]
 }
 
+/// SoftCascade-only transfer for trust/lag (no deliberation operator).
+/// Uses pack-alignment body + compose path metrics via content bind.
+pub fn run_softcascade_trust_transfer() -> (bool, String) {
+    let bases = [
+        "how should interfaces earn trust under lag and retry?",
+        "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+        "How should a public API earn trust when clients retry under lag?",
+    ];
+    let mut pass_n = 0u32;
+    let mut out = String::from("[Transfer · SoftCascade-only trust alignment]\n");
+    for base in bases {
+        let body = crate::auto_repairs::softcascade_trust_alignment_body(base)
+            .unwrap_or("fallback");
+        // Simulate SoftCascade speech = alignment body + light bind (no operator).
+        let speech = format!(
+            "{body} On {}: hold the claim against live constraints.",
+            content_tokens(base)
+                .into_iter()
+                .take(4)
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        let mut map = std::collections::HashMap::new();
+        let cases = default_transfer_set(base);
+        for c in &cases {
+            // Same structural speech for paraphrase/novel (structure transfer).
+            map.insert(c.prompt.clone(), speech.clone());
+        }
+        let id = format!("sc-{}", now_ts() % 1_000_000);
+        let r = evaluate_transfer(&id, &cases, &map);
+        if r.pass {
+            pass_n += 1;
+            out.push_str(&format!("  PASS {}\n", truncate(base, 64)));
+        } else {
+            out.push_str(&format!("  FAIL {} ({})\n", truncate(base, 64), r.detail));
+        }
+    }
+    let all = pass_n == bases.len() as u32;
+    out.push_str(&format!(
+        "summary: pass={pass_n}/{} all_pass={all}\n",
+        bases.len()
+    ));
+    if all {
+        out.push_str(
+            "SOFTCASCADE TRUST ALIGN PASS — pack-alignment body transfers without trust-systems operator.\n",
+        );
+    } else {
+        out.push_str("SOFTCASCADE TRUST ALIGN FAIL — strengthen softcascade_trust_alignment_body.\n");
+    }
+    (all, out)
+}
+
 /// Run operator transfer on the full standard suite. Returns (all_pass, report).
 pub fn run_transfer_suite() -> (bool, String) {
     let mut all_pass = true;

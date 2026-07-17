@@ -131,7 +131,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "transfer-suite" | "xfer-suite" => {
             let (ok, report) = perci::emergence::run_transfer_suite();
             print!("{report}");
-            if !ok {
+            let (ok2, report2) = perci::emergence::run_softcascade_trust_transfer();
+            print!("{report2}");
+            if !ok || !ok2 {
                 std::process::exit(1);
             }
         }
@@ -259,6 +261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut from_emergence = false;
                     let mut full = false;
                     let mut repair = false;
+                    let mut repair_hardness = false;
                     for arg in args {
                         match arg.as_str() {
                             "--dry-run" | "-n" => dry_run = true,
@@ -266,13 +269,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             "--from-emergence" => from_emergence = true,
                             "--full" => full = true,
                             "--repair" => repair = true,
+                            "--repair-hardness" => repair_hardness = true,
                             "--help" | "-h" => {
                                 println!(
-                                    "usage: perci agent lab --from-hardness|--from-emergence|--full [--repair] [--dry-run]\n\
-                                     --from-hardness   impasse tickets from red hardness cases\n\
-                                     --from-emergence  transfer suite + close open primary-fix tickets\n\
-                                     --repair          on transfer fail, stage hardness locks + re-gate\n\
-                                     --full            hardness + emergence world loop\n\
+                                    "usage: perci agent lab --from-hardness|--from-emergence|--full|--repair-hardness [--repair] [--dry-run]\n\
+                                     --from-hardness     impasse tickets from red hardness cases\n\
+                                     --from-emergence    transfer suite + close open primary-fix tickets\n\
+                                     --repair            on transfer fail, stage hardness locks + re-gate\n\
+                                     --repair-hardness   hardness fail → auto-repairs.jsonl (runtime operator catalog)\n\
+                                     --full              hardness + emergence world loop\n\
                                      Never touches .pwgt."
                                 );
                                 return Ok(());
@@ -280,7 +285,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             _ => {}
                         }
                     }
-                    if full {
+                    if repair_hardness {
+                        let report = perci::agent::run_repair_from_hardness(dry_run)?;
+                        println!("{}", report.summary());
+                        if !report.ok {
+                            std::process::exit(1);
+                        }
+                    } else if full {
                         let report = perci::agent::run_lab_full(dry_run, repair)?;
                         println!("{}", report.summary());
                         if !report.ok {

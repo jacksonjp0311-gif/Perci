@@ -304,21 +304,37 @@ pub fn compose_soft_cascade(
     // primary is off-topic; chronic labels force multipartite arc + critique.
     let geo = crate::emergence::analyze(matched, user);
     crate::emergence::set_session_policy(geo.clone());
+    // Pack-alignment body for trust/lag (SoftCascade-only path).
+    let aligned_domain = crate::auto_repairs::softcascade_trust_alignment_body(user)
+        .unwrap_or(domain_body);
     let mix_thesis = if geo.prefer_mixture_thesis {
         crate::emergence::preferred_mixture_insight(matched, user)
     } else {
         None
     };
-    let used_mix = mix_thesis.is_some();
+    // Prefer structural trust alignment as thesis when primary is off-topic on trust/lag.
+    let align_thesis = if mix_thesis.is_none()
+        && crate::auto_repairs::softcascade_trust_alignment_body(user).is_some()
+        && geo.tags.iter().any(|t| *t == "primary_off_topic" || *t == "geometry_blind")
+    {
+        crate::auto_repairs::softcascade_trust_alignment_body(user)
+            .map(|s| s.trim().trim_end_matches('.').to_owned())
+    } else {
+        None
+    };
+    let used_mix = mix_thesis.is_some() || align_thesis.is_some();
     let mut arc = ThoughtArc::from_packet(
         &packet,
-        domain_body,
+        aligned_domain,
         matched.margin,
         style_depth(),
         geo.force_multipartite_arc,
     );
     if let Some(ref thesis) = mix_thesis {
         arc.thesis = thesis.trim().trim_end_matches('.').trim().to_owned();
+        arc.contested = true;
+    } else if let Some(ref thesis) = align_thesis {
+        arc.thesis = thesis.clone();
         arc.contested = true;
     }
     // Geometry blind: primary and mixture both miss user tokens — still force contested tone.

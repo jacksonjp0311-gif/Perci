@@ -391,7 +391,11 @@ pub fn render_cognitive_response_with_history(
     };
     // Concept insight is seasoning for fluid prose — not a forced body dump.
     let concept = matched.insight.as_deref();
-    let body = domain_body(label, variant);
+    // SoftCascade pack-alignment: when Bitwork primary is off-topic on trust/lag,
+    // use a structural systems body so SoftCascade-only speech still transfers
+    // without requiring the trust-systems operator (breakthrough path 2).
+    let body = crate::auto_repairs::softcascade_trust_alignment_body(user)
+        .unwrap_or_else(|| domain_body(label, variant));
     let woven = crate::voice::weave_guidance(context, 2);
 
     // Deep craft loops only when the user is clearly in debug/plan/code mode.

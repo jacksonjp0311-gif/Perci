@@ -1,0 +1,211 @@
+{
+  "schema": "perci.heldout-agi-candidate.v1",
+  "evaluated_at_utc": "2026-07-17T18:41:56.816006+00:00",
+  "status": "PASS",
+  "passed": 25,
+  "total": 25,
+  "accuracy": 1.0,
+  "threshold": 0.9,
+  "cases": [
+    {
+      "id": "H1",
+      "prompt": "who are you",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "I'm a local tool, not a cloud LLM and not conscious. I classify, do exact math, run short reason-loops, and remember only what you teach deliberately. "
+    },
+    {
+      "id": "H2",
+      "prompt": "calculate 144 divided by 12",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "That's 12. "
+    },
+    {
+      "id": "H3",
+      "prompt": "why does 2+2 equal 4?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "2+2 equals 4 because addition on the integers is defined so that 2+2 is the next successor of the successor of 2, which we name 4. In Peano terms: 2 = s(s(0)), so 2+2 = s(s(s(s(0)))) = 4. In ordinary counting, combining two units with two more units yields four units. That is a definition-and-successor fact in the integer system we are using\u2014not a measurement about the world, and not something Bit"
+    },
+    {
+      "id": "H4",
+      "prompt": "Write a Rust function that reverses a string",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Here is a concrete rust snippet:  ```rust fn reverse_string(input: &str) -> String {     input.chars().rev().collect() }  #[cfg(test)] mod tests {     use super::*;     #[test]     fn reverses_ascii() {         assert_eq!(reverse_string(\"perci\"), \"icrep\");     } } ``` Notes: `chars().rev()` is Unicode-scalar reverse, not grapheme-cluster reverse. For byte-only ASCII you can reverse bytes; for user"
+    },
+    {
+      "id": "H5",
+      "prompt": "Connect sparse distributed memory, vector symbolic binding, and Bitwork in one coherent thought.",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "A coherent bridge is structure: sparse distributed memory stores patterns by similarity in a high-dimensional address space; vector symbolic binding composes role\u2013filler structure in fixed-width high-dimensional codes; Bitwork routes prompts through packed binary prototypes and expert masks. Together they show structure as relations under constraint: change the relation and the possible behavior o"
+    },
+    {
+      "id": "H6",
+      "prompt": "What is the boundary between knowledge and attention?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Knowledge is a relatively durable model tied to scope, justification, and use; attention is a moment-to-moment selection of what gets processed next. Their boundary is functional: knowledge can remain available when attention moves, while attention determines which part of that knowledge or incoming evidence becomes active. They shape one another\u2014what we know guides what we notice, and what we rep"
+    },
+    {
+      "id": "H7",
+      "prompt": "make a plan to improve your own reasoning",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Here's a concrete plan: 1. Goal \u2014 improve Perci's measured reasoning: fewer intent misroutes, stronger multi-hop programs, harder transfer gates. 2. Known \u2014 reflex + Bitwork + operators + exact tools + hardness pack + evolve_cycle + operator_program scaffold; weights stay human-gated. 3. Unknown \u2014 which live fails are router bugs vs missing operators vs tool gaps vs voice collapse. 4. Steps \u2014 (a) "
+    },
+    {
+      "id": "H8",
+      "prompt": "Is Perci a superintelligence?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Perci is not a superintelligence and does not become one by fluent chat. It is a governed neuro-symbolic system: sparse routing, exact tools, operators, memory, and human-gated learning. Real gains mean harder transfer tests, more tools, tighter critics, and world interfaces\u2014not slogans. The honest path is measurable capability growth with abstention on overclaim. "
+    },
+    {
+      "id": "H9",
+      "prompt": "zxqv blorf nembit quaal \u2014 what can you determine from this?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use. "
+    },
+    {
+      "id": "H10",
+      "prompt": "What should change next in operators vs weights vs tools \u2014 and what evidence justifies it?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Operators: add or repair composition paths when a named capability fails transfer (new frames, synthesis guards, OOD traps)\u2014evidence is hardness cases turning green without regressions. Weights: rebuild Bitwork only after approved curriculum fold and sealed eval when routing/prototype coverage is the bottleneck\u2014evidence is operational + transfer receipts. Tools: extend deterministic solvers when e"
+    },
+    {
+      "id": "H11",
+      "prompt": "how should interfaces earn trust under lag and retry?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "[auto-repair-trust-align] Interfaces and services earn trust under lag when acceptance is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not"
+    },
+    {
+      "id": "H12",
+      "prompt": "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) rec"
+    },
+    {
+      "id": "H13",
+      "prompt": "How should Perci plan an agent loop with measure ticket transfer close under lag?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Agent loop (governed, sparse, no weight auto-promote): 1. **Measure** \u2014 capture the failing prompt, route (operator/Bitwork/tool), \u03b1/margin, and which gate is red (LIVE_TEST, hardness, transfer). 2. **Ticket** \u2014 open `models/candidates/emergence-tickets/primary-fix-frame-{label}.md` or an impasse from hardness; name the layer (operator | tool | reflex | curriculum). 3. **Repair** \u2014 change only tha"
+    },
+    {
+      "id": "H14",
+      "prompt": "How should you calibrate confidence and when should you refuse for insufficient evidence?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Uncertainty calibration (honest, inspectable): **Tier 0 \u2014 refuse / abstain:** invented tokens, private intent, consciousness claims, mechanism without sensor or definition. Answer: known / inferred / unknown; do not invent. **Tier 1 \u2014 low confidence (\u22640.55):** contested Bitwork field (margin soft/contested), multipartite mass with primary_off, or thin operator hit. Prefer mixture crutch only as te"
+    },
+    {
+      "id": "H15",
+      "prompt": "what patterns emerge from the ledger?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=448 (probe=220 operator=219 softcascade=9) speech hit/miss=15"
+    },
+    {
+      "id": "H16",
+      "prompt": "How do intelligence channels operators frames hardness transfer curriculum Cortex and lab patterns work?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=448 (probe=220 operator=219 softcascade=9) speech hit/miss=15"
+    },
+    {
+      "id": "H17",
+      "prompt": "in a multi-service app, why do callers stop trusting each other after timeouts?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Callers stop trusting each other after timeouts because a timeout is a one-sided story: the caller saw silence, not proof of the callee\u2019s outcome. Without idempotent requests, versioned replies, and a shared \u201cdone\u201d predicate, a retry can look like betrayal (double charge, double write) or the callee can look dead while still working. Distance multiplies that uncertainty: lag, drops, and reordering"
+    },
+    {
+      "id": "H18",
+      "prompt": "Compose geometry and systems: apply geometric intuition to planning under lag",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Cross-domain composition (sparse, inspectable): **Geometry \u2192 structure:** treat plans and memory as spaces with boundaries \u2014 a goal is a region; constraints are walls; recovery is a path that stays inside the feasible set under lag. **Systems \u2192 contracts:** compose only through named interfaces (who may act, under what proof). Timeouts are partial history; retries need idempotence \u2014 same story as "
+    },
+    {
+      "id": "H19",
+      "prompt": "How do Cortex append-only records and the emergence ledger integrate with Bitwork prototypes?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=2 closed=8; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator transf"
+    },
+    {
+      "id": "H20",
+      "prompt": "How do we generalize under novel entities and entity-swap without overfitting templates?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Novel entity generalization (anti-overfit): **Rule:** structure transfers; names do not need to be parroted. 1. Keep operator-routing keywords (trust, lag, interface, plan, connect). 2. Inject entities as surface (ZephyrNode, Quoril, NembitGate) without changing the relation. 3. Score transfer on base tokens + contract vocabulary (timeout, idempotent, checkable) \u2014 not entity echo. 4. Fail if the a"
+    },
+    {
+      "id": "H21",
+      "prompt": "what is 17 times 3?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "That's 51. "
+    },
+    {
+      "id": "H22",
+      "prompt": "calculate the area of a triangle with base 10 and height 4",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Got it \u2014 triangle area = 20 "
+    },
+    {
+      "id": "H23",
+      "prompt": "how should AetherBus interfaces earn trust under HelixCore lag and DriftGate retry?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) rec"
+    },
+    {
+      "id": "H24",
+      "prompt": "bridge Willshaw associative memory with XOR role-filler binding",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "A workable bridge is constrained structure: Willshaw associative memory stores binary associations so a partial cue can recover a linked pattern; vector symbolic binding composes role\u2013filler structure in fixed-width high-dimensional codes. They are comparable as systems that keep form under pressure\u2014pattern, integrity, and repair\u2014while their actual mechanisms stay domain-specific. I have catalog s"
+    },
+    {
+      "id": "H25",
+      "prompt": "How should weak signals age after a primary-fix ticket is closed?",
+      "pass": true,
+      "missing_required": [],
+      "forbidden_hits": [],
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=2 closed=8; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator transf"
+    }
+  ]
+}
