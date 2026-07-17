@@ -281,6 +281,26 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
                     eprintln!("benchmark error: {error}");
                 }
             }
+            other if other == "/think" || other.starts_with("/think ") => {
+                let arg = other.strip_prefix("/think").unwrap_or("").trim();
+                match arg {
+                    "on" => {
+                        engine.set_verbose_cognition(true);
+                        println!(
+                            "verbose cognition ON — replies use [Cognition · verbose] until /think off"
+                        );
+                    }
+                    "off" => {
+                        engine.set_verbose_cognition(false);
+                        println!("verbose cognition OFF — short [Cognition Trace] only");
+                    }
+                    "" => println!("{}", engine.cognition_think()),
+                    _ => println!(
+                        "usage: /think | /think on | /think off\n{}",
+                        engine.cognition_think()
+                    ),
+                }
+            }
             _ => {
                 let started = Instant::now();
                 match engine.respond(input) {

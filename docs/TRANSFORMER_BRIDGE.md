@@ -142,6 +142,32 @@ with **integer channels**, not token sampling:
 **Tightens:** residual α mass floor (hop-weighted) so second thoughts don’t vanish
 under softmax-like permille; residual novelty bonus for different label/concept.
 
+## 5b. Cognition Trace + length law (v0.6.9)
+
+Visible, inspectable fluency (not private CoT):
+
+```text
+[Cognition Trace] α=42% · hops=1 · domains=systems+governance · L=186 words (cascade·B=120)
+```
+
+Integer length budget (fixed-point permille, no floats on the hot path):
+
+\[
+L = \min\!\big(L_{\max},\; \lceil B(1 + \alpha_{\mathrm{lead}} + H_r\cdot 0.8 + C_d + I_u)\rceil\big)
+\]
+
+| Symbol | Meaning |
+|--------|---------|
+| \(B\) | base words (30 tool / ~120 open) |
+| \(\alpha_{\mathrm{lead}}\) | `primary_attention_pm / 1000` |
+| \(H_r\) | residual hop depth 0–2 |
+| \(C_d\) | domain/frame/composition complexity (capped) |
+| \(I_u\) | intent (1.0 default, 1.5+ explain/why, 1.8 detailed) |
+| \(L_{\max}\) | 420 |
+
+`/think` shows the last verbose plan; `--verbose-cognition <msg>` or `/think on` for full
+deliberation. SoftCascade applies \(L\) **before** speaking the body.
+
 ## 5. Free-form fluency path (v0.6.8)
 
 Honest claim: Perci is **not** a free-form LM. Fluency here means **paragraph

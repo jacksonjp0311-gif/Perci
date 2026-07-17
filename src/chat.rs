@@ -33,6 +33,8 @@ pub struct ChatEngine {
     learning: Option<InteractionLearner>,
     /// Last bounded cognitive audit; operational trace, never hidden reasoning.
     last_deliberation: Option<Deliberation>,
+    /// Session flag: full [Cognition · verbose] on every reply until `/think off`.
+    verbose_cognition: bool,
 }
 
 impl ChatEngine {
@@ -52,7 +54,29 @@ impl ChatEngine {
             session: None,
             learning: None,
             last_deliberation: None,
+            verbose_cognition: false,
         }
+    }
+
+    /// Toggle or query session verbose cognition (`/think on|off`).
+    pub fn set_verbose_cognition(&mut self, on: bool) {
+        self.verbose_cognition = on;
+    }
+
+    pub fn verbose_cognition(&self) -> bool {
+        self.verbose_cognition
+    }
+
+    /// Last SoftCascade/Bitwork verbose plan (inspectable geometry).
+    pub fn cognition_think(&self) -> String {
+        if let Some(v) = crate::bridge::peek_last_verbose_trace() {
+            return v;
+        }
+        let audit = self.deliberation_trace();
+        format!(
+            "[Cognition · verbose]\nsession_verbose={}\nNo SoftCascade plan stored yet this process.\n\nLast operator audit:\n{audit}",
+            self.verbose_cognition
+        )
     }
 
     /// Attach persistent session and preload recent turns.
@@ -133,9 +157,14 @@ impl ChatEngine {
 
     pub fn respond(&mut self, input: &str) -> io::Result<ChatResponse> {
         self.last_deliberation = None;
+        let (flag_verbose, clean) = crate::bridge::strip_cognition_flags(input);
+        let input = clean.as_str();
+        crate::bridge::set_turn_verbose(flag_verbose || self.verbose_cognition);
+
         let route = self.router.route(input);
         match route {
             Route::Help => {
+                crate::bridge::set_turn_verbose(false);
                 return Ok(ChatResponse {
                     route: Route::Help,
                     text: help_text().into(),
@@ -210,10 +239,20 @@ impl ChatEngine {
             deliberation::try_deliberate(input, &self.recent, &teaching_claims)
         {
             crate::operator_program::annotate_deliberation(input, &mut result);
-            let text = result.answer.clone();
+            let raw = result.answer.clone();
+            let text = crate::bridge::envelope_light(
+                input,
+                crate::bridge::CognitionPath::Operator,
+                &[result.operator],
+                result.operator,
+                &raw,
+                flag_verbose || self.verbose_cognition,
+            );
+            result.answer = text.clone();
             crate::decision_trace::append(input, &result);
             self.last_deliberation = Some(result);
             self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
             return Ok(ChatResponse {
                 route: Route::Chat,
                 text,
@@ -230,6 +269,14 @@ impl ChatEngine {
             &self.recent,
             self.learning.as_ref().map(|learner| learner.profile()),
         ) {
+            let text = crate::bridge::envelope_light(
+                input,
+                crate::bridge::CognitionPath::Open,
+                &["dialogue"],
+                "dialogue-act",
+                &text,
+                flag_verbose || self.verbose_cognition,
+            );
             self.last_deliberation = Some(
                 Deliberation::new("dialogue-act", text.clone())
                     .observed(format!("dialogue_act={dialogue_act:?}"))
@@ -237,6 +284,7 @@ impl ChatEngine {
                     .confidence(0.90),
             );
             self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
             return Ok(ChatResponse {
                 route: Route::Chat,
                 text,
@@ -262,10 +310,20 @@ impl ChatEngine {
                     .confidence(1.0);
                 deliberation =
                     crate::operator_program::apply_program_runtime(input, deliberation);
-                text = deliberation.answer.clone();
+                let raw = deliberation.answer.clone();
+                text = crate::bridge::envelope_light(
+                    input,
+                    crate::bridge::CognitionPath::ExactTool,
+                    &["math"],
+                    "exact-arithmetic",
+                    &raw,
+                    flag_verbose || self.verbose_cognition,
+                );
+                deliberation.answer = text.clone();
                 crate::decision_trace::append(input, &deliberation);
                 self.last_deliberation = Some(deliberation);
                 self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
                 return Ok(ChatResponse {
                     route: Route::Math,
                     text,
@@ -284,6 +342,7 @@ impl ChatEngine {
                 crate::decision_trace::append(input, &deliberation);
                 self.last_deliberation = Some(deliberation);
                 self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
                 return Ok(ChatResponse {
                     route: Route::Math,
                     text,
@@ -311,10 +370,20 @@ impl ChatEngine {
                     .confidence(1.0);
                 deliberation =
                     crate::operator_program::apply_program_runtime(input, deliberation);
-                text = deliberation.answer.clone();
+                let raw = deliberation.answer.clone();
+                text = crate::bridge::envelope_light(
+                    input,
+                    crate::bridge::CognitionPath::ExactTool,
+                    &["geometry"],
+                    "exact-geometry",
+                    &raw,
+                    flag_verbose || self.verbose_cognition,
+                );
+                deliberation.answer = text.clone();
                 crate::decision_trace::append(input, &deliberation);
                 self.last_deliberation = Some(deliberation);
                 self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
                 return Ok(ChatResponse {
                     route: Route::Geometry,
                     text,
@@ -346,13 +415,21 @@ impl ChatEngine {
             && !lower.contains("cargo")
         {
             if let Some(text) = voice::social_reply(social, self.recent.len()) {
-                let text = text.to_string();
+                let text = crate::bridge::envelope_light(
+                    input,
+                    crate::bridge::CognitionPath::Social,
+                    &["greeting"],
+                    "social-reflex",
+                    &text,
+                    flag_verbose || self.verbose_cognition,
+                );
                 self.last_deliberation = Some(
                     Deliberation::new("social-reflex", text.clone())
                         .observed(format!("social_kind={social:?}"))
                         .confidence(0.97),
                 );
                 self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
                 return Ok(ChatResponse {
                     route: Route::Chat,
                     text,
@@ -408,6 +485,7 @@ impl ChatEngine {
         self.last_deliberation = Some(deliberation);
 
         self.push_turn(input, &text);
+        crate::bridge::set_turn_verbose(false);
         Ok(ChatResponse {
             route: Route::Chat,
             text,
@@ -643,7 +721,7 @@ fn strip_prefixes<'a>(input: &'a str, prefixes: &[&str]) -> &'a str {
 }
 
 pub fn help_text() -> &'static str {
-    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
+    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /think [on|off]     show last cognition plan, or toggle verbose traces\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nFlags:\n  --verbose-cognition <msg>   one-shot full [Cognition · verbose] plan\n  think: <msg>                same one-shot verbose ask\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nCognition:\n  most replies show [Cognition Trace] α · hops · domains · L (word budget)\n  L = min(420, ceil(B·(1+α+H_r·0.8+C_d+I_u)))  integer fixed-point\n  PERCI_COGNITION_TRACE=off disables the short prefix\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
 }
 
 #[cfg(test)]

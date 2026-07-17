@@ -408,18 +408,30 @@ pub fn render_cognitive_response_with_history(
     // Final anti-generic guard: must bind the user's words when possible.
     let text = crate::voice::ensure_user_binding(user, &text, label, concept, recent);
     // Re-apply mixture / residual only when SoftCascade did not already weave them.
-    let text = if crate::bridge::should_use_cascade(matched, user) {
+    // SoftCascade already applied length budget + [Cognition Trace].
+    let used_cascade = crate::bridge::should_use_cascade(matched, user);
+    let text = if used_cascade {
         text
     } else {
         let skeleton = matched.concept_skeleton(3);
         let text =
             crate::voice::weave_mixture_skeleton(user, &text, &skeleton, matched.variant as usize);
         let residual = matched.residual_skeleton(1);
-        if let Some(lat) = residual.first() {
+        let text = if let Some(lat) = residual.first() {
             crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
         } else {
             text
-        }
+        };
+        // Non-cascade fluid path: still apply length scalar + cognition trace.
+        let packet = crate::bridge::assemble(matched, user);
+        let plan = crate::bridge::LengthPlan::from_bitwork(
+            user,
+            matched,
+            &packet,
+            crate::bridge::CognitionPath::Open,
+        );
+        let trimmed = crate::bridge::apply_word_budget(&text, plan.words);
+        plan.envelope(&trimmed, false)
     };
 
     let mut text = text;

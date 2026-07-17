@@ -15,6 +15,34 @@
 
 use crate::cognitive::CognitiveMatch;
 use crate::deliberation;
+use std::cell::{Cell, RefCell};
+
+thread_local! {
+    /// Per-turn verbose cognition (set by chat for --verbose-cognition / session /think on).
+    static TURN_VERBOSE: Cell<bool> = Cell::new(false);
+    /// Last verbose plan text for `/think` without re-running classify.
+    static LAST_VERBOSE: RefCell<Option<String>> = RefCell::new(None);
+}
+
+/// Set whether this turn's SoftCascade/operator envelope uses the verbose plan.
+pub fn set_turn_verbose(verbose: bool) {
+    TURN_VERBOSE.with(|c| c.set(verbose));
+}
+
+pub fn turn_verbose() -> bool {
+    TURN_VERBOSE.with(|c| c.get())
+}
+
+fn store_last_verbose(plan: &LengthPlan) {
+    LAST_VERBOSE.with(|c| {
+        *c.borrow_mut() = Some(plan.verbose_trace());
+    });
+}
+
+/// Peek last verbose cognition block (for `/think`).
+pub fn peek_last_verbose_trace() -> Option<String> {
+    LAST_VERBOSE.with(|c| c.borrow().clone())
+}
 
 /// Evidence packet assembled for one soft-cascade reply.
 #[derive(Debug, Clone)]
@@ -412,7 +440,362 @@ pub fn compose_soft_cascade(
     while out.contains("  ") {
         out = out.replace("  ", " ");
     }
-    out
+
+    // Length scalar + short [Cognition Trace] (integer-friendly SoftCascade envelope).
+    let plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
+    let body = apply_word_budget(&out, plan.words);
+    plan.envelope(&body, false)
+}
+
+// ─── Response length budget + cognition trace ───────────────────────────────
+
+/// Cognitive path class for base budget B.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CognitionPath {
+    ExactTool,
+    Operator,
+    Social,
+    Cascade,
+    Open,
+}
+
+/// Integer length plan:
+/// \( L = \min(L_{\max}, \lceil B(1 + \alpha_{\mathrm{lead}} + H_r\cdot 0.8 + C_d + I_u)\rceil) \)
+///
+/// All terms use fixed-point permille so the hot path stays float-free.
+#[derive(Clone, Debug)]
+pub struct LengthPlan {
+    pub words: usize,
+    pub base_b: u32,
+    pub alpha_pm: u32,
+    pub residual_hops: u32,
+    pub complexity_pm: u32,
+    pub intent_pm: u32,
+    pub factor_pm: u32,
+    pub path: CognitionPath,
+    pub domains: Vec<String>,
+    pub composition: Vec<String>,
+    pub mixture_n: usize,
+    pub frame_n: usize,
+    pub lead_snippet: Option<String>,
+    pub residual_n: usize,
+    pub margin: i32,
+    pub label: String,
+}
+
+impl LengthPlan {
+    const L_MAX: u32 = 420;
+
+    pub fn from_bitwork(
+        user: &str,
+        matched: &CognitiveMatch,
+        packet: &BridgePacket,
+        path: CognitionPath,
+    ) -> Self {
+        let residual_hops = matched
+            .mixture
+            .iter()
+            .filter(|m| m.residual)
+            .map(|m| m.hop as u32)
+            .max()
+            .unwrap_or(0)
+            .min(2);
+        let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
+        let mut domains = vec![matched.label.clone()];
+        for m in &matched.mixture {
+            if !domains.iter().any(|d| d == &m.label) {
+                domains.push(m.label.clone());
+            }
+        }
+        let experts = domains.len() as u32;
+        // C_d ≈ (experts + frames + composition slots) / 10, capped (~0.60).
+        let cd_units = experts
+            + (packet.frame_n as u32).min(4)
+            + (matched.composition.len() as u32).min(4);
+        let complexity_pm = ((cd_units * 100) / 10).min(600);
+        let alpha_pm = matched.primary_attention_pm as u32;
+        let intent_pm = intent_multiplier_pm(user);
+        let base_b = base_words(path, user);
+        // factor = 1 + α + H_r*0.8 + C_d + I_u  (permille)
+        let factor_pm = 1000u32
+            .saturating_add(alpha_pm)
+            .saturating_add(residual_hops.saturating_mul(800))
+            .saturating_add(complexity_pm)
+            .saturating_add(intent_pm);
+        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+        let words = (raw as u32).min(Self::L_MAX) as usize;
+        Self {
+            words: words.max(12),
+            base_b,
+            alpha_pm,
+            residual_hops,
+            complexity_pm,
+            intent_pm,
+            factor_pm,
+            path,
+            domains,
+            composition: matched.composition.clone(),
+            mixture_n: packet.mixture_n,
+            frame_n: packet.frame_n,
+            lead_snippet: packet.lead.clone().map(|s| truncate_chars(&s, 80)),
+            residual_n,
+            margin: matched.margin,
+            label: matched.label.clone(),
+        }
+    }
+
+    /// Operator / exact-tool path without a full Bitwork match.
+    pub fn from_light(user: &str, path: CognitionPath, domains: &[&str], operator: &str) -> Self {
+        let intent_pm = intent_multiplier_pm(user);
+        let base_b = base_words(path, user);
+        let complexity_pm = ((domains.len() as u32).saturating_mul(100) / 10).min(400);
+        let factor_pm = 1000u32
+            .saturating_add(complexity_pm)
+            .saturating_add(intent_pm);
+        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+        let words = (raw as u32).min(Self::L_MAX) as usize;
+        Self {
+            words: words.max(8),
+            base_b,
+            alpha_pm: 0,
+            residual_hops: 0,
+            complexity_pm,
+            intent_pm,
+            factor_pm,
+            path,
+            domains: domains.iter().map(|s| (*s).to_owned()).collect(),
+            composition: Vec::new(),
+            mixture_n: 0,
+            frame_n: 0,
+            lead_snippet: None,
+            residual_n: 0,
+            margin: 0,
+            label: operator.to_owned(),
+        }
+    }
+
+    /// Short visible prefix for most replies.
+    pub fn short_trace(&self) -> String {
+        let alpha_pct = self.alpha_pm / 10; // 0–100
+        let domains = if self.domains.is_empty() {
+            self.label.clone()
+        } else {
+            self.domains
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("+")
+        };
+        let path = path_tag(self.path);
+        format!(
+            "[Cognition Trace] α={alpha_pct}% · hops={} · domains={domains} · L={} words ({path}·B={})",
+            self.residual_hops, self.words, self.base_b
+        )
+    }
+
+    /// Fuller deliberation for /think or --verbose-cognition.
+    pub fn verbose_trace(&self) -> String {
+        let alpha_pct = self.alpha_pm / 10;
+        let factor_x100 = self.factor_pm / 10; // e.g. 260 → 2.60× as 260/100
+        let mut out = String::new();
+        out.push_str("[Cognition · verbose]\n");
+        out.push_str(&format!(
+            "path={} · label={} · margin={}\n",
+            path_tag(self.path),
+            self.label,
+            self.margin
+        ));
+        out.push_str(&format!(
+            "α_lead={}‰ ({}%) · residual_hops={} · mixture={} · residual_n={} · frames={}\n",
+            self.alpha_pm, alpha_pct, self.residual_hops, self.mixture_n, self.residual_n, self.frame_n
+        ));
+        out.push_str(&format!(
+            "domains: {}\n",
+            if self.domains.is_empty() {
+                "—".into()
+            } else {
+                self.domains.join(", ")
+            }
+        ));
+        if !self.composition.is_empty() {
+            out.push_str(&format!("VSA bind: {}\n", self.composition.join(" · ")));
+        }
+        out.push_str(&format!(
+            "length: L={} · B={} · C_d={}‰ · I_u={}‰ · factor≈{}.{:02} · L_max={}\n",
+            self.words,
+            self.base_b,
+            self.complexity_pm,
+            self.intent_pm,
+            factor_x100 / 100,
+            factor_x100 % 100,
+            Self::L_MAX
+        ));
+        out.push_str(&format!(
+            "L = min({}, ceil(B·(1+α+H_r·0.8+C_d+I_u)))\n",
+            Self::L_MAX
+        ));
+        if let Some(ref lead) = self.lead_snippet {
+            out.push_str(&format!("lead: {lead}\n"));
+        }
+        out.push_str("note: inspectable Bitwork geometry — not private chain-of-thought.");
+        out
+    }
+
+    /// Prefix short (or verbose) trace + body, respecting budget already applied to body.
+    pub fn envelope(&self, body: &str, verbose: bool) -> String {
+        store_last_verbose(self);
+        if !cognition_trace_enabled() {
+            return body.to_owned();
+        }
+        let verbose = verbose || turn_verbose();
+        if verbose {
+            format!("{}\n\n{}", self.verbose_trace(), body)
+        } else {
+            format!("{}\n{}", self.short_trace(), body)
+        }
+    }
+}
+
+/// Whether short [Cognition Trace] prefixes are emitted (default on).
+pub fn cognition_trace_enabled() -> bool {
+    match std::env::var("PERCI_COGNITION_TRACE") {
+        Ok(v) => {
+            let l = v.to_ascii_lowercase();
+            !matches!(l.as_str(), "0" | "off" | "false" | "no")
+        }
+        Err(_) => true,
+    }
+}
+
+fn base_words(path: CognitionPath, user: &str) -> u32 {
+    let lower = user.to_ascii_lowercase();
+    match path {
+        CognitionPath::ExactTool => 30,
+        CognitionPath::Social => 28,
+        CognitionPath::Operator => {
+            if lower.contains("plan") || lower.contains("step") {
+                110
+            } else {
+                90
+            }
+        }
+        CognitionPath::Cascade | CognitionPath::Open => {
+            if lower.contains("detailed") || lower.contains("thorough") {
+                160
+            } else {
+                120
+            }
+        }
+    }
+}
+
+/// I_u as permille (1000 = 1.0).
+fn intent_multiplier_pm(user: &str) -> u32 {
+    let lower = user.to_ascii_lowercase();
+    if lower.contains("detailed")
+        || lower.contains("thorough")
+        || lower.contains("in depth")
+        || lower.contains("think step")
+        || lower.contains("step by step")
+    {
+        1800
+    } else if lower.contains("explain")
+        || lower.contains("why ")
+        || lower.starts_with("why")
+        || lower.contains("how does")
+        || lower.contains("how should")
+        || lower.contains("how can ")
+        || lower.contains("reason about")
+    {
+        1500
+    } else if lower.contains("brief")
+        || lower.contains("short answer")
+        || lower.contains("tl;dr")
+        || lower.contains("tldr")
+    {
+        700
+    } else {
+        1000
+    }
+}
+
+fn path_tag(path: CognitionPath) -> &'static str {
+    match path {
+        CognitionPath::ExactTool => "tool",
+        CognitionPath::Operator => "operator",
+        CognitionPath::Social => "social",
+        CognitionPath::Cascade => "cascade",
+        CognitionPath::Open => "open",
+    }
+}
+
+/// Truncate body to at most `max_words` whitespace-separated tokens, clean end.
+pub fn apply_word_budget(text: &str, max_words: usize) -> String {
+    if max_words == 0 {
+        return String::new();
+    }
+    let words: Vec<&str> = text.split_whitespace().collect();
+    if words.len() <= max_words {
+        return text.trim().to_owned();
+    }
+    let mut cut = words[..max_words].join(" ");
+    // Prefer ending on sentence boundary if near the end of the kept window.
+    if let Some(pos) = cut.rfind(['.', '!', '?']) {
+        if pos + 1 >= cut.len() / 2 {
+            cut.truncate(pos + 1);
+            return cut;
+        }
+    }
+    if !cut.ends_with('.') {
+        cut.push('…');
+    }
+    cut
+}
+
+fn truncate_chars(s: &str, max: usize) -> String {
+    let t = s.trim();
+    if t.chars().count() <= max {
+        t.to_owned()
+    } else {
+        t.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
+    }
+}
+
+/// Envelope for operator / tool answers without SoftCascade.
+pub fn envelope_light(
+    user: &str,
+    path: CognitionPath,
+    domains: &[&str],
+    operator: &str,
+    body: &str,
+    verbose: bool,
+) -> String {
+    let plan = LengthPlan::from_light(user, path, domains, operator);
+    let trimmed = apply_word_budget(body, plan.words);
+    plan.envelope(&trimmed, verbose)
+}
+
+/// Strip optional cognition flags from user input. Returns (verbose_once, clean).
+pub fn strip_cognition_flags(input: &str) -> (bool, String) {
+    let mut verbose = false;
+    let mut s = input.trim().to_owned();
+    loop {
+        let lower = s.to_ascii_lowercase();
+        if lower.starts_with("--verbose-cognition") {
+            verbose = true;
+            s = s["--verbose-cognition".len()..].trim_start().to_owned();
+            continue;
+        }
+        // "think: <question>" as a one-shot verbose ask (not the /think command).
+        if lower.starts_with("think:") {
+            verbose = true;
+            s = s["think:".len()..].trim_start().to_owned();
+            continue;
+        }
+        break;
+    }
+    (verbose, s)
 }
 
 #[derive(Clone, Copy)]
@@ -730,12 +1113,58 @@ mod tests {
         );
         let low = out.to_ascii_lowercase();
         assert!(
-            low.starts_with("because")
+            low.contains("[cognition trace]") || low.contains("[cognition · verbose]"),
+            "expected cognition trace prefix, got: {out}"
+        );
+        assert!(
+            low.contains("because")
                 || low.contains("comes down")
                 || low.contains("structural reason")
-                || low.contains("trust"),
+                || low.contains("trust")
+                || low.contains("interface")
+                || low.contains("permission"),
             "got: {out}"
         );
+    }
+
+    #[test]
+    fn length_plan_integer_law_scales_with_intent() {
+        let m = sample_match();
+        let packet = assemble(&m, "why does trust fail in distributed systems?");
+        let open = LengthPlan::from_bitwork(
+            "why does trust fail in distributed systems?",
+            &m,
+            &packet,
+            CognitionPath::Cascade,
+        );
+        let brief = LengthPlan::from_bitwork(
+            "brief: trust fail",
+            &m,
+            &packet,
+            CognitionPath::Cascade,
+        );
+        assert!(open.words >= 80, "open L={}", open.words);
+        assert!(open.intent_pm >= 1500);
+        assert!(brief.intent_pm <= 1000 || brief.words <= open.words);
+        assert!(open.short_trace().contains("α="));
+        assert!(open.verbose_trace().contains("α_lead="));
+    }
+
+    #[test]
+    fn apply_word_budget_cuts_cleanly() {
+        let long = "one two three four five six seven eight nine ten";
+        let cut = apply_word_budget(long, 4);
+        assert_eq!(cut.split_whitespace().count(), 4);
+    }
+
+    #[test]
+    fn strip_verbose_cognition_flag() {
+        let (v, clean) = strip_cognition_flags("--verbose-cognition why trust fails");
+        assert!(v);
+        assert_eq!(clean, "why trust fails");
+        let (v2, c2) = strip_cognition_flags("think: explain residual hops");
+        assert!(v2);
+        assert!(c2.contains("explain"));
     }
 
     #[test]
