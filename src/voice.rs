@@ -1098,8 +1098,24 @@ pub fn compose_reply(
 }
 
 /// Whether the VSA frame is worth voicing (avoids “Bound as agent:doinf”).
+pub fn should_voice_composition_public(user: &str, frame: &[String]) -> bool {
+    should_voice_composition(user, frame)
+}
+
+/// Whether the VSA frame is worth voicing (avoids “Bound as agent:doinf”).
 fn should_voice_composition(user: &str, frame: &[String]) -> bool {
     if frame.len() < 2 {
+        return false;
+    }
+    let lower = user.to_ascii_lowercase();
+    // Identity / capability answers must not append "shaped as ask→what · agent→capable".
+    if lower.contains("capable")
+        || lower.contains("what can you")
+        || lower.contains("what do you do")
+        || lower.contains("who are you")
+        || lower.contains("what are you")
+        || lower.contains("capabilities")
+    {
         return false;
     }
     let words = user.split_whitespace().count();
@@ -1118,10 +1134,15 @@ fn should_voice_composition(user: &str, frame: &[String]) -> bool {
         return false;
     }
     // Reject frames whose fillers are mostly short/garbage.
+    // Also reject weak agent: fillers that just echo "capable".
     let good_fillers = frame
         .iter()
         .filter_map(|f| f.split_once(':').map(|(_, v)| v))
-        .filter(|v| v.len() >= 4 && !v.chars().all(|c| c.is_ascii_digit()))
+        .filter(|v| {
+            v.len() >= 4
+                && !v.chars().all(|c| c.is_ascii_digit())
+                && !matches!(*v, "what" | "how" | "why" | "capable" | "capabilities")
+        })
         .count();
     good_fillers >= 2
 }

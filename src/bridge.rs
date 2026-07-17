@@ -303,8 +303,15 @@ pub fn compose_soft_cascade(
     let arc = ThoughtArc::from_packet(&packet, domain_body, matched.margin, style_depth());
     let mut out = arc.speak(user, &topic, ask, variant, peek_premise().as_deref());
 
-    // VSA soft binding — only when structural and not a checklist dump.
-    if packet.composition.len() >= 2 && (variant % 3 != 2 || packet.supports.is_empty()) {
+    // VSA soft binding — never on identity/capability (schema dump ruins natural tone).
+    // Also skip when voice gate says the frame is noise (agent:capable, ask:what only).
+    if packet.composition.len() >= 2
+        && !looks_capability_user(user)
+        && matched.label != "identity"
+        && matched.label != "greeting"
+        && crate::voice::should_voice_composition_public(user, &packet.composition)
+        && (variant % 3 != 2 || packet.supports.is_empty())
+    {
         out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
     }
 
@@ -545,7 +552,12 @@ impl ThoughtArc {
             if !out.ends_with('.') {
                 out.push('.');
             }
-        } else if self.contested && style_depth() != 1 {
+        } else if self.contested
+            && style_depth() != 1
+            && !looks_capability_user(user)
+            && !topic_is_identity(topic)
+        {
+            // Contested multipartite honesty — not on self-description answers.
             out.push_str(
                 " I'm holding more than one working frame; these are the pieces that still cohere.",
             );
@@ -553,6 +565,14 @@ impl ThoughtArc {
 
         out
     }
+}
+
+fn topic_is_identity(topic: &str) -> bool {
+    let t = topic.to_ascii_lowercase();
+    t.contains("identity")
+        || t.contains("capable")
+        || t.contains("capability")
+        || t.contains("perci")
 }
 
 fn near_dup(a: &str, b: &str) -> bool {

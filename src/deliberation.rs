@@ -169,6 +169,12 @@ pub fn try_deliberate(
         return Some(awareness_growth_answer(&text));
     }
 
+    // Meta: "Expect: real snippet + notes" — acceptance criteria for prior work,
+    // not a SoftCascade open-domain topic.
+    if looks_acceptance_expectation(&text) {
+        return Some(acceptance_expectation_answer(&text, recent));
+    }
+
     // T1: code generation intents return real snippets, not slogans.
     if looks_code_request(&text) {
         return Some(code_snippet_answer(&repaired));
@@ -2589,6 +2595,112 @@ fn partition_recovery_answer(text: &str, recent: &[(String, String)]) -> Deliber
         .confidence(0.93)
 }
 
+/// User stating acceptance criteria / scorecard for the prior answer(s).
+fn looks_acceptance_expectation(text: &str) -> bool {
+    let t = text.trim();
+    let low = t.to_ascii_lowercase();
+    if low.starts_with("expect:")
+        || low.starts_with("expect ")
+        || low.starts_with("expected:")
+        || low.starts_with("should have ")
+        || low.starts_with("i expected ")
+        || low.starts_with("wanted:")
+    {
+        return true;
+    }
+    // Compact battery notation: "Expect: real snippet + notes; concrete multi-step plan."
+    low.contains("expect:")
+        && (low.contains("snippet")
+            || low.contains("plan")
+            || low.contains("notes")
+            || low.contains("pass")
+            || low.contains("should"))
+}
+
+fn acceptance_expectation_answer(text: &str, recent: &[(String, String)]) -> Deliberation {
+    let low = text.to_ascii_lowercase();
+    let wants_snippet = low.contains("snippet") || low.contains("code") || low.contains("rust");
+    let wants_plan = low.contains("plan") || low.contains("step");
+    let wants_notes = low.contains("note");
+
+    let mut hits: Vec<&str> = Vec::new();
+    let mut misses: Vec<&str> = Vec::new();
+
+    // Scan last few assistant turns for evidence of meeting criteria.
+    let window: Vec<&str> = recent
+        .iter()
+        .rev()
+        .take(4)
+        .map(|(_, a)| a.as_str())
+        .collect();
+    let joined = window.join("\n").to_ascii_lowercase();
+
+    if wants_snippet {
+        if joined.contains("```") || joined.contains("fn ") || joined.contains("def ") {
+            hits.push("code snippet");
+        } else {
+            misses.push("code snippet");
+        }
+    }
+    if wants_notes {
+        if joined.contains("note") || joined.contains("unicode") || joined.contains("grapheme") {
+            hits.push("implementation notes");
+        } else if wants_snippet && joined.contains("```") {
+            hits.push("brief notes with the snippet");
+        } else {
+            misses.push("explicit notes");
+        }
+    }
+    if wants_plan {
+        if joined.contains("1.") || joined.contains("steps") || joined.contains("goal") {
+            hits.push("multi-step plan");
+        } else {
+            misses.push("multi-step plan");
+        }
+    }
+
+    let body = if misses.is_empty() && !hits.is_empty() {
+        format!(
+            "Checked against your criteria. Met: {}. That matches what I already delivered in the prior turns — real artifact plus structure, not slogans. If you want a harder bar (entity-swap transfer, tests green, or a second language), name it and I’ll hit that next.",
+            hits.join(", ")
+        )
+    } else if !hits.is_empty() {
+        format!(
+            "Partial match on your scorecard. Met: {}. Missing or weak: {}. I can regenerate the missing piece now — say which one to fix first.",
+            hits.join(", "),
+            misses.join(", ")
+        )
+    } else if recent.is_empty() {
+        "Those are good acceptance criteria (snippet + notes + multi-step plan). There’s no prior turn in this window yet to score — ask for the code or the plan first, then restate the Expect line to audit it.".to_owned()
+    } else {
+        format!(
+            "I read that as acceptance criteria for the prior work. Looking at recent turns, I don’t yet see all of: {}. The fix is to re-answer the original request to those bars — not to invent a new topic from the word “expect.” Want me to re-run the code snippet, the plan, or both?"
+            ,
+            {
+                let mut need = Vec::new();
+                if wants_snippet {
+                    need.push("concrete snippet");
+                }
+                if wants_notes {
+                    need.push("notes");
+                }
+                if wants_plan {
+                    need.push("step plan");
+                }
+                if need.is_empty() {
+                    need.push("named deliverables");
+                }
+                need.join(", ")
+            }
+        )
+    };
+
+    Deliberation::new("acceptance-expectation", body)
+        .observed("user stated evaluation criteria for prior answers")
+        .inferred("score prior turns against criteria; do not SoftCascade the word expect")
+        .confidence(0.94)
+}
+
 fn looks_session_situation_question(text: &str) -> bool {
     let compact = text
         .chars()
@@ -4840,6 +4952,33 @@ mod tests {
         assert!(low.contains("partition") && (low.contains("recover") || low.contains("reconcil")));
         assert!(!low.contains("strongest honest claim about perci"));
         assert!(!low.contains("not a cloud llm"));
+    }
+
+    #[test]
+    fn acceptance_expectation_scores_prior_code_and_plan() {
+        let recent = [
+            (
+                "write a rust function that reverses a string".to_owned(),
+                "Here is a concrete rust snippet:\n```rust\nfn reverse_string(input: &str) -> String {\n    input.chars().rev().collect()\n}\n```\nNotes: chars().rev() is Unicode-scalar reverse.".to_owned(),
+            ),
+            (
+                "make a plan to improve Perci transfer tests step-by-step".to_owned(),
+                "Here's a concrete plan:\n1. Goal — raise transfer hardness.\n2. Known — hardness pack.\n3. Steps — capture fails.".to_owned(),
+            ),
+        ];
+        let r = run(
+            "Expect: real snippet + notes; concrete multi-step plan.",
+            &recent,
+        );
+        assert_eq!(r.operator, "acceptance-expectation");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("met") || low.contains("snippet") || low.contains("plan"),
+            "got: {}",
+            r.answer
+        );
+        assert!(!low.contains("each milestone should leave"));
+        assert!(!low.contains("working frame"));
     }
 
     #[test]
