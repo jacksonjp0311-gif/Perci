@@ -1,6 +1,6 @@
 # Emergence ledger — geometry speaks; lab answers; transfer gates
 
-**Software:** v0.6.20+  
+**Software:** v0.6.21+  
 **Log:** `models/candidates/emergence-geometry.jsonl`  
 **Tickets:** `models/candidates/emergence-tickets/`  
 **Curriculum:** `models/candidates/emergence-curriculum.jsonl`  
@@ -35,11 +35,13 @@ classify / probe
 
 ```text
 perci transfer "how should interfaces earn trust under lag and retry?"
-perci lab queue
-perci lab field
-perci lab close primary-fix-frame-general --reason "operator transfer PASS"
-perci agent lab --from-emergence [--dry-run]
+perci transfer-suite
+perci lab queue | unified | curriculum | field
+perci lab close <id> --reason "…"
+perci agent lab --from-emergence [--repair] [--dry-run]
+perci agent lab --full [--repair] [--dry-run]
 perci agent lab --from-hardness [--dry-run]
+python scripts/release_gates.py
 ```
 
 Interactive: `/field` · `/lab`

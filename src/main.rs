@@ -109,14 +109,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let base = args.collect::<Vec<_>>().join(" ");
             if base.trim().is_empty() {
                 return Err(
-                    "usage: perci transfer \"<base prompt>\"\n\
+                    "usage: perci transfer \"<base prompt>\" | perci transfer-suite\n\
                      Runs base + paraphrase + novel-noun transfer gate on operator speech."
                         .into(),
                 );
             }
+            if base.trim() == "suite" || base.trim() == "--suite" {
+                let (ok, report) = perci::emergence::run_transfer_suite();
+                print!("{report}");
+                if !ok {
+                    std::process::exit(1);
+                }
+                return Ok(());
+            }
             let report = perci::emergence::run_operator_transfer(base.trim());
             print!("{report}");
             if report.contains("pass=false") {
+                std::process::exit(1);
+            }
+        }
+        "transfer-suite" | "xfer-suite" => {
+            let (ok, report) = perci::emergence::run_transfer_suite();
+            print!("{report}");
+            if !ok {
                 std::process::exit(1);
             }
         }
@@ -126,6 +141,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "queue" | "next" | "status" => {
                     println!("{}", perci::emergence::lab_report());
                     println!("{}", perci::emergence::next_queue_item());
+                }
+                "unified" | "world" => {
+                    println!("{}", perci::emergence::unified_queue_report());
+                }
+                "curriculum" | "cluster" => {
+                    println!("{}", perci::emergence::curriculum_cluster_report());
                 }
                 "field" => {
                     println!("{}", perci::emergence::status_report(32));
@@ -149,17 +170,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "help" | "--help" | "-h" => {
                     println!(
-                        "perci lab — emergence self-improve queue\n\
+                        "perci lab — emergence self-improve queue (L8)\n\
                          \n\
                          Commands:\n\
-                           perci lab queue              open tickets + next work item\n\
-                           perci lab field              geometry field (curriculum view)\n\
-                           perci lab close <id> --reason \"…\"\n\
-                           perci transfer \"<prompt>\"    transfer gate (operator speech)\n\
+                           perci lab queue                 open tickets + next work item\n\
+                           perci lab unified               hardness + emergence + curriculum\n\
+                           perci lab curriculum            pack-debt cluster by label\n\
+                           perci lab field                 geometry (curriculum view)\n\
+                           perci lab close <id> --reason   resolve ticket\n\
+                           perci transfer \"<prompt>\"       single transfer gate\n\
+                           perci transfer-suite            full transfer law suite\n\
                          \n\
                          Agent:\n\
-                           perci agent lab --from-emergence [--dry-run]\n\
+                           perci agent lab --from-emergence [--repair] [--dry-run]\n\
+                           perci agent lab --full [--repair] [--dry-run]\n\
+                           perci agent lab --from-hardness [--dry-run]\n\
                          \n\
+                         Release: python scripts/release_gates.py\n\
                          Never auto-promotes .pwgt weights."
                     );
                 }
@@ -218,16 +245,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut dry_run = false;
                     let mut from_hardness = false;
                     let mut from_emergence = false;
+                    let mut full = false;
+                    let mut repair = false;
                     for arg in args {
                         match arg.as_str() {
                             "--dry-run" | "-n" => dry_run = true,
                             "--from-hardness" => from_hardness = true,
                             "--from-emergence" => from_emergence = true,
+                            "--full" => full = true,
+                            "--repair" => repair = true,
                             "--help" | "-h" => {
                                 println!(
-                                    "usage: perci agent lab --from-hardness|--from-emergence [--dry-run]\n\
+                                    "usage: perci agent lab --from-hardness|--from-emergence|--full [--repair] [--dry-run]\n\
                                      --from-hardness   impasse tickets from red hardness cases\n\
-                                     --from-emergence  consume open emergence primary-fix tickets\n\
+                                     --from-emergence  transfer suite + close open primary-fix tickets\n\
+                                     --repair          on transfer fail, stage hardness locks + re-gate\n\
+                                     --full            hardness + emergence world loop\n\
                                      Never touches .pwgt."
                                 );
                                 return Ok(());
@@ -235,8 +268,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             _ => {}
                         }
                     }
-                    if from_emergence {
-                        let report = perci::agent::run_lab_from_emergence(dry_run)?;
+                    if full {
+                        let report = perci::agent::run_lab_full(dry_run, repair)?;
+                        println!("{}", report.summary());
+                        if !report.ok {
+                            std::process::exit(1);
+                        }
+                    } else if from_emergence {
+                        let report = perci::agent::run_lab_from_emergence_opts(
+                            perci::agent::LabFromEmergenceOpts { dry_run, repair },
+                        )?;
                         println!("{}", report.summary());
                         if !report.ok {
                             std::process::exit(1);
@@ -249,29 +290,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     } else {
                         return Err(
-                            "usage: perci agent lab --from-hardness|--from-emergence [--dry-run]"
+                            "usage: perci agent lab --from-hardness|--from-emergence|--full [--repair] [--dry-run]"
                                 .into(),
                         );
                     }
                 }
                 "help" | "--help" | "-h" => {
                     println!(
-                        "perci agent — local repo agent (L6 MVP)\n\
+                        "perci agent — local repo agent (L6/L8)\n\
                          \n\
                          Commands:\n\
                            perci agent run <goal> [--dry-run] [--merge-if-green] [--no-test]\n\
                            perci agent lab --from-hardness [--dry-run]\n\
-                           perci agent lab --from-emergence [--dry-run]\n\
-                         \n\
-                         Examples:\n\
-                           perci agent run \"add hardness case for why-does-math\" --dry-run\n\
-                           perci agent run \"add hardness case for why-does-math\" --merge-if-green\n\
-                           perci agent run \"inspect status\" --no-test\n\
-                           perci agent lab --from-hardness --dry-run\n\
-                           perci agent lab --from-emergence --dry-run\n\
+                           perci agent lab --from-emergence [--repair] [--dry-run]\n\
+                           perci agent lab --full [--repair] [--dry-run]\n\
                          \n\
                          Kill switch: PERCI_AGENT=0 or .perci/agent.lock\n\
-                         Weights: never auto-promoted."
+                         Weights: never auto-promoted.\n\
+                         Release: python scripts/release_gates.py"
                     );
                 }
                 other => {

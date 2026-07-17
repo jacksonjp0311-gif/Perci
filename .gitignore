@@ -35,6 +35,7 @@ models/candidates/emergence-geometry.jsonl
 models/candidates/emergence-curriculum.jsonl
 models/candidates/emergence-tickets/
 models/candidates/agent-run-*.json
+models/candidates/agent-lab-*.json
 # Local backups and machine-specific files
 *.bak-*
 *.backup

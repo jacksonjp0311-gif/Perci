@@ -435,7 +435,12 @@ fn split_binary_expression(expression: &str) -> Option<(&str, char, &str)> {
 }
 
 fn parse_i128(text: &str) -> Result<i128, ReasoningError> {
-    text.trim()
+    // Strip trailing punctuation from "3?" / "12." so "17 times 3?" works.
+    let cleaned: String = text
+        .trim()
+        .trim_matches(|c: char| !c.is_ascii_digit() && c != '-' && c != '+')
+        .to_owned();
+    cleaned
         .parse()
         .map_err(|_| ReasoningError::InvalidNumber(text.trim().to_owned()))
 }
@@ -485,6 +490,14 @@ mod tests {
         assert_eq!(
             try_solve_arithmetic("10 divided by 4").unwrap(),
             Some("5/2".to_owned())
+        );
+    }
+
+    #[test]
+    fn times_with_trailing_question_mark() {
+        assert_eq!(
+            try_solve_arithmetic("what is 17 times 3?").unwrap(),
+            Some("51".to_owned())
         );
     }
 

@@ -34,6 +34,27 @@ pub fn is_high_salience(d: &Deliberation) -> bool {
         || d.operator.contains("agent")
 }
 
+/// Lab / world-loop receipt (ticket close, repair attempt, full lab).
+/// Best-effort; never fails the agent path.
+pub fn append_lab(kind: &str, detail: &str, n: usize) {
+    let path = default_path();
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let line = format!(
+        "{{\"ts\":{ts},\"kind\":\"lab\",\"lab_kind\":{},\"detail\":{},\"n\":{n},\"operator\":\"lab\",\"confidence\":1.0}}\n",
+        json_escape(kind),
+        json_escape(&truncate(detail, 200)),
+    );
+    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
 /// Append one decision line. Best-effort; never fails the chat path.
 pub fn append(user: &str, d: &Deliberation) {
     if !is_high_salience(d) {

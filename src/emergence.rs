@@ -459,23 +459,25 @@ pub fn lessons(window: usize) -> EvolutionHints {
         }
     }
 
+    // Labels with closed primary-fix tickets are operator-resolved — do not nag as chronic.
+    let resolved_labels = resolved_primary_labels();
+
     for (lab, n) in off_curriculum {
         if n >= CHRONIC_OFF_THRESHOLD {
+            if resolved_labels
+                .iter()
+                .any(|r| r.eq_ignore_ascii_case(&lab))
+            {
+                continue; // chronic hygiene: closed ticket = law satisfied at operator layer
+            }
             hints.chronic_off_labels.push(lab);
         }
     }
     hints.chronic_off_labels.sort();
     hints.chronic_off_labels.dedup();
 
-    // Also surface tickets already on disk.
-    if let Ok(entries) = fs::read_dir(tickets_dir()) {
-        for e in entries.flatten() {
-            let name = e.file_name().to_string_lossy().into_owned();
-            if name.ends_with(".md") && !hints.open_tickets.iter().any(|t| name.contains(t)) {
-                hints.open_tickets.push(name.trim_end_matches(".md").to_owned());
-            }
-        }
-    }
+    // Open tickets only (not .closed.md).
+    hints.open_tickets = list_open_tickets();
 
     // Laws (actionable), not soft hints.
     if !hints.chronic_off_labels.is_empty() {
@@ -1341,7 +1343,8 @@ pub fn run_operator_transfer(base: &str) -> String {
 pub fn next_queue_item() -> String {
     let open = list_open_tickets();
     if open.is_empty() {
-        return "[Lab queue] empty — no open primary-fix tickets. Run live chat then /field.".into();
+        return "[Lab queue] empty — no open primary-fix tickets. Run live chat then /field.\n\
+Regression: `perci transfer-suite` · `perci agent lab --full`".into();
     }
     let id = &open[0];
     let path = tickets_dir().join(format!("{id}.md"));
@@ -1353,11 +1356,179 @@ pub fn next_queue_item() -> String {
         .join("\n");
     format!(
         "[Lab queue] next={id}\npath={}\nremaining_open={}\n---\n{preview}\n---\n\
-suggested: (1) perci transfer on the evidence user sample  (2) harden with entity-swap  (3) perci lab close {id} --reason \"…\"\n\
-agent: perci agent lab --from-emergence\n",
+suggested: (1) perci transfer on evidence sample  (2) perci agent lab --from-emergence --repair  (3) close if PASS\n",
         path.display(),
         open.len()
     )
+}
+
+/// Labels whose primary-fix tickets are closed (operator-owned speech).
+pub fn resolved_primary_labels() -> Vec<String> {
+    let mut out = Vec::new();
+    for id in list_closed_tickets() {
+        // primary-fix-frame-{label}
+        if let Some(lab) = id.strip_prefix("primary-fix-frame-") {
+            out.push(lab.to_owned());
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Standard transfer bases across capabilities (product law: ship only if suite holds).
+///
+/// Note: pure OOD gibberish is gated by hardness/abstention, not token-hit transfer
+/// (honest refuse will not echo invented tokens).
+pub fn standard_transfer_bases() -> Vec<&'static str> {
+    vec![
+        // trust / systems
+        "how should interfaces earn trust under lag and retry?",
+        "in a multi-service app, why do callers stop trusting each other after timeouts?",
+        "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+        // synthesis
+        "Connect sparse distributed memory, vector symbolic binding, and Bitwork in one coherent thought.",
+        // relational
+        "What is the boundary between knowledge and attention?",
+        // governance / self-model
+        "Is Perci a superintelligence?",
+    ]
+}
+
+/// Run operator transfer on the full standard suite. Returns (all_pass, report).
+pub fn run_transfer_suite() -> (bool, String) {
+    let mut all_pass = true;
+    let mut out = String::from("[Transfer suite · operator speech]\n");
+    let mut pass_n = 0u32;
+    let mut fail_n = 0u32;
+    for base in standard_transfer_bases() {
+        let report = run_operator_transfer(base);
+        let pass = report.contains("pass=true");
+        if pass {
+            pass_n += 1;
+        } else {
+            fail_n += 1;
+            all_pass = false;
+        }
+        out.push_str(&format!(
+            "  {} {}\n",
+            if pass { "PASS" } else { "FAIL" },
+            truncate(base, 72)
+        ));
+    }
+    out.push_str(&format!(
+        "summary: pass={pass_n} fail={fail_n} all_pass={all_pass}\n"
+    ));
+    if all_pass {
+        out.push_str("SUITE PASS — transfer law holds for standard bases.\n");
+    } else {
+        out.push_str("SUITE FAIL — do not bump version or claim emergence.\n");
+    }
+    // Record suite outcome as transfer event
+    append_event(&LedgerEvent {
+        ts: now_ts(),
+        kind: EventKind::Transfer,
+        transfer_id: Some(format!("suite-{}", now_ts() % 1_000_000)),
+        transfer_pass: Some(all_pass),
+        transfer_score_pm: Some(if all_pass { 1000 } else { pass_n * 100 }),
+        transfer_detail: Some(format!("suite pass={pass_n} fail={fail_n}")),
+        tags: vec![if all_pass {
+            "transfer_suite_pass".into()
+        } else {
+            "transfer_suite_fail".into()
+        }],
+        authority: Some("transfer_suite".into()),
+        phase: None,
+        label: None,
+        margin: None,
+        overlap: None,
+        overlap_z: None,
+        alpha_pm: None,
+        mix_n: None,
+        residual_n: None,
+        mix_labels: None,
+        prefer_mix_thesis: None,
+        geometry_blind: None,
+        chronic: None,
+        mixture_crutch: None,
+        user: None,
+        speech_hit: None,
+        token_hits: None,
+        token_n: None,
+        used_mix_thesis: None,
+        ticket_id: None,
+        ticket_kind: None,
+    });
+    (all_pass, out)
+}
+
+/// Cluster curriculum candidates by label (Phase D — pack debt visibility).
+pub fn curriculum_cluster_report() -> String {
+    let path = curriculum_path();
+    if !path.is_file() {
+        return format!(
+            "[Curriculum cluster]\nNo curriculum file yet ({})\nPack debt: none staged.\n\
+Policy: operators own speech when transfer passes; weight promote needs human authorize.",
+            path.display()
+        );
+    }
+    let text = fs::read_to_string(&path).unwrap_or_default();
+    let mut by_label: HashMap<String, u32> = HashMap::new();
+    let mut total = 0u32;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
+            total += 1;
+            if let Some(lab) = v.get("label").and_then(|x| x.as_str()) {
+                *by_label.entry(lab.to_owned()).or_insert(0) += 1;
+            }
+        }
+    }
+    let mut pairs: Vec<_> = by_label.into_iter().collect();
+    pairs.sort_by(|a, b| b.1.cmp(&a.1));
+    let resolved = resolved_primary_labels();
+    let mut out = format!(
+        "[Curriculum cluster] samples={total} path={}\n",
+        path.display()
+    );
+    for (lab, n) in pairs.iter().take(12) {
+        let status = if resolved.iter().any(|r| r == lab) {
+            "operator-resolved (pack optional)"
+        } else {
+            "open pack debt"
+        };
+        out.push_str(&format!("  · {lab}: {n}  [{status}]\n"));
+    }
+    out.push_str(
+        "LAW: mixture_crutch is temporary. Prefer operator frames. Weights only with --authorize + transfer.\n",
+    );
+    out
+}
+
+/// Unified world-loop queue: emergence tickets + hardness red summary path.
+pub fn unified_queue_report() -> String {
+    let mut out = String::from("[Unified lab queue · world loop]\n");
+    out.push_str(&lab_report());
+    out.push('\n');
+    out.push_str(&curriculum_cluster_report());
+    out.push('\n');
+    // Hardness eval presence
+    let hard = PathBuf::from("models/candidates/evaluation-hardness-v1.json");
+    if hard.is_file() {
+        if let Ok(t) = fs::read_to_string(&hard) {
+            let pass = t.contains("\"status\": \"PASS\"") || t.contains("\"status\":\"PASS\"");
+            out.push_str(&format!(
+                "[Hardness eval] path={} looks_pass={pass}\n",
+                hard.display()
+            ));
+        }
+    } else {
+        out.push_str("[Hardness eval] missing — run python scripts/evaluate_hardness.py\n");
+    }
+    out.push_str(
+        "\nagent: perci agent lab --full [--repair] [--dry-run]\n\
+release: python scripts/release_gates.py\n",
+    );
+    out
 }
 
 fn truncate(s: &str, max: usize) -> String {

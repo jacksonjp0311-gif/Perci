@@ -571,19 +571,36 @@ pub fn run_lab_from_hardness(dry_run: bool) -> io::Result<AgentReport> {
     Ok(report)
 }
 
+/// Lab options for emergence / full world loop.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct LabFromEmergenceOpts {
+    pub dry_run: bool,
+    /// When true: if transfer fails, attempt bounded repairs (hardness + tests), re-gate, then close.
+    pub repair: bool,
+}
+
 /// Consume open emergence primary-fix tickets as a self-improve work queue.
 ///
-/// For each open ticket:
-/// 1. Read ticket body / evidence user sample  
-/// 2. Run operator transfer gate on a trust/lag base (or sample)  
-/// 3. If transfer passes and ticket is operator-covered, close it  
-/// 4. Never touches `.pwgt`
+/// Modes:
+/// - verify/close (default): transfer suite → close open tickets if PASS  
+/// - repair: on FAIL, stage hardness + decision receipt + re-run transfer; never `.pwgt`
 pub fn run_lab_from_emergence(dry_run: bool) -> io::Result<AgentReport> {
+    run_lab_from_emergence_opts(LabFromEmergenceOpts {
+        dry_run,
+        repair: false,
+    })
+}
+
+pub fn run_lab_from_emergence_opts(opts: LabFromEmergenceOpts) -> io::Result<AgentReport> {
     let root = repo_root()?;
     policy_check(&root)?;
 
     let mut report = AgentReport {
-        goal: "lab --from-emergence (primary-fix queue)".into(),
+        goal: if opts.repair {
+            "lab --from-emergence --repair".into()
+        } else {
+            "lab --from-emergence (verify/close)".into()
+        },
         ok: true,
         steps: Vec::new(),
         branch: None,
@@ -597,48 +614,94 @@ pub fn run_lab_from_emergence(dry_run: bool) -> io::Result<AgentReport> {
         ok: true,
     });
 
-    if open.is_empty() {
+    // Full transfer suite (product law).
+    let (suite_pass, suite_report) = crate::emergence::run_transfer_suite();
+    report.steps.push(AgentStep {
+        name: "emergence.transfer_suite".into(),
+        detail: if suite_pass {
+            "SUITE PASS".into()
+        } else {
+            "SUITE FAIL".into()
+        },
+        ok: suite_pass,
+    });
+    // Keep a short excerpt in steps for audit.
+    for line in suite_report.lines().filter(|l| l.contains("PASS") || l.contains("FAIL") || l.contains("summary")) {
+        if line.trim().starts_with('[') {
+            continue;
+        }
         report.steps.push(AgentStep {
-            name: "emergence.empty".into(),
-            detail: "queue clear — no open primary-fix tickets".into(),
+            name: "emergence.xfer_line".into(),
+            detail: truncate_agent(line.trim(), 100),
+            ok: !line.contains("FAIL") || line.contains("fail=0"),
+        });
+    }
+
+    let mut any_fail = !suite_pass;
+
+    // Phase B repair path: bounded code-adjacent actions (hardness lock + receipt), re-suite.
+    if any_fail && opts.repair {
+        report.steps.push(AgentStep {
+            name: "emergence.repair.start".into(),
+            detail: "transfer suite failed — staging hardness locks + re-gate".into(),
             ok: true,
         });
-        return Ok(report);
-    }
-
-    // Standard transfer bases for systems/general trust debt.
-    let transfer_bases = [
-        "how should interfaces earn trust under lag and retry?",
-        "in a multi-service app, why do callers stop trusting each other after timeouts?",
-        "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
-    ];
-
-    let mut any_fail = false;
-    for base in &transfer_bases {
-        let xfer = crate::emergence::run_operator_transfer(base);
-        let pass = xfer.contains("pass=true");
-        report.steps.push(AgentStep {
-            name: "emergence.transfer".into(),
-            detail: format!(
-                "{} → {}",
-                if pass { "PASS" } else { "FAIL" },
-                truncate_agent(base, 64)
-            ),
-            ok: pass,
-        });
-        if !pass {
-            any_fail = true;
+        if !opts.dry_run {
+            let pack = root.join("training/hardness/hardness-pack-v1.jsonl");
+            // Idempotent append of trust/synthesis transfer locks if somehow missing.
+            let extra = [
+                r#"{"id":"H45","capability":"transfer_vs_template","hardness":3,"prompt":"how should interfaces earn trust under lag and retry?","required_any":[["timeout","idempotent","retry","lag","earn","checkable","contract"]],"forbidden":["behavioral complexity is observable","subjective experience is inferred","stuck is normal"],"notes":"repair-path trust design"}"#,
+                r#"{"id":"H47","capability":"transfer_vs_template","hardness":4,"prompt":"how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?","required_any":[["timeout","idempotent","retry","lag","earn","checkable","contract"]],"forbidden":["stuck is normal","behavioral complexity is observable"],"notes":"repair-path entity-swap"}"#,
+            ];
+            for case in &extra {
+                match append_hardness_case(&pack, case) {
+                    Ok(()) => report.steps.push(AgentStep {
+                        name: "emergence.repair.hardness".into(),
+                        detail: "ensured transfer hardness present".into(),
+                        ok: true,
+                    }),
+                    Err(e) => report.steps.push(AgentStep {
+                        name: "emergence.repair.hardness".into(),
+                        detail: e.to_string(),
+                        ok: false,
+                    }),
+                }
+            }
+            // Decision-trace lab receipt (context graph lite).
+            crate::decision_trace::append_lab(
+                "emergence-repair",
+                "transfer_suite_fail_repair_attempt",
+                open.len(),
+            );
         }
+        // Re-run suite after repair staging (operators should still own speech).
+        let (suite2, _) = crate::emergence::run_transfer_suite();
+        any_fail = !suite2;
+        report.steps.push(AgentStep {
+            name: "emergence.repair.retransfer".into(),
+            detail: if suite2 {
+                "SUITE PASS after repair staging".into()
+            } else {
+                "SUITE still FAIL — human operator patch required".into()
+            },
+            ok: suite2,
+        });
     }
 
-    // Close general/systems tickets when transfer holds (operator owns speech).
-    if !any_fail {
+    if open.is_empty() && !any_fail {
+        report.steps.push(AgentStep {
+            name: "emergence.empty".into(),
+            detail: "queue clear + transfer suite green".into(),
+            ok: true,
+        });
+    } else if !any_fail {
         for id in &open {
             let reason = format!(
-                "operator transfer gate PASS on trust/lag + entity-swap; \
-speech authority is trust-systems; mixture/primary pack debt deferred (no weight promote). closed by agent lab --from-emergence"
+                "transfer suite PASS; operator-owned speech; primary pack debt deferred (no weight promote). \
+mode={} closed by agent lab --from-emergence",
+                if opts.repair { "repair" } else { "verify" }
             );
-            if dry_run {
+            if opts.dry_run {
                 report.steps.push(AgentStep {
                     name: "emergence.close".into(),
                     detail: format!("dry-run would close {id}"),
@@ -646,11 +709,18 @@ speech authority is trust-systems; mixture/primary pack debt deferred (no weight
                 });
             } else {
                 match crate::emergence::close_ticket(id, &reason) {
-                    Ok(msg) => report.steps.push(AgentStep {
-                        name: "emergence.close".into(),
-                        detail: msg.lines().next().unwrap_or("closed").to_owned(),
-                        ok: true,
-                    }),
+                    Ok(msg) => {
+                        report.steps.push(AgentStep {
+                            name: "emergence.close".into(),
+                            detail: msg.lines().next().unwrap_or("closed").to_owned(),
+                            ok: true,
+                        });
+                        crate::decision_trace::append_lab(
+                            "ticket-close",
+                            id,
+                            1,
+                        );
+                    }
                     Err(err) => {
                         report.steps.push(AgentStep {
                             name: "emergence.close".into(),
@@ -665,9 +735,13 @@ speech authority is trust-systems; mixture/primary pack debt deferred (no weight
     } else {
         report.steps.push(AgentStep {
             name: "emergence.hold".into(),
-            detail: "transfer FAIL — tickets left open; repair operators before close".into(),
+            detail: "transfer FAIL — tickets left open; repair operators/code before close".into(),
             ok: false,
         });
+        report.ok = false;
+    }
+
+    if any_fail {
         report.ok = false;
     }
 
@@ -679,13 +753,14 @@ speech authority is trust-systems; mixture/primary pack debt deferred (no weight
         .join("models/candidates")
         .join(format!("agent-lab-emergence-{stamp}.json"));
     let body = format!(
-        "{{\"goal\":\"lab-from-emergence\",\"ok\":{},\"open\":{},\"dry_run\":{},\"transfer_fail\":{}}}\n",
+        "{{\"goal\":\"lab-from-emergence\",\"ok\":{},\"open\":{},\"dry_run\":{},\"repair\":{},\"transfer_fail\":{}}}\n",
         report.ok,
         open.len(),
-        dry_run,
+        opts.dry_run,
+        opts.repair,
         any_fail
     );
-    if !dry_run {
+    if !opts.dry_run {
         let _ = fs::write(&receipt_path, body);
         report.receipt_path = Some(receipt_path);
     } else {
@@ -694,6 +769,112 @@ speech authority is trust-systems; mixture/primary pack debt deferred (no weight
             detail: format!("dry-run receipt {}", receipt_path.display()),
             ok: true,
         });
+    }
+
+    Ok(report)
+}
+
+/// Full world loop: hardness impasse scan + emergence transfer/close/repair.
+pub fn run_lab_full(dry_run: bool, repair: bool) -> io::Result<AgentReport> {
+    let root = repo_root()?;
+    policy_check(&root)?;
+
+    let mut report = AgentReport {
+        goal: "lab --full (hardness + emergence world loop)".into(),
+        ok: true,
+        steps: Vec::new(),
+        branch: None,
+        receipt_path: None,
+    };
+
+    // 1) Hardness impasse (does not fail the full lab if eval missing — soft).
+    match run_lab_from_hardness(dry_run) {
+        Ok(h) => {
+            report.steps.push(AgentStep {
+                name: "full.hardness".into(),
+                detail: if h.ok {
+                    "hardness lab OK".into()
+                } else {
+                    "hardness lab had issues (see prior)".into()
+                },
+                ok: h.ok,
+            });
+            for s in h.steps.into_iter().take(8) {
+                report.steps.push(AgentStep {
+                    name: format!("hardness.{}", s.name),
+                    detail: s.detail,
+                    ok: s.ok,
+                });
+            }
+            if !h.ok {
+                report.ok = false;
+            }
+        }
+        Err(e) => {
+            report.steps.push(AgentStep {
+                name: "full.hardness".into(),
+                detail: e.to_string(),
+                ok: false,
+            });
+            report.ok = false;
+        }
+    }
+
+    // 2) Emergence verify/repair.
+    match run_lab_from_emergence_opts(LabFromEmergenceOpts { dry_run, repair }) {
+        Ok(e) => {
+            report.steps.push(AgentStep {
+                name: "full.emergence".into(),
+                detail: if e.ok {
+                    "emergence lab OK".into()
+                } else {
+                    "emergence lab FAIL".into()
+                },
+                ok: e.ok,
+            });
+            for s in e.steps.into_iter().take(12) {
+                report.steps.push(AgentStep {
+                    name: format!("emergence.{}", s.name),
+                    detail: s.detail,
+                    ok: s.ok,
+                });
+            }
+            if !e.ok {
+                report.ok = false;
+            }
+        }
+        Err(err) => {
+            report.steps.push(AgentStep {
+                name: "full.emergence".into(),
+                detail: err.to_string(),
+                ok: false,
+            });
+            report.ok = false;
+        }
+    }
+
+    // 3) Unified queue snapshot.
+    report.steps.push(AgentStep {
+        name: "full.queue".into(),
+        detail: truncate_agent(&crate::emergence::unified_queue_report(), 160),
+        ok: true,
+    });
+
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let receipt_path = root
+        .join("models/candidates")
+        .join(format!("agent-lab-full-{stamp}.json"));
+    let body = format!(
+        "{{\"goal\":\"lab-full\",\"ok\":{},\"dry_run\":{},\"repair\":{}}}\n",
+        report.ok, dry_run, repair
+    );
+    if !dry_run {
+        let _ = fs::write(&receipt_path, body);
+        report.receipt_path = Some(receipt_path);
+        crate::decision_trace::append_lab("lab-full", if report.ok { "ok" } else { "fail" }, 0);
     }
 
     Ok(report)
