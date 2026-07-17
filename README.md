@@ -6,9 +6,9 @@
   <img src="assets/generated/perci-darkblood-badge.svg" alt="Perci version badge (auto-stamped from Cargo.toml)" width="180">
 </p>
 
-**Version** is always `Cargo.toml` → stamped into the badge by `build.rs` (never hand-edit the badge). See `assets/README.md`.
+**Version** is always `Cargo.toml`, stamped into the badge by `build.rs` (never hand-edit the badge). See [`assets/README.md`](assets/README.md).
 
-Open-domain synthesis, multi-hop plans, operator programs, agent lab, and governed Bitwork cognition. The promoted `PERCIW03` artifact is a ~200 MiB Bitwork pack with 403,163 prototypes and 124 weight-resident concepts.
+Open-domain synthesis, multi-hop plans, operator programs, agent lab, and governed Bitwork cognition. Software **v0.6.0** adds transformer-bridge algebra (soft attention, dual residual, VSA, Willshaw concept HVs, session CTX). The promoted local pack is `PERCIW03` (~200 MiB, 403,163 prototypes, 124 concepts).
 
 <p align="center">
   <strong>Compact governed local intelligence.</strong><br>
@@ -28,71 +28,55 @@ Open-domain synthesis, multi-hop plans, operator programs, agent lab, and govern
 
 ## What Perci is
 
-**Perci** is an experimental local assistant that combines deliberately separate layers:
+**Perci** is an experimental local assistant with deliberately separate layers:
 
 1. **Reflex routing** for immediate intent recognition.
 2. **Packed associative cognition** (Bitwork) for domain selection and nearest-prototype retrieval.
-3. **Transformer-bridge algebra** — soft-attention mixture weights, dual residual hops, VSA bind/bundle, Willshaw concept HVs, session CTX bind (see [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md)).
+3. **Transformer-bridge algebra** — soft-attention mixture weights, dual residual hops, VSA bind/bundle, Willshaw concept HVs, session CTX bind ([`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md)).
 4. **Deterministic reasoning tools** for arithmetic and geometry.
 5. **Stateful cognitive operators** for synthesis, critique, trust/systems, and multi-domain connect.
 6. **Append-only local memory** + Cortex for governed persistence.
 7. **A backend contract** for optional language generation without granting it exact-tool authority.
 
-The promoted Bitwork pack (`PERCIW03`, ~200 MiB) is real, operational, and
-**local-only** (not in git — GitHub size limits). Software **v0.6.0** adds
-compositional and multi-hop readout on top of that pack without a decoder stack.
-It is not a transformer, does not call an LLM, and is not general intelligence.
-
-Perci is designed around a simpler principle:
+The Bitwork pack (`PERCIW03`, ~200 MiB) is real and operational, but **local-only** (not in git — GitHub size limits). Software v0.6.0 adds compositional and multi-hop readout on top of that pack without a decoder stack. Perci is not a transformer, does not call an LLM by default, and is not general intelligence.
 
 > Use learned binary cognition to choose the right path, then use inspectable tools to produce results that should not be guessed.
 
 ## Why Perci exists
 
-Most assistants place routing, language generation, memory, reasoning, and tool use inside one opaque model boundary. Perci separates them.
+Most assistants place routing, language generation, memory, reasoning, and tool use inside one opaque model boundary. Perci separates them so the system is easier to inspect, benchmark, modify, govern, and extend.
 
-That separation makes the system easier to inspect, benchmark, modify, govern, and extend. A compact associative layer can remain extremely fast while exact solvers handle calculation and an optional language backend handles fluid prose.
-
-Perci is therefore best understood as a **cognitive systems architecture**, not merely a chatbot.
+Perci is a **cognitive systems architecture**, not merely a chatbot.
 
 ## Architecture
 
 ```text
-                         Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
-User input Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€“Â¶Ã¢â€â€š  64-bit reflex pass Ã¢â€â€š
-                         Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
-                                    Ã¢â€â€š
-                                    Ã¢â€“Â¼
-                         Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
-                         Ã¢â€â€š Bitwork cognitive    Ã¢â€â€š
-                         Ã¢â€â€š weight network       Ã¢â€â€š
-                         Ã¢â€â€š                      Ã¢â€â€š
-                         Ã¢â€â€š Ã¢â‚¬Â¢ expert routing     Ã¢â€â€š
-                         Ã¢â€â€š Ã¢â‚¬Â¢ prototype recall   Ã¢â€â€š
-                         Ã¢â€â€š Ã¢â‚¬Â¢ response selection Ã¢â€â€š
-                         Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
-                                 Ã¢â€â€š      Ã¢â€â€š
-                    exact intent Ã¢â€â€š      Ã¢â€â€š language intent
-                                 Ã¢â€“Â¼      Ã¢â€“Â¼
-                    Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â  Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
-                    Ã¢â€â€š Deterministic  Ã¢â€â€š  Ã¢â€â€š Built-in response  Ã¢â€â€š
-                    Ã¢â€â€š reasoning      Ã¢â€â€š  Ã¢â€â€š or external model  Ã¢â€â€š
-                    Ã¢â€â€š tools          Ã¢â€â€š  Ã¢â€â€š backend             Ã¢â€â€š
-                    Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ  Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
-                            Ã¢â€â€š                      Ã¢â€â€š
-                            Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
-                                       Ã¢â€“Â¼
-                           Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
-                           Ã¢â€â€š Governance + local   Ã¢â€â€š
-                           Ã¢â€â€š append-only memory   Ã¢â€â€š
-                           Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
-                                      Ã¢â€“Â¼
-                                  Response
+User input
+    |
+    v
+[ 64-bit reflex pass ]
+    |
+    v
+[ Bitwork cognitive weight network ]
+    |  expert routing, prototype recall,
+    |  soft-attn mixture, residual hops, VSA, CTX
+    |
+    +-- exact intent -----> [ deterministic tools ]
+    |                              |
+    +-- language intent --> [ fluid voice / optional external model ]
+    |                              |
+    +------------------------------+
+                   |
+                   v
+        [ governance + append-only memory + Cortex ]
+                   |
+                   v
+               Response
 ```
 
 ## The cognitive weight pack
 
-The bundled file is:
+**Not shipped in git.** Place or build locally:
 
 ```text
 models/perci-cognitive-v0.3.pwgt
@@ -100,32 +84,28 @@ models/perci-cognitive-v0.3.pwgt
 
 | Property | Value |
 |---|---:|
-| Exact size | `200,425,696` bytes |
-| Human-readable size | `191.14 MiB` |
+| Exact size (active pack) | `209,710,296` bytes |
+| Human-readable size | ~`199.995` MiB |
 | Format magic | `PERCIW03` |
-| Unique associative prototypes | `385,308` |
-| Weight-resident concepts | `100` |
-| Activation width | `4,096 bits` |
-| Packed activation | `64 Ãƒâ€” u64` |
+| Unique associative prototypes | `403,163` |
+| Weight-resident concepts | `124` |
+| Activation width | `4,096` bits |
+| Packed activation | `64 x u64` |
 | Expert domains | `16` |
-| Inference arithmetic | Integer-only |
+| Inference arithmetic | Integer-only hot path |
 
-Each prompt is encoded into a sparse distributed binary activation using normalized lexical features, adjacent word pairs, prefixes, suffixes, character trigrams, prompt length, and deterministic hashing.
+Sidecar metadata: `models/perci-cognitive-v0.3.pwgt.json`. See [`WEIGHTS.md`](WEIGHTS.md).
 
 At inference time Perci:
 
-1. Encodes the prompt into 4,096 bits.
-2. Scores positive and negative expert masks using `AND` and `POPCOUNT`.
-3. Measures top-two margin, query density, Jaccard similarity, and chance-normalized overlap.
-4. Finds the nearest packed prototype.
-5. Chooses a response path.
+1. Encodes the prompt into 4,096 bits (bag + structure + VSA + optional CTX).
+2. Scores expert masks with `AND` / `POPCOUNT` (top domains only for latency).
+3. Finds top-k prototypes; builds soft-attention mixture weights.
+4. Runs residual ANDNOT hops (up to 2) and Willshaw concept HV scoring.
+5. Chooses operators / tools / fluid speech.
 6. Delegates exact work to deterministic tools where available.
 
-Prototype search remains integer-only; floating point is used only for final normalized confidence telemetry and abstention.
-
-See [`docs/BITWORK_V3_EVIDENCE.md`](docs/BITWORK_V3_EVIDENCE.md) for the
-promoted v3 format, evaluation receipts, limitations, and promotion contract.
-The v2 and v1 packs remain readable fallbacks.
+See [`docs/BITWORK_V3_EVIDENCE.md`](docs/BITWORK_V3_EVIDENCE.md) and [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md).
 
 ## Cognitive domains
 
@@ -136,23 +116,34 @@ governance    planning       explanation    systems
 science       creativity     comparison     general
 ```
 
-The included curriculum covers grammar, structured reasoning, mathematics, geometry, memory intent, Rust, PowerShell, software architecture, planning, science, governance boundaries, and system-oriented prompts.
-
 ## Quick start
 
 ### Requirements
 
 - Windows, macOS, or Linux
 - Rust toolchain with Cargo
-- Git LFS when cloning the bundled weight file
-- Python 3 only for rebuilding or independently verifying the weights
+- Python 3 for rebuilding or verifying weights (optional)
+- A local `PERCIW03` pack under `models/` (not cloned from GitHub)
 
 ### Clone
 
 ```powershell
-git lfs install
 git clone https://github.com/jacksonjp0311-gif/Perci.git
 cd .\Perci
+```
+
+### Obtain weights (required for full Bitwork)
+
+```powershell
+# Build a candidate pack, or copy a promoted pack into models/
+python .\scripts\build_weights_v3.py
+# Prefer: place models\perci-cognitive-v0.3.pwgt from your authorized build
+```
+
+Or set:
+
+```powershell
+$env:PERCI_WEIGHTS = "C:\path\to\perci-cognitive-v0.3.pwgt"
 ```
 
 ### Launch on Windows
@@ -162,13 +153,17 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 .\Launch-Perci.ps1
 ```
 
-The interactive shell uses Perci's dark-blood terminal theme. Color follows TTY
-detection; set `PERCI_COLOR=always` or `PERCI_COLOR=never` to override it.
+Or:
 
-Run the transparent live intelligence probe without entering chat:
+```text
+Start-Perci.cmd
+```
+
+Dark-blood terminal theme. Color follows TTY; override with `PERCI_COLOR=always` or `PERCI_COLOR=never`.
 
 ```powershell
 .\Launch-Perci.ps1 -Mode intel
+.\Launch-Perci.ps1 -Mode status
 ```
 
 ### Launch with Cargo
@@ -183,7 +178,8 @@ cargo run --release -- chat
 cargo run --release -- ask "who are you"
 cargo run --release -- ask "calculate 144 divided by 12"
 cargo run --release -- ask "triangle area base 8 height 5"
-cargo run --release -- ask "how should Lumen Cortex and Bitwork interconnect"
+cargo run --release -- ask "why does trust fail in distributed systems?"
+cargo run --release -- ask "connect sparse memory and vector symbolic architectures"
 ```
 
 ### Runtime status
@@ -198,14 +194,13 @@ cargo run --release -- status
 /help       show available commands
 /status     inspect runtime and backend state
 /learning   inspect adaptive dialogue state and pending evidence
-/intel      show live labels, margins, z-scores, and Jaccard similarity
+/intel      show live labels, margins, z-scores, Jaccard similarity
+/trace      last deliberation / operator program audit
 /prompt     show the active personality prompt
 /quit       exit Perci
 ```
 
-Perci learns safe conversational preferences immediately and records every
-bounded interaction as pending evidence. It does not silently promote facts or
-rewrite weights. See [`docs/INTERACTION_LEARNING.md`](docs/INTERACTION_LEARNING.md).
+Perci learns safe conversational preferences immediately and records bounded interactions as pending evidence. It does **not** silently promote facts or rewrite weights. See [`docs/INTERACTION_LEARNING.md`](docs/INTERACTION_LEARNING.md).
 
 ### Evolve measurable capability
 
@@ -214,9 +209,7 @@ python .\scripts\evolve_cycle.py
 Get-Content .\docs\CAPABILITY_SCORECARD.md
 ```
 
-This stages interaction evidence, runs the hardness pack, and writes a capability
-scorecard. Promotion remains explicit and human-authorized. See
-[`docs/EVOLUTION.md`](docs/EVOLUTION.md).
+Promotion remains explicit and human-authorized. See [`docs/EVOLUTION.md`](docs/EVOLUTION.md).
 
 Natural-language tool examples:
 
@@ -228,238 +221,149 @@ remember that Perci uses governed local memory
 recall governed local memory
 ```
 
-## Exact reasoning instead of guessed arithmetic
+## Exact reasoning
 
-Perci's cognitive weights recognize when a request belongs to a mathematical or geometric domain. The final calculation is then performed by deterministic code rather than retrieved as an approximate language pattern.
-
-This provides:
+When a request is arithmetic or geometric, Perci routes with Bitwork then computes with deterministic code — not approximate language patterns.
 
 - repeatable outputs
 - inspectable computation
-- a clean boundary between classification and calculation
-- less pressure to memorize arithmetic inside the model
-- easier failure analysis and testing
+- clear boundary between classification and calculation
 
-The current exact-tool layer includes foundational arithmetic and geometry operations and is intended to expand over time.
+## Governed local memory + Cortex
 
-## Governed local memory
+Append-only JSONL memory is separate from the weight pack. Cortex provides repository assimilation, selective retrieval, sparse activation, and provenance. Cortex **never** grants mutation authority.
 
-Perci includes append-only local memory for explicit remember-and-recall operations. Memory is separated from the cognitive weight file so that runtime experience does not silently mutate the base model.
+Initialize once per checkout:
 
-This creates a clear distinction between:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Initialize-Perci-Cortex.ps1
+```
 
-- immutable packaged cognition
-- user-authorized persistent memory
-- transient session context
-- future retraining data
-
-That boundary is central to Perci's local-first governance model.
+Ordinary chat receives bounded Cortex evidence when attached. `remember that ...` is explicit-only. See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md) and [`docs/INTELLIGENCE_PACKS.md`](docs/INTELLIGENCE_PACKS.md).
 
 ## Personality
-
-Perci's behavioral specification lives at:
 
 ```text
 config/personality.prompt
 ```
 
-The default personality is curious, candid, calm, technically exact, local-first, and governed.
-
-The prompt directly informs external language backends and documents the intended behavior of the built-in system. It does not magically grant capabilities that the underlying backend does not possess.
+Default personality: curious, candid, calm, technically exact, local-first, and governed.
 
 ## External language backend
 
-Perci can delegate language generation to an external process through `PERCI_MODEL_CMD` while retaining its local orchestration, memory, tools, and governance layers.
+Optional external generation via `PERCI_MODEL_CMD` while Perci keeps orchestration, memory, tools, and governance:
 
 ```powershell
 $env:PERCI_MODEL_CMD = "python scripts/mock-model.py"
 cargo run --release -- chat
 ```
 
-The external process receives structured `SYSTEM`, `MEMORY`, and `USER` sections through standard input and prints one response to standard output.
-
-This contract creates a path toward architectures such as:
+The process receives structured `SYSTEM` / `MEMORY` / `USER` on stdin and prints one response on stdout.
 
 ```text
-quantized language model
-          Ã¢â€ â€œ
+optional quantized LM
+        |
+        v
 Perci personality + retrieved memory
-          Ã¢â€ â€œ
-Bitwork routing and governance
-          Ã¢â€ â€œ
-exact reasoning and tools
-          Ã¢â€ â€œ
+        |
+        v
+Bitwork routing + governance
+        |
+        v
+exact tools + fluid voice
+        |
+        v
 validated response
 ```
 
-The Bitwork layer can remain useful as a fast reflex, domain classifier, memory selector, and governance gate even when a stronger language core is attached.
-
-## Verify the bundled weights
-
-Verify size, structure, and checksum:
+## Verify and rebuild weights
 
 ```powershell
 python .\scripts\verify_weights.py
-```
-
-Run the optional held-out routing probes:
-
-```powershell
 python -m pip install numpy
 python .\scripts\test_weights.py
 ```
 
-The recorded evaluation routed all **16 of 16 domain probes** to their expected expert. This is a focused routing and associative-retrieval testÃ¢â‚¬â€not a benchmark of broad factual knowledge, general reasoning, or language-model parity.
-
-See [`VALIDATION.md`](VALIDATION.md) for the exact validation record and its interpretation.
-
-## Rebuild the weights
-
-The weight build is deterministic:
-
 ```powershell
-python .\scripts\build_weights.py `
-  --output .\models\candidates\perci-cognitive-v0.2.pwgt
-```
-
-The generated manifest records the architecture, deterministic seed, SHA-256 checksum, exact size, and declared limitations.
-
-For lower-memory build environments, use:
-
-```powershell
+python .\scripts\build_weights_v3.py
+# lower-memory path:
 python .\scripts\build_weights_chunked.py
 ```
+
+Routing probes are focused associative tests — not claims of ChatGPT parity. See [`VALIDATION.md`](VALIDATION.md).
 
 ## Repository map
 
 ```text
 perci/
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ models/
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ perci-cognitive-v0.1.pwgt
-Ã¢â€â€š   Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ perci-cognitive-v0.1.pwgt.json
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ src/
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ cognitive.rs     # packed weight loading and inference
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ backend.rs       # built-in and external backend contract
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ chat.rs          # interactive orchestration
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ reflex.rs        # fast first-pass intent routing
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ reasoning.rs     # deterministic arithmetic and geometry
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ memory.rs        # append-only local persistence
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ personality.rs   # behavioral prompt loading
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ lib.rs
-Ã¢â€â€š   Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ main.rs
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ config/
-Ã¢â€â€š   Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ personality.prompt
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ scripts/
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ build_weights.py
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ build_weights_chunked.py
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ mock-model.py
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ test_weights.py
-Ã¢â€â€š   Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ verify_weights.py
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ training/
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ from-lumen/
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ heldout-evaluation.txt
-Ã¢â€â€š   Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ model-plan.toml
-Ã¢â€â€š   Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ README.md
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ Launch-Perci.ps1
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ VALIDATION.md
-Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ WEIGHTS.md
-Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ Cargo.toml
+  assets/                 # dark-blood mark + generated badge
+  config/personality.prompt
+  docs/                   # math path, transformer bridge, evolution, evidence
+  knowledge/packs/        # intelligence packs for Cortex
+  models/                 # *.pwgt local only; *.pwgt.json metadata in git
+  scripts/                # build, verify, hardness, evolve
+  src/
+    cognitive.rs          # Bitwork encode / classify / mixture / residual / VSA
+    deliberation.rs       # high-salience operators
+    operator_program.rs   # program + critic runtime
+    voice.rs / ui.rs      # fluid speech + dark-blood CLI
+    backend.rs / chat.rs  # orchestration
+    reasoning.rs          # exact math / geometry
+    cortex.rs / memory.rs # Cortex + JSONL memory
+    agent.rs / learning.rs
+    main.rs / lib.rs
+  training/               # curriculum, hardness, held-out
+  Launch-Perci.ps1
+  Start-Perci.cmd
+  Cargo.toml
+  WEIGHTS.md
+  VALIDATION.md
 ```
 
 ## Capability boundary
 
-Perci v0.1 is useful for:
+**Useful for:**
 
-- extremely compact local cognitive routing
-- domain and intent recognition
-- nearest-prototype associative retrieval
-- structured response scaffolds
-- exact foundational arithmetic
-- basic geometry
-- governed local memory
-- system architecture prompts
-- experimentation with hybrid cognitive systems
+- compact local cognitive routing
+- multi-hypothesis mixture + residual second thoughts
+- compositional role structure (VSA) without a decoder
+- exact foundational arithmetic and geometry
+- multi-domain connect / trust-systems operators
+- governed local memory and Cortex retrieval
+- hybrid experiments (Bitwork + optional external LM)
 
-Perci v0.1 is **not** equivalent to ChatGPT, Qwen, Llama, Phi, or another pretrained transformer. It does not contain web-scale factual knowledge, unrestricted fluent generation, or deep general reasoning merely because its weight file is 200 MiB.
+**Not equivalent to** ChatGPT, Qwen, Llama, Phi, or other pretrained transformers. No web-scale factual knowledge, unrestricted fluent generation, or deep general reasoning merely because the pack is ~200 MiB.
 
-The weight pack is meaningful because it contains hundreds of thousands of packed cognitive states. Its intelligence is still bounded by its curriculum, retrieval architecture, response templates, tools, and evaluation coverage.
-
-Progress should be measured through held-out tasks, latency, memory use, user outcomes, failure analysis, and comparison against simpler baselinesÃ¢â‚¬â€not file size alone.
+Progress is measured by held-out tasks, hardness gates, latency, binding quality, and baselines — not file size alone.
 
 ## Design principles
 
-- **Local first** Ã¢â‚¬â€ core operation does not require a cloud service.
-- **Governed persistence** Ã¢â‚¬â€ memory writes are explicit and inspectable.
-- **Honest architecture** Ã¢â‚¬â€ capabilities and limitations are stated directly.
-- **Deterministic where possible** Ã¢â‚¬â€ exact tools handle exact work.
-- **Composable cognition** Ã¢â‚¬â€ routing, memory, language, and tools remain separable.
-- **Reproducible weights** Ã¢â‚¬â€ the cognitive pack can be rebuilt and verified.
-- **Fast reflexes** Ã¢â‚¬â€ packed binary operations keep the cognitive path lightweight.
+- **Local first** — core operation does not require a cloud service.
+- **Governed persistence** — memory writes are explicit and inspectable.
+- **Honest architecture** — capabilities and limits are stated directly.
+- **Deterministic where possible** — exact tools handle exact work.
+- **Composable cognition** — routing, memory, language, and tools remain separable.
+- **Reproducible weights** — the pack can be rebuilt and verified (locally).
+- **Fast reflexes** — packed binary ops keep the cognitive path lightweight.
 
 ## Roadmap
 
-- expand exact reasoning and symbolic tool coverage
-- add stronger held-out evaluations and latency benchmarks
-- improve associative response composition
-- add richer governed memory retrieval
-- formalize the external GGUF/backend adapter
-- integrate Perci with Lumen and Cortex through explicit contracts
-- preserve the Bitwork layer as a fast cognitive reflex and governance boundary
+- pack-side VSA encode under human-authorized rebuild
+- prototype graph / spreading activation
+- stronger hardness and dialogue gates
+- richer governed memory retrieval
+- formal external GGUF/backend adapter
+- keep Bitwork as the fast, inspectable governance boundary
 
 ## Status
 
-Perci is experimental research software. The packaged cognitive weights, manifest, Python verifier, held-out routing probes, Rust source, and external backend contract are included for inspection and reproduction.
-
-Review [`VALIDATION.md`](VALIDATION.md) before treating a specific runtime or benchmark claim as verified.
+Experimental research software. Review [`VALIDATION.md`](VALIDATION.md) before treating a runtime or benchmark claim as verified.
 
 ## License
 
-Perci source code and the generated Perci cognitive weights are available under either:
+Source and generated cognitive weights (when you build them) are available under either:
 
 - [MIT License](LICENSE-MIT)
 - [Apache License 2.0](LICENSE-APACHE)
 
 You may use either license at your option.
-## Cortex memory integration
-
-Perci v0.1.1 includes a vendored Cortex engine as its governed long-term
-repository memory. Perci remains the cognitive coordinator; Cortex performs
-repository assimilation, selective retrieval, sparse activation, provenance,
-and Governor trust reduction.
-
-Initialize it once per checkout:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Initialize-Perci-Cortex.ps1
-```
-
-Then launch without PowerShell execution-policy friction:
-
-```text
-Start-Perci.cmd
-```
-
-Ordinary chat receives bounded Cortex evidence packets. `remember that ...`
-remains explicit-only and records append-only JSONL memory plus a Cortex
-episodic event when Cortex is ready. Cortex context never grants mutation
-authority. See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md).
-## Perci v0.1.2: Intelligence Packs and Fast Cortex
-
-Perci now indexes a curated procedural intelligence pack through Cortex. The
-pack encodes observable reasoning behavior: intent resolution, decomposition,
-strategy selection, evidence hierarchy, uncertainty calibration,
-counterexamples, debugging, verification, architecture, mathematics, science,
-memory consolidation, communication, and governance.
-
-Performance changes:
-
-- the 200 MiB Bitwork file is memory-mapped instead of copied into a Rust vector;
-- greetings and trivial prompts bypass Cortex;
-- the first substantive request lazily starts a persistent Cortex Python daemon;
-- later requests reuse the warm SQLite/Cortex process;
-- repeated retrievals use a bounded TTL cache;
-- `Start-Perci.cmd` executes the compiled release binary directly;
-- the console output is ASCII-safe;
-- `/bench` measures fast, cold-Cortex, and cached-Cortex paths.
-
-See [`docs/INTELLIGENCE_PACKS.md`](docs/INTELLIGENCE_PACKS.md).
