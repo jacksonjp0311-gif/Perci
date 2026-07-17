@@ -391,12 +391,14 @@ impl CognitiveWeights {
         text: &str,
         context: &[&str],
     ) -> io::Result<CognitiveMatch> {
-        const PER_DOMAIN_TOP: usize = 3;
-        const MIXTURE_MAX: usize = 5;
+        const MIXTURE_MAX: usize = 6;
         const RESIDUAL_MIN_BITS: u32 = 6;
-        // Scan budget: multi-frame asks need more experts; locked prompts fewer.
+        // Scan budget: multi-frame + open-fluency asks need more experts;
+        // locked short prompts stay narrow for latency.
         let multi_domain_ask = looks_multi_domain_ask(text);
-        let domain_scan_cap: usize = if multi_domain_ask { 8 } else { 5 };
+        let open_fluency = looks_open_fluency_ask(text);
+        let wide_search = multi_domain_ask || open_fluency;
+        let per_domain_top: usize = if wide_search { 4 } else { 3 };
 
         let (activation, composition_frame) = encode_with_composition_ctx(text, context);
         let query_popcount: u32 = activation.iter().map(|word| word.count_ones()).sum();
@@ -426,15 +428,54 @@ impl CognitiveWeights {
             .collect();
         candidates.sort_unstable_by_key(|(score, _, _, _)| Reverse(*score));
 
+        // Adaptive domain-scan cap (transformer multi-head analog over experts):
+        // contested coarse geometry → more domains; locked → fewer.
+        let mut domain_scan_cap: usize = if wide_search { 10 } else { 5 };
+        if candidates.len() >= 3 {
+            let top_margin = candidates[0].0.saturating_sub(candidates[2].0);
+            if top_margin < 10 {
+                domain_scan_cap = domain_scan_cap.max(9);
+            }
+            if top_margin < 4 {
+                domain_scan_cap = domain_scan_cap.max(12);
+            }
+        }
+        domain_scan_cap = domain_scan_cap.min(candidates.len());
+
+        // Force-include domains with strong lexical priors even if mask rank is mid.
+        // This recovers expert mass that coarse POPCOUNT alone under-ranks on open prose.
+        let mut scan_set: Vec<(i32, u32, u32, usize)> =
+            candidates.iter().take(domain_scan_cap).copied().collect();
+        for (name, prior) in &priors {
+            let prior_eff = if self.version >= VERSION_V3 {
+                prior.saturating_mul(2)
+            } else {
+                *prior
+            };
+            if prior_eff < 6 {
+                continue;
+            }
+            if let Some(entry) = candidates
+                .iter()
+                .find(|(_, _, _, idx)| self.labels[*idx].name == *name)
+            {
+                if !scan_set.iter().any(|(_, _, _, i)| *i == entry.3) {
+                    scan_set.push(*entry);
+                }
+            }
+        }
+        // Hard cap on domains scanned (latency guard).
+        if scan_set.len() > 14 {
+            scan_set.truncate(14);
+        }
+
         // Global pool of strong prototypes (top-N per domain) with record indices.
         // Integer-only hot loop — concept string selection deferred until survivors.
         let mut pool: Vec<(CognitiveMatch, usize, usize)> = Vec::new();
-        for (coarse_score, positive_overlap, negative_overlap, label_index) in
-            candidates.iter().take(domain_scan_cap)
-        {
+        for (coarse_score, positive_overlap, negative_overlap, label_index) in scan_set.iter() {
             let label = &self.labels[*label_index];
             let mut domain_top: Vec<(CognitiveMatch, usize, usize)> =
-                Vec::with_capacity(PER_DOMAIN_TOP);
+                Vec::with_capacity(per_domain_top);
             for local_index in 0..label.record_count {
                 let record_index = label.start_record + local_index;
                 let record_offset = self.header_size + record_index * RECORD_SIZE;
@@ -482,7 +523,7 @@ impl CognitiveWeights {
                 };
 
                 // Insert into domain top-k by score.
-                if domain_top.len() < PER_DOMAIN_TOP {
+                if domain_top.len() < per_domain_top {
                     domain_top.push((candidate, record_index, *label_index));
                     domain_top.sort_unstable_by_key(|(m, _, _)| Reverse(m.score));
                 } else if candidate.score
@@ -799,8 +840,12 @@ fn looks_multi_domain_ask(text: &str) -> bool {
     if lower.contains("connect ")
         || lower.contains("boundary between")
         || lower.contains("difference between")
+        || lower.contains("relationship between")
+        || lower.contains("relate ")
         || lower.contains(" vs ")
         || lower.contains(" versus ")
+        || lower.contains("across ")
+        || lower.contains("together")
     {
         return true;
     }
@@ -816,6 +861,41 @@ fn looks_multi_domain_ask(text: &str) -> bool {
         }
     }
     false
+}
+
+/// Open conceptual prose (why/how/explain…) benefits from wider domain search
+/// so SoftCascade has multipartite value mass — free-form fluency without a decoder.
+fn looks_open_fluency_ask(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let words = lower.split_whitespace().count();
+    if words < 4 {
+        return false;
+    }
+    // Exact tools stay narrow — don't expand domain search for pure arithmetic.
+    if lower.chars().filter(|c| c.is_ascii_digit()).count() >= 2
+        && (lower.contains("calculate")
+            || lower.contains("divided")
+            || lower.contains(" times ")
+            || lower.contains(" plus ")
+            || lower.contains(" percent")
+            || lower.contains('%'))
+    {
+        return false;
+    }
+    lower.starts_with("why ")
+        || lower.starts_with("how ")
+        || lower.starts_with("what ")
+        || lower.starts_with("explain ")
+        || lower.contains("why does")
+        || lower.contains("why do ")
+        || lower.contains("how does")
+        || lower.contains("how should")
+        || lower.contains("how can ")
+        || lower.contains("what about")
+        || lower.contains("tell me about")
+        || lower.contains("in what way")
+        || lower.contains("what happens when")
+        || (words >= 8 && lower.contains('?'))
 }
 
 fn jaccard(query_popcount: u32, prototype_popcount: u32, overlap: u32) -> f64 {
@@ -2166,6 +2246,28 @@ mod tests {
         assert!(skeleton.len() <= 3);
         // Margin defined vs runner-up.
         assert!(matched.score >= matched.runner_up_score || matched.runner_up_score == i32::MIN);
+    }
+
+    #[test]
+    fn open_fluency_detects_conceptual_why_how() {
+        assert!(looks_open_fluency_ask(
+            "why does trust fail in distributed systems?"
+        ));
+        assert!(looks_open_fluency_ask(
+            "how should recovery work under network partition?"
+        ));
+        assert!(!looks_open_fluency_ask("calculate 144 divided by 12"));
+        assert!(!looks_open_fluency_ask("hi"));
+    }
+
+    #[test]
+    fn multi_domain_detects_relate_and_across() {
+        assert!(looks_multi_domain_ask(
+            "relate sparse memory and vector symbolic architectures"
+        ));
+        assert!(looks_multi_domain_ask(
+            "connect ideas across memory and architecture"
+        ));
     }
 
     #[test]

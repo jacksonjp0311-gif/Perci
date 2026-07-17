@@ -174,10 +174,11 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
     }
 }
 
-/// Compose a multi-hypothesis answer as **continuous reasoning prose**.
+/// Compose a multi-hypothesis answer as **continuous free-form prose**.
 ///
-/// Avoids labeled presets ("Lattice:", "Mixture read:", "Bound as…"). Facets are
-/// woven with causal/contrast transitions so it reads like thinking, not a card dump.
+/// Target: LM-like paragraph fluency from scored Bitwork values — no token
+/// sampling, no section labels ("Lattice:", "Mixture read:", "residual stream").
+/// Facets are fused into a single reasoning paragraph.
 pub fn compose_soft_cascade(
     user: &str,
     matched: &CognitiveMatch,
@@ -221,11 +222,11 @@ pub fn compose_soft_cascade(
     }
     for s in &packet.supports {
         push_claim(&mut claims, s);
-        if claims.len() >= 3 {
+        if claims.len() >= 4 {
             break;
         }
     }
-    // Residual stream claims stay separate so they get hop-aware transitions.
+    // Residual stream claims — spoken as plain second thoughts, not jargon.
     let mut residual_claims: Vec<String> = Vec::new();
     for s in &packet.residual_supports {
         let t = s.trim().trim_end_matches('.').trim();
@@ -235,7 +236,7 @@ pub fn compose_soft_cascade(
     }
     for f in &packet.frames {
         push_claim(&mut claims, f);
-        if claims.len() >= 4 {
+        if claims.len() >= 5 {
             break;
         }
     }
@@ -249,7 +250,7 @@ pub fn compose_soft_cascade(
         return domain_body.to_owned();
     }
 
-    // Opening: answer the ask shape without "On topic:" cardboard.
+    // Free-form openings — lead with content, not a fixed shell.
     let mut out = String::new();
     let open_claim = claims
         .first()
@@ -257,54 +258,69 @@ pub fn compose_soft_cascade(
         .or_else(|| residual_claims.first().cloned())
         .unwrap_or_else(|| domain_body.to_owned());
     let c0 = decapitalize_if_mid(&open_claim);
-    match (ask, variant % 4) {
+    match (ask, variant % 5) {
         (AskShape::Why, 0) => {
-            out.push_str(&format!("Because {c0}."));
+            out.push_str(&format!("{open_claim}."));
         }
         (AskShape::Why, 1) => {
-            out.push_str(&format!("It comes down to this: {open_claim}."));
+            out.push_str(&format!("For {topic}, {c0}."));
+        }
+        (AskShape::Why, 2) => {
+            out.push_str(&format!("Because {c0}."));
         }
         (AskShape::Why, _) => {
             out.push_str(&format!(
-                "The structural reason {topic} fails or frays is that {}.",
-                c0
+                "The short answer is that {c0} — and that is what makes {topic} brittle or robust."
             ));
         }
         (AskShape::How, 0) => {
-            out.push_str(&format!("Practically, {}.", c0));
+            out.push_str(&format!("{open_claim}."));
         }
         (AskShape::How, 1) => {
-            out.push_str(&format!("It happens when {}.", c0));
+            out.push_str(&format!("In practice for {topic}, {c0}."));
+        }
+        (AskShape::How, 2) => {
+            out.push_str(&format!("It tends to work when {c0}."));
         }
         (AskShape::How, _) => {
-            out.push_str(&format!("Step through it: {open_claim}."));
+            out.push_str(&format!("Start from this: {open_claim}."));
         }
         (AskShape::What, 0) => {
-            out.push_str(&format!("{} is best read as {}.", topic, c0));
+            out.push_str(&format!("{open_claim}."));
+        }
+        (AskShape::What, 1) => {
+            out.push_str(&format!("Think of {topic} as {c0}."));
         }
         (AskShape::What, _) => {
+            out.push_str(&format!("{open_claim} — that is the cleanest read of {topic}."));
+        }
+        (AskShape::Connect, 0) => {
             out.push_str(&format!("{open_claim}."));
         }
         (AskShape::Connect, _) => {
             out.push_str(&format!(
-                "A workable bridge for {topic} starts here: {open_claim}."
+                "A bridge across {topic} looks like this: {c0}."
             ));
         }
         (AskShape::Open, 0) => {
             out.push_str(&format!("{open_claim}."));
         }
+        (AskShape::Open, 1) => {
+            out.push_str(&format!("On {topic}: {c0}."));
+        }
         (AskShape::Open, _) => {
-            out.push_str(&format!("On {topic}, {}.", c0));
+            out.push_str(&format!("{open_claim} That is the main thread on {topic}."));
         }
     }
 
-    // Same-geometry multi-head weave (attention-ordered supports + frames).
-    let transitions = match variant % 5 {
-        0 => ["That connects to ", "Which means ", "And under stress, "],
-        1 => ["From another angle, ", "So in practice, ", "Put differently, "],
-        2 => ["Alongside that, ", "The mechanism is that ", "If you push it, "],
-        3 => ["Equally important: ", "This only holds when ", "Otherwise, "],
-        _ => ["Zooming out, ", "The quiet constraint is that ", "You can check it by noting "],
+    // Soft mid-paragraph connectors (LM-ish, not section headers).
+    let soft = match variant % 6 {
+        0 => [" ", " And ", " So "],
+        1 => [" ", " More carefully, ", " In short, "],
+        2 => [" ", " At the same time, ", " That is why "],
+        3 => [" ", " Relatedly, ", " Under pressure, "],
+        4 => [" ", " Another way to put it: ", " The check is "],
+        _ => [" ", " Still, ", " Altogether, "],
     };
 
     let skip_first = claims.first().is_some();
@@ -313,30 +329,45 @@ pub fn compose_soft_cascade(
         .skip(if skip_first { 1 } else { 0 })
         .enumerate()
     {
-        if i >= 2 {
+        if i >= 3 {
             break;
         }
         let body = decapitalize_if_mid(claim);
-        out.push(' ');
-        out.push_str(transitions[i % transitions.len()]);
-        out.push_str(&body);
-        if !out.ends_with('.') {
-            out.push('.');
+        // Free-form: sometimes fuse with a soft connector, sometimes a new sentence.
+        if i == 0 && variant % 2 == 0 && body.chars().count() < 90 {
+            out.push_str(soft[1]);
+            out.push_str(&body);
+            if !out.ends_with('.') {
+                out.push('.');
+            }
+        } else {
+            out.push_str(soft[i.min(2)]);
+            // Capitalize after a sentence boundary if we just ended a period.
+            if out.ends_with(". ") || out.ends_with('.') {
+                if out.ends_with('.') {
+                    out.push(' ');
+                }
+                out.push_str(claim);
+            } else {
+                out.push_str(&body);
+            }
+            if !out.ends_with('.') {
+                out.push('.');
+            }
         }
     }
 
-    // Residual stream = transformer residual analog in speech: second thought
-    // after the primary attractor was masked (q ∧ ¬p*).
-    let residual_lead = match variant % 3 {
-        0 => "What still lights up after that first match is that ",
-        1 => "A complementary thread the first route masked: ",
-        _ => "Latent under the residual stream: ",
+    // Second-thought residual — plain language, never "residual stream" jargon.
+    let residual_lead = match variant % 4 {
+        0 => " There's another layer that often gets skipped: ",
+        1 => " Holding a second angle: ",
+        2 => " Also in play: ",
+        _ => " One more thread: ",
     };
     for (i, claim) in residual_claims.iter().enumerate() {
         if i >= 2 {
             break;
         }
-        // Avoid restating the opening claim.
         if claims
             .first()
             .map(|c| c.eq_ignore_ascii_case(claim))
@@ -345,27 +376,25 @@ pub fn compose_soft_cascade(
             continue;
         }
         let body = decapitalize_if_mid(claim);
-        out.push(' ');
-        if i == 0 {
-            out.push_str(residual_lead);
-        } else {
-            out.push_str("Further residual: ");
-        }
+        out.push_str(if i == 0 { residual_lead } else { " And " });
         out.push_str(&body);
         if !out.ends_with('.') {
             out.push('.');
         }
     }
 
-    // VSA soft binding → decode (was fluid-path only; SoftCascade previously skipped it).
-    out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
+    // VSA soft binding — only when it reads as structure, not a schema dump.
+    // Prefer quieter weave (variant styles that avoid checklist tags).
+    if packet.composition.len() >= 2 && (variant % 3 != 2 || packet.supports.is_empty()) {
+        out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
+    }
 
-    // Light epistemic honesty only when contested — plain language, no jargon dump.
+    // Contested honesty without meta-ceremony.
     if packet.contested
         && (claims.len() + residual_claims.len()) >= 3
-        && variant % 2 == 0
+        && variant % 3 == 1
     {
-        out.push_str(" I'm holding more than one working frame here; the pieces above are the ones that still cohere.");
+        out.push_str(" More than one frame still fits; these are the ones that hold together best.");
     }
 
     // Bind user topic if diluted.
@@ -377,6 +406,11 @@ pub fn compose_soft_cascade(
             "All of that still answers {}.",
             tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
         ));
+    }
+
+    // Collapse accidental double spaces from soft fusion.
+    while out.contains("  ") {
+        out = out.replace("  ", " ");
     }
     out
 }
@@ -420,7 +454,7 @@ fn decapitalize_if_mid(s: &str) -> String {
     }
 }
 
-/// Prefer SoftCascade when Bitwork evidence is rich enough.
+/// Prefer SoftCascade when Bitwork evidence can support free-form multi-facet speech.
 pub fn should_use_cascade(matched: &CognitiveMatch, user: &str) -> bool {
     let words = user.split_whitespace().count();
     if words < 3 {
@@ -433,11 +467,37 @@ pub fn should_use_cascade(matched: &CognitiveMatch, user: &str) -> bool {
     ) {
         return false;
     }
+    // Exact numeric asks stay on tool/natural_exact paths — cascade is for prose.
+    if social.chars().filter(|c| c.is_ascii_digit()).count() >= 2
+        && (social.contains("calculate")
+            || social.contains("divided")
+            || social.contains('%')
+            || social.contains("plus")
+            || social.contains("minus"))
+    {
+        return false;
+    }
     let packet = assemble(matched, user);
+    let open = looks_open_fluency_user(&social);
     packet.rich
-        || matched.margin < 20
-        || matched.mixture.len() >= 2
-        || matched.composition.len() >= 3
+        || matched.margin < 24
+        || matched.mixture.len() >= 1
+        || matched.composition.len() >= 2
+        || (open && matched.insight.is_some())
+        || (open && words >= 6 && matched.overlap >= 40)
+}
+
+fn looks_open_fluency_user(lower: &str) -> bool {
+    lower.starts_with("why ")
+        || lower.starts_with("how ")
+        || lower.starts_with("what ")
+        || lower.starts_with("explain ")
+        || lower.contains("why does")
+        || lower.contains("how should")
+        || lower.contains("how does")
+        || lower.contains("what about")
+        || lower.contains("connect ")
+        || lower.contains("tell me about")
 }
 
 fn content_tokens_bridge(user: &str) -> Vec<String> {
@@ -464,8 +524,10 @@ fn looks_multi_domain_user(user: &str) -> bool {
         || l.contains(" vs ")
         || l.contains(" versus ")
         || l.contains("difference between")
-        || l.contains(" and ")
-            && l.split_whitespace().count() >= 6
+        || l.contains("relationship between")
+        || l.contains("relate ")
+        || l.contains("across ")
+        || (l.contains(" and ") && l.split_whitespace().count() >= 6)
 }
 
 fn looks_capability_user(user: &str) -> bool {
@@ -686,7 +748,7 @@ mod tests {
         );
         assert!(p.composition.iter().any(|c| c.starts_with("ask:")));
 
-        // variant 0 voices composition; residual lead phrase should appear.
+        // Free-form residual second-thought language (no jargon "residual stream").
         let out = compose_soft_cascade(
             "why does trust fail in distributed systems?",
             &m,
@@ -695,13 +757,18 @@ mod tests {
         );
         let low = out.to_ascii_lowercase();
         assert!(
-            low.contains("still lights up")
-                || low.contains("complementary thread")
-                || low.contains("residual")
-                || low.contains("memory reconstructs"),
-            "expected residual weave, got: {out}"
+            !low.contains("residual stream") && !low.contains("further residual:"),
+            "jargon residual labels leaked: {out}"
         );
-        // VSA soft-binding should surface (variant 0/1) or be silent (variant 2).
+        assert!(
+            low.contains("another layer")
+                || low.contains("second angle")
+                || low.contains("also in play")
+                || low.contains("one more thread")
+                || low.contains("memory reconstructs"),
+            "expected free-form residual weave, got: {out}"
+        );
+        // VSA soft-binding should surface or topic remains.
         let out1 = compose_soft_cascade(
             "why does trust fail in distributed systems?",
             &m,
@@ -715,6 +782,27 @@ mod tests {
                 || low1.contains("ask")
                 || low1.contains("trust"),
             "expected VSA composition cue or topic, got: {out1}"
+        );
+    }
+
+    #[test]
+    fn soft_cascade_freeform_prefers_content_lead() {
+        let m = sample_match();
+        let out = compose_soft_cascade(
+            "why does trust fail in distributed systems?",
+            &m,
+            "placeholder body",
+            0,
+        );
+        let low = out.to_ascii_lowercase();
+        // Lead with substance; avoid stock method cards.
+        assert!(low.contains("trust") || low.contains("interface") || low.contains("permission"));
+        assert!(!low.contains("list premises"));
+        assert!(!low.contains("lattice:"));
+        // Free-form paragraphs should be multi-sentence when multi-facet.
+        assert!(
+            out.matches('.').count() >= 2,
+            "expected multi-sentence free-form, got: {out}"
         );
     }
 

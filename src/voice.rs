@@ -1520,9 +1520,10 @@ pub fn fluid_compose(
                             .into()
                     }
                     "general" => {
-                        "name what would change if the claim were false, then check that".into()
+                        // Free-form angle, not a falsify checklist slogan.
+                        "keep the claim concrete enough that a counterexample could touch it, then separate what you know from what you are guessing".into()
                     }
-                    _ => "state the claim so it can be checked, then separate evidence from guess"
+                    _ => "say what would change if the idea were wrong, then check against one real case"
                         .into(),
                 }
             };
@@ -1546,25 +1547,25 @@ pub fn fluid_compose(
         let body = if lower.starts_with("why ") || lower.contains("why does") || lower.contains("why is") {
             match seed % 3 {
                 0 => format!(
-                    "Because for {topic}, the useful story is mechanism, not slogan: {angle}. If that mechanism changed, the outcome should change too."
+                    "{angle} — that is the load-bearing story for {topic}, and if that mechanism changed, the outcome should change too."
                 ),
                 1 => format!(
-                    "It comes down to {topic}: {angle}. A good explanation predicts what happens under a controlled change."
+                    "For {topic}, {angle}. A useful explanation predicts what happens when one piece is held fixed and another is moved."
                 ),
                 _ => format!(
-                    "Why {topic}? Hold the claim open: {angle}. Then ask which observation would force a rewrite."
+                    "On {topic}: {angle}. The test is which observation would force a rewrite, not how fluent the first sentence sounds."
                 ),
             }
         } else if lower.starts_with("how ") {
             match seed % 3 {
                 0 => format!(
-                    "Practically for {topic}: state the goal, name the constraint that bites first, take the smallest reversible step, then verify. Under that: {angle}."
+                    "For {topic}, name the goal and the constraint that bites first, take the smallest reversible step, then verify. Anchor: {angle}."
                 ),
                 1 => format!(
-                    "For {topic}, cut a thin end-to-end path you can check, then widen. Anchor: {angle}."
+                    "Cut a thin end-to-end path for {topic} you can check, then widen. {angle}."
                 ),
                 _ => format!(
-                    "Treat {topic} as input, transform, check. {angle}. If a step is missing, name the missing input."
+                    "Treat {topic} as input → transform → check. {angle}. If a step is missing, name the missing input before inventing prose."
                 ),
             }
         } else if lower.contains("what do you think")
@@ -1572,15 +1573,15 @@ pub fn fluid_compose(
             || lower.contains("opinion")
         {
             format!(
-                "I don't have feelings about {topic}, but a grounded take is: {angle}. Use it if it helps you decide or measure something next."
+                "I don't have feelings about {topic}. A grounded take: {angle}. Use it if it helps you decide or measure something next."
             )
         } else if lower.contains('?') {
             match seed % 4 {
                 0 => format!(
-                    "On {topic}: {angle}. Give one constraint or example if you want this tighter."
+                    "{angle} That is the cleanest answer I have for {topic}; add a constraint if you want it tighter."
                 ),
                 1 => format!(
-                    "For “{}”, gravity sits on {topic}. {angle}",
+                    "For “{}”, the gravity sits on {topic}. {angle}",
                     first_sentence(user, 72)
                 ),
                 2 => format!(

@@ -142,7 +142,23 @@ with **integer channels**, not token sampling:
 **Tightens:** residual α mass floor (hop-weighted) so second thoughts don’t vanish
 under softmax-like permille; residual novelty bonus for different label/concept.
 
-## 5. Honest ceiling (still no decoder)
+## 5. Free-form fluency path (v0.6.8)
+
+Honest claim: Perci is **not** a free-form LM. Fluency here means **paragraph
+speech from multipartite Bitwork values**, not next-token sampling.
+
+| Lever | Change |
+|-------|--------|
+| Domain search | Adaptive cap (5→12) when coarse experts are contested |
+| Prior force-include | Strong lexical prior domains enter the scan even if mid-rank |
+| Open fluency detect | why/how/what/explain expand expert budget (not exact tools) |
+| SoftCascade prose | Content-first openings, soft mid connectors, no residual jargon |
+| Cascade gate | Prefer cascade on open conceptual asks with any insight/mix |
+
+Still not GPT: open fluency fails when the pack has no multipartite mass and no
+operator covers the ask. Next real IQ: pack-side VSA + spreading activation.
+
+## 6. Honest ceiling (still no decoder)
 
 | Gap | Next evolution (not yet) |
 |-----|--------------------------|
@@ -150,11 +166,11 @@ under softmax-like permille; residual novelty bonus for different label/concept.
 | No generative token path | Larger operator lattice + curriculum, not fake GPT |
 | Concept HVs are bag, not VSA | Encode concepts with same structure map |
 | Depth=2 residual | Spreading activation graph on prototypes (Tier B) |
-| SoftCascade still string join | Curriculum + operator lattice density |
+| SoftCascade still value-join | Richer curriculum insights + operator density |
 
 ---
 
-## 6. Objective function (measure, don’t vibe)
+## 7. Objective function (measure, don’t vibe)
 
 Simultaneous:
 
@@ -166,7 +182,7 @@ Simultaneous:
 
 ---
 
-## 7. Codex diagnosis alignment (ops hygiene)
+## 8. Codex diagnosis alignment (ops hygiene)
 
 Urgent work that is **not** “more prototypes”:
 
@@ -179,7 +195,7 @@ Urgent work that is **not** “more prototypes”:
 | Pack-side VSA | **Still requires human-authorized rebuild** — query-side only today |
 | Optional Phi / LM surface | `PERCI_MODEL_CMD` sidecar — never replaces Bitwork core |
 
-## 8. Bottom line
+## 9. Bottom line
 
 Transformer-style intelligence here means:
 
