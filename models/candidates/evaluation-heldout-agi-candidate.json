@@ -1,6 +1,6 @@
 {
   "schema": "perci.heldout-agi-candidate.v1",
-  "evaluated_at_utc": "2026-07-17T18:41:56.816006+00:00",
+  "evaluated_at_utc": "2026-07-17T18:47:34.561519+00:00",
   "status": "PASS",
   "passed": 25,
   "total": 25,
@@ -125,7 +125,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=448 (probe=220 operator=219 softcascade=9) speech hit/miss=15"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=439 (probe=216 operator=215 softcascade=8) speech hit/miss=20"
     },
     {
       "id": "H16",
@@ -133,7 +133,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=448 (probe=220 operator=219 softcascade=9) speech hit/miss=15"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=439 (probe=216 operator=215 softcascade=8) speech hit/miss=20"
     },
     {
       "id": "H17",

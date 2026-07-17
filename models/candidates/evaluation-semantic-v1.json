@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "passed": 3,
+  "total": 3,
+  "cases": [
+    {
+      "id": "S001",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S002",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    },
+    {
+      "id": "S003",
+      "pass": true,
+      "claim_score": 1.0,
+      "distinction_score": 1.0,
+      "relation_score": 1.0,
+      "missing_claims": [],
+      "forbidden_hits": [],
+      "notes": []
+    }
+  ]
+}

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Perci release gates (Phase A + C product law).
+"""Perci release gates (v0.7.0 Capability Fabric).
 
 Runs the minimum bar before a version bump claim:
 
 1. cargo test --lib
 2. hardness pack evaluation
-3. transfer suite via release binary (if present) or cargo run
-4. lab queue empty-or-report
+3. transfer suite (+ SoftCascade trust block)
+4. held-out AGI-candidate suite (>=90%)
+5. semantic evaluation v1
+6. fabric status (smoke)
 
 Never promotes weights. Exit 0 only if all hard gates pass.
 """
@@ -39,11 +41,12 @@ def main() -> int:
     print(f"root: {ROOT}")
     failures: list[str] = []
 
+    exe = ROOT / "target" / "release" / ("perci.exe" if os.name == "nt" else "perci")
+
     # 1) unit tests
-    print("\n[1/4] cargo test --lib")
+    print("\n[1/6] cargo test --lib")
     code, out = run(["cargo", "test", "--lib", "--", "--quiet"], timeout=600)
     if code != 0:
-        # PowerShell sometimes treats cargo stderr oddly; check for test result line
         if "test result: ok" not in out and "0 failed" not in out:
             failures.append("cargo test --lib")
             print(out[-2000:])
@@ -53,7 +56,7 @@ def main() -> int:
         print("  ok")
 
     # 2) hardness
-    print("\n[2/4] evaluate_hardness.py")
+    print("\n[2/6] evaluate_hardness.py")
     code, out = run([sys.executable, str(ROOT / "scripts" / "evaluate_hardness.py")], timeout=900)
     eval_path = ROOT / "models" / "candidates" / "evaluation-hardness-v1.json"
     if eval_path.is_file():
@@ -68,8 +71,7 @@ def main() -> int:
         print(out[-1500:])
 
     # 3) transfer suite
-    print("\n[3/4] transfer suite")
-    exe = ROOT / "target" / "release" / ("perci.exe" if os.name == "nt" else "perci")
+    print("\n[3/6] transfer suite")
     if exe.is_file():
         code, out = run([str(exe), "transfer-suite"], timeout=300)
     else:
@@ -80,17 +82,43 @@ def main() -> int:
     print(out[-2000:] if len(out) > 2000 else out)
     if "SUITE PASS" not in out and "all_pass=true" not in out:
         failures.append("transfer suite")
+    if "SOFTCASCADE TRUST ALIGN PASS" not in out and "all_pass=true" not in out:
+        # softcascade block may print after suite
+        if "SOFTCASCADE TRUST ALIGN FAIL" in out:
+            failures.append("softcascade trust transfer")
 
-    # 4) lab queue report
-    print("\n[4/4] lab unified queue")
+    # 4) held-out
+    print("\n[4/6] heldout AGI-candidate")
+    code, out = run(
+        [sys.executable, str(ROOT / "scripts" / "evaluate_heldout_agi_candidate.py")],
+        timeout=900,
+    )
+    print(out[-1500:] if len(out) > 1500 else out)
+    if '"status": "PASS"' not in out and '"status":"PASS"' not in out:
+        failures.append("heldout")
+
+    # 5) semantic
+    print("\n[5/6] semantic evaluation v1")
+    code, out = run(
+        [sys.executable, str(ROOT / "scripts" / "evaluate_semantic_v1.py")],
+        timeout=600,
+    )
+    print(out[-1500:] if len(out) > 1500 else out)
+    if '"status": "PASS"' not in out and '"status":"PASS"' not in out:
+        failures.append("semantic")
+
+    # 6) fabric smoke
+    print("\n[6/6] fabric status")
     if exe.is_file():
-        code, out = run([str(exe), "lab", "unified"], timeout=120)
+        code, out = run([str(exe), "fabric", "status"], timeout=60)
     else:
         code, out = run(
-            ["cargo", "run", "--release", "--quiet", "--", "lab", "unified"],
+            ["cargo", "run", "--release", "--quiet", "--", "fabric", "status"],
             timeout=300,
         )
-    print(out[-1500:] if len(out) > 1500 else out)
+    print(out[-1200:] if len(out) > 1200 else out)
+    if "Capability Fabric" not in out:
+        failures.append("fabric status")
 
     print("\n=== summary ===")
     if failures:

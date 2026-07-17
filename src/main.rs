@@ -137,6 +137,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
         }
+        "fabric" => {
+            let sub = args.next().unwrap_or_else(|| "status".into());
+            match sub.as_str() {
+                "status" | "help" | "--help" | "-h" => {
+                    println!("{}", perci::fabric::status_report());
+                }
+                "plan" => {
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    if prompt.trim().is_empty() {
+                        return Err("usage: perci fabric plan <prompt>".into());
+                    }
+                    let plan = perci::fabric::plan_for_prompt(prompt.trim(), "cli");
+                    println!("{}", serde_json::to_string_pretty(&plan)?);
+                }
+                other => {
+                    return Err(format!("unknown fabric subcommand: {other} (try: status|plan)").into());
+                }
+            }
+        }
         "lab" => {
             let sub = args.next().unwrap_or_else(|| "queue".into());
             match sub.as_str() {
@@ -248,6 +267,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             dry_run,
                             merge_if_green,
                             run_tests,
+                            budget: perci::agent::ExecutionBudget::default(),
                         },
                     )?;
                     println!("{}", report.summary());

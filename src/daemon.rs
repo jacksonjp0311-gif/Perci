@@ -1,17 +1,19 @@
-//! Long-lived Perci daemon — TCP JSONL on localhost for sub-ms routing after warm.
+//! Long-lived Perci daemon — TCP JSONL on **loopback** for sub-ms routing after warm.
 //!
-//! Protocol (one JSON object per line):
-//!   {"op":"ping"}
-//!   {"op":"ask","text":"..."}
-//!   {"op":"classify","text":"..."}
-//!   {"op":"shutdown"}
+//! Protocol (one JSON object per line, max 256 KiB):
+//!   {"op":"ping","token":"..."}
+//!   {"op":"ask","text":"...","token":"..."}
+//!   {"op":"classify","text":"...","token":"..."}
+//!   {"op":"shutdown","token":"..."}
 //!
-//! Responses:
-//!   {"ok":true,"text":"..."}
-//!   {"ok":true,"result":{...}}
-//!   {"ok":false,"error":"..."}
+//! Security (v0.7.0):
+//! - Default bind **127.0.0.1 only**. Non-loopback requires PERCI_DAEMON_ALLOW_NON_LOOPBACK=1.
+//! - Optional session token: set PERCI_DAEMON_TOKEN; all ops except ping-without-token
+//!   require matching `token` when the env var is set. Shutdown **always** requires token
+//!   when PERCI_DAEMON_TOKEN is set.
+//! - Read timeout 60s, write 30s, max line 256 KiB.
 //!
-//! Default: 127.0.0.1:17865  (override with PERCI_DAEMON_PORT / PERCI_DAEMON_HOST)
+//! Default: 127.0.0.1:17865  (PERCI_DAEMON_PORT / PERCI_DAEMON_HOST)
 
 use crate::backend::{CompositeBackend, LanguageBackend};
 use crate::chat::ChatEngine;
@@ -26,8 +28,18 @@ use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::time::Duration;
 
+const MAX_LINE_BYTES: usize = 256 * 1024;
+
 pub fn default_host() -> String {
-    env::var("PERCI_DAEMON_HOST").unwrap_or_else(|_| "127.0.0.1".into())
+    let host = env::var("PERCI_DAEMON_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+    let allow = env::var("PERCI_DAEMON_ALLOW_NON_LOOPBACK").ok().as_deref() == Some("1");
+    if !allow && host != "127.0.0.1" && host != "localhost" && host != "::1" {
+        eprintln!(
+            "perci daemon: refusing non-loopback host {host:?}; set PERCI_DAEMON_ALLOW_NON_LOOPBACK=1 for secure mode override"
+        );
+        return "127.0.0.1".into();
+    }
+    host
 }
 
 pub fn default_port() -> u16 {
@@ -41,6 +53,26 @@ pub fn addr() -> String {
     format!("{}:{}", default_host(), default_port())
 }
 
+fn expected_token() -> Option<String> {
+    env::var("PERCI_DAEMON_TOKEN").ok().filter(|s| !s.is_empty())
+}
+
+fn check_token(req: &Value, op: &str) -> Result<(), String> {
+    let Some(expected) = expected_token() else {
+        return Ok(());
+    };
+    // ping may omit token for liveness probes when PERCI_DAEMON_ALLOW_OPEN_PING=1
+    if op == "ping" && env::var("PERCI_DAEMON_ALLOW_OPEN_PING").ok().as_deref() == Some("1") {
+        return Ok(());
+    }
+    let got = req.get("token").and_then(|x| x.as_str()).unwrap_or("");
+    if got == expected {
+        Ok(())
+    } else {
+        Err("unauthorized: missing or invalid token".into())
+    }
+}
+
 /// Run blocking daemon (single client at a time for shared ChatEngine safety).
 pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let personality = {
@@ -52,8 +84,6 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("memory/perci.jsonl"));
     let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
-    // Keep one classifier mapping for the daemon lifetime. The chat backend has
-    // its own immutable mapping; both mappings share OS pages and never mutate.
     let classifier = {
         let path = crate::cognitive::default_weight_path();
         if path.is_file() {
@@ -73,7 +103,11 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&bind)?;
     listener.set_nonblocking(false)?;
     eprintln!("perci daemon listening on {bind}");
-    eprintln!("ops: ping | ask | classify | shutdown");
+    eprintln!(
+        "ops: ping | ask | classify | shutdown · token_required={}",
+        expected_token().is_some()
+    );
+    eprintln!("security: loopback-default · max_line={MAX_LINE_BYTES} · read_timeout=60s");
 
     for stream in listener.incoming() {
         let stream = match stream {
@@ -83,6 +117,15 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+        // Prefer peer on loopback when possible.
+        if let Ok(peer) = stream.peer_addr() {
+            let ip = peer.ip();
+            if !ip.is_loopback() && env::var("PERCI_DAEMON_ALLOW_NON_LOOPBACK").ok().as_deref() != Some("1")
+            {
+                eprintln!("reject non-loopback peer {ip}");
+                continue;
+            }
+        }
         if let Err(e) = handle_client(stream, &mut engine, classifier.as_ref()) {
             eprintln!("client error: {e}");
         }
@@ -95,7 +138,7 @@ fn handle_client(
     engine: &mut ChatEngine,
     classifier: Option<&crate::cognitive::CognitiveWeights>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    stream.set_read_timeout(Some(Duration::from_secs(300)))?;
+    stream.set_read_timeout(Some(Duration::from_secs(60)))?;
     stream.set_write_timeout(Some(Duration::from_secs(30)))?;
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut writer = stream;
@@ -104,6 +147,14 @@ fn handle_client(
         line.clear();
         let n = reader.read_line(&mut line)?;
         if n == 0 {
+            break;
+        }
+        if line.len() > MAX_LINE_BYTES {
+            writeln!(
+                writer,
+                "{}",
+                json!({"ok": false, "error": "payload too large"})
+            )?;
             break;
         }
         let req: Value = match serde_json::from_str(line.trim()) {
@@ -122,12 +173,24 @@ fn handle_client(
             .and_then(|x| x.as_str())
             .unwrap_or("")
             .to_ascii_lowercase();
+
+        if let Err(e) = check_token(&req, &op) {
+            writeln!(writer, "{}", json!({"ok": false, "error": e}))?;
+            writer.flush()?;
+            continue;
+        }
+
         match op.as_str() {
             "ping" => {
                 writeln!(
                     writer,
                     "{}",
-                    json!({"ok": true, "service": "perci-daemon", "version": env!("CARGO_PKG_VERSION")})
+                    json!({
+                        "ok": true,
+                        "service": "perci-daemon",
+                        "version": env!("CARGO_PKG_VERSION"),
+                        "fabric": "v0.7.0"
+                    })
                 )?;
             }
             "ask" => {
@@ -141,6 +204,14 @@ fn handle_client(
                         writer,
                         "{}",
                         json!({"ok": false, "error": "ask requires text"})
+                    )?;
+                    continue;
+                }
+                if text.len() > 32 * 1024 {
+                    writeln!(
+                        writer,
+                        "{}",
+                        json!({"ok": false, "error": "ask text too long"})
                     )?;
                     continue;
                 }
@@ -181,7 +252,18 @@ fn handle_client(
                 }
             }
             "shutdown" => {
+                // Fail closed: if token env is set, check_token already required it.
+                // If no token configured, refuse shutdown over network for safety.
+                if expected_token().is_none() {
+                    writeln!(
+                        writer,
+                        "{}",
+                        json!({"ok": false, "error": "shutdown disabled without PERCI_DAEMON_TOKEN"})
+                    )?;
+                    continue;
+                }
                 writeln!(writer, "{}", json!({"ok": true, "shutdown": true}))?;
+                writer.flush()?;
                 std::process::exit(0);
             }
             "" => {
@@ -254,7 +336,7 @@ fn classify_json_value(
     }))
 }
 
-/// Client: send one request, read one response line.
+/// Client: send one request, read one response line (includes token if configured).
 pub fn request(op: &str, text: Option<&str>) -> Result<Value, String> {
     let addr = addr();
     let mut stream =
@@ -264,6 +346,9 @@ pub fn request(op: &str, text: Option<&str>) -> Result<Value, String> {
     let mut req = json!({"op": op});
     if let Some(t) = text {
         req["text"] = json!(t);
+    }
+    if let Some(tok) = expected_token() {
+        req["token"] = json!(tok);
     }
     let line = format!("{req}\n");
     stream

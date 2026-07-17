@@ -15,6 +15,8 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_EDITS: usize = 12;
+const MAX_WALL_SECS: u64 = 600;
+const MAX_CHANGED_LINES_SOFT: usize = 400;
 const ALLOWED_EDIT_PREFIXES: &[&str] = &[
     "src/",
     "scripts/",
@@ -27,11 +29,32 @@ const ALLOWED_EDIT_PREFIXES: &[&str] = &[
 
 const FORBIDDEN_WRITE_SUFFIXES: &[&str] = &[".pwgt", ".pwgt.json"];
 
+/// Execution budget for agent runs (v0.7.0 fail-closed substrate).
+#[derive(Debug, Clone)]
+pub struct ExecutionBudget {
+    pub max_edits: usize,
+    pub max_wall_secs: u64,
+    pub max_changed_lines: usize,
+    pub network: bool,
+}
+
+impl Default for ExecutionBudget {
+    fn default() -> Self {
+        Self {
+            max_edits: MAX_EDITS,
+            max_wall_secs: MAX_WALL_SECS,
+            max_changed_lines: MAX_CHANGED_LINES_SOFT,
+            network: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AgentOpts {
     pub dry_run: bool,
     pub merge_if_green: bool,
     pub run_tests: bool,
+    pub budget: ExecutionBudget,
 }
 
 impl Default for AgentOpts {
@@ -40,6 +63,7 @@ impl Default for AgentOpts {
             dry_run: false,
             merge_if_green: false,
             run_tests: true,
+            budget: ExecutionBudget::default(),
         }
     }
 }
@@ -123,11 +147,13 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                     ok: true,
                 }),
                 Err(err) => {
+                    // Fail closed: branch failure is not silently success (v0.7.0).
                     report.steps.push(AgentStep {
                         name: "git.branch".into(),
-                        detail: format!("skipped or failed: {err}"),
-                        ok: true,
+                        detail: format!("failed: {err}"),
+                        ok: false,
                     });
+                    report.ok = false;
                 }
             }
         } else {
@@ -143,13 +169,35 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
         detail: plan.description.clone(),
         ok: true,
     });
+    report.steps.push(AgentStep {
+        name: "budget.policy".into(),
+        detail: format!(
+            "max_edits={} max_wall_secs={} network={} write_allowlist=src/scripts/training/docs/…",
+            opts.budget.max_edits, opts.budget.max_wall_secs, opts.budget.network
+        ),
+        ok: true,
+    });
 
+    let started = SystemTime::now();
     let mut edits = 0usize;
     for action in &plan.actions {
-        if edits >= MAX_EDITS {
+        if started
+            .elapsed()
+            .map(|d| d.as_secs() >= opts.budget.max_wall_secs)
+            .unwrap_or(false)
+        {
+            report.steps.push(AgentStep {
+                name: "budget.wall".into(),
+                detail: format!("stopped after {}s wall budget", opts.budget.max_wall_secs),
+                ok: false,
+            });
+            report.ok = false;
+            break;
+        }
+        if edits >= opts.budget.max_edits {
             report.steps.push(AgentStep {
                 name: "budget".into(),
-                detail: format!("stopped after {MAX_EDITS} edits"),
+                detail: format!("stopped after {} edits", opts.budget.max_edits),
                 ok: false,
             });
             report.ok = false;
@@ -325,11 +373,18 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                 detail: truncate(&out, 200),
                 ok: true,
             }),
-            Err(err) => report.steps.push(AgentStep {
-                name: "git.commit".into(),
-                detail: format!("commit skipped/failed: {err}"),
-                ok: true, // nothing to commit is OK
-            }),
+            Err(err) => {
+                let msg = format!("{err}");
+                let empty = msg.contains("nothing to commit") || msg.contains("no changes");
+                report.steps.push(AgentStep {
+                    name: "git.commit".into(),
+                    detail: format!("commit skipped/failed: {err}"),
+                    ok: empty, // fail-closed unless empty tree
+                });
+                if !empty {
+                    report.ok = false;
+                }
+            }
         }
         // Merge agent branch into previous branch if we created one.
         // For MVP: stay on agent branch; caller merges. Document merge-if-green as
@@ -340,7 +395,7 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                 "tests green; changes committed on {} (weights never auto-promoted)",
                 report.branch.as_deref().unwrap_or("agent/*")
             ),
-            ok: true,
+            ok: report.ok,
         });
     } else if opts.merge_if_green && opts.dry_run {
         report.steps.push(AgentStep {
@@ -354,6 +409,11 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
             detail: "blocked: gates not green".into(),
             ok: false,
         });
+    }
+
+    // Fail-closed: any failed step fails the report.
+    if report.steps.iter().any(|s| !s.ok) {
+        report.ok = false;
     }
 
     // Write receipt under models/candidates (allowed).
@@ -1545,11 +1605,15 @@ mod tests {
 
     #[test]
     fn dry_run_agent_does_not_need_lock() {
-        let report = run_agent("inspect status", AgentOpts {
-            dry_run: true,
-            merge_if_green: false,
-            run_tests: false,
-        })
+        let report = run_agent(
+            "inspect status",
+            AgentOpts {
+                dry_run: true,
+                merge_if_green: false,
+                run_tests: false,
+                budget: ExecutionBudget::default(),
+            },
+        )
         .expect("dry run");
         assert!(report.ok, "{}", report.summary());
         assert!(report.steps.iter().any(|s| s.name == "plan"));
