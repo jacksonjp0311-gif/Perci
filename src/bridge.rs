@@ -873,7 +873,7 @@ impl LengthPlan {
             self.base_b
         ));
         out.push_str(&format!(
-            "• Law: L=min({}, ceil(B·(1+0.6α+1.2H_r+C_d_log+I_u))) · α={}‰ · H_r={} · C_d={}‰ · I_u={}‰\n",
+            "• Law: L=min({}, ceil(B·(1+0.6α+1.2H_r+0.4log2(1+C)+N_r+I_u))) · α={}‰ · H_r={} · C_d={}‰ · I_u={}‰\n",
             Self::L_MAX,
             alpha_fixed,
             self.residual_hops,
@@ -1120,7 +1120,8 @@ pub fn render_prototype_tree(matched: &CognitiveMatch, packet: &BridgePacket) ->
     lines.join("\n")
 }
 
-/// \(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I_u\) in permille.
+/// \(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + N_r + I_u\) in permille.
+/// \(N_r\): novelty/residual bonus when multipartite mass is present.
 fn length_factor_pm(alpha_pm: u32, residual_hops: u32, cd_units: u32, intent_pm: u32) -> (u32, u32) {
     // 0.6 * α  → alpha_pm * 600 / 1000
     let alpha_term = (alpha_pm.saturating_mul(600)) / 1000;
@@ -1129,10 +1130,13 @@ fn length_factor_pm(alpha_pm: u32, residual_hops: u32, cd_units: u32, intent_pm:
     // 0.4 * log2(1+C) → log2(1+C) * 400
     let log_c = integer_log2_floor(1u32.saturating_add(cd_units));
     let complexity_pm = log_c.saturating_mul(400).min(500);
+    // N_r: residual novelty — reward second thoughts (0.15 per hop, capped 0.30)
+    let novelty_pm = residual_hops.min(2).saturating_mul(150);
     let factor_pm = 1000u32
         .saturating_add(alpha_term)
         .saturating_add(hop_term)
         .saturating_add(complexity_pm)
+        .saturating_add(novelty_pm)
         .saturating_add(intent_pm);
     (factor_pm, complexity_pm)
 }

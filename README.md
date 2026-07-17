@@ -1,113 +1,191 @@
-# Perci
+# PERCI
 
 <p align="center">
-  <img src="assets/icons/perci-darkblood-mark.jpg" alt="Perci Dark-Blood mark" width="160" height="160">
-  <br>
-  <img src="assets/generated/perci-darkblood-badge.svg" alt="Perci version badge (auto-stamped from Cargo.toml)" width="180">
-</p>
-
-**Version** is always `Cargo.toml`, stamped into the badge by `build.rs` (never hand-edit the badge). See [`assets/README.md`](assets/README.md).
-
-Open-domain synthesis, multi-hop plans, operator programs, agent lab, and governed Bitwork cognition. Software **v0.6.1** adds transformer-bridge algebra (soft attention, dual residual, VSA, Willshaw concept HVs, session CTX) plus **SoftCascade** multi-hypothesis compose without token decoding. The promoted local pack is `PERCIW03` (~200 MiB, 403,163 prototypes, 124 concepts).
-
-<p align="center">
-  <strong>Compact governed local intelligence.</strong><br>
-  A Rust-native neuro-symbolic assistant built around fast binary cognition, exact tools, append-only memory, and explicit capability boundaries.
+  <img src="assets/icons/perci-hero-darkblood.jpg" alt="Perci dark-blood sparse cognition lattice" width="920">
 </p>
 
 <p align="center">
-  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=flat-square&logo=rust">
-  <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-2563eb?style=flat-square">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.1-8b0000?style=flat-square">
-  <img alt="Bitwork pack" src="https://img.shields.io/badge/Bitwork%20PERCIW03-~200%20MiB%20local-111827?style=flat-square">
-  <img alt="Inference" src="https://img.shields.io/badge/inference-integer--only-059669?style=flat-square">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-d97706?style=flat-square">
+  <img src="assets/icons/perci-darkblood-mark.jpg" alt="Perci mark" width="96" height="96">
+  &nbsp;&nbsp;
+  <img src="assets/generated/perci-darkblood-badge.svg" alt="Perci version badge (stamped from Cargo.toml)" width="160">
+</p>
+
+<p align="center">
+  <strong>Local governed sparse cognition.</strong><br>
+  Not a cloud LLM. Not a pretend mind. A Rust-native neuro-symbolic stack that<br>
+  <em>routes in bits, thinks in operators, speaks like a collaborator — and shows its work on demand.</em>
+</p>
+
+<p align="center">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.17-8b0000?style=for-the-badge">
+  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
+  <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
+  <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
+  <img alt="Inference" src="https://img.shields.io/badge/hot_path-integer_only-059669?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-d97706?style=for-the-badge">
+</p>
+
+<p align="center">
+  <a href="https://github.com/jacksonjp0311-gif/Perci"><strong>github.com/jacksonjp0311-gif/Perci</strong></a>
 </p>
 
 ---
 
-## What Perci is
+<p align="center">
+  <img src="assets/icons/perci-stack-strip.svg" alt="Perci stack: reflex → Bitwork → operators → tools → thought arc → human speech" width="920">
+</p>
 
-**Perci** is an experimental local assistant with deliberately separate layers:
+## What you just walked into
 
-1. **Reflex routing** for immediate intent recognition.
-2. **Packed associative cognition** (Bitwork) for domain selection and nearest-prototype retrieval.
-3. **Transformer-bridge algebra** — soft-attention mixture weights, dual residual hops, VSA bind/bundle, Willshaw concept HVs, session CTX bind ([`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md)).
-4. **Deterministic reasoning tools** for arithmetic and geometry.
-5. **Stateful cognitive operators** for synthesis, critique, trust/systems, and multi-domain connect.
-6. **Append-only local memory** + Cortex for governed persistence.
-7. **A backend contract** for optional language generation without granting it exact-tool authority.
+**Perci** is an experimental **cognitive OS for a single machine**:
 
-The Bitwork pack (`PERCIW03`, ~200 MiB) is real and operational, but **local-only** (not in git — GitHub size limits). Software v0.6.0 adds compositional and multi-hop readout on top of that pack without a decoder stack. Perci is not a transformer, does not call an LLM by default, and is not general intelligence.
+| Layer | Job |
+|-------|-----|
+| **Bitwork PERCIW03** | ~200 MiB sparse pack · **403,163** prototypes · **124** concepts · 4096-bit AND/POPCOUNT |
+| **Transformer-bridge algebra** | Soft-α attention · dual residual ANDNOT · VSA bind/bundle · Willshaw HVs · session CTX |
+| **SoftCascade thought arc** | thesis → warrant → boundary → check — spoken as human prose, not card dumps |
+| **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
+| **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
+| **Exact tools** | Math & geometry that *compute*, never guess |
+| **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 
-> Use learned binary cognition to choose the right path, then use inspectable tools to produce results that should not be guessed.
+Chat is **clean** (no cognition dump). Inspect geometry with **`/think`**. Style with **`/concise` · `/deep` · `/balanced`**.
 
-## Why Perci exists
+> Fluency without transfer gates is not intelligence.  
+> Consciousness claims without sensors are not honesty.
 
-Most assistants place routing, language generation, memory, reasoning, and tool use inside one opaque model boundary. Perci separates them so the system is easier to inspect, benchmark, modify, govern, and extend.
+---
 
-Perci is a **cognitive systems architecture**, not merely a chatbot.
+## Why this is different
 
-## Architecture
+Most assistants bury routing, language, tools, and memory inside one opaque model.
 
-```text
-User input
-    |
-    v
-[ 64-bit reflex pass ]
-    |
-    v
-[ Bitwork cognitive weight network ]
-    |  expert routing, prototype recall,
-    |  soft-attn mixture, residual hops, VSA, CTX
-    |
-    +-- exact intent -----> [ deterministic tools ]
-    |                              |
-    +-- language intent --> [ fluid voice / optional external model ]
-    |                              |
-    +------------------------------+
-                   |
-                   v
-        [ governance + append-only memory + Cortex ]
-                   |
-                   v
-               Response
-```
-
-## The cognitive weight pack
-
-**Not shipped in git.** Place or build locally:
+Perci **separates them**:
 
 ```text
-models/perci-cognitive-v0.3.pwgt
+  input
+    │
+    ▼
+ ┌──────────┐     ┌─────────────────────────────┐
+ │  reflex  │────▶│  Bitwork field (α, residual,│
+ └──────────┘     │   VSA, multipartite mass)   │
+                  └─────────────┬───────────────┘
+            ┌───────────────────┼───────────────────┐
+            ▼                   ▼                   ▼
+      exact tools         operators           SoftCascade
+      math · geometry     trust · code        thought arc
+            │             synthesis · refuse        │
+            └───────────────────┬───────────────────┘
+                                ▼
+                     human speech  ·  /think inspects
 ```
+
+**What the field actually does** (live classify, 2026-07-17): contested prompts show **margin 0–2** and **overlap_z 15–26** — multipartite structure is real, not marketing. See [`docs/WEIGHT_REASSESSMENT_v0616.md`](docs/WEIGHT_REASSESSMENT_v0616.md).
+
+---
+
+## Numbers that are true today
 
 | Property | Value |
-|---|---:|
-| Exact size (active pack) | `209,710,296` bytes |
-| Human-readable size | ~`199.995` MiB |
-| Format magic | `PERCIW03` |
-| Unique associative prototypes | `403,163` |
-| Weight-resident concepts | `124` |
-| Activation width | `4,096` bits |
-| Packed activation | `64 x u64` |
-| Expert domains | `16` |
-| Inference arithmetic | Integer-only hot path |
+|----------|------:|
+| Software | **v0.6.17** (`Cargo.toml` · badge auto-stamped) |
+| Pack format | **PERCIW03** |
+| Pack size | **209,710,296** bytes (~200 MiB) |
+| Prototypes | **403,163** |
+| Concepts | **124** |
+| Activation | **4,096** bits · 64 × u64 |
+| Expert domains | **16** |
+| Hot path | Integer **AND / POPCOUNT** only |
+| Weights in git | **No** (GitHub size limits — local pack required) |
 
-Sidecar metadata: `models/perci-cognitive-v0.3.pwgt.json`. See [`WEIGHTS.md`](WEIGHTS.md).
+Version is **never** hand-edited in the badge: `build.rs` stamps `assets/generated/*` from `Cargo.toml`.
 
-At inference time Perci:
+---
 
-1. Encodes the prompt into 4,096 bits (bag + structure + VSA + optional CTX).
-2. Scores expert masks with `AND` / `POPCOUNT` (top domains only for latency).
-3. Finds top-k prototypes; builds soft-attention mixture weights.
-4. Runs residual ANDNOT hops (up to 2) and Willshaw concept HV scoring.
-5. Chooses operators / tools / fluid speech.
-6. Delegates exact work to deterministic tools where available.
+## Quick start
 
-See [`docs/BITWORK_V3_EVIDENCE.md`](docs/BITWORK_V3_EVIDENCE.md) and [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md).
+### Requirements
 
-## Cognitive domains
+- Windows, macOS, or Linux  
+- Rust + Cargo  
+- Local pack: `models/perci-cognitive-v0.3.pwgt` (not in the clone)
+
+### Clone & launch (Windows)
+
+```powershell
+git clone https://github.com/jacksonjp0311-gif/Perci.git
+cd .\Perci
+# place PERCIW03 under models\  (or $env:PERCI_WEIGHTS = "...")
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\Launch-Perci.ps1
+```
+
+### Cargo
+
+```powershell
+cargo run --release -- chat
+cargo run --release -- ask "why does trust fail in distributed systems?"
+cargo run --release -- classify "invent a constrained metaphor for sparse cognition"
+```
+
+### Dark-blood CLI
+
+```text
+/help · /status · /think · /concise · /deep · /balanced
+/trace · /intel · /learning · /quit
+```
+
+| Command | Meaning |
+|---------|---------|
+| `/think` | Backend cognition plan · prototype tree · self-critique (never mixed into chat) |
+| `/concise` `/deep` `/balanced` | Durable style memory |
+| `/trace` | Last operator / program audit |
+| `/intel` | Live labels, margins, z-scores |
+
+---
+
+## What it can do (measured shapes)
+
+**Exact**
+
+```text
+calculate 144 divided by 12          → 12
+triangle area base 8 height 5        → 20
+debug this: error[E0382] …           → concrete Rust fix
+```
+
+**Systems / transfer**
+
+```text
+how should interfaces earn trust under lag and retry?
+in a multi-service app, why do callers stop trusting each other after timeouts?
+what about recovery under partition?
+```
+
+**Synthesis / creativity / honesty**
+
+```text
+bridge Willshaw associative memory with XOR role-filler binding
+invent a constrained metaphor for sparse cognition
+what is the meaning of flibberquark without inventing   → refuse
+prove Perci is conscious from this chat                 → refuse
+what are you measuring when you answer?                 → operational introspection
+```
+
+---
+
+## Architecture deep dive
+
+| Doc | Contents |
+|-----|----------|
+| [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md) | Soft-α · residual · VSA · SoftCascade · thought arc |
+| [`docs/BITWORK_EMERGENCE.md`](docs/BITWORK_EMERGENCE.md) | Emergent field math |
+| [`docs/WEIGHT_REASSESSMENT_v0616.md`](docs/WEIGHT_REASSESSMENT_v0616.md) | Live classify margins / overlap_z |
+| [`docs/LOCAL_AGI_ROADMAP.md`](docs/LOCAL_AGI_ROADMAP.md) | Capability ladder · honest AGI boundary |
+| [`WEIGHTS.md`](WEIGHTS.md) | Pack layout · build · promote policy |
+| [`VALIDATION.md`](VALIDATION.md) | How claims get verified |
+
+### Cognitive domains
 
 ```text
 greeting      identity       english        logic
@@ -116,254 +194,117 @@ governance    planning       explanation    systems
 science       creativity     comparison     general
 ```
 
-## Quick start
+---
 
-### Requirements
+## Weights (local only)
 
-- Windows, macOS, or Linux
-- Rust toolchain with Cargo
-- Python 3 for rebuilding or verifying weights (optional)
-- A local `PERCIW03` pack under `models/` (not cloned from GitHub)
-
-### Clone
-
-```powershell
-git clone https://github.com/jacksonjp0311-gif/Perci.git
-cd .\Perci
+```text
+models/perci-cognitive-v0.3.pwgt        # not in git
+models/perci-cognitive-v0.3.pwgt.json   # metadata in git
 ```
 
-### Obtain weights (required for full Bitwork)
-
 ```powershell
-# Build a candidate pack, or copy a promoted pack into models/
+python .\scripts\verify_weights.py
+python .\scripts\test_weights.py
+# rebuild candidates (promote still requires --authorize):
 python .\scripts\build_weights_v3.py
-# Prefer: place models\perci-cognitive-v0.3.pwgt from your authorized build
 ```
 
-Or set:
+**Policy:** code can auto-merge when green. **Weights promote only with explicit human authorize.**
 
-```powershell
-$env:PERCI_WEIGHTS = "C:\path\to\perci-cognitive-v0.3.pwgt"
-```
+---
 
-### Launch on Windows
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass -Force
-.\Launch-Perci.ps1
-```
-
-Or:
-
-```text
-Start-Perci.cmd
-```
-
-Dark-blood terminal theme. Color follows TTY; override with `PERCI_COLOR=always` or `PERCI_COLOR=never`.
-
-```powershell
-.\Launch-Perci.ps1 -Mode intel
-.\Launch-Perci.ps1 -Mode status
-```
-
-### Launch with Cargo
-
-```powershell
-cargo run --release -- chat
-```
-
-### One-shot prompts
-
-```powershell
-cargo run --release -- ask "who are you"
-cargo run --release -- ask "calculate 144 divided by 12"
-cargo run --release -- ask "triangle area base 8 height 5"
-cargo run --release -- ask "why does trust fail in distributed systems?"
-cargo run --release -- ask "connect sparse memory and vector symbolic architectures"
-```
-
-### Runtime status
-
-```powershell
-cargo run --release -- status
-```
-
-## Chat commands
-
-```text
-/help       show available commands
-/status     inspect runtime and backend state
-/learning   inspect adaptive dialogue state and pending evidence
-/intel      show live labels, margins, z-scores, Jaccard similarity
-/trace      last deliberation / operator program audit
-/prompt     show the active personality prompt
-/quit       exit Perci
-```
-
-Perci learns safe conversational preferences immediately and records bounded interactions as pending evidence. It does **not** silently promote facts or rewrite weights. See [`docs/INTERACTION_LEARNING.md`](docs/INTERACTION_LEARNING.md).
-
-### Evolve measurable capability
-
-```powershell
-python .\scripts\evolve_cycle.py
-Get-Content .\docs\CAPABILITY_SCORECARD.md
-```
-
-Promotion remains explicit and human-authorized. See [`docs/EVOLUTION.md`](docs/EVOLUTION.md).
-
-Natural-language tool examples:
-
-```text
-calculate 10 divided by 4
-triangle area base 8 height 5
-pythagorean sides 3 and 4
-remember that Perci uses governed local memory
-recall governed local memory
-```
-
-## Exact reasoning
-
-When a request is arithmetic or geometric, Perci routes with Bitwork then computes with deterministic code — not approximate language patterns.
-
-- repeatable outputs
-- inspectable computation
-- clear boundary between classification and calculation
-
-## Governed local memory + Cortex
-
-Append-only JSONL memory is separate from the weight pack. Cortex provides repository assimilation, selective retrieval, sparse activation, and provenance. Cortex **never** grants mutation authority.
-
-Initialize once per checkout:
+## Cortex + memory
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Initialize-Perci-Cortex.ps1
 ```
 
-Ordinary chat receives bounded Cortex evidence when attached. `remember that ...` is explicit-only. See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md) and [`docs/INTELLIGENCE_PACKS.md`](docs/INTELLIGENCE_PACKS.md).
+Append-only JSONL memory + Cortex selective recall. Cortex **never** grants mutation authority.  
+See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md).
 
-## Personality
+---
 
-```text
-config/personality.prompt
-```
+## Optional external LM
 
-Default personality: curious, candid, calm, technically exact, local-first, and governed.
-
-## External language backend
-
-Optional external generation via `PERCI_MODEL_CMD` while Perci keeps orchestration, memory, tools, and governance:
+Bitwork stays the governor. Optional sidecar:
 
 ```powershell
 $env:PERCI_MODEL_CMD = "python scripts/mock-model.py"
 cargo run --release -- chat
 ```
 
-The process receives structured `SYSTEM` / `MEMORY` / `USER` on stdin and prints one response on stdout.
-
-```text
-optional quantized LM
-        |
-        v
-Perci personality + retrieved memory
-        |
-        v
-Bitwork routing + governance
-        |
-        v
-exact tools + fluid voice
-        |
-        v
-validated response
-```
-
-## Verify and rebuild weights
-
-```powershell
-python .\scripts\verify_weights.py
-python -m pip install numpy
-python .\scripts\test_weights.py
-```
-
-```powershell
-python .\scripts\build_weights_v3.py
-# lower-memory path:
-python .\scripts\build_weights_chunked.py
-```
-
-Routing probes are focused associative tests — not claims of ChatGPT parity. See [`VALIDATION.md`](VALIDATION.md).
+---
 
 ## Repository map
 
 ```text
 perci/
-  assets/                 # dark-blood mark + generated badge
+  assets/icons/           # mark · hero · stack strip
+  assets/generated/       # badge stamped from Cargo.toml
   config/personality.prompt
-  docs/                   # math path, transformer bridge, evolution, evidence
-  knowledge/packs/        # intelligence packs for Cortex
-  models/                 # *.pwgt local only; *.pwgt.json metadata in git
-  scripts/                # build, verify, hardness, evolve
+  docs/                   # bridge · emergence · roadmap · reassessment
+  knowledge/packs/        # intelligence packs
+  models/                 # *.pwgt local; sidecar JSON in git
+  scripts/                # build · verify · hardness · evolve · agent lab
   src/
-    cognitive.rs          # Bitwork encode / classify / mixture / residual / VSA
-    deliberation.rs       # high-salience operators
-    operator_program.rs   # program + critic runtime
-    voice.rs / ui.rs      # fluid speech + dark-blood CLI
-    backend.rs / chat.rs  # orchestration
+    cognitive.rs          # Bitwork encode / classify / α / residual / VSA
+    bridge.rs             # SoftCascade · thought arc · length · critique
+    deliberation.rs       # operators (trust, synthesis, refuse, code, …)
+    voice.rs · ui.rs      # speech + dark-blood CLI
+    chat.rs · backend.rs  # orchestration
     reasoning.rs          # exact math / geometry
-    cortex.rs / memory.rs # Cortex + JSONL memory
-    agent.rs / learning.rs
-    main.rs / lib.rs
-  training/               # curriculum, hardness, held-out
-  Launch-Perci.ps1
-  Start-Perci.cmd
-  Cargo.toml
-  WEIGHTS.md
-  VALIDATION.md
+    agent.rs · learning.rs
+  Launch-Perci.ps1 · Start-Perci.cmd
 ```
 
-## Capability boundary
+---
 
-**Useful for:**
+## Capability boundary (read twice)
 
-- compact local cognitive routing
-- multi-hypothesis mixture + residual second thoughts
-- compositional role structure (VSA) without a decoder
-- exact foundational arithmetic and geometry
-- multi-domain connect / trust-systems operators
-- governed local memory and Cortex retrieval
-- hybrid experiments (Bitwork + optional external LM)
+| Useful for | Not a substitute for |
+|------------|----------------------|
+| Local sparse routing + multipartite readout | ChatGPT / frontier transformers |
+| Thought-arc speech without a decoder | Web-scale factual recall |
+| Exact math/geometry | Unrestricted open-ended generation |
+| Governed synthesis & refusal | “AGI” slogans |
+| Inspectable `/think` geometry | Private chain-of-thought theater |
 
-**Not equivalent to** ChatGPT, Qwen, Llama, Phi, or other pretrained transformers. No web-scale factual knowledge, unrestricted fluent generation, or deep general reasoning merely because the pack is ~200 MiB.
+Progress = **hardness · transfer · latency · binding quality · honest abstention** — not vibes.
 
-Progress is measured by held-out tasks, hardness gates, latency, binding quality, and baselines — not file size alone.
+---
 
 ## Design principles
 
-- **Local first** — core operation does not require a cloud service.
-- **Governed persistence** — memory writes are explicit and inspectable.
-- **Honest architecture** — capabilities and limits are stated directly.
-- **Deterministic where possible** — exact tools handle exact work.
-- **Composable cognition** — routing, memory, language, and tools remain separable.
-- **Reproducible weights** — the pack can be rebuilt and verified (locally).
-- **Fast reflexes** — packed binary ops keep the cognitive path lightweight.
+- **Local first** — no cloud required for the core loop  
+- **Integer hot path** — AND / POPCOUNT, not GPU matmul  
+- **Separate layers** — field · laws · tools · speech  
+- **Human speech, backend truth** — chat clean; `/think` inspects  
+- **Governed learning** — style adapts; weights need authorize  
+- **Refuse when empty** — inventing meaning is a bug, not a feature  
 
-## Roadmap
+---
 
-- pack-side VSA encode under human-authorized rebuild
-- prototype graph / spreading activation
-- stronger hardness and dialogue gates
-- richer governed memory retrieval
-- formal external GGUF/backend adapter
-- keep Bitwork as the fast, inspectable governance boundary
+## Roadmap (next real IQ)
+
+1. Pack-side VSA encode (**human-authorized** rebuild)  
+2. Spreading activation on prototype graph  
+3. Novelty \(N_r\) vs session memory (length law already residual-aware)  
+4. Stronger hardness / dialogue gates  
+5. Agent lab: fail → ticket → patch → retest → merge green code only  
+
+---
 
 ## Status
 
-Experimental research software. Review [`VALIDATION.md`](VALIDATION.md) before treating a runtime or benchmark claim as verified.
+**Experimental research software.** Review [`VALIDATION.md`](VALIDATION.md) before treating a benchmark claim as sealed.
 
-## License
+**License:** [MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE) — your choice.
 
-Source and generated cognitive weights (when you build them) are available under either:
+---
 
-- [MIT License](LICENSE-MIT)
-- [Apache License 2.0](LICENSE-APACHE)
-
-You may use either license at your option.
+<p align="center">
+  <img src="assets/icons/perci-darkblood-mark.jpg" width="72" height="72" alt="Perci">
+  <br>
+  <sub>PERCI · dark-blood · governed sparse cognition · v0.6.17</sub>
+</p>

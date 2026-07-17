@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="140" viewBox="0 0 960 140" role="img" aria-label="Perci cognitive stack">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0c"/>
+      <stop offset="100%" stop-color="#1a0508"/>
+    </linearGradient>
+    <linearGradient id="blood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5c0a12"/>
+      <stop offset="50%" stop-color="#c41e3a"/>
+      <stop offset="100%" stop-color="#8b0000"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="140" fill="url(#bg)" rx="12"/>
+  <rect x="1" y="1" width="958" height="138" fill="none" stroke="#3a0a10" stroke-width="2" rx="12"/>
+  <!-- nodes -->
+  <g font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#e8d5d5">
+    <rect x="24" y="40" width="100" height="60" rx="8" fill="#14080a" stroke="#8b0000"/>
+    <text x="74" y="68" text-anchor="middle" fill="#c41e3a" font-weight="700">REFLEX</text>
+    <text x="74" y="84" text-anchor="middle" font-size="9" fill="#9a7a7a">intent</text>
+
+    <path d="M124 70 H148" stroke="url(#blood)" stroke-width="2"/>
+    <polygon points="148,70 140,66 140,74" fill="#c41e3a"/>
+
+    <rect x="150" y="40" width="120" height="60" rx="8" fill="#14080a" stroke="#c41e3a"/>
+    <text x="210" y="65" text-anchor="middle" fill="#ff4d6d" font-weight="700">BITWORK</text>
+    <text x="210" y="82" text-anchor="middle" font-size="9" fill="#9a7a7a">α · residual · VSA</text>
+
+    <path d="M270 70 H294" stroke="url(#blood)" stroke-width="2"/>
+    <polygon points="294,70 286,66 286,74" fill="#c41e3a"/>
+
+    <rect x="296" y="40" width="130" height="60" rx="8" fill="#14080a" stroke="#8b0000"/>
+    <text x="361" y="65" text-anchor="middle" fill="#c41e3a" font-weight="700">OPERATORS</text>
+    <text x="361" y="82" text-anchor="middle" font-size="9" fill="#9a7a7a">laws · critique</text>
+
+    <path d="M426 70 H450" stroke="url(#blood)" stroke-width="2"/>
+    <polygon points="450,70 442,66 442,74" fill="#c41e3a"/>
+
+    <rect x="452" y="40" width="110" height="60" rx="8" fill="#14080a" stroke="#8b0000"/>
+    <text x="507" y="65" text-anchor="middle" fill="#c41e3a" font-weight="700">TOOLS</text>
+    <text x="507" y="82" text-anchor="middle" font-size="9" fill="#9a7a7a">exact math</text>
+
+    <path d="M562 70 H586" stroke="url(#blood)" stroke-width="2"/>
+    <polygon points="586,70 578,66 578,74" fill="#c41e3a"/>
+
+    <rect x="588" y="40" width="130" height="60" rx="8" fill="#14080a" stroke="#c41e3a"/>
+    <text x="653" y="65" text-anchor="middle" fill="#ff4d6d" font-weight="700">THOUGHT ARC</text>
+    <text x="653" y="82" text-anchor="middle" font-size="9" fill="#9a7a7a">thesis→warrant</text>
+
+    <path d="M718 70 H742" stroke="url(#blood)" stroke-width="2"/>
+    <polygon points="742,70 734,66 734,74" fill="#c41e3a"/>
+
+    <rect x="744" y="40" width="190" height="60" rx="8" fill="#1a0508" stroke="#ff4d6d"/>
+    <text x="839" y="65" text-anchor="middle" fill="#ffe4e6" font-weight="700">HUMAN SPEECH</text>
+    <text x="839" y="82" text-anchor="middle" font-size="9" fill="#c9a0a0">clean · /think inspects</text>
+  </g>
+  <text x="480" y="24" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="10" fill="#8b0000" letter-spacing="3">GOVERNED SPARSE COGNITION · INTEGER HOT PATH</text>
+</svg>

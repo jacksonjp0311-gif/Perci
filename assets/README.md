@@ -17,6 +17,8 @@ On every `cargo build` / `cargo test`, `build.rs`:
 |------|------|-------|
 | `assets/icons/perci-darkblood-mark.svg` | Timeless diamond/blood sigil | yes (art) |
 | `assets/icons/perci-darkblood-mark.jpg` | Raster mark for README / shortcuts | replace art only |
+| `assets/icons/perci-hero-darkblood.jpg` | README hero lattice banner | replace art only |
+| `assets/icons/perci-stack-strip.svg` | Cognitive stack strip (exact labels) | yes (art) |
 | `assets/generated/perci-darkblood-badge.svg` | Mark + **version** | **never** (auto) |
 | `assets/generated/VERSION` | Plain version stamp | **never** (auto) |
 | `assets/generated/brand-manifest.json` | Paths + policy | **never** (auto) |
