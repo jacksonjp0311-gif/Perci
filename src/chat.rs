@@ -240,13 +240,18 @@ impl ChatEngine {
         {
             crate::operator_program::annotate_deliberation(input, &mut result);
             let raw = result.answer.clone();
-            let text = crate::bridge::envelope_light(
+            // Operators answer, but Bitwork still probes geometry for the cognition trace
+            // (α, residual hops, mixture domains) — otherwise traces stay α=0 forever.
+            self.backend.set_dialogue_history(&self.recent);
+            let bitwork = self.backend.probe_cognition(input);
+            let text = crate::bridge::envelope_with_bitwork(
                 input,
                 crate::bridge::CognitionPath::Operator,
                 &[result.operator],
                 result.operator,
                 &raw,
                 flag_verbose || self.verbose_cognition,
+                bitwork.as_ref(),
             );
             result.answer = text.clone();
             crate::decision_trace::append(input, &result);
@@ -269,13 +274,16 @@ impl ChatEngine {
             &self.recent,
             self.learning.as_ref().map(|learner| learner.profile()),
         ) {
-            let text = crate::bridge::envelope_light(
+            self.backend.set_dialogue_history(&self.recent);
+            let bitwork = self.backend.probe_cognition(input);
+            let text = crate::bridge::envelope_with_bitwork(
                 input,
                 crate::bridge::CognitionPath::Open,
                 &["dialogue"],
                 "dialogue-act",
                 &text,
                 flag_verbose || self.verbose_cognition,
+                bitwork.as_ref(),
             );
             self.last_deliberation = Some(
                 Deliberation::new("dialogue-act", text.clone())

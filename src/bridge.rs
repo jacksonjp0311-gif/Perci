@@ -574,6 +574,58 @@ impl LengthPlan {
         }
     }
 
+    /// Operator/tool answer **with** Bitwork geometry probe (α, residual hops, mixture).
+    /// Answer text still comes from the operator; the plan reports sparse field state.
+    pub fn from_operator_with_bitwork(
+        user: &str,
+        path: CognitionPath,
+        operator: &str,
+        operator_domains: &[&str],
+        matched: Option<&CognitiveMatch>,
+    ) -> Self {
+        let Some(matched) = matched else {
+            return Self::from_light(user, path, operator_domains, operator);
+        };
+        let packet = assemble(matched, user);
+        // Use open/cascade base when Bitwork is multipartite so L can grow with geometry.
+        let geometry_path = if matched.mixture.len() >= 1 || packet.residual_n > 0 {
+            CognitionPath::Cascade
+        } else {
+            path
+        };
+        let mut plan = Self::from_bitwork(user, matched, &packet, geometry_path);
+        // Keep operator identity while retaining Bitwork α/hops/domains.
+        plan.path = path;
+        plan.label = format!("{}|{}", operator, matched.label);
+        // Domains: operator tag + Bitwork experts (dedup).
+        let mut domains: Vec<String> = Vec::new();
+        for d in operator_domains {
+            let s = (*d).to_owned();
+            if !domains.iter().any(|x| x == &s) {
+                domains.push(s);
+            }
+        }
+        for d in plan.domains.drain(..) {
+            if !domains.iter().any(|x| x == &d) {
+                domains.push(d);
+            }
+        }
+        plan.domains = domains;
+        // Recompute L: operator base B with Bitwork α/hops/C_d so trace is honest.
+        let base_b = base_words(path, user);
+        let intent_pm = plan.intent_pm;
+        let factor_pm = 1000u32
+            .saturating_add(plan.alpha_pm)
+            .saturating_add(plan.residual_hops.saturating_mul(800))
+            .saturating_add(plan.complexity_pm)
+            .saturating_add(intent_pm);
+        let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+        plan.base_b = base_b;
+        plan.factor_pm = factor_pm;
+        plan.words = (raw as u32).min(Self::L_MAX).max(8) as usize;
+        plan
+    }
+
     /// Short visible prefix for most replies.
     pub fn short_trace(&self) -> String {
         let alpha_pct = self.alpha_pm / 10; // 0–100
@@ -587,7 +639,12 @@ impl LengthPlan {
                 .collect::<Vec<_>>()
                 .join("+")
         };
-        let path = path_tag(self.path);
+        let path = if self.label.contains('|') {
+            // operator|bitwork-label — dual path
+            format!("{}+bitwork", path_tag(self.path))
+        } else {
+            path_tag(self.path).to_owned()
+        };
         format!(
             "[Cognition Trace] α={alpha_pct}% · hops={} · domains={domains} · L={} words ({path}·B={})",
             self.residual_hops, self.words, self.base_b
@@ -600,11 +657,14 @@ impl LengthPlan {
         let factor_x100 = self.factor_pm / 10; // e.g. 260 → 2.60× as 260/100
         let mut out = String::new();
         out.push_str("[Cognition · verbose]\n");
+        let path_disp = if self.label.contains('|') {
+            format!("{}+bitwork", path_tag(self.path))
+        } else {
+            path_tag(self.path).to_owned()
+        };
         out.push_str(&format!(
             "path={} · label={} · margin={}\n",
-            path_tag(self.path),
-            self.label,
-            self.margin
+            path_disp, self.label, self.margin
         ));
         out.push_str(&format!(
             "α_lead={}‰ ({}%) · residual_hops={} · mixture={} · residual_n={} · frames={}\n",
@@ -771,7 +831,20 @@ pub fn envelope_light(
     body: &str,
     verbose: bool,
 ) -> String {
-    let plan = LengthPlan::from_light(user, path, domains, operator);
+    envelope_with_bitwork(user, path, domains, operator, body, verbose, None)
+}
+
+/// Operator/tool envelope optionally fused with a Bitwork classify probe.
+pub fn envelope_with_bitwork(
+    user: &str,
+    path: CognitionPath,
+    domains: &[&str],
+    operator: &str,
+    body: &str,
+    verbose: bool,
+    matched: Option<&CognitiveMatch>,
+) -> String {
+    let plan = LengthPlan::from_operator_with_bitwork(user, path, operator, domains, matched);
     let trimmed = apply_word_budget(body, plan.words);
     plan.envelope(&trimmed, verbose)
 }
@@ -1165,6 +1238,28 @@ mod tests {
         let (v2, c2) = strip_cognition_flags("think: explain residual hops");
         assert!(v2);
         assert!(c2.contains("explain"));
+    }
+
+    #[test]
+    fn operator_with_bitwork_carries_alpha_and_hops() {
+        let m = sample_match();
+        let plan = LengthPlan::from_operator_with_bitwork(
+            "why does trust fail in distributed systems?",
+            CognitionPath::Operator,
+            "trust-systems",
+            &["trust-systems"],
+            Some(&m),
+        );
+        assert!(plan.alpha_pm > 0, "α should come from Bitwork primary");
+        assert_eq!(plan.residual_hops, 1);
+        assert!(plan.mixture_n >= 1 || plan.residual_n >= 1);
+        assert!(plan.label.contains("trust-systems"));
+        assert!(plan.label.contains('|'));
+        let short = plan.short_trace();
+        assert!(short.contains("bitwork") || short.contains("α="));
+        assert!(!short.contains("α=0%") || plan.alpha_pm == 0);
+        // sample primary_attention_pm is 400 → 40%
+        assert!(short.contains("α=40%") || plan.alpha_pm == 400);
     }
 
     #[test]

@@ -13,6 +13,10 @@ pub trait LanguageBackend: Send {
     fn opening_insight(&self, _seed: u64) -> Option<String> {
         None
     }
+    /// Bitwork geometry probe for cognition traces (operators still answer, but α/hops report).
+    fn probe_cognition(&self, _user: &str) -> Option<CognitiveMatch> {
+        None
+    }
 }
 
 pub struct CognitiveBackend {
@@ -94,6 +98,10 @@ impl LanguageBackend for CognitiveBackend {
 
     fn opening_insight(&self, seed: u64) -> Option<String> {
         self.weights.opening_insight(seed)
+    }
+
+    fn probe_cognition(&self, user: &str) -> Option<CognitiveMatch> {
+        self.classify(user).ok()
     }
 }
 
@@ -230,6 +238,9 @@ impl CompositeBackend {
 
     pub fn set_recent(&mut self, recent: &[(String, String)]) {
         self.recent = recent.to_vec();
+        if let Some(cognitive) = self.cognitive.as_mut() {
+            cognitive.set_dialogue_history(recent);
+        }
     }
 }
 
@@ -310,6 +321,12 @@ impl LanguageBackend for CompositeBackend {
         self.cognitive
             .as_ref()
             .and_then(|cognitive| cognitive.opening_insight(seed))
+    }
+
+    fn probe_cognition(&self, user: &str) -> Option<CognitiveMatch> {
+        self.cognitive
+            .as_ref()
+            .and_then(|cognitive| cognitive.probe_cognition(user))
     }
 }
 
