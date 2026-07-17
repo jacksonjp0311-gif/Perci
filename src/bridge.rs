@@ -76,11 +76,15 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
         seen.push(l.to_ascii_lowercase());
     }
 
-    // Attention-ordered non-residual mixture first.
+    let multi = looks_multi_domain_user(user);
+    let user_tokens = content_tokens_bridge(user);
+
+    // Attention-ordered non-residual mixture first — filter cross-domain contamination.
     let mut mix: Vec<_> = matched
         .mixture
         .iter()
         .filter(|m| !m.residual)
+        .filter(|m| support_is_relevant(user, matched.label.as_str(), m, multi, &user_tokens))
         .collect();
     mix.sort_by_key(|m| std::cmp::Reverse(m.attention_pm));
     for m in mix {
@@ -92,8 +96,13 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
         }
     }
 
-    // Residual stream (hop order).
-    let mut res: Vec<_> = matched.mixture.iter().filter(|m| m.residual).collect();
+    // Residual stream (hop order) — same relevance gate.
+    let mut res: Vec<_> = matched
+        .mixture
+        .iter()
+        .filter(|m| m.residual)
+        .filter(|m| support_is_relevant(user, matched.label.as_str(), m, multi, &user_tokens))
+        .collect();
     res.sort_by_key(|m| (m.hop, std::cmp::Reverse(m.attention_pm)));
     for m in res {
         if let Some(ref i) = m.insight {
@@ -104,11 +113,14 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
         }
     }
 
-    // Semantic frame lattice (operator-side world model, not pack scan).
+    // Semantic frame lattice — only frames that touch user tokens (or multi-domain).
     let activated = deliberation::activate_semantic_frames(user, 3);
     let mut frames = Vec::new();
     let mut mechanisms = Vec::new();
     for f in activated {
+        if !multi && !frame_touches_user(&f.clause, &user_tokens) && f.score < 40 {
+            continue;
+        }
         push(&mut frames, &mut seen, &f.clause);
         if f.mechanism.chars().count() >= 20 {
             let mlow = f.mechanism.to_ascii_lowercase();
@@ -367,6 +379,79 @@ fn content_tokens_bridge(user: &str) -> Vec<String> {
         .filter(|w| w.len() >= 4 && !STOP.contains(&w.as_str()))
         .take(8)
         .collect()
+}
+
+fn looks_multi_domain_user(user: &str) -> bool {
+    let l = user.to_ascii_lowercase();
+    l.contains("connect ")
+        || l.contains(" vs ")
+        || l.contains(" versus ")
+        || l.contains("difference between")
+        || l.contains(" and ")
+            && l.split_whitespace().count() >= 6
+}
+
+fn looks_capability_user(user: &str) -> bool {
+    let l = user.to_ascii_lowercase();
+    l.contains("capable")
+        || l.contains("what can you")
+        || l.contains("what do you do")
+        || l.contains("abilities")
+        || l.contains("capabilities")
+        || (l.contains("what are you") && l.contains("do"))
+}
+
+/// Drop mixture supports that would contaminate a low-margin primary domain.
+fn support_is_relevant(
+    user: &str,
+    primary: &str,
+    m: &crate::cognitive::MixtureSupport,
+    multi: bool,
+    user_tokens: &[String],
+) -> bool {
+    if multi || m.label == primary {
+        return true;
+    }
+    // Capability asks: identity may legitimately support general.
+    if looks_capability_user(user)
+        && ((primary == "general" && m.label == "identity")
+            || (primary == "identity" && m.label == "general"))
+    {
+        return true;
+    }
+    // Share a content token between user and insight.
+    if let Some(ref insight) = m.insight {
+        let il = insight.to_ascii_lowercase();
+        if user_tokens.iter().any(|t| t.len() >= 4 && il.contains(t.as_str())) {
+            return true;
+        }
+    }
+    // High attention different-domain support needs stronger evidence.
+    if m.attention_pm >= 250 && m.insight.is_some() {
+        // Still reject biological/life-death noise on math-y prompts.
+        let l = user.to_ascii_lowercase();
+        let mathish = l.chars().any(|c| c.is_ascii_digit())
+            || l.contains("equal")
+            || l.contains("plus")
+            || l.contains("calculate");
+        if mathish {
+            if let Some(ref i) = m.insight {
+                let il = i.to_ascii_lowercase();
+                if il.contains("death") || il.contains("organism") || il.contains("membrane") {
+                    return false;
+                }
+            }
+        }
+        return m.score > 0 && m.overlap >= 6;
+    }
+    false
+}
+
+fn frame_touches_user(clause: &str, user_tokens: &[String]) -> bool {
+    let cl = clause.to_ascii_lowercase();
+    user_tokens
+        .iter()
+        .any(|t| t.len() >= 4 && cl.contains(t.as_str()))
 }
 
 #[cfg(test)]

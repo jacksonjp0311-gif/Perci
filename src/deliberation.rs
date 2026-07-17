@@ -141,6 +141,12 @@ pub fn try_deliberate(
         return Some(math_explanation_answer(&repaired));
     }
 
+    // Meta self-justification MUST beat causal-chain templates.
+    // "why did you say that?" is about the prior turn, not a world-event cause.
+    if looks_justify_prior_answer(&text) {
+        return Some(justify_prior_answer(recent));
+    }
+
     // Conceptual trust/systems Qs must not fall into code-domain debug cards
     // just because the word "fail" appears.
     if looks_trust_systems_question(&text) {
@@ -3240,10 +3246,66 @@ fn multi_hop_plan(user: &str) -> Deliberation {
 }
 
 fn looks_causal_chain(text: &str) -> bool {
+    // Do not steal dialogue meta-questions about Perci's own last answer.
+    if looks_justify_prior_answer(text) {
+        return false;
+    }
     (text.contains("why did") || text.contains("what caused") || text.contains("causal chain")
         || text.contains("cause and effect")
         || (text.contains("because") && text.contains("explain the chain")))
         && text.split_whitespace().count() >= 5
+}
+
+/// User asks Perci to justify / expand its immediately previous reply.
+fn looks_justify_prior_answer(text: &str) -> bool {
+    let t = text.trim();
+    t.contains("why did you say")
+        || t.contains("why did you claim")
+        || t.contains("why did you answer")
+        || t.contains("why did you put")
+        || t.contains("why did you write")
+        || t.contains("why did you choose")
+        || t.contains("what did you mean")
+        || t.contains("what do you mean by that")
+        || t.contains("explain what you just")
+        || t.contains("explain your last")
+        || t.contains("explain that answer")
+        || t.contains("why that answer")
+        || t.contains("why that response")
+        || (t.contains("why did you")
+            && (t.contains(" that") || t.ends_with("that") || t.ends_with("that?")))
+}
+
+fn justify_prior_answer(recent: &[(String, String)]) -> Deliberation {
+    let Some((prev_u, prev_a)) = recent.last() else {
+        return Deliberation::new(
+            "justify-prior-answer",
+            "I don't have a previous answer in this session window to justify. Ask a full question and I can answer it; then a follow-up like “why did you say that?” can bind to that reply.",
+        )
+        .observed("no recent turn available")
+        .inferred("meta-justification requires a prior assistant utterance")
+        .confidence(0.9);
+    };
+    let user_snip = first_substantive_sentence(prev_u, 100);
+    let ans_snip = first_substantive_sentence(prev_a, 220);
+    let more = if prev_a.chars().count() > 220 {
+        " …"
+    } else {
+        ""
+    };
+    let body = format!(
+        "I said that because I was answering “{user_snip}”. The load-bearing claim in my last reply was: “{ans_snip}{more}”. \
+I selected that line as the best supported claim under the active operator/route for that turn—not as a free association. \
+If a part of it was wrong or incomplete, name the piece and I'll revise that claim rather than invent a new causal template."
+    );
+    Deliberation::new("justify-prior-answer", body)
+        .observed(format!(
+            "prior_user_chars={}; prior_answer_chars={}",
+            prev_u.len(),
+            prev_a.len()
+        ))
+        .inferred("follow-up justification must quote and ground the previous answer")
+        .confidence(0.94)
 }
 
 fn causal_chain_answer(user: &str) -> Deliberation {
@@ -4562,6 +4624,29 @@ mod tests {
         );
         assert_eq!(next.operator, "next-weight-change");
         assert!(next.answer.contains("falsification"));
+    }
+
+    #[test]
+    fn justify_prior_binds_previous_answer_not_causal_template() {
+        let recent = [(
+            "why does trust fail in distributed systems?".to_owned(),
+            "Trust fails when interfaces leave authority and recovery implicit.".to_owned(),
+        )];
+        let r = run("why did you say that?", &recent);
+        assert_eq!(r.operator, "justify-prior-answer");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("trust") || low.contains("interfaces") || low.contains("authority"));
+        assert!(!low.contains("candidate mechanism"));
+        assert!(!low.contains("discriminating test"));
+        assert!(!low.contains("causal chain for"));
+    }
+
+    #[test]
+    fn causal_chain_does_not_steal_why_did_you_say() {
+        assert!(!looks_causal_chain("why did you say that about trust?"));
+        assert!(looks_causal_chain(
+            "why did the deployment fail? explain the causal chain with a discriminating test"
+        ));
     }
 
     #[test]

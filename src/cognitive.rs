@@ -1713,7 +1713,14 @@ fn select_concept(
             .get(concept_id)
             .map(|hv| intersection_count(activation, hv) as usize)
             .unwrap_or(0);
-        let score = alias_score + word_overlap * 5 + geometric * 4;
+        // Contamination guard: pure geometry without lexical/alias evidence must
+        // not surface unrelated concepts (e.g. "death" on arithmetic "why" prompts).
+        let lexical = alias_score + word_overlap.saturating_mul(5);
+        let score = if lexical > 0 {
+            lexical + geometric.saturating_mul(4)
+        } else {
+            0
+        };
         if score > best_score {
             best_score = score;
             best_id = concept_id;
@@ -1721,8 +1728,7 @@ fn select_concept(
     }
     // A prototype always carries a concept id, but proximity alone is not
     // semantic evidence that the concept answers this prompt. Keep the id for
-    // telemetry and abstain from emitting its prose unless the prompt matches
-    // an alias, a meaningful word, or a non-trivial concept HV overlap.
+    // telemetry and abstain from emitting its prose without lexical support.
     if best_score == 0 {
         return (prototype_concept, None);
     }
