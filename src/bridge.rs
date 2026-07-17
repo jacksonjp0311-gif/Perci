@@ -21,12 +21,16 @@ use crate::deliberation;
 pub struct BridgePacket {
     /// Primary insight / lead claim.
     pub lead: Option<String>,
-    /// Supporting facets ordered by attention (mixture then residual).
+    /// Supporting facets ordered by attention (same-geometry mixture).
     pub supports: Vec<String>,
+    /// Residual-stream facets (ANDNOT hops) — kept separate for hop-aware weave.
+    pub residual_supports: Vec<String>,
     /// Semantic-frame clauses activated from the open lattice.
     pub frames: Vec<String>,
     /// Mechanism lines from activated frames (when distinct).
     pub mechanisms: Vec<String>,
+    /// VSA role–filler tags from encode (soft binding → decode).
+    pub composition: Vec<String>,
     /// Whether evidence is rich enough to replace stock domain_body prose.
     pub rich: bool,
     /// Contested geometry (low margin) → force multi-facet voice.
@@ -107,7 +111,8 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
         }
     }
 
-    // Residual stream (hop order) — same relevance gate.
+    // Residual stream (hop order) — separate channel for hop-aware transitions.
+    let mut residual_supports: Vec<String> = Vec::new();
     let mut res: Vec<_> = matched
         .mixture
         .iter()
@@ -117,9 +122,9 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
     res.sort_by_key(|m| (m.hop, std::cmp::Reverse(m.attention_pm)));
     for m in res {
         if let Some(ref i) = m.insight {
-            push(&mut supports, &mut seen, i);
+            push(&mut residual_supports, &mut seen, i);
         }
-        if supports.len() >= 4 {
+        if residual_supports.len() >= 2 {
             break;
         }
     }
@@ -143,17 +148,23 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
 
     let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
     let frame_n = frames.len();
-    let contested = matched.margin < 16 || residual_n > 0 || frame_n >= 2;
+    let composition = matched.composition.clone();
+    let contested =
+        matched.margin < 16 || residual_n > 0 || frame_n >= 2 || composition.len() >= 3;
     let rich = lead.is_some()
         || !supports.is_empty()
+        || !residual_supports.is_empty()
         || frame_n >= 2
+        || composition.len() >= 3
         || (matched.primary_attention_pm >= 400 && !matched.mixture.is_empty());
 
     BridgePacket {
         lead,
         supports,
+        residual_supports,
         frames,
         mechanisms,
+        composition,
         rich,
         contested,
         attention_primary_pm: matched.primary_attention_pm,
@@ -210,13 +221,21 @@ pub fn compose_soft_cascade(
     }
     for s in &packet.supports {
         push_claim(&mut claims, s);
-        if claims.len() >= 4 {
+        if claims.len() >= 3 {
             break;
+        }
+    }
+    // Residual stream claims stay separate so they get hop-aware transitions.
+    let mut residual_claims: Vec<String> = Vec::new();
+    for s in &packet.residual_supports {
+        let t = s.trim().trim_end_matches('.').trim();
+        if t.len() >= 12 {
+            residual_claims.push(t.to_owned());
         }
     }
     for f in &packet.frames {
         push_claim(&mut claims, f);
-        if claims.len() >= 5 {
+        if claims.len() >= 4 {
             break;
         }
     }
@@ -226,19 +245,24 @@ pub fn compose_soft_cascade(
         }
     }
 
-    if claims.is_empty() {
+    if claims.is_empty() && residual_claims.is_empty() {
         return domain_body.to_owned();
     }
 
     // Opening: answer the ask shape without "On topic:" cardboard.
     let mut out = String::new();
-    let c0 = decapitalize_if_mid(&claims[0]);
+    let open_claim = claims
+        .first()
+        .cloned()
+        .or_else(|| residual_claims.first().cloned())
+        .unwrap_or_else(|| domain_body.to_owned());
+    let c0 = decapitalize_if_mid(&open_claim);
     match (ask, variant % 4) {
         (AskShape::Why, 0) => {
             out.push_str(&format!("Because {c0}."));
         }
         (AskShape::Why, 1) => {
-            out.push_str(&format!("It comes down to this: {}.", claims[0]));
+            out.push_str(&format!("It comes down to this: {open_claim}."));
         }
         (AskShape::Why, _) => {
             out.push_str(&format!(
@@ -253,29 +277,28 @@ pub fn compose_soft_cascade(
             out.push_str(&format!("It happens when {}.", c0));
         }
         (AskShape::How, _) => {
-            out.push_str(&format!("Step through it: {}.", claims[0]));
+            out.push_str(&format!("Step through it: {open_claim}."));
         }
         (AskShape::What, 0) => {
             out.push_str(&format!("{} is best read as {}.", topic, c0));
         }
         (AskShape::What, _) => {
-            out.push_str(&format!("{}.", claims[0]));
+            out.push_str(&format!("{open_claim}."));
         }
         (AskShape::Connect, _) => {
             out.push_str(&format!(
-                "A workable bridge for {topic} starts here: {}.",
-                claims[0]
+                "A workable bridge for {topic} starts here: {open_claim}."
             ));
         }
         (AskShape::Open, 0) => {
-            out.push_str(&format!("{}.", claims[0]));
+            out.push_str(&format!("{open_claim}."));
         }
         (AskShape::Open, _) => {
             out.push_str(&format!("On {topic}, {}.", c0));
         }
     }
 
-    // Weave remaining claims with natural reasoning transitions (not section labels).
+    // Same-geometry multi-head weave (attention-ordered supports + frames).
     let transitions = match variant % 5 {
         0 => ["That connects to ", "Which means ", "And under stress, "],
         1 => ["From another angle, ", "So in practice, ", "Put differently, "],
@@ -284,8 +307,13 @@ pub fn compose_soft_cascade(
         _ => ["Zooming out, ", "The quiet constraint is that ", "You can check it by noting "],
     };
 
-    for (i, claim) in claims.iter().skip(1).enumerate() {
-        if i >= 3 {
+    let skip_first = claims.first().is_some();
+    for (i, claim) in claims
+        .iter()
+        .skip(if skip_first { 1 } else { 0 })
+        .enumerate()
+    {
+        if i >= 2 {
             break;
         }
         let body = decapitalize_if_mid(claim);
@@ -297,8 +325,46 @@ pub fn compose_soft_cascade(
         }
     }
 
+    // Residual stream = transformer residual analog in speech: second thought
+    // after the primary attractor was masked (q ∧ ¬p*).
+    let residual_lead = match variant % 3 {
+        0 => "What still lights up after that first match is that ",
+        1 => "A complementary thread the first route masked: ",
+        _ => "Latent under the residual stream: ",
+    };
+    for (i, claim) in residual_claims.iter().enumerate() {
+        if i >= 2 {
+            break;
+        }
+        // Avoid restating the opening claim.
+        if claims
+            .first()
+            .map(|c| c.eq_ignore_ascii_case(claim))
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let body = decapitalize_if_mid(claim);
+        out.push(' ');
+        if i == 0 {
+            out.push_str(residual_lead);
+        } else {
+            out.push_str("Further residual: ");
+        }
+        out.push_str(&body);
+        if !out.ends_with('.') {
+            out.push('.');
+        }
+    }
+
+    // VSA soft binding → decode (was fluid-path only; SoftCascade previously skipped it).
+    out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
+
     // Light epistemic honesty only when contested — plain language, no jargon dump.
-    if packet.contested && claims.len() >= 3 && variant % 2 == 0 {
+    if packet.contested
+        && (claims.len() + residual_claims.len()) >= 3
+        && variant % 2 == 0
+    {
         out.push_str(" I'm holding more than one working frame here; the pieces above are the ones that still cohere.");
     }
 
@@ -421,6 +487,24 @@ fn support_is_relevant(
     user_tokens: &[String],
 ) -> bool {
     if multi || m.label == primary {
+        return true;
+    }
+    // Residual stream already survived ANDNOT + novelty scoring in classify.
+    // Allow it through unless it is biological noise on exact/math prompts.
+    if m.residual && m.insight.is_some() {
+        let l = user.to_ascii_lowercase();
+        let mathish = l.chars().any(|c| c.is_ascii_digit())
+            || l.contains("equal")
+            || l.contains("plus")
+            || l.contains("calculate");
+        if mathish {
+            if let Some(ref i) = m.insight {
+                let il = i.to_ascii_lowercase();
+                if il.contains("death") || il.contains("life ") || il.contains("organism") {
+                    return false;
+                }
+            }
+        }
         return true;
     }
     // Capability asks: identity may legitimately support general.
@@ -589,6 +673,48 @@ mod tests {
                 || low.contains("structural reason")
                 || low.contains("trust"),
             "got: {out}"
+        );
+    }
+
+    #[test]
+    fn soft_cascade_weaves_residual_and_vsa_composition() {
+        let m = sample_match();
+        let p = assemble(&m, "why does trust fail in distributed systems?");
+        assert!(
+            !p.residual_supports.is_empty(),
+            "residual channel should carry hop-1 insight"
+        );
+        assert!(p.composition.iter().any(|c| c.starts_with("ask:")));
+
+        // variant 0 voices composition; residual lead phrase should appear.
+        let out = compose_soft_cascade(
+            "why does trust fail in distributed systems?",
+            &m,
+            "placeholder body",
+            0,
+        );
+        let low = out.to_ascii_lowercase();
+        assert!(
+            low.contains("still lights up")
+                || low.contains("complementary thread")
+                || low.contains("residual")
+                || low.contains("memory reconstructs"),
+            "expected residual weave, got: {out}"
+        );
+        // VSA soft-binding should surface (variant 0/1) or be silent (variant 2).
+        let out1 = compose_soft_cascade(
+            "why does trust fail in distributed systems?",
+            &m,
+            "placeholder body",
+            1,
+        );
+        let low1 = out1.to_ascii_lowercase();
+        assert!(
+            low1.contains("treating that as")
+                || low1.contains("shaped as")
+                || low1.contains("ask")
+                || low1.contains("trust"),
+            "expected VSA composition cue or topic, got: {out1}"
         );
     }
 

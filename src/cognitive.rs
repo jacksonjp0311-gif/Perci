@@ -711,7 +711,20 @@ impl CognitiveWeights {
             if ov < 4 {
                 continue;
             }
-            let rscore = ov as i32 * 2 - m.prototype_popcount as i32;
+            // Novelty residual score (emergence E2): residual overlap rewards bits
+            // the primary mask left active; different-label / different-concept get
+            // a multi-head bonus so second thought is not a near-duplicate domain.
+            let mut rscore = ov as i32 * 2 - m.prototype_popcount as i32;
+            if m.label != best.label {
+                rscore += (ov as i32).saturating_add(4);
+            }
+            if m.concept_id != best.concept_id {
+                rscore += 3;
+            }
+            // Prefer residual that still carries content density.
+            if ov >= 8 {
+                rscore += 2;
+            }
             if rscore <= 0 {
                 continue;
             }
@@ -749,19 +762,34 @@ impl CognitiveWeights {
     }
 }
 
-/// Soft-attention: α_i ∝ overlap_i, stored as permille (sum ≈ 1000).
+/// Soft-attention: α_i ∝ effective_mass_i, stored as permille (sum ≈ 1000).
+///
+/// Residual hops use residual-act overlap, which is smaller after ANDNOT masking.
+/// A hop-weighted mass floor keeps second-thought heads visible in α (transformer
+/// multi-head analog) without inventing continuous scores:
+/// mass = max(overlap, hop_floor) for residual, plain overlap otherwise.
 fn assign_attention_weights(best: &mut CognitiveMatch) {
-    let mut total = best.overlap as u64;
+    let mass = |ov: u32, residual: bool, hop: u8| -> u64 {
+        let base = ov as u64;
+        if residual {
+            // hop1 ≥ 40, hop2 ≥ 55 effective mass units so residual α doesn't vanish
+            let floor = 25u64 + (hop as u64).saturating_mul(15);
+            base.max(floor)
+        } else {
+            base
+        }
+    };
+    let mut total = mass(best.overlap, false, 0);
     for m in &best.mixture {
-        total += m.overlap as u64;
+        total += mass(m.overlap, m.residual, m.hop);
     }
     if total == 0 {
         best.primary_attention_pm = 1000;
         return;
     }
-    best.primary_attention_pm = ((best.overlap as u64 * 1000) / total) as u16;
+    best.primary_attention_pm = ((mass(best.overlap, false, 0) * 1000) / total) as u16;
     for m in &mut best.mixture {
-        m.attention_pm = ((m.overlap as u64 * 1000) / total) as u16;
+        m.attention_pm = ((mass(m.overlap, m.residual, m.hop) * 1000) / total) as u16;
     }
 }
 

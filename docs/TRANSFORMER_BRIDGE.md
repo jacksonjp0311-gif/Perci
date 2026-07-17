@@ -116,7 +116,33 @@ latency**.
 
 ---
 
-## 4. Honest ceiling (still no decoder)
+## 4. SoftCascade value stack (v0.6.7)
+
+Transformer decode ≈ weighted sum of value vectors. SoftCascade now mirrors that
+with **integer channels**, not token sampling:
+
+\[
+\mathrm{Speak}\Big(
+  V_{\mathrm{lead}}(\alpha_0)
+  + V_{\mathrm{mix}}(\{\alpha_i\})
+  + V_{\mathrm{residual}}(\mathrm{hop})
+  + V_{\mathrm{VSA}}(\mathrm{bind})
+  + V_{\mathrm{frames}}
+\Big)
+\]
+
+| Channel | Source | Role |
+|---------|--------|------|
+| Lead | primary Willshaw insight | \(v_0\) |
+| Mix | non-residual mixture, α-ordered | multi-head |
+| Residual | ANDNOT hop insights, hop-aware transitions | residual stream |
+| VSA | `composition[]` role–filler weave | soft binding |
+| Frames | semantic lattice clauses | structured FFN-ish |
+
+**Tightens:** residual α mass floor (hop-weighted) so second thoughts don’t vanish
+under softmax-like permille; residual novelty bonus for different label/concept.
+
+## 5. Honest ceiling (still no decoder)
 
 | Gap | Next evolution (not yet) |
 |-----|--------------------------|
@@ -124,10 +150,11 @@ latency**.
 | No generative token path | Larger operator lattice + curriculum, not fake GPT |
 | Concept HVs are bag, not VSA | Encode concepts with same structure map |
 | Depth=2 residual | Spreading activation graph on prototypes (Tier B) |
+| SoftCascade still string join | Curriculum + operator lattice density |
 
 ---
 
-## 5. Objective function (measure, don’t vibe)
+## 6. Objective function (measure, don’t vibe)
 
 Simultaneous:
 
@@ -139,7 +166,7 @@ Simultaneous:
 
 ---
 
-## 6. Codex diagnosis alignment (ops hygiene)
+## 7. Codex diagnosis alignment (ops hygiene)
 
 Urgent work that is **not** “more prototypes”:
 
@@ -152,15 +179,19 @@ Urgent work that is **not** “more prototypes”:
 | Pack-side VSA | **Still requires human-authorized rebuild** — query-side only today |
 | Optional Phi / LM surface | `PERCI_MODEL_CMD` sidecar — never replaces Bitwork core |
 
-## 7. Bottom line
+## 8. Bottom line
 
 Transformer-style intelligence here means:
 
 \[
-\mathrm{Mix}_{\alpha}\big(\mathrm{NN}(q_{\mathrm{VSA+CTX}})\big)
-+ \mathrm{ResidualStream}_{h\le 2}
-+ \mathrm{Willshaw}(c)
-+ \mathrm{operators/tools}
+\mathrm{Speak}\Big(
+  \mathrm{Mix}_{\alpha}\big(\mathrm{NN}(q_{\mathrm{VSA+CTX}})\big)
+  + \mathrm{ResidualStream}_{h\le 2}
+  + \mathrm{Willshaw}(c)
+  + \mathrm{VSA}_{\mathrm{bind}}
+\Big)
+\;\|\; \mathrm{operators/tools}
 \]
 
-All integer-hot-path. That is the bridge — not bolting on a decoder first.
+All integer-hot-path. SoftCascade is the latency-preserving decode. That is the
+bridge — not bolting on a token sampler first.
