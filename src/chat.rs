@@ -118,6 +118,39 @@ impl ChatEngine {
         learner.stage_teaching(claim)
     }
 
+    /// Durable style memory: concise · deep · balanced.
+    pub fn set_style_depth(&mut self, mode: &str) -> io::Result<String> {
+        let learner = self.learning.as_mut().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Unsupported,
+                "interaction learning is disabled — style memory needs a profile path",
+            )
+        })?;
+        let msg = learner.set_style_depth(mode)?;
+        self.sync_style_to_bridge();
+        Ok(msg)
+    }
+
+    pub fn style_label(&self) -> String {
+        self.learning
+            .as_ref()
+            .map(|l| l.style_label().to_owned())
+            .unwrap_or_else(|| "balanced".into())
+    }
+
+    fn sync_style_to_bridge(&self) {
+        let depth = self
+            .learning
+            .as_ref()
+            .map(|l| match l.style_label() {
+                "concise" => 1u8,
+                "deep" => 2u8,
+                _ => 0u8,
+            })
+            .unwrap_or(0);
+        crate::bridge::set_style_depth(depth);
+    }
+
     pub fn session_path(&self) -> Option<String> {
         self.session
             .as_ref()
@@ -163,6 +196,7 @@ impl ChatEngine {
         let (flag_verbose, clean) = crate::bridge::strip_cognition_flags(input);
         let input = clean.as_str();
         crate::bridge::set_turn_verbose(flag_verbose || self.verbose_cognition);
+        self.sync_style_to_bridge();
         let _flag_verbose = flag_verbose; // reserved: richer plan retention
 
         let route = self.router.route(input);
@@ -733,7 +767,7 @@ fn strip_prefixes<'a>(input: &'a str, prefixes: &[&str]) -> &'a str {
 }
 
 pub fn help_text() -> &'static str {
-    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /think [on|off]     show last backend cognition plan (never mixed into chat)\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nFlags:\n  --verbose-cognition <msg>   ask + store richer backend plan (chat still clean)\n  think: <msg>                same\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nCognition:\n  chat = human answer only; /think = backend plan (α · hops · domains · L)\n  L = min(cap, ceil(B·(1+0.6α+1.2H_r+0.4log2(1+C)+I_u)))  integer fixed-point\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
+    "Commands:\n  /help               show commands\n  /status             show runtime status\n  /learning           show adaptive profile + pending evidence path\n  /teach <claim>      stage a governed knowledge candidate\n  /trace              show last audit (operator + program steps + critic)\n  /think [on|off]     show last backend cognition plan (never mixed into chat)\n  /concise            durable shorter answers (style memory)\n  /deep               durable deeper answers (style memory)\n  /balanced           reset style memory to natural default\n  /intel              run transparent live intelligence probes\n  /cortex             show Cortex attachment status\n  /prompt             show personality prompt\n  /quit               exit\nFlags:\n  --verbose-cognition <msg>   ask + store richer backend plan (chat still clean)\n  think: <msg>                same\nCLI:\n  perci ask <msg>     one-shot with durable session continuity\n  perci learning      inspect governed interaction learning\n  perci teach <claim> stage a governed knowledge candidate\n  perci agent run <goal> [--merge-if-green] [--dry-run]\n  perci agent lab --from-hardness [--dry-run]\n  perci traces [n]        show recent decision traces\n  perci session path|clear\n  perci classify <msg>\n  perci intel         labels + margins + z-scores + similarity\nNatural tools:\n  calculate 12 divided by 5\n  triangle area base 8 height 5\n  remember that Perci uses governed memory\n  recall governed memory\nCognition:\n  chat = human answer only; /think = plan + prototype tree + self-critique\n  L = min(cap, ceil(B·(1+0.6α+1.2H_r+0.4log2(1+C)+I_u))) · style /concise|/deep\nLearning lanes:\n  conversation       session context + safe style adaptation\n  /teach <claim>     pending evidence requiring review\n  remember that ...  deliberate durable note\n  active weights     evaluated rebuild + explicit promotion only\nPerformance:\n  response headers show measured elapsed time\n  deep prompts may use packs + optional Cortex daemon"
 }
 
 #[cfg(test)]

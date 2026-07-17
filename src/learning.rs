@@ -77,6 +77,68 @@ impl InteractionLearner {
         &self.events_path
     }
 
+    /// Persist thread style: concise · deep · balanced (safe prefs only).
+    pub fn set_style_depth(&mut self, mode: &str) -> io::Result<String> {
+        let mode = mode.trim().to_ascii_lowercase();
+        match mode.as_str() {
+            "concise" | "short" | "brief" | "tight" => {
+                self.profile.prefer_concise = true;
+                self.profile.prefer_direct_answers = true;
+                self.profile.prefer_explanations = false;
+                self.profile.avoid_structured_chat = true;
+                write_profile(&self.profile_path, &self.profile)?;
+                self.append_style_event("style_concise")?;
+                Ok("Style memory: concise — shorter, direct answers for this profile.".into())
+            }
+            "deep" | "detailed" | "thorough" | "expand" => {
+                self.profile.prefer_concise = false;
+                self.profile.prefer_direct_answers = true;
+                self.profile.prefer_explanations = true;
+                self.profile.avoid_structured_chat = true;
+                write_profile(&self.profile_path, &self.profile)?;
+                self.append_style_event("style_deep")?;
+                Ok("Style memory: deep — more room for mechanism and second angles.".into())
+            }
+            "balanced" | "reset" | "default" | "natural" => {
+                self.profile.prefer_concise = false;
+                self.profile.prefer_explanations = false;
+                self.profile.prefer_direct_answers = true;
+                self.profile.avoid_structured_chat = true;
+                write_profile(&self.profile_path, &self.profile)?;
+                self.append_style_event("style_balanced")?;
+                Ok("Style memory: balanced — natural default length.".into())
+            }
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "usage: /concise | /deep | /balanced",
+            )),
+        }
+    }
+
+    pub fn style_label(&self) -> &'static str {
+        if self.profile.prefer_concise && !self.profile.prefer_explanations {
+            "concise"
+        } else if self.profile.prefer_explanations && !self.profile.prefer_concise {
+            "deep"
+        } else {
+            "balanced"
+        }
+    }
+
+    fn append_style_event(&self, signal: &str) -> io::Result<()> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let value = serde_json::json!({
+            "ts": now,
+            "signal": signal,
+            "user": signal,
+            "kind": "style_preference",
+        });
+        append_jsonl(&self.events_path, &value)
+    }
+
     pub fn status_label(&self) -> String {
         let stats = self.event_log_stats();
         format!(

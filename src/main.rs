@@ -301,6 +301,18 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
                     ),
                 }
             }
+            "/concise" | "/short" | "/brief" => match engine.set_style_depth("concise") {
+                Ok(msg) => println!("{msg}"),
+                Err(e) => ui.error(&e.to_string()),
+            },
+            "/deep" | "/detailed" | "/thorough" => match engine.set_style_depth("deep") {
+                Ok(msg) => println!("{msg}"),
+                Err(e) => ui.error(&e.to_string()),
+            },
+            "/balanced" | "/natural" => match engine.set_style_depth("balanced") {
+                Ok(msg) => println!("{msg}"),
+                Err(e) => ui.error(&e.to_string()),
+            },
             _ => {
                 let started = Instant::now();
                 match engine.respond(input) {

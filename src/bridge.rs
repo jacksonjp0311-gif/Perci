@@ -22,6 +22,21 @@ thread_local! {
     static TURN_VERBOSE: Cell<bool> = Cell::new(false);
     /// Last verbose plan text for `/think` without re-running classify.
     static LAST_VERBOSE: RefCell<Option<String>> = RefCell::new(None);
+    /// Style depth from dialogue profile: 0 balanced · 1 concise · 2 deep.
+    static STYLE_DEPTH: Cell<u8> = Cell::new(0);
+    /// Last self-critique note for /think.
+    static LAST_CRITIQUE: RefCell<Option<String>> = RefCell::new(None);
+    /// Last visual prototype tree for /think.
+    static LAST_TREE: RefCell<Option<String>> = RefCell::new(None);
+}
+
+/// 0 = balanced, 1 = concise, 2 = deep (from `/concise` · `/deep` style memory).
+pub fn set_style_depth(depth: u8) {
+    STYLE_DEPTH.with(|c| c.set(depth.min(2)));
+}
+
+pub fn style_depth() -> u8 {
+    STYLE_DEPTH.with(|c| c.get())
 }
 
 /// Set whether this turn's SoftCascade/operator envelope uses the verbose plan.
@@ -34,9 +49,38 @@ pub fn turn_verbose() -> bool {
 }
 
 fn store_last_verbose(plan: &LengthPlan) {
+    let mut block = plan.verbose_trace();
+    if let Some(tree) = peek_tree() {
+        block.push_str("\n\n");
+        block.push_str(&tree);
+    }
+    if let Some(crit) = peek_critique() {
+        block.push_str("\n\n");
+        block.push_str(&crit);
+    }
     LAST_VERBOSE.with(|c| {
-        *c.borrow_mut() = Some(plan.verbose_trace());
+        *c.borrow_mut() = Some(block);
     });
+}
+
+fn store_critique(report: &CritiqueReport) {
+    LAST_CRITIQUE.with(|c| {
+        *c.borrow_mut() = Some(report.format_backend());
+    });
+}
+
+fn store_tree(tree: &str) {
+    LAST_TREE.with(|c| {
+        *c.borrow_mut() = Some(tree.to_owned());
+    });
+}
+
+fn peek_critique() -> Option<String> {
+    LAST_CRITIQUE.with(|c| c.borrow().clone())
+}
+
+fn peek_tree() -> Option<String> {
+    LAST_TREE.with(|c| c.borrow().clone())
 }
 
 /// Peek last verbose cognition block (for `/think`).
@@ -441,9 +485,16 @@ pub fn compose_soft_cascade(
         out = out.replace("  ", " ");
     }
 
+    // Self-critique residual loop: if draft is thin, weave one natural second thought
+    // from residual/mechanism mass (metacognition without token sampling).
+    let (refined, critique) = self_critique_refine(user, &out, &packet, matched);
+    store_critique(&critique);
+    store_tree(&render_prototype_tree(matched, &packet));
+
     // Length scalar silently; cognition plan is backend-only (/think), never chat prefix.
-    let plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
-    let body = apply_word_budget(&out, plan.words);
+    let mut plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
+    plan = plan.apply_style_depth(style_depth());
+    let body = apply_word_budget(&refined, plan.words);
     plan.seal_backend(&body)
 }
 
@@ -616,6 +667,25 @@ impl LengthPlan {
         plan
     }
 
+    /// Adjust L from durable style memory (`/concise` · `/deep` · balanced).
+    pub fn apply_style_depth(mut self, depth: u8) -> Self {
+        match depth {
+            1 => {
+                // concise: shrink budget ~35%
+                self.words = ((self.words as u32).saturating_mul(65) / 100).max(8) as usize;
+                self.intent_pm = self.intent_pm.min(1000);
+            }
+            2 => {
+                // deep: grow budget ~30%, allow deeper cap
+                self.words = ((self.words as u32).saturating_mul(130) / 100)
+                    .min(LengthPlan::L_MAX) as usize;
+                self.intent_pm = self.intent_pm.max(1500);
+            }
+            _ => {}
+        }
+        self
+    }
+
     /// One-line backend summary (never prefixed to chat).
     pub fn short_trace(&self) -> String {
         let alpha_pct = self.alpha_pm / 10; // 0–100
@@ -735,6 +805,211 @@ pub fn cognition_trace_in_chat() -> bool {
         }
         Err(_) => false,
     }
+}
+
+// ─── Self-critique residual loop ───────────────────────────────────────────
+
+#[derive(Clone, Debug)]
+pub struct CritiqueReport {
+    pub score: u32,
+    pub expanded: bool,
+    pub reason: String,
+}
+
+impl CritiqueReport {
+    pub fn format_backend(&self) -> String {
+        format!(
+            "[Self-critique]\n• score={}/100 · expanded={} · {}",
+            self.score,
+            if self.expanded { "yes" } else { "no" },
+            self.reason
+        )
+    }
+}
+
+/// Fast metacognition: is the draft clear, governed, and sufficient?
+/// If thin, weave one residual/mechanism facet in natural speech (<50ms target).
+pub fn self_critique_refine(
+    user: &str,
+    draft: &str,
+    packet: &BridgePacket,
+    matched: &CognitiveMatch,
+) -> (String, CritiqueReport) {
+    let lower = user.to_ascii_lowercase();
+    let words = draft.split_whitespace().count() as u32;
+    let tokens = content_tokens_bridge(user);
+    let draft_l = draft.to_ascii_lowercase();
+    let token_hits = tokens
+        .iter()
+        .filter(|t| t.len() >= 4 && draft_l.contains(t.as_str()))
+        .count() as u32;
+
+    let mut score: u32 = 50;
+    // Coverage of user content
+    score = score.saturating_add(token_hits.saturating_mul(8).min(24));
+    // Adequate length for ask shape
+    let wants_depth = lower.contains("why")
+        || lower.contains("how")
+        || lower.contains("explain")
+        || lower.contains("connect");
+    if wants_depth && words >= 40 {
+        score = score.saturating_add(15);
+    } else if wants_depth && words < 22 {
+        score = score.saturating_sub(20);
+    }
+    if words >= 12 && words <= 220 {
+        score = score.saturating_add(10);
+    }
+    // Multipartite evidence used
+    if !packet.supports.is_empty() {
+        score = score.saturating_add(8);
+    }
+    if !packet.residual_supports.is_empty() {
+        // residual available but unused in draft → pressure to expand
+        let used_res = packet
+            .residual_supports
+            .iter()
+            .any(|r| draft_l.contains(&r.to_ascii_lowercase()[..r.len().min(28)]));
+        if used_res {
+            score = score.saturating_add(10);
+        } else {
+            score = score.saturating_sub(12);
+        }
+    }
+    // Contested geometry should not be a one-liner
+    if packet.contested && words < 28 {
+        score = score.saturating_sub(15);
+    }
+    // Stock / thin patterns
+    if draft_l.contains("list premises") || draft_l.contains("fake certainty") {
+        score = score.saturating_sub(25);
+    }
+    // Locked high-α short answers on greetings are fine
+    if matched.primary_attention_pm >= 600 && words >= 8 && !wants_depth {
+        score = score.saturating_add(12);
+    }
+    score = score.min(100);
+
+    let threshold = if style_depth() == 1 { 40 } else { 55 };
+    if score >= threshold {
+        return (
+            draft.to_owned(),
+            CritiqueReport {
+                score,
+                expanded: false,
+                reason: "draft clear and sufficient under style depth".into(),
+            },
+        );
+    }
+
+    // Expand once from residual or mechanism — natural human tone, no labels.
+    let facet = packet
+        .residual_supports
+        .first()
+        .cloned()
+        .or_else(|| packet.mechanisms.first().cloned())
+        .or_else(|| packet.supports.last().cloned());
+
+    let Some(facet) = facet else {
+        return (
+            draft.to_owned(),
+            CritiqueReport {
+                score,
+                expanded: false,
+                reason: "thin draft but no residual/mechanism mass to expand".into(),
+            },
+        );
+    };
+    let fl = facet.to_ascii_lowercase();
+    if draft_l.contains(&fl[..fl.len().min(32)]) {
+        return (
+            draft.to_owned(),
+            CritiqueReport {
+                score,
+                expanded: false,
+                reason: "facet already present; no expand".into(),
+            },
+        );
+    }
+
+    let body = decapitalize_if_mid(facet.trim().trim_end_matches('.'));
+    let bridge = match words % 3 {
+        0 => " One more angle worth holding: ",
+        1 => " Holding that lightly, also: ",
+        _ => " And if you push one step further: ",
+    };
+    let mut refined = draft.trim_end().to_owned();
+    if !refined.ends_with('.') && !refined.ends_with('?') && !refined.ends_with('!') {
+        refined.push('.');
+    }
+    refined.push_str(bridge);
+    refined.push_str(&body);
+    if !refined.ends_with('.') {
+        refined.push('.');
+    }
+
+    (
+        refined,
+        CritiqueReport {
+            score,
+            expanded: true,
+            reason: format!("score {score} < {threshold}; wove residual/mechanism second angle"),
+        },
+    )
+}
+
+/// ASCII prototype tree for `/think` — lead · mix · residual · VSA.
+pub fn render_prototype_tree(matched: &CognitiveMatch, packet: &BridgePacket) -> String {
+    let mut lines = Vec::new();
+    lines.push("[Prototype tree]".to_owned());
+    let alpha = matched.primary_attention_pm / 10;
+    lines.push(format!(
+        "  ◆ lead  {}  α={}%" ,
+        matched.label, alpha
+    ));
+    let mut mix: Vec<_> = matched.mixture.iter().filter(|m| !m.residual).collect();
+    mix.sort_by_key(|m| std::cmp::Reverse(m.attention_pm));
+    let res: Vec<_> = matched.mixture.iter().filter(|m| m.residual).collect();
+    let total = mix.len() + res.len() + if packet.composition.is_empty() { 0 } else { 1 };
+    let mut i = 0usize;
+    for m in mix.iter().take(3) {
+        i += 1;
+        let branch = if i == total { "└─" } else { "├─" };
+        let a = m.attention_pm / 10;
+        let insight = m
+            .insight
+            .as_ref()
+            .map(|s| truncate_chars(s, 42))
+            .unwrap_or_else(|| "—".into());
+        lines.push(format!(
+            "  {branch} mix  {}  α={}%  · {insight}",
+            m.label, a
+        ));
+    }
+    for m in res.iter().take(2) {
+        i += 1;
+        let branch = if i == total { "└─" } else { "├─" };
+        let a = m.attention_pm / 10;
+        lines.push(format!(
+            "  {branch} residual hop{}  {}  α={}%",
+            m.hop, m.label, a
+        ));
+    }
+    if !packet.composition.is_empty() {
+        let branch = "└─";
+        let binds = packet
+            .composition
+            .iter()
+            .take(4)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" · ");
+        lines.push(format!("  {branch} vsa  {binds}"));
+    }
+    if total == 0 && packet.composition.is_empty() {
+        lines.push("  └─ (single attractor — no multipartite mass)".into());
+    }
+    lines.join("\n")
 }
 
 /// \(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I_u\) in permille.
@@ -893,8 +1168,25 @@ pub fn envelope_with_bitwork(
     verbose: bool,
     matched: Option<&CognitiveMatch>,
 ) -> String {
-    let plan = LengthPlan::from_operator_with_bitwork(user, path, operator, domains, matched);
-    let trimmed = apply_word_budget(body, plan.words);
+    let mut body = body.to_owned();
+    if let Some(m) = matched {
+        let packet = assemble(m, user);
+        store_tree(&render_prototype_tree(m, &packet));
+        // Light critique on operator drafts too (reuse residual mass when thin).
+        let (refined, critique) = self_critique_refine(user, &body, &packet, m);
+        store_critique(&critique);
+        body = refined;
+    } else {
+        store_tree("[Prototype tree]\n  └─ (operator path · no Bitwork probe)");
+        store_critique(&CritiqueReport {
+            score: 70,
+            expanded: false,
+            reason: "operator path without Bitwork probe".into(),
+        });
+    }
+    let mut plan = LengthPlan::from_operator_with_bitwork(user, path, operator, domains, matched);
+    plan = plan.apply_style_depth(style_depth());
+    let trimmed = apply_word_budget(&body, plan.words);
     plan.envelope(&trimmed, verbose)
 }
 
@@ -1295,6 +1587,50 @@ mod tests {
         let (v2, c2) = strip_cognition_flags("think: explain residual hops");
         assert!(v2);
         assert!(c2.contains("explain"));
+    }
+
+    #[test]
+    fn self_critique_expands_thin_draft_with_residual() {
+        let m = sample_match();
+        let packet = assemble(&m, "why does trust fail in distributed systems?");
+        let thin = "Trust needs contracts.";
+        let (out, report) = self_critique_refine(
+            "why does trust fail in distributed systems?",
+            thin,
+            &packet,
+            &m,
+        );
+        assert!(report.score < 80);
+        // Either expanded or explained why not.
+        if report.expanded {
+            assert!(out.len() > thin.len());
+            assert!(!out.to_ascii_lowercase().contains("second thought:"));
+        }
+    }
+
+    #[test]
+    fn prototype_tree_shows_lead_and_branches() {
+        let m = sample_match();
+        let packet = assemble(&m, "why does trust fail in distributed systems?");
+        let tree = render_prototype_tree(&m, &packet);
+        assert!(tree.contains("◆ lead"));
+        assert!(tree.contains("mix") || tree.contains("residual") || tree.contains("vsa"));
+    }
+
+    #[test]
+    fn style_depth_shrinks_concise_budget() {
+        let m = sample_match();
+        let packet = assemble(&m, "why does trust fail?");
+        let base = LengthPlan::from_bitwork(
+            "why does trust fail?",
+            &m,
+            &packet,
+            CognitionPath::Cascade,
+        );
+        let concise = base.clone().apply_style_depth(1);
+        let deep = base.clone().apply_style_depth(2);
+        assert!(concise.words <= base.words);
+        assert!(deep.words >= base.words);
     }
 
     #[test]

@@ -162,8 +162,17 @@ L = \min\!\big(L_{\max},\; \lceil B(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + I
 | \(I_u\) | intent (1.0 default, 1.5+ explain/why, 1.8 detailed) |
 | \(L_{\max}\) | 420 default · 600 when deep intent |
 
-`/think` shows the last sealed plan (Lead / residual / VSA / length band). SoftCascade
-applies \(L\) **before** speaking; body only is returned.
+`/think` shows the last sealed plan (Lead / residual / VSA / length band), plus a
+**prototype tree** and **self-critique** report. SoftCascade applies \(L\) **before**
+speaking; body only is returned.
+
+### v0.6.12 — critique · style · tree
+
+| Feature | Behavior |
+|---------|----------|
+| Self-critique residual loop | Thin drafts get one natural second angle from residual/mechanism |
+| `/concise` · `/deep` · `/balanced` | Durable dialogue-profile style memory (length + tone prefs) |
+| Prototype tree in `/think` | ASCII `◆ lead / ├─ mix / residual / vsa` from Bitwork mass |
 
 ## 5. Free-form fluency path (v0.6.8)
 
