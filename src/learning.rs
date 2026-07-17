@@ -25,6 +25,15 @@ pub struct DialogueProfile {
     pub prefer_explanations: bool,
 }
 
+/// Counts from the append-only event log (may exceed profile counters).
+#[derive(Clone, Debug, Default)]
+pub struct EventLogStats {
+    pub total: u64,
+    pub observations: u64,
+    pub teaching: u64,
+    pub other: u64,
+}
+
 #[derive(Clone, Debug)]
 pub struct InteractionLearner {
     events_path: PathBuf,
@@ -40,7 +49,10 @@ impl InteractionLearner {
         let profile_path = env::var_os("PERCI_DIALOGUE_PROFILE")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("memory/dialogue-profile.json"));
-        Self::new(events_path, profile_path)
+        let mut learner = Self::new(events_path, profile_path);
+        // Best-effort reconcile so status never under-reports vs the log.
+        let _ = learner.reconcile_counters();
+        learner
     }
 
     pub fn new(events_path: impl Into<PathBuf>, profile_path: impl Into<PathBuf>) -> Self {
@@ -66,9 +78,14 @@ impl InteractionLearner {
     }
 
     pub fn status_label(&self) -> String {
+        let stats = self.event_log_stats();
         format!(
-            "active · interactions={} · feedback={} · teach_candidates={} · direct={} · explain={} · concise={} · structured_chat={} · pending review",
+            "active · interactions={} · event_log={} (obs={} teach={} other={}) · feedback={} · teach_candidates={} · direct={} · explain={} · concise={} · structured_chat={} · pending review",
             self.profile.interaction_count,
+            stats.total,
+            stats.observations,
+            stats.teaching,
+            stats.other,
             self.profile.feedback_count,
             self.profile.teaching_candidate_count,
             self.profile.prefer_direct_answers,
@@ -76,6 +93,53 @@ impl InteractionLearner {
             self.profile.prefer_concise,
             !self.profile.avoid_structured_chat,
         )
+    }
+
+    /// Count JSONL event kinds so profile vs log drift is visible (and reparable).
+    pub fn event_log_stats(&self) -> EventLogStats {
+        let mut stats = EventLogStats::default();
+        if !self.events_path.is_file() {
+            return stats;
+        }
+        let Ok(file) = fs::File::open(&self.events_path) else {
+            return stats;
+        };
+        for line in BufReader::new(file).lines().map_while(Result::ok) {
+            let Ok(event) = serde_json::from_str::<serde_json::Value>(&line) else {
+                stats.other = stats.other.saturating_add(1);
+                stats.total = stats.total.saturating_add(1);
+                continue;
+            };
+            stats.total = stats.total.saturating_add(1);
+            match event.get("signal").and_then(|v| v.as_str()).unwrap_or("") {
+                "explicit_teaching" => stats.teaching = stats.teaching.saturating_add(1),
+                // Turn rows (observe()) always carry a user field; teaching does not.
+                _ if event.get("user").is_some() => {
+                    stats.observations = stats.observations.saturating_add(1);
+                }
+                _ => stats.other = stats.other.saturating_add(1),
+            }
+        }
+        stats
+    }
+
+    /// Align profile.interaction_count with observation-like events when log is ahead.
+    /// Does not rewrite history; only lifts the profile counter so status is honest.
+    pub fn reconcile_counters(&mut self) -> io::Result<bool> {
+        let stats = self.event_log_stats();
+        let mut changed = false;
+        if stats.observations > self.profile.interaction_count {
+            self.profile.interaction_count = stats.observations;
+            changed = true;
+        }
+        if stats.teaching > self.profile.teaching_candidate_count {
+            self.profile.teaching_candidate_count = stats.teaching;
+            changed = true;
+        }
+        if changed {
+            write_profile(&self.profile_path, &self.profile)?;
+        }
+        Ok(changed)
     }
 
     pub fn observe(

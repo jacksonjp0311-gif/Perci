@@ -16,6 +16,11 @@ memory/dialogue-profile.json
 memory/interaction-learning.jsonl
 ```
 
+**Counters:** `/status` reports both `interactions` (profile) and `event_log`
+(JSONL lines). Teaching candidates and other non-turn rows make the log longer
+than the profile. On startup Perci reconciles by lifting profile counts when
+the log is ahead — it never invents weight knowledge from the gap.
+
 Inspect the state with `perci learning` or `/learning`.
 
 Humans can explicitly stage a knowledge claim in ordinary conversation without

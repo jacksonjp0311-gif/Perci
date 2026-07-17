@@ -139,7 +139,20 @@ Simultaneous:
 
 ---
 
-## 6. Bottom line
+## 6. Codex diagnosis alignment (ops hygiene)
+
+Urgent work that is **not** “more prototypes”:
+
+| Item | Status |
+|------|--------|
+| Validation scripts target PERCIW03 | `verify_weights.py` / `test_weights.py` default to active v0.3 |
+| Event log vs profile counters | `InteractionLearner` reports both + reconciles lift-only |
+| Follow-up state binding | `justify-prior-answer` (v0.6.3) |
+| Reject unrelated mixture | SoftCascade relevance gate + lexical concept gate |
+| Pack-side VSA | **Still requires human-authorized rebuild** — query-side only today |
+| Optional Phi / LM surface | `PERCI_MODEL_CMD` sidecar — never replaces Bitwork core |
+
+## 7. Bottom line
 
 Transformer-style intelligence here means:
 

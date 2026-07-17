@@ -1,8 +1,8 @@
 # Perci capability scorecard
 
-_Generated 2026-07-17T01:47:47.565486+00:00_
+_Generated 2026-07-17T10:35:42.301695+00:00_
 
-**Overall status:** `OPERATIONAL_CANDIDATE`
+**Overall status:** `PASS_WITH_STALE_LIVE`
 
 Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.
 
@@ -28,17 +28,17 @@ Perci improves when a named capability fails a hardness case, is repaired at the
 
 ## Binary freshness
 
-- Status: `synced`
-- Live mtime: 2026-07-17T01:47:28.950312+00:00
-- Release mtime: 2026-07-17T01:47:28.950312+00:00
-- Release ahead (s): 0.0
+- Status: `stale_live`
+- Live mtime: 2026-07-17T10:20:48.459563+00:00
+- Release mtime: 2026-07-17T10:35:41.947810+00:00
+- Release ahead (s): 893.5
 
 ## Learning queue
 
-- Interaction events: 533
-- Pending review events: 533
+- Interaction events: 609
+- Pending review events: 609
 - Review queue: 338 (approved=20, folded=20)
 
 ## Recommended next
 
-- Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl
+- Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass.

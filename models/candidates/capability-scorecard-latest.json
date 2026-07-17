@@ -1,7 +1,7 @@
 {
   "schema": "perci.capability-scorecard.v1",
-  "generated_at_utc": "2026-07-17T01:47:47.565486+00:00",
-  "overall_status": "OPERATIONAL_CANDIDATE",
+  "generated_at_utc": "2026-07-17T10:35:42.301695+00:00",
+  "overall_status": "PASS_WITH_STALE_LIVE",
   "automatic_promotion": false,
   "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
   "gates": {
@@ -11,8 +11,8 @@
       "status": "PASS",
       "passed": 44,
       "case_count": 44,
-      "receipt_sha256": "f20dd1f352b366231aa63ca2d0da0d9d71dc1ef6fbb4fb5c7e1fbfa96f3a72ca",
-      "evaluated_at_utc": "2026-07-17T01:46:52.633467+00:00",
+      "receipt_sha256": "fa52be347f959bec34a32e1f8f05a621c88c06a175a51823cea0ed0c72ef4c8e",
+      "evaluated_at_utc": "2026-07-17T10:20:26.176171+00:00",
       "failed": [],
       "by_capability": {
         "cross_domain_synthesis": {
@@ -58,13 +58,13 @@
     }
   },
   "learning": {
-    "interaction_events": 533,
-    "pending_review_events": 533,
+    "interaction_events": 609,
+    "pending_review_events": 609,
     "review_queue_total": 338,
     "review_queue_approved": 20,
     "review_queue_folded": 20,
     "dialogue_profile": {
-      "interaction_count": 452,
+      "interaction_count": 528,
       "feedback_count": 10,
       "teaching_candidate_count": 3,
       "prefer_concise": false,
@@ -77,12 +77,12 @@
   "binary_freshness": {
     "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
     "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
-    "live_sha256": "53bbdba83300ceaa9c97fbd88579d975b579837ff0f6b0410a36b48dfbe8a98a",
-    "release_sha256": "53bbdba83300ceaa9c97fbd88579d975b579837ff0f6b0410a36b48dfbe8a98a",
-    "live_mtime_utc": "2026-07-17T01:47:28.950312+00:00",
-    "release_mtime_utc": "2026-07-17T01:47:28.950312+00:00",
-    "release_ahead_seconds": 0.0,
-    "status": "synced"
+    "live_sha256": "69134ddc8398f14a1deef9cfc671c53c39c4f184888aa62081f44d9664c82bda",
+    "release_sha256": "45f51469406b5d0bd950ae0a82c35d73b0ac830e1c44fc05743aba1f75b3ada5",
+    "live_mtime_utc": "2026-07-17T10:20:48.459563+00:00",
+    "release_mtime_utc": "2026-07-17T10:35:41.947810+00:00",
+    "release_ahead_seconds": 893.5,
+    "status": "stale_live"
   },
   "capabilities": [
     {
@@ -167,6 +167,6 @@
     }
   ],
   "recommended_next": [
-    "Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl"
+    "Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass."
   ]
 }
