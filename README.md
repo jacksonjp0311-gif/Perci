@@ -8,7 +8,7 @@
 
 **Version** is always `Cargo.toml`, stamped into the badge by `build.rs` (never hand-edit the badge). See [`assets/README.md`](assets/README.md).
 
-Open-domain synthesis, multi-hop plans, operator programs, agent lab, and governed Bitwork cognition. Software **v0.6.0** adds transformer-bridge algebra (soft attention, dual residual, VSA, Willshaw concept HVs, session CTX). The promoted local pack is `PERCIW03` (~200 MiB, 403,163 prototypes, 124 concepts).
+Open-domain synthesis, multi-hop plans, operator programs, agent lab, and governed Bitwork cognition. Software **v0.6.1** adds transformer-bridge algebra (soft attention, dual residual, VSA, Willshaw concept HVs, session CTX) plus **SoftCascade** multi-hypothesis compose without token decoding. The promoted local pack is `PERCIW03` (~200 MiB, 403,163 prototypes, 124 concepts).
 
 <p align="center">
   <strong>Compact governed local intelligence.</strong><br>
@@ -18,7 +18,7 @@ Open-domain synthesis, multi-hop plans, operator programs, agent lab, and govern
 <p align="center">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=flat-square&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-2563eb?style=flat-square">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.0-8b0000?style=flat-square">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.1-8b0000?style=flat-square">
   <img alt="Bitwork pack" src="https://img.shields.io/badge/Bitwork%20PERCIW03-~200%20MiB%20local-111827?style=flat-square">
   <img alt="Inference" src="https://img.shields.io/badge/inference-integer--only-059669?style=flat-square">
   <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-d97706?style=flat-square">

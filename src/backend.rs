@@ -399,33 +399,43 @@ pub fn render_cognitive_response_with_history(
         } else {
             reasoned
         }
+    } else if crate::bridge::should_use_cascade(matched, user) {
+        crate::bridge::compose_soft_cascade(user, matched, body, variant)
     } else {
         crate::voice::compose_reply(matched, user, body, context, recent)
     };
 
     // Final anti-generic guard: must bind the user's words when possible.
     let text = crate::voice::ensure_user_binding(user, &text, label, concept, recent);
-    // Re-apply mixture skeleton after binding rewrite (may have dropped supports).
-    let skeleton = matched.concept_skeleton(3);
-    let text =
-        crate::voice::weave_mixture_skeleton(user, &text, &skeleton, matched.variant as usize);
-    let residual = matched.residual_skeleton(1);
-    let text = if let Some(lat) = residual.first() {
-        crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
-    } else {
+    // Re-apply mixture / residual only when SoftCascade did not already weave them.
+    let text = if crate::bridge::should_use_cascade(matched, user) {
         text
+    } else {
+        let skeleton = matched.concept_skeleton(3);
+        let text =
+            crate::voice::weave_mixture_skeleton(user, &text, &skeleton, matched.variant as usize);
+        let residual = matched.residual_skeleton(1);
+        if let Some(lat) = residual.first() {
+            crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
+        } else {
+            text
+        }
     };
 
     let mut text = text;
     if diagnostics_enabled() {
         let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
+        let packet = crate::bridge::assemble(matched, user);
         text.push_str(&format!(
-            "\n\n[Bitwork match: {} | score {} | overlap {} | mixture={} residual={} | input {} bytes]",
+            "\n\n[Bitwork match: {} | score {} | overlap {} | mixture={} residual={} | attn={} | cascade={} frames={} | input {} bytes]",
             matched.label,
             matched.score,
             matched.overlap,
             matched.mixture.len(),
             residual_n,
+            matched.primary_attention_pm,
+            packet.rich,
+            packet.frame_n,
             user.len()
         ));
     }

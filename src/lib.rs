@@ -12,6 +12,7 @@
 pub mod agent;
 pub mod backend;
 pub mod branding;
+pub mod bridge;
 pub mod chat;
 pub mod cognitive;
 pub mod cortex;

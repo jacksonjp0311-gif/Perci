@@ -1870,6 +1870,74 @@ struct SemanticFrame {
     test: &'static str,
 }
 
+/// Public activated frame for SoftCascade / bridge (no private CoT).
+#[derive(Clone, Debug)]
+pub struct ActivatedFrame {
+    pub term: &'static str,
+    pub clause: String,
+    pub mechanism: String,
+    pub score: u32,
+}
+
+/// Activate semantic-frame lattice for a prompt (fast string scoring, no pack scan).
+///
+/// This is the operator-side "world model" half of the transformer bridge: value-like
+/// clauses that complement Bitwork prototype retrieval.
+pub fn activate_semantic_frames(user: &str, max: usize) -> Vec<ActivatedFrame> {
+    let lower = user.to_ascii_lowercase();
+    let tokens: Vec<&str> = lower
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|t| t.len() >= 3)
+        .collect();
+    let mut scored: Vec<(u32, &SemanticFrame)> = Vec::new();
+    for frame in SEMANTIC_FRAMES {
+        let mut score = 0u32;
+        let term = frame.term;
+        if lower.contains(term) {
+            score += 50;
+        }
+        // Multi-word term fragments.
+        for part in term.split_whitespace() {
+            if part.len() >= 4 && tokens.iter().any(|t| *t == part || t.starts_with(part)) {
+                score += 20;
+            }
+        }
+        for axis in frame.axes {
+            if lower.contains(axis) {
+                score += 12;
+            }
+        }
+        // Alias boost.
+        if let Some(canon) = canonical_domain_term(term) {
+            if lower.contains(&canon) {
+                score += 15;
+            }
+        }
+        // Token hit on clause head words.
+        for w in frame.clause.split_whitespace().take(6) {
+            let w = w.trim_matches(|c: char| !c.is_ascii_alphanumeric());
+            if w.len() >= 5 && tokens.contains(&w) {
+                score += 8;
+            }
+        }
+        if score > 0 {
+            scored.push((score, frame));
+        }
+    }
+    scored.sort_by_key(|(s, _)| std::cmp::Reverse(*s));
+    scored
+        .into_iter()
+        .take(max)
+        .filter(|(s, _)| *s >= 20)
+        .map(|(score, f)| ActivatedFrame {
+            term: f.term,
+            clause: f.clause.to_owned(),
+            mechanism: f.mechanism.to_owned(),
+            score,
+        })
+        .collect()
+}
+
 const SEMANTIC_FRAMES: &[SemanticFrame] = &[
     SemanticFrame {
         term: "geometry",

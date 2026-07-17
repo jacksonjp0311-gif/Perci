@@ -89,7 +89,7 @@ Dialogue continuity without a full language model state.
 
 ---
 
-## 3. Implementation map (v0.6.0)
+## 3. Implementation map (v0.6.0–v0.6.1)
 
 | Piece | Location |
 |-------|----------|
@@ -98,6 +98,21 @@ Dialogue continuity without a full language model state.
 | Concept HVs | `CognitiveWeights.concept_hvs` at load |
 | CTX bind | `encode_session_context` + backend `classify` |
 | Classify schema | `perci.classify.v5-attn` |
+| **SoftCascade decode** | `src/bridge.rs` — multi-hypothesis compose from α+residual+frame lattice (**v0.6.1**) |
+| Frame lattice activate | `deliberation::activate_semantic_frames` (**v0.6.1**) |
+
+### SoftCascade (the latency-preserving “decode”)
+
+Transformers spend most latency in large matmuls for token generation.
+SoftCascade **does not sample tokens**. It composes an answer from evidence
+already scored in Bitwork + the semantic frame lattice:
+
+```text
+classify (ms) → assemble BridgePacket → string join facets → fluid binding
+```
+
+That is the breakthrough shape: **LLM-like multi-facet speech** with **Bitwork
+latency**.
 
 ---
 

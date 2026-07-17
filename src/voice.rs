@@ -1015,6 +1015,22 @@ pub fn compose_reply(
         }
     }
 
+    // SoftCascade breakthrough path: multi-hypothesis compose from Bitwork
+    // attention + residual + semantic lattice — LLM-like facets without decode.
+    if crate::bridge::should_use_cascade(matched, user) {
+        let mut out = crate::bridge::compose_soft_cascade(
+            user,
+            matched,
+            domain_body,
+            variant,
+        );
+        out = ensure_user_binding(user, &out, matched.label.as_str(), matched.insight.as_deref(), recent);
+        if matches!(affect, Affect::Frustrated) && !out.to_ascii_lowercase().contains("step") {
+            out.push_str(" We'll take the next step small and check it.");
+        }
+        return with_continuity(&out, recent, user);
+    }
+
     // Fluid path: bind the answer to *this* utterance; Bitwork top-k mixture
     // supplies a multi-concept skeleton (not a single domain card).
     let insight = matched.insight.as_deref();
