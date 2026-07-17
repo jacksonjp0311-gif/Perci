@@ -166,6 +166,62 @@ is not a second write; (4) health and lag are observable so silence is not mista
     )
 }
 
+/// SoftCascade pack-alignment for governance authority (primary_off crutch path).
+pub fn softcascade_governance_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = t.contains("govern")
+        || t.contains("authorize")
+        || t.contains("superintelligence")
+        || t.contains("auto-promot")
+        || t.contains("weight promot")
+        || t.contains("human authoriz")
+        || (t.contains("permission") && t.contains("proof"))
+        || (t.contains("who decides") && (t.contains("weight") || t.contains("merge")))
+        || t.contains("capability fabric");
+    if !hit {
+        return None;
+    }
+    Some(
+        "Governance separates authority from fluency. Durable weight promote and high-risk merges \
+require human authorization — never silent auto-promote. Permission and proof are different gates: \
+capability tokens may allow a sandbox edit while still forbidding git push or secret read. \
+Superintelligence and consciousness claims are refused; Perci remains a governor of specialized engines, \
+not an unrestricted mind. Sandbox first, measure with transfer and hardness, then authorize.",
+    )
+}
+
+/// SoftCascade pack-alignment for identity / self-model (not user inventing persons).
+pub fn softcascade_identity_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = t.contains("who are you")
+        || t.contains("what are you")
+        || t.contains("are you conscious")
+        || t.contains("are you an ai")
+        || t.contains("self-model")
+        || t.contains("self model")
+        || (t.contains("what can you") && (t.contains("do") || t.contains("determine")))
+        || t.contains("your identity")
+        || t.contains("continuity of identity");
+    if !hit {
+        return None;
+    }
+    Some(
+        "In practical terms I can explain carefully: I am Perci — a local governed tool with Bitwork \
+routing, exact math/geometry, operators, intelligence packs, and selective memory. I am not a cloud LLM \
+and not conscious. Identity here means a bounded operational self-model (weights format, gates, limits) \
+with a clear boundary — not subjective experience. I do not invent a biography for you or fabricate \
+unknown entities; unknown tokens stay unknown until grounded. Continuity is session memory plus \
+deliberate store — not hidden surveillance.",
+    )
+}
+
+/// Prefer the first matching SoftCascade alignment body (trust → governance → identity).
+pub fn softcascade_pack_alignment_body(user: &str) -> Option<&'static str> {
+    softcascade_trust_alignment_body(user)
+        .or_else(|| softcascade_governance_alignment_body(user))
+        .or_else(|| softcascade_identity_alignment_body(user))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,5 +233,21 @@ mod tests {
         );
         assert!(b.is_some());
         assert!(b.unwrap().to_ascii_lowercase().contains("idempotent"));
+    }
+
+    #[test]
+    fn softcascade_governance_body_hits() {
+        let b = softcascade_governance_alignment_body(
+            "Is Perci a superintelligence and who authorizes weight promote?",
+        );
+        assert!(b.is_some());
+        assert!(b.unwrap().to_ascii_lowercase().contains("authorize"));
+    }
+
+    #[test]
+    fn softcascade_identity_body_hits() {
+        let b = softcascade_identity_alignment_body("Who are you and what can you do?");
+        assert!(b.is_some());
+        assert!(b.unwrap().to_ascii_lowercase().contains("not conscious"));
     }
 }

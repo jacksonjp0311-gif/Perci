@@ -316,6 +316,8 @@ pub struct AiHandoffPacket {
     pub claim_boundary: String,
     #[serde(default)]
     pub lab_hint: String,
+    #[serde(default)]
+    pub open_work: Vec<crate::emergence::OpenWorkItem>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -341,6 +343,7 @@ pub struct EnvHook {
 pub fn build_handoff(task: &str) -> AiHandoffPacket {
     let plan = plan_for_prompt(task, "ai-handoff");
     let lab_hint = crate::emergence::next_queue_item();
+    let open_work = crate::emergence::open_work_items();
     AiHandoffPacket {
         schema: "perci.ai-handoff.v1".into(),
         fabric_version: env!("CARGO_PKG_VERSION").into(),
@@ -487,6 +490,7 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
             "engineering orchestration only — not AGI, consciousness, or unrestricted autonomy"
                 .into(),
         lab_hint,
+        open_work,
     }
 }
 
@@ -542,6 +546,7 @@ capability write_repo={} network={} git_push={}\n\n\
   Multi-AI: perci fabric handoff · docs/AI_EVOLVE_PROTOCOL.md · AGENTS.md\n\n\
 ## Any-AI entry\n\
   perci fabric handoff \"your task\"   # machine-readable packet\n\
+  perci fabric next                   # lab open tickets ↔ recommended engines\n\
   perci fabric evolve                 # optimized multi-AI loop summary\n",
         env!("CARGO_PKG_VERSION"),
         sample.engines,

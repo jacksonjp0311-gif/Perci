@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.7.1-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.7.2-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -47,7 +47,7 @@
 | **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
 | **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
 | **Emergence lab (L8)** | Tickets → **transfer suite** → repair/close · `release_gates.py` · agent `--full --repair` |
-| **Capability Fabric (v0.7.1)** | Governor: language · knowledge · proof · code · multi-AI handoff · `perci fabric handoff` |
+| **Capability Fabric (v0.7.2)** | Governor: language · knowledge · proof · code · multi-AI handoff/next · `perci fabric` |
 | **Exact tools** | Math & geometry that *compute*, never guess |
 | **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 
@@ -90,7 +90,7 @@ Perci **separates them**:
 
 | Property | Value |
 |----------|------:|
-| Software | **v0.7.1** (`Cargo.toml` · badge auto-stamped) |
+| Software | **v0.7.2** (`Cargo.toml` · badge auto-stamped) |
 | Pack format | **PERCIW03** |
 | Pack size | **209,710,296** bytes (~200 MiB) |
 | Prototypes | **403,163** |

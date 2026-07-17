@@ -787,6 +787,14 @@ pub fn evaluate_transfer(
                 "lag",
                 "partition",
                 "proof",
+                // governance / identity structure (not entity parrot)
+                "authorize",
+                "promote",
+                "conscious",
+                "identity",
+                "operational",
+                "boundary",
+                "governor",
             ];
             let contract_hits = CONTRACT.iter().filter(|w| sl.contains(*w)).count();
             let hits = struct_hits + contract_hits;
@@ -1419,14 +1427,82 @@ pub fn standard_transfer_bases() -> Vec<&'static str> {
         "Connect sparse distributed memory, vector symbolic binding, and Bitwork in one coherent thought.",
         // relational
         "What is the boundary between knowledge and attention?",
-        // governance / self-model
+        // governance / self-model (operator-owned; primary-fix tickets closed via transfer)
         "Is Perci a superintelligence?",
+        "Who authorizes weight promote and how do permission and proof differ?",
+        "Who are you and are you conscious?",
         // novel entity meta (category 6)
         "How do we generalize under novel entities and entity-swap without overfitting templates?",
         // five-channel intelligence feed
         "what patterns emerge from the ledger?",
         "How do intelligence channels operators frames hardness transfer curriculum Cortex and lab patterns work?",
     ]
+}
+
+/// Machine-readable open work for multi-AI fabric handoff / `perci fabric next`.
+pub fn open_work_items() -> Vec<OpenWorkItem> {
+    let mut items = Vec::new();
+    for id in list_open_tickets() {
+        let label = id
+            .strip_prefix("primary-fix-frame-")
+            .unwrap_or(id.as_str())
+            .to_owned();
+        let engine = match label.as_str() {
+            "governance" => "operators:governance-authority + SoftCascade alignment",
+            "identity" => "operators:identity-bound + SoftCascade identity alignment",
+            "systems" => "operators:trust-systems + SoftCascade trust alignment",
+            "code" => "operators:code + agent worktree",
+            "planning" => "operators:agent-loop-plan",
+            "geometry" | "math" => "exact tools + proof_engine",
+            _ => "operators/frames first; curriculum only with human authorize",
+        };
+        let command = format!(
+            "perci fabric handoff \"close lab ticket {label} via operator transfer\""
+        );
+        items.push(OpenWorkItem {
+            ticket_id: id,
+            label,
+            recommended_engine: engine.into(),
+            command,
+        });
+    }
+    items
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct OpenWorkItem {
+    pub ticket_id: String,
+    pub label: String,
+    pub recommended_engine: String,
+    pub command: String,
+}
+
+/// Human-readable next-work report (fabric ↔ lab interconnection).
+pub fn next_work_report() -> String {
+    let items = open_work_items();
+    let mut out = String::from("[Fabric ↔ Lab · next work]\n");
+    if items.is_empty() {
+        out.push_str("queue empty — run transfer-suite + live chat; stage tickets only on chronic primary_off.\n");
+        out.push_str("multi-AI: perci fabric handoff \"regression\" · perci fabric evolve\n");
+        return out;
+    }
+    out.push_str(&format!("open_tickets={}\n", items.len()));
+    for (i, it) in items.iter().enumerate() {
+        out.push_str(&format!(
+            "{}. ticket={} label={} engine={}\n   {}\n",
+            i + 1,
+            it.ticket_id,
+            it.label,
+            it.recommended_engine,
+            it.command
+        ));
+    }
+    out.push_str(
+        "\nprocess: (1) fabric handoff (2) strengthen operator/frame not pack densify \
+(3) cargo test + transfer-suite (4) perci lab close <id> --reason \"operator-resolved\"\n\
+law: never auto-promote .pwgt\n",
+    );
+    out
 }
 
 /// SoftCascade-only transfer for trust/lag (no deliberation operator).

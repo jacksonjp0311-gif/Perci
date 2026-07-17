@@ -91,13 +91,15 @@ Shared artifacts: JSONL ledgers, tickets, auto-repairs, Cortex cards, fabric pla
 perci fabric handoff "your task here"
 # → stdout: perci.ai-handoff.v1 JSON
 # → disk:   .perci/ai-handoff-latest.json
+perci fabric next     # open tickets + recommended engines (fabric ↔ lab)
 perci fabric evolve   # human-readable multi-AI loop
 ```
 
 Packet fields: `plan`, `entry_checklist`, `gap_engine_map`, `surfaces`, `gates`,
-`env_hooks`, `next_commands`, `lab_hint`, `claim_boundary`.
+`env_hooks`, `next_commands`, `lab_hint`, `open_work`, `claim_boundary`.
 
 Load the JSON at session start; do not re-derive authority law from memory alone.
+Prefer `open_work` over inventing pack densify tasks.
 
 ## 10. Interconnection contract
 

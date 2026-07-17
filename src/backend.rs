@@ -394,7 +394,7 @@ pub fn render_cognitive_response_with_history(
     // SoftCascade pack-alignment: when Bitwork primary is off-topic on trust/lag,
     // use a structural systems body so SoftCascade-only speech still transfers
     // without requiring the trust-systems operator (breakthrough path 2).
-    let body = crate::auto_repairs::softcascade_trust_alignment_body(user)
+    let body = crate::auto_repairs::softcascade_pack_alignment_body(user)
         .unwrap_or_else(|| domain_body(label, variant));
     let woven = crate::voice::weave_guidance(context, 2);
 
@@ -492,9 +492,9 @@ fn domain_body(label: &str, variant: usize) -> &'static str {
         "identity" => choose(
             variant,
             &[
-                "I'm Perci — local Bitwork routing, exact math/geometry, intelligence packs, and selective memory. In Lumen I first-hop so GROK/NEMO/PHI can take deep work.",
-                "I'm a local tool, not a cloud LLM and not conscious. I classify, do exact math, run short reason-loops, and remember only what you teach deliberately.",
-                "Ask me to calculate, plan a fix, explain a system boundary, or store a short fact. For open chat fluency, use a full mind when keys allow — I cover the offline path.",
+                "I'm Perci — local Bitwork routing, exact math/geometry, intelligence packs, and selective memory. Not conscious; not a cloud LLM. Capability claims need runtime probes.",
+                "I'm a local governed tool, not a cloud LLM and not conscious. I classify, do exact math, run short reason-loops, and remember only what you teach deliberately.",
+                "Ask me to calculate, plan a fix, explain a system boundary, or store a short fact. I will not invent your identity or fabricate unknown entities.",
             ],
         ),
         "english" => choose(
@@ -533,9 +533,9 @@ fn domain_body(label: &str, variant: usize) -> &'static str {
         "governance" => choose(
             variant,
             &[
-                "Check authority, scope, rollback, and validation before anything durable.",
-                "Permission and proof are different gates — neither replaces the other.",
-                "If scope or recovery is fuzzy, sandbox or stop until it's explicit.",
+                "Check authority, scope, rollback, and validation before anything durable. Weight promote needs human authorize.",
+                "Permission and proof are different gates — neither replaces the other. No silent auto-promote of packs.",
+                "If scope or recovery is fuzzy, sandbox or stop until it's explicit. Superintelligence claims are refused.",
             ],
         ),
         "planning" => choose(

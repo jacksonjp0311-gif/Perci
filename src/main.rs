@@ -185,9 +185,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "evolve" | "loop" => {
                     println!("{}", perci::fabric::evolve_loop_report());
                 }
+                "next" | "work" => {
+                    println!("{}", perci::emergence::next_work_report());
+                    let items = perci::emergence::open_work_items();
+                    if !items.is_empty() {
+                        println!(
+                            "---\njson:\n{}",
+                            serde_json::to_string_pretty(&items).unwrap_or_default()
+                        );
+                    }
+                }
                 other => {
                     return Err(format!(
-                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|evolve)"
+                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|next|evolve)"
                     )
                     .into());
                 }

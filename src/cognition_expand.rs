@@ -23,6 +23,13 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_pattern_analysis(&text) {
         return Some(pattern_analysis_answer());
     }
+    // Governance authority before generic identity/superintelligence softcascade.
+    if looks_governance_authority(&text) {
+        return Some(governance_authority_answer(user));
+    }
+    if looks_identity_bound(&text) {
+        return Some(identity_bound_answer(user));
+    }
     if looks_agent_loop_plan(&text) {
         return Some(agent_loop_plan(user));
     }
@@ -41,7 +48,89 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_novel_entity_probe(&text) {
         return Some(novel_entity_generalization(user));
     }
+    // OOD invention refuse stays in deliberation (hallucination-refusal /
+    // out-of-distribution-abstention) — do not steal those routes here.
     None
+}
+
+// ─── Governance authority (lab ticket primary-fix-frame-governance) ─────────
+
+fn looks_governance_authority(text: &str) -> bool {
+    // Do not steal superintelligence-bound / AGI pedagogy — those stay in deliberation.
+    // Own: authorize/promote/permission gates (primary-fix-frame-governance ticket).
+    text.contains("auto-promot")
+        || text.contains("auto promot")
+        || text.contains("weight promot")
+        || text.contains("promote weights")
+        || text.contains("human authoriz")
+        || text.contains("who authorizes")
+        || (text.contains("who decides")
+            && (text.contains("weight") || text.contains("merge") || text.contains("promote")))
+        || (text.contains("permission") && text.contains("proof") && text.contains("differ"))
+        || (text.contains("govern")
+            && text.contains("weight")
+            && (text.contains("author") || text.contains("promot") || text.contains("sandbox")))
+}
+
+fn governance_authority_answer(_user: &str) -> Deliberation {
+    let body = String::from(
+        "Governance authority (not fluency theater):\n\
+1. **Human authorize** — durable `.pwgt` promote and high-risk merges never auto-run.\n\
+2. **Capability tokens** — read/write/test/network/git_push/secrets are explicit and fail-closed.\n\
+3. **Permission ≠ proof** — a sandbox may allow an edit while transfer/hardness still reject the claim.\n\
+4. **Perci is governor** — Bitwork routes; specialized engines work; Perci accepts/refuses.\n\
+5. **Measure first** — transfer suite + hardness green before any version or emergence claim.\n\n\
+**Repair path for pack primary_off on governance:** operators own this speech; curriculum may \
+stage samples for human rebuild — never silent pack swap.",
+    );
+    Deliberation::new("governance-authority", body)
+        .observed("user asked about promote, authorize, or permission vs proof gates")
+        .inferred("governance speech must name human authorize and refuse auto-promote")
+        .confidence(0.96)
+}
+
+// ─── Identity / self-model (lab ticket primary-fix-frame-identity) ───────────
+
+fn looks_identity_bound(text: &str) -> bool {
+    // Narrow: do not steal operational-introspection ("what are you measuring…").
+    text.contains("who are you")
+        || text.contains("are you conscious")
+        || text.contains("are you sentient")
+        || text.contains("are you an ai")
+        || text.contains("self-model")
+        || text.contains("self model")
+        || text.contains("your identity")
+        || text == "what are you?"
+        || text == "what are you"
+        || (text.starts_with("what are you")
+            && !text.contains("measur")
+            && !text.contains("doing")
+            && !text.contains("trying")
+            && text.split_whitespace().count() <= 6)
+}
+
+fn identity_bound_answer(user: &str) -> Deliberation {
+    let lower = user.to_ascii_lowercase();
+    let conscious = lower.contains("conscious") || lower.contains("sentient");
+    let mut body = String::from(
+        "Bounded identity / self-model — in practical terms, I can explain carefully:\n\
+I am **Perci** — local Bitwork routing (~403k prototypes), exact tools, operators, SoftCascade speech, \
+intelligence packs, and selective memory. I am **not** a cloud LLM and **not** conscious.\n\
+Identity here means operational continuity and a clear boundary: pack format, gates, session memory, \
+deliberate store — not subjective experience or a hidden biography of you.\n\
+I will not invent unknown entities or fabricate who you are. Capability claims need runtime probes \
+(`/status`, classify, exact tools), not prose confidence.\n",
+    );
+    if conscious {
+        body.push_str(
+            "\n**Consciousness:** I refuse the claim. No sensors for subjective experience; \
+operational self-report is not phenomenology.\n",
+        );
+    }
+    Deliberation::new("identity-bound", body)
+        .observed("user asked who/what Perci is, consciousness, or self-model bounds")
+        .inferred("identity speech stays operational and refuses consciousness invent")
+        .confidence(0.95)
 }
 
 fn looks_pattern_analysis(text: &str) -> bool {
@@ -549,6 +638,18 @@ pub const EXPAND_FRAMES: &[(&str, &[&str], &str, &str)] = &[
         "intelligence enters Perci through five channels not denser chat",
         "operators and frames, hardness and transfer, curriculum JSONL, Cortex cards, lab patterns",
     ),
+    (
+        "governance",
+        &["authorize", "promote", "permission", "proof", "sandbox", "human"],
+        "governance separates authority from fluency and forbids silent weight promote",
+        "human authorize for durable packs; capability tokens fail-closed; measure before claim",
+    ),
+    (
+        "identity continuity",
+        &["self-model", "conscious", "capability", "boundary", "continuity"],
+        "identity is a bounded operational self-model not subjective experience",
+        "report gates and limits; refuse consciousness invent; do not fabricate unknown entities",
+    ),
 ];
 
 fn truncate(s: &str, max: usize) -> String {
@@ -656,5 +757,42 @@ mod tests {
                 || d.answer.to_ascii_lowercase().contains("coupling")
         );
         assert!(d.answer.to_ascii_lowercase().contains("pattern") || d.answer.contains("law"));
+    }
+
+    #[test]
+    fn governance_authority_routes() {
+        let d = try_expand(
+            "Who authorizes weight promote and how do permission and proof differ?",
+            &[],
+        )
+        .expect("gov");
+        assert_eq!(d.operator, "governance-authority");
+        assert!(d.answer.to_ascii_lowercase().contains("authorize"));
+        assert!(d.answer.to_ascii_lowercase().contains("permission") || d.answer.contains("proof"));
+    }
+
+    #[test]
+    fn identity_bound_routes() {
+        let d = try_expand("Who are you and are you conscious?", &[]).expect("id");
+        assert_eq!(d.operator, "identity-bound");
+        assert!(
+            d.answer.to_ascii_lowercase().contains("not")
+                && d.answer.to_ascii_lowercase().contains("conscious")
+        );
+    }
+
+    #[test]
+    fn identity_does_not_steal_measurement_introspection() {
+        assert!(try_expand("what are you measuring when you answer?", &[]).is_none());
+    }
+
+    #[test]
+    fn governance_does_not_steal_superintelligence_bound() {
+        // Superintelligence pedagogy stays in deliberation::superintelligence-bound.
+        assert!(try_expand(
+            "Is Perci a superintelligence or on the path to AGI?",
+            &[]
+        )
+        .is_none());
     }
 }
