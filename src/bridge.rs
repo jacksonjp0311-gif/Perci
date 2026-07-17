@@ -140,9 +140,10 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
     }
 }
 
-/// Compose a multi-hypothesis answer (decoder substitute).
+/// Compose a multi-hypothesis answer as **continuous reasoning prose**.
 ///
-/// Keeps latency low: only string joins over already-scored evidence.
+/// Avoids labeled presets ("Lattice:", "Mixture read:", "Bound as…"). Facets are
+/// woven with causal/contrast transitions so it reads like thinking, not a card dump.
 pub fn compose_soft_cascade(
     user: &str,
     matched: &CognitiveMatch,
@@ -156,91 +157,178 @@ pub fn compose_soft_cascade(
     } else {
         tokens.iter().take(4).cloned().collect::<Vec<_>>().join(" ")
     };
+    let ask = ask_shape(user);
 
-    // Thin evidence: fall back to domain body seed (caller still fluid-weaves).
     if !packet.rich {
         return domain_body.to_owned();
     }
 
-    let mut parts: Vec<String> = Vec::new();
+    // Collect claim sentences (strip trailing periods for rejoin).
+    let mut claims: Vec<String> = Vec::new();
+    let push_claim = |claims: &mut Vec<String>, s: &str| {
+        let t = s.trim().trim_end_matches('.').trim();
+        if t.len() < 12 {
+            return;
+        }
+        let low = t.to_ascii_lowercase();
+        if claims
+            .iter()
+            .any(|c| c.to_ascii_lowercase().contains(&low[..low.len().min(40)]))
+        {
+            return;
+        }
+        claims.push(t.to_owned());
+    };
 
-    // Lead claim.
     if let Some(ref lead) = packet.lead {
-        match variant % 3 {
-            0 => parts.push(format!("On {topic}: {lead}")),
-            1 => parts.push(format!("{lead}")),
-            _ => parts.push(format!("The short read on {topic}: {lead}")),
-        }
-    } else if !domain_body.is_empty() && domain_body.split_whitespace().count() >= 6 {
-        parts.push(format!("On {topic}: {domain_body}"));
+        push_claim(&mut claims, lead);
+    } else if domain_body.split_whitespace().count() >= 6 {
+        push_claim(&mut claims, domain_body);
     }
-
-    // Attention supports (transformer multi-head analog).
-    if !packet.supports.is_empty() {
-        let s0 = &packet.supports[0];
-        if packet.supports.len() == 1 {
-            parts.push(match variant % 2 {
-                0 => format!("Also in view: {s0}"),
-                _ => format!("A second facet: {s0}"),
-            });
-        } else {
-            let s1 = &packet.supports[1];
-            parts.push(match variant % 3 {
-                0 => format!("Two nearby ideas fire with that: {s0} — and {s1}."),
-                1 => format!("Mixture read: {s0}; {s1}."),
-                _ => format!("Related frames: {s0}; {s1}."),
-            });
-            if packet.supports.len() >= 3 && packet.contested {
-                parts.push(format!("A further residual angle: {}.", packet.supports[2]));
-            }
+    for s in &packet.supports {
+        push_claim(&mut claims, s);
+        if claims.len() >= 4 {
+            break;
+        }
+    }
+    for f in &packet.frames {
+        push_claim(&mut claims, f);
+        if claims.len() >= 5 {
+            break;
+        }
+    }
+    if packet.contested {
+        if let Some(m) = packet.mechanisms.first() {
+            push_claim(&mut claims, m);
         }
     }
 
-    // Semantic lattice (world-model clauses not stored as prototypes).
-    if !packet.frames.is_empty() {
-        let f = packet.frames.join("; ");
-        parts.push(format!("Lattice: {f}."));
-        if let Some(mech) = packet.mechanisms.first() {
-            if packet.contested || packet.frames.len() >= 2 {
-                parts.push(format!("Mechanism boundary: {mech}."));
-            }
+    if claims.is_empty() {
+        return domain_body.to_owned();
+    }
+
+    // Opening: answer the ask shape without "On topic:" cardboard.
+    let mut out = String::new();
+    let c0 = decapitalize_if_mid(&claims[0]);
+    match (ask, variant % 4) {
+        (AskShape::Why, 0) => {
+            out.push_str(&format!("Because {c0}."));
+        }
+        (AskShape::Why, 1) => {
+            out.push_str(&format!("It comes down to this: {}.", claims[0]));
+        }
+        (AskShape::Why, _) => {
+            out.push_str(&format!(
+                "The structural reason {topic} fails or frays is that {}.",
+                c0
+            ));
+        }
+        (AskShape::How, 0) => {
+            out.push_str(&format!("Practically, {}.", c0));
+        }
+        (AskShape::How, 1) => {
+            out.push_str(&format!("It happens when {}.", c0));
+        }
+        (AskShape::How, _) => {
+            out.push_str(&format!("Step through it: {}.", claims[0]));
+        }
+        (AskShape::What, 0) => {
+            out.push_str(&format!("{} is best read as {}.", topic, c0));
+        }
+        (AskShape::What, _) => {
+            out.push_str(&format!("{}.", claims[0]));
+        }
+        (AskShape::Connect, _) => {
+            out.push_str(&format!(
+                "A workable bridge for {topic} starts here: {}.",
+                claims[0]
+            ));
+        }
+        (AskShape::Open, 0) => {
+            out.push_str(&format!("{}.", claims[0]));
+        }
+        (AskShape::Open, _) => {
+            out.push_str(&format!("On {topic}, {}.", c0));
         }
     }
 
-    // Composition roles when structural.
-    let comp = matched.composition_frame(3);
-    if comp.len() >= 2
-        && comp.iter().any(|c| {
-            c.starts_with("ask:") || c.starts_with("domain:") || c.starts_with("agent:")
-        })
-    {
-        let joined = comp.join(" · ");
-        parts.push(format!("Bound as {joined}."));
+    // Weave remaining claims with natural reasoning transitions (not section labels).
+    let transitions = match variant % 5 {
+        0 => ["That connects to ", "Which means ", "And under stress, "],
+        1 => ["From another angle, ", "So in practice, ", "Put differently, "],
+        2 => ["Alongside that, ", "The mechanism is that ", "If you push it, "],
+        3 => ["Equally important: ", "This only holds when ", "Otherwise, "],
+        _ => ["Zooming out, ", "The quiet constraint is that ", "You can check it by noting "],
+    };
+
+    for (i, claim) in claims.iter().skip(1).enumerate() {
+        if i >= 3 {
+            break;
+        }
+        let body = decapitalize_if_mid(claim);
+        out.push(' ');
+        out.push_str(transitions[i % transitions.len()]);
+        out.push_str(&body);
+        if !out.ends_with('.') {
+            out.push('.');
+        }
     }
 
-    // Honesty footer on contested multi-frame reads.
-    if packet.contested && packet.mixture_n + packet.residual_n + packet.frame_n >= 2 {
-        parts.push(
-            "This is multi-hypothesis readout under partial geometry—not a single decoder claim."
-                .to_owned(),
-        );
+    // Light epistemic honesty only when contested — plain language, no jargon dump.
+    if packet.contested && claims.len() >= 3 && variant % 2 == 0 {
+        out.push_str(" I'm holding more than one working frame here; the pieces above are the ones that still cohere.");
     }
 
-    let mut out = parts.join(" ");
-    // Ensure user tokens stay bound.
+    // Bind user topic if diluted.
     let ol = out.to_ascii_lowercase();
     let hit = tokens.iter().filter(|t| ol.contains(t.as_str())).count();
     if tokens.len() >= 2 && hit == 0 {
         out.push(' ');
         out.push_str(&format!(
-            "That still centers on {}.",
+            "All of that still answers {}.",
             tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
         ));
     }
-    if !out.ends_with('.') && !out.ends_with('?') && !out.ends_with('!') {
-        out.push('.');
-    }
     out
+}
+
+#[derive(Clone, Copy)]
+enum AskShape {
+    Why,
+    How,
+    What,
+    Connect,
+    Open,
+}
+
+fn ask_shape(user: &str) -> AskShape {
+    let l = user.to_ascii_lowercase();
+    if l.contains("why ") || l.starts_with("why") || l.contains("reason for") {
+        AskShape::Why
+    } else if l.contains("how ") || l.starts_with("how") || l.contains("in what way") {
+        AskShape::How
+    } else if l.contains("connect ") || l.contains("relate ") || l.contains("relationship") {
+        AskShape::Connect
+    } else if l.contains("what is") || l.contains("what are") || l.contains("explain ") {
+        AskShape::What
+    } else {
+        AskShape::Open
+    }
+}
+
+fn decapitalize_if_mid(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        Some(first) if first.is_uppercase() => {
+            // Keep acronyms / short all-caps.
+            if s.chars().take(3).all(|ch| ch.is_uppercase() || !ch.is_alphabetic()) {
+                s.to_owned()
+            } else {
+                first.to_lowercase().collect::<String>() + c.as_str()
+            }
+        }
+        _ => s.to_owned(),
+    }
 }
 
 /// Prefer SoftCascade when Bitwork evidence is rich enough.
@@ -364,6 +452,30 @@ mod tests {
         assert!(low.contains("trust") || low.contains("interface") || low.contains("permission"));
         assert!(out.split_whitespace().count() >= 12);
         assert!(!low.contains("list premises"));
+        // No preset section labels.
+        assert!(!low.contains("lattice:"));
+        assert!(!low.contains("mixture read"));
+        assert!(!low.contains("bound as"));
+        assert!(!low.contains("multi-hypothesis readout"));
+    }
+
+    #[test]
+    fn soft_cascade_why_opens_with_reason() {
+        let m = sample_match();
+        let out = compose_soft_cascade(
+            "why does trust fail in distributed systems?",
+            &m,
+            "placeholder body",
+            0,
+        );
+        let low = out.to_ascii_lowercase();
+        assert!(
+            low.starts_with("because")
+                || low.contains("comes down")
+                || low.contains("structural reason")
+                || low.contains("trust"),
+            "got: {out}"
+        );
     }
 
     #[test]

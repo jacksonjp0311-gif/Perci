@@ -1159,21 +1159,20 @@ pub fn weave_composition_frame(answer: &str, frame: &[String], variant: usize) -
         out.push('.');
     }
     out.push(' ');
+    // Soft structure cue — not a schema dump.
     match variant % 3 {
         0 => {
-            out.push_str("Bound as ");
-            out.push_str(&joined);
+            out.push_str("The question itself is shaped as ");
+            out.push_str(&joined.replace(':', "→"));
             out.push('.');
         }
         1 => {
-            out.push_str("Composition: ");
-            out.push_str(&joined);
+            out.push_str("I'm treating that as ");
+            out.push_str(&joined.replace(':', " of "));
             out.push('.');
         }
         _ => {
-            out.push_str("Roles in play — ");
-            out.push_str(&joined);
-            out.push('.');
+            // Skip noisy composition tags entirely for one variant.
         }
     }
     out
@@ -1192,18 +1191,19 @@ pub fn weave_residual_frame(answer: &str, residual: &str, variant: usize) -> Str
         out.push('.');
     }
     out.push(' ');
+    let r = residual.trim().trim_end_matches('.');
     match variant % 3 {
         0 => {
-            out.push_str("Latent residual: ");
-            out.push_str(residual.trim());
+            out.push_str("There's a quieter angle too: ");
+            out.push_str(&decap_mid(r));
         }
         1 => {
-            out.push_str("Also latent after the first frame: ");
-            out.push_str(residual.trim());
+            out.push_str("What the first pass can hide: ");
+            out.push_str(&decap_mid(r));
         }
         _ => {
-            out.push_str("Second hop still in view: ");
-            out.push_str(residual.trim());
+            out.push_str("Keep this in the corner of the map: ");
+            out.push_str(&decap_mid(r));
         }
     }
     if !out.ends_with('.') && !out.ends_with('?') {
@@ -1264,48 +1264,63 @@ pub fn weave_mixture_skeleton(
         out.push('.');
     }
     out.push(' ');
+    // Natural weave — no "Related frame:" / "Mixture read:" labels.
+    let e0 = extras[0].trim().trim_end_matches('.');
     match (extras.len(), variant % 3) {
         (1, 0) => {
-            out.push_str("Related frame: ");
-            out.push_str(extras[0]);
+            out.push_str("That also implies ");
+            out.push_str(&decap_mid(e0));
+            out.push('.');
         }
         (1, _) => {
-            out.push_str("Also in view: ");
-            out.push_str(extras[0]);
+            out.push_str("And ");
+            out.push_str(&decap_mid(e0));
+            out.push('.');
         }
         (_, 0) => {
-            out.push_str("Related frames: ");
-            out.push_str(extras[0]);
-            out.push_str("; ");
-            out.push_str(extras[1]);
+            let e1 = extras[1].trim().trim_end_matches('.');
+            out.push_str("Two consequences follow: ");
+            out.push_str(&decap_mid(e0));
+            out.push_str(", and ");
+            out.push_str(&decap_mid(e1));
+            out.push('.');
         }
         (_, 1) => {
-            out.push_str("Two nearby ideas fire with that: ");
-            out.push_str(extras[0]);
-            out.push_str(" — and ");
-            out.push_str(extras[1]);
+            let e1 = extras[1].trim().trim_end_matches('.');
+            out.push_str("If you hold that next to ");
+            out.push_str(&decap_mid(e0));
+            out.push_str(", you also get ");
+            out.push_str(&decap_mid(e1));
+            out.push('.');
         }
         _ => {
-            out.push_str("Mixture read: ");
-            out.push_str(extras[0]);
-            out.push_str("; ");
-            out.push_str(extras[1]);
+            let e1 = extras[1].trim().trim_end_matches('.');
+            out.push_str(&decap_mid(e0));
+            out.push_str(" — which sits beside ");
+            out.push_str(&decap_mid(e1));
+            out.push('.');
         }
     }
-    if !out.ends_with('.') && !out.ends_with('?') {
-        out.push('.');
-    }
-    // Keep user topic in play if mixture diluted it.
     let tokens = content_tokens(user);
     let ol = out.to_ascii_lowercase();
     if tokens.len() >= 2 && tokens.iter().filter(|t| ol.contains(t.as_str())).count() == 0 {
         out.push(' ');
         out.push_str(&format!(
-            "That still centers on {}.",
+            "That still answers {}.",
             tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
         ));
     }
     out
+}
+
+fn decap_mid(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        Some(first) if first.is_uppercase() => {
+            first.to_lowercase().collect::<String>() + c.as_str()
+        }
+        _ => s.to_owned(),
+    }
 }
 
 /// Content words from the user worth binding into the reply.
@@ -1495,12 +1510,10 @@ pub fn fluid_compose(
                             .into()
                     }
                     "general" => {
-                        "stay with the topic you named and make one claim that could be checked".into()
+                        "name what would change if the claim were false, then check that".into()
                     }
-                    _ => {
-                        "stay with the topic you named and make one claim that could be checked"
-                            .into()
-                    }
+                    _ => "state the claim so it can be checked, then separate evidence from guess"
+                        .into(),
                 }
             };
             let d = domain_body.trim();
@@ -1523,25 +1536,25 @@ pub fn fluid_compose(
         let body = if lower.starts_with("why ") || lower.contains("why does") || lower.contains("why is") {
             match seed % 3 {
                 0 => format!(
-                    "Because for {topic}, the useful story is mechanism, not slogan: {angle}. If that mechanism changed, the outcome should change too — that's the test."
+                    "Because for {topic}, the useful story is mechanism, not slogan: {angle}. If that mechanism changed, the outcome should change too."
                 ),
                 1 => format!(
-                    "The short answer on {topic}: {angle}. The longer one is that explanations earn trust when they predict what would happen under a controlled change."
+                    "It comes down to {topic}: {angle}. A good explanation predicts what happens under a controlled change."
                 ),
                 _ => format!(
-                    "Why {topic}? Start from what must be true for the claim to hold: {angle}. Then ask what observation would force a rewrite."
+                    "Why {topic}? Hold the claim open: {angle}. Then ask which observation would force a rewrite."
                 ),
             }
         } else if lower.starts_with("how ") {
             match seed % 3 {
                 0 => format!(
-                    "How I'd approach {topic}: (1) state the goal in one line, (2) name the constraint that bites first, (3) take the smallest reversible step, (4) verify. Under the hood: {angle}."
+                    "Practically for {topic}: state the goal, name the constraint that bites first, take the smallest reversible step, then verify. Under that: {angle}."
                 ),
                 1 => format!(
-                    "For {topic}, do the thin slice first — one end-to-end path you can check — then widen. Anchor: {angle}."
+                    "For {topic}, cut a thin end-to-end path you can check, then widen. Anchor: {angle}."
                 ),
                 _ => format!(
-                    "Treat {topic} as a procedure: input → transform → check. {angle}. Tell me the missing input and I'll tighten the steps."
+                    "Treat {topic} as input, transform, check. {angle}. If a step is missing, name the missing input."
                 ),
             }
         } else if lower.contains("what do you think")
@@ -1549,41 +1562,34 @@ pub fn fluid_compose(
             || lower.contains("opinion")
         {
             format!(
-                "On {topic}: I don't have feelings, but I do have a grounded take — {angle}. What matters is whether that helps you decide or measure something next."
+                "I don't have feelings about {topic}, but a grounded take is: {angle}. Use it if it helps you decide or measure something next."
             )
         } else if lower.contains('?') {
             match seed % 4 {
                 0 => format!(
-                    "Direct take on {topic}: {angle}. If you want depth, give one constraint or example and I'll go concrete instead of general."
+                    "On {topic}: {angle}. Give one constraint or example if you want this tighter."
                 ),
                 1 => format!(
-                    "For “{}”, the center of gravity is {topic}. {angle} I won't pad that with a method speech unless you want the checklist.",
+                    "For “{}”, gravity sits on {topic}. {angle}",
                     first_sentence(user, 72)
                 ),
                 2 => format!(
-                    "Yes — about {topic}. {angle} The honest limit: without more detail I stay structural, not specialist-deep."
+                    "About {topic}: {angle} Without more detail I stay structural rather than specialist-deep."
                 ),
                 _ => format!(
-                    "Here's a clean answer for {topic}. {angle} Push back or add a fact and I'll revise rather than defend the first wording."
+                    "{angle} That's my clean answer for {topic}; push back with a fact and I'll revise."
                 ),
             }
         } else {
-            // Statement / share / request without ?
             let angle = if angle.ends_with('.') || angle.ends_with('?') {
                 angle
             } else {
                 format!("{angle}.")
             };
             match seed % 3 {
-                0 => format!(
-                    "Got it — {topic}. {angle} If you want a reaction, a plan, or a critique, say which and I'll lock onto that mode."
-                ),
-                1 => format!(
-                    "I'm with you on {topic}. {angle} What's the outcome you want from this turn — clarity, a next step, or a hard challenge?"
-                ),
-                _ => format!(
-                    "On {topic}: {angle} Stay with me one more sentence: what would “done” look like?"
-                ),
+                0 => format!("{topic}: {angle}"),
+                1 => format!("Working from {topic} — {angle}"),
+                _ => format!("{angle} (centered on {topic})"),
             }
         };
 
@@ -2297,8 +2303,10 @@ mod tests {
             0,
         );
         let low = out.to_ascii_lowercase();
-        assert!(low.contains("permission") || low.contains("related"));
+        assert!(low.contains("permission") || low.contains("implies") || low.contains("consequences"));
         assert!(low.contains("trust"));
+        assert!(!low.contains("related frame:"));
+        assert!(!low.contains("mixture read"));
     }
 
     #[test]
@@ -2324,8 +2332,17 @@ mod tests {
         ];
         let out = weave_composition_frame(base, &frame, 0);
         let low = out.to_ascii_lowercase();
-        assert!(low.contains("bound as") || low.contains("composition") || low.contains("roles"));
-        assert!(low.contains("ask:how") || low.contains("agent:"));
+        // Natural structure cue — not "Bound as" labels.
+        assert!(
+            low.contains("shaped as")
+                || low.contains("treating that")
+                || low.contains("ask")
+                || low.contains("interfaces")
+                || out == base,
+            "got: {out}"
+        );
+        assert!(!low.contains("bound as"));
+        assert!(!low.contains("composition:"));
     }
 
     #[test]
