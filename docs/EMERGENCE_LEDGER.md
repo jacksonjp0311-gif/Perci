@@ -1,89 +1,67 @@
-# Emergence ledger — geometry speaks; lab answers
+# Emergence ledger — geometry speaks; lab answers; transfer gates
 
-**Software:** v0.6.19+  
-**Log:** `models/candidates/emergence-geometry.jsonl` (override `PERCI_EMERGENCE_LOG`)  
+**Software:** v0.6.20+  
+**Log:** `models/candidates/emergence-geometry.jsonl`  
 **Tickets:** `models/candidates/emergence-tickets/`  
 **Curriculum:** `models/candidates/emergence-curriculum.jsonl`  
 **Claim boundary:** Engineering telemetry + governed candidates. Not consciousness. Never auto-promotes weights.
 
-## Loop
+## Closed loop (v0.6.20)
 
 ```text
 classify / probe
-    → typed MatchEvent (serde JSONL)
-         authority: softcascade | probe | <operator>
-    → analyze + lessons(ledger)
-    → SoftCascade:
-         primary off + multipartite + mix hits → mixture thesis (CRUTCH)
-         chronic / geometry_blind → multipartite + critique + topic bind
-    → if softcascade|probe + (mixture_crutch | chronic primary_off)
-         → lab ticket primary-fix-{label}.md  (idempotent)
-         → curriculum candidate JSONL sample
-    → SpeechEvent (speech_hit / miss, used_mix_thesis)
-    → TransferProbe (optional / tests)
-         base + paraphrase + novel nouns → pass only if topic binds across transforms
-    → /field  laws + tickets
-    → /lab    ticket files + curriculum path
+    → typed MatchEvent (authority-tagged)
+    → SoftCascade policy (mixture_crutch temporary)
+    → lab ticket if softcascade|probe primary_off multipartite
+    → SpeechEvent
+    → perci transfer "<prompt>"
+         base + paraphrase + novel nouns on OPERATOR speech
+    → pass → perci lab close <id> --reason "…"
+         or: perci agent lab --from-emergence
+    → /field shows curriculum-authority view only (no double-count inflate)
 ```
 
-## Fixes vs thin v0.6.18
+## Thin → law (v0.6.18 → v0.6.20)
 
-| Thin point | v0.6.19 law |
-|------------|-------------|
-| Hints not tickets | Chronic/crutch → **primary-fix ticket** + curriculum candidate |
-| Stringy JSONL | **Typed** `LedgerEvent` via serde; corrupt lines skipped |
-| Double-record bias | Curriculum ranking uses **only** `softcascade` + `probe` authority |
-| Forever mixture crutch | Tag `mixture_crutch` + ticket: fix primary/operator; mixture temporary |
-| No transfer gate | `evaluate_transfer` / `default_transfer_set` + Transfer events |
+| Thin | Law |
+|------|-----|
+| Hints | Tickets + curriculum candidates |
+| Stringy JSONL | Typed `LedgerEvent` (serde) |
+| Double-record bias | Rank + `/field` **curriculum view** = softcascade\|probe only |
+| Forever mixture | `mixture_crutch` + primary-fix ticket |
+| No transfer | `perci transfer` + hardness H45–H47 |
 
-## Event kinds
-
-| `kind` | When |
-|--------|------|
-| `match` | classify / probe |
-| `speech` | SoftCascade sealed body |
-| `ticket` | lab primary-fix staged |
-| `transfer` | transfer gate result |
-
-## Policy fields
-
-| Field | Meaning |
-|-------|---------|
-| `prefer_mixture_thesis` | Replace thesis with on-topic mixture insight |
-| `mixture_crutch` | Primary wrong; mixture is temporary UX only |
-| `open_primary_fix_ticket` | Stage lab ticket (curriculum authority only) |
-| `force_multipartite_arc` | Contested / multipartite / blind / chronic |
-| `geometry_blind` | Primary and mixture both miss user tokens |
-
-## Transfer gate
-
-Honest emergence bar (aligned with `emergence-vs-memorization` operator):
-
-1. **base** prompt speech hits user content tokens  
-2. **paraphrase** still hits  
-3. **novel nouns** (entity swap) still hits structural constraints  
-
-**Pass** = base OK **and** (paraphrase OK **or** novel OK).  
-Do not claim emergence from a single template hit.
-
-## Commands
+## CLI
 
 ```text
-/field      # events + laws + open tickets
-/lab        # tickets dir + curriculum + transfer counts
-/emergence  # alias of /field
-/geometry   # alias of /field
-/think      # cognition plan (chat stays clean)
+perci transfer "how should interfaces earn trust under lag and retry?"
+perci lab queue
+perci lab field
+perci lab close primary-fix-frame-general --reason "operator transfer PASS"
+perci agent lab --from-emergence [--dry-run]
+perci agent lab --from-hardness [--dry-run]
 ```
+
+Interactive: `/field` · `/lab`
+
+## Transfer bar
+
+**Pass** = base topic binds **and** (paraphrase **or** novel-noun) binds on operator speech.  
+Aligned with `emergence-vs-memorization`. Fail ⇒ do not claim emergence; do not close tickets.
+
+## Hardness
+
+- **H45** earn trust under lag/retry  
+- **H46** callers after timeouts  
+- **H47** ZephyrNode / Quoril / NembitGate entity-swap  
 
 ## Never
 
-- Auto-promote `.pwgt` from ledger or tickets  
-- Count operator-authority matches toward pack curriculum ranking  
+- Auto-promote `.pwgt`  
+- Count operator matches toward pack curriculum ranking  
 
 ## Related
 
-- [`docs/WEIGHT_REASSESSMENT_v0616.md`](WEIGHT_REASSESSMENT_v0616.md)  
+- [`docs/LIVE_TEST_TEN.md`](LIVE_TEST_TEN.md)  
 - [`docs/BITWORK_EMERGENCE.md`](BITWORK_EMERGENCE.md)  
 - [`docs/TRANSFORMER_BRIDGE.md`](TRANSFORMER_BRIDGE.md)  
-- [`docs/LIVE_TEST_TEN.md`](LIVE_TEST_TEN.md)

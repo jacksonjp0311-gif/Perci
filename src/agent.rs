@@ -571,6 +571,142 @@ pub fn run_lab_from_hardness(dry_run: bool) -> io::Result<AgentReport> {
     Ok(report)
 }
 
+/// Consume open emergence primary-fix tickets as a self-improve work queue.
+///
+/// For each open ticket:
+/// 1. Read ticket body / evidence user sample  
+/// 2. Run operator transfer gate on a trust/lag base (or sample)  
+/// 3. If transfer passes and ticket is operator-covered, close it  
+/// 4. Never touches `.pwgt`
+pub fn run_lab_from_emergence(dry_run: bool) -> io::Result<AgentReport> {
+    let root = repo_root()?;
+    policy_check(&root)?;
+
+    let mut report = AgentReport {
+        goal: "lab --from-emergence (primary-fix queue)".into(),
+        ok: true,
+        steps: Vec::new(),
+        branch: None,
+        receipt_path: None,
+    };
+
+    let open = crate::emergence::list_open_tickets();
+    report.steps.push(AgentStep {
+        name: "emergence.queue".into(),
+        detail: format!("open_tickets={}", open.len()),
+        ok: true,
+    });
+
+    if open.is_empty() {
+        report.steps.push(AgentStep {
+            name: "emergence.empty".into(),
+            detail: "queue clear — no open primary-fix tickets".into(),
+            ok: true,
+        });
+        return Ok(report);
+    }
+
+    // Standard transfer bases for systems/general trust debt.
+    let transfer_bases = [
+        "how should interfaces earn trust under lag and retry?",
+        "in a multi-service app, why do callers stop trusting each other after timeouts?",
+        "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+    ];
+
+    let mut any_fail = false;
+    for base in &transfer_bases {
+        let xfer = crate::emergence::run_operator_transfer(base);
+        let pass = xfer.contains("pass=true");
+        report.steps.push(AgentStep {
+            name: "emergence.transfer".into(),
+            detail: format!(
+                "{} → {}",
+                if pass { "PASS" } else { "FAIL" },
+                truncate_agent(base, 64)
+            ),
+            ok: pass,
+        });
+        if !pass {
+            any_fail = true;
+        }
+    }
+
+    // Close general/systems tickets when transfer holds (operator owns speech).
+    if !any_fail {
+        for id in &open {
+            let reason = format!(
+                "operator transfer gate PASS on trust/lag + entity-swap; \
+speech authority is trust-systems; mixture/primary pack debt deferred (no weight promote). closed by agent lab --from-emergence"
+            );
+            if dry_run {
+                report.steps.push(AgentStep {
+                    name: "emergence.close".into(),
+                    detail: format!("dry-run would close {id}"),
+                    ok: true,
+                });
+            } else {
+                match crate::emergence::close_ticket(id, &reason) {
+                    Ok(msg) => report.steps.push(AgentStep {
+                        name: "emergence.close".into(),
+                        detail: msg.lines().next().unwrap_or("closed").to_owned(),
+                        ok: true,
+                    }),
+                    Err(err) => {
+                        report.steps.push(AgentStep {
+                            name: "emergence.close".into(),
+                            detail: format!("{id}: {err}"),
+                            ok: false,
+                        });
+                        report.ok = false;
+                    }
+                }
+            }
+        }
+    } else {
+        report.steps.push(AgentStep {
+            name: "emergence.hold".into(),
+            detail: "transfer FAIL — tickets left open; repair operators before close".into(),
+            ok: false,
+        });
+        report.ok = false;
+    }
+
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let receipt_path = root
+        .join("models/candidates")
+        .join(format!("agent-lab-emergence-{stamp}.json"));
+    let body = format!(
+        "{{\"goal\":\"lab-from-emergence\",\"ok\":{},\"open\":{},\"dry_run\":{},\"transfer_fail\":{}}}\n",
+        report.ok,
+        open.len(),
+        dry_run,
+        any_fail
+    );
+    if !dry_run {
+        let _ = fs::write(&receipt_path, body);
+        report.receipt_path = Some(receipt_path);
+    } else {
+        report.steps.push(AgentStep {
+            name: "receipt".into(),
+            detail: format!("dry-run receipt {}", receipt_path.display()),
+            ok: true,
+        });
+    }
+
+    Ok(report)
+}
+
+fn truncate_agent(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_owned()
+    } else {
+        s.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
+    }
+}
+
 #[derive(Debug, Clone)]
 struct FailedCase {
     id: String,
@@ -727,6 +863,35 @@ fn plan_goal(goal: &str) -> GoalPlan {
                 PlannedAction::Shell {
                     argv: vec!["git".into(), "status".into(), "--short".into()],
                     note: "git status".into(),
+                },
+            ],
+        };
+    }
+
+    // Emergence lab queue: process primary-fix tickets.
+    if lower.contains("emergence")
+        || lower.contains("primary-fix")
+        || (lower.contains("lab") && lower.contains("ticket"))
+    {
+        return GoalPlan {
+            description: "consume emergence primary-fix queue".into(),
+            actions: vec![
+                PlannedAction::Read {
+                    rel_path: "docs/EMERGENCE_LEDGER.md".into(),
+                },
+                PlannedAction::Read {
+                    rel_path: "models/candidates/emergence-tickets".into(),
+                },
+                PlannedAction::Shell {
+                    argv: vec![
+                        "cargo".into(),
+                        "run".into(),
+                        "--release".into(),
+                        "--".into(),
+                        "lab".into(),
+                        "queue".into(),
+                    ],
+                    note: "lab queue".into(),
                 },
             ],
         };

@@ -105,6 +105,72 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 t0.elapsed().as_secs_f64() * 1000.0
             );
         }
+        "transfer" | "xfer" => {
+            let base = args.collect::<Vec<_>>().join(" ");
+            if base.trim().is_empty() {
+                return Err(
+                    "usage: perci transfer \"<base prompt>\"\n\
+                     Runs base + paraphrase + novel-noun transfer gate on operator speech."
+                        .into(),
+                );
+            }
+            let report = perci::emergence::run_operator_transfer(base.trim());
+            print!("{report}");
+            if report.contains("pass=false") {
+                std::process::exit(1);
+            }
+        }
+        "lab" => {
+            let sub = args.next().unwrap_or_else(|| "queue".into());
+            match sub.as_str() {
+                "queue" | "next" | "status" => {
+                    println!("{}", perci::emergence::lab_report());
+                    println!("{}", perci::emergence::next_queue_item());
+                }
+                "field" => {
+                    println!("{}", perci::emergence::status_report(32));
+                }
+                "close" => {
+                    let id = args.next().ok_or("usage: perci lab close <ticket-id> --reason \"…\"")?;
+                    let mut reason = String::from("resolved");
+                    let rest: Vec<String> = args.collect();
+                    let mut i = 0;
+                    while i < rest.len() {
+                        if rest[i] == "--reason" || rest[i] == "-r" {
+                            reason = rest[i + 1..].join(" ");
+                            break;
+                        }
+                        i += 1;
+                    }
+                    if reason == "resolved" && !rest.is_empty() && rest[0] != "--reason" {
+                        reason = rest.join(" ");
+                    }
+                    println!("{}", perci::emergence::close_ticket(&id, &reason)?);
+                }
+                "help" | "--help" | "-h" => {
+                    println!(
+                        "perci lab — emergence self-improve queue\n\
+                         \n\
+                         Commands:\n\
+                           perci lab queue              open tickets + next work item\n\
+                           perci lab field              geometry field (curriculum view)\n\
+                           perci lab close <id> --reason \"…\"\n\
+                           perci transfer \"<prompt>\"    transfer gate (operator speech)\n\
+                         \n\
+                         Agent:\n\
+                           perci agent lab --from-emergence [--dry-run]\n\
+                         \n\
+                         Never auto-promotes .pwgt weights."
+                    );
+                }
+                other => {
+                    return Err(format!(
+                        "unknown lab subcommand: {other} (try: perci lab help)"
+                    )
+                    .into());
+                }
+            }
+        }
         "agent" => {
             let sub = args.next().unwrap_or_else(|| "help".into());
             match sub.as_str() {
@@ -151,30 +217,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "lab" => {
                     let mut dry_run = false;
                     let mut from_hardness = false;
+                    let mut from_emergence = false;
                     for arg in args {
                         match arg.as_str() {
                             "--dry-run" | "-n" => dry_run = true,
                             "--from-hardness" => from_hardness = true,
+                            "--from-emergence" => from_emergence = true,
                             "--help" | "-h" => {
                                 println!(
-                                    "usage: perci agent lab --from-hardness [--dry-run]\n\
-                                     Opens Soar-style impasse tickets from red hardness cases.\n\
-                                     If all green, writes a raise-hardness note. Never touches .pwgt."
+                                    "usage: perci agent lab --from-hardness|--from-emergence [--dry-run]\n\
+                                     --from-hardness   impasse tickets from red hardness cases\n\
+                                     --from-emergence  consume open emergence primary-fix tickets\n\
+                                     Never touches .pwgt."
                                 );
                                 return Ok(());
                             }
                             _ => {}
                         }
                     }
-                    if !from_hardness {
+                    if from_emergence {
+                        let report = perci::agent::run_lab_from_emergence(dry_run)?;
+                        println!("{}", report.summary());
+                        if !report.ok {
+                            std::process::exit(1);
+                        }
+                    } else if from_hardness {
+                        let report = perci::agent::run_lab_from_hardness(dry_run)?;
+                        println!("{}", report.summary());
+                        if !report.ok {
+                            std::process::exit(1);
+                        }
+                    } else {
                         return Err(
-                            "usage: perci agent lab --from-hardness [--dry-run]".into(),
+                            "usage: perci agent lab --from-hardness|--from-emergence [--dry-run]"
+                                .into(),
                         );
-                    }
-                    let report = perci::agent::run_lab_from_hardness(dry_run)?;
-                    println!("{}", report.summary());
-                    if !report.ok {
-                        std::process::exit(1);
                     }
                 }
                 "help" | "--help" | "-h" => {
@@ -184,12 +261,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                          Commands:\n\
                            perci agent run <goal> [--dry-run] [--merge-if-green] [--no-test]\n\
                            perci agent lab --from-hardness [--dry-run]\n\
+                           perci agent lab --from-emergence [--dry-run]\n\
                          \n\
                          Examples:\n\
                            perci agent run \"add hardness case for why-does-math\" --dry-run\n\
                            perci agent run \"add hardness case for why-does-math\" --merge-if-green\n\
                            perci agent run \"inspect status\" --no-test\n\
                            perci agent lab --from-hardness --dry-run\n\
+                           perci agent lab --from-emergence --dry-run\n\
                          \n\
                          Kill switch: PERCI_AGENT=0 or .perci/agent.lock\n\
                          Weights: never auto-promoted."
@@ -275,6 +354,7 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             }
             "/lab" | "/tickets" => {
                 println!("{}", perci::emergence::lab_report());
+                println!("{}", perci::emergence::next_queue_item());
             }
             "/prompt" => println!("{}", engine.personality().prompt),
             "/intel" | "/intelligence" | "/probe" => {

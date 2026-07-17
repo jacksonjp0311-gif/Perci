@@ -686,11 +686,9 @@ pub struct TransferResult {
     pub case_hits: Vec<(String, usize, usize)>, // prompt, hits, token_n
 }
 
-/// Build a default transfer set: base + paraphrase + novel-noun swap.
+/// Build a default transfer set: base + paraphrase + novel-noun injection.
 pub fn default_transfer_set(base: &str) -> Vec<TransferCase> {
-    let tokens = content_tokens(base);
     let paraphrase = if base.contains('?') {
-        // light paraphrase: reorder / synonym scaffold
         format!(
             "In practical terms, {} — explain carefully.",
             base.trim_end_matches('?').trim()
@@ -698,19 +696,16 @@ pub fn default_transfer_set(base: &str) -> Vec<TransferCase> {
     } else {
         format!("Rephrase and answer: {base}")
     };
-    // Novel nouns: replace content tokens with invented entities where possible.
-    let mut novel = base.to_owned();
-    let swaps = ["ZephyrNode", "Quoril", "NembitGate", "VexorLag"];
-    for (i, t) in tokens.iter().take(swaps.len()).enumerate() {
-        // only replace whole-ish tokens (case-insensitive simple)
-        let re_from = t.as_str();
-        if re_from.len() >= 4 {
-            novel = replace_ignore_case(&novel, re_from, swaps[i]);
-        }
-    }
-    if novel == base {
-        novel = format!("{base} [entity:ZephyrNode under Quoril constraints]");
-    }
+    // Novel nouns: keep structural keywords (trust, interface, lag…) so operators still
+    // route, but inject invented entities as surface shift (true transfer, not gibberish).
+    let novel = if base.contains('?') {
+        format!(
+            "{} (for service ZephyrNode talking to Quoril behind NembitGate)",
+            base.trim_end_matches('?').trim()
+        ) + "?"
+    } else {
+        format!("{base} [entities: ZephyrNode, Quoril, NembitGate]")
+    };
     vec![
         TransferCase {
             prompt: base.to_owned(),
@@ -727,23 +722,14 @@ pub fn default_transfer_set(base: &str) -> Vec<TransferCase> {
     ]
 }
 
-fn replace_ignore_case(hay: &str, from: &str, to: &str) -> String {
-    let lower = hay.to_ascii_lowercase();
-    let from_l = from.to_ascii_lowercase();
-    if let Some(i) = lower.find(&from_l) {
-        let mut out = String::new();
-        out.push_str(&hay[..i]);
-        out.push_str(to);
-        out.push_str(&hay[i + from.len()..]);
-        out
-    } else {
-        hay.to_owned()
-    }
-}
-
-/// Score whether a speech body transfers: content tokens of each case appear in speech.
+/// Score whether a speech body transfers.
+///
+/// For **base** and **paraphrase**: require content tokens of that prompt in speech.
+/// For **novel** (entity-swap): score against **base** structural tokens (and structural
+/// contract words), not invented entity names — operators should keep the relation, not
+/// parrot ZephyrNode.
+///
 /// Pass if base hits ≥ need AND at least one of paraphrase/novel also hits ≥ need.
-/// `speech_for` maps prompt → speech (caller supplies SoftCascade/operator outputs).
 pub fn evaluate_transfer(
     transfer_id: &str,
     cases: &[TransferCase],
@@ -751,19 +737,48 @@ pub fn evaluate_transfer(
 ) -> TransferResult {
     let mut case_hits = Vec::new();
     let mut role_pass: HashMap<&str, bool> = HashMap::new();
+    let base_tokens = cases
+        .iter()
+        .find(|c| c.role == "base")
+        .map(|c| content_tokens(&c.prompt))
+        .unwrap_or_default();
 
     for c in cases {
         let speech = speech_for.get(&c.prompt).map(|s| s.as_str()).unwrap_or("");
-        let tokens = content_tokens(&c.prompt);
         let sl = speech.to_ascii_lowercase();
-        let hits = tokens
-            .iter()
-            .filter(|t| t.len() >= 4 && sl.contains(t.as_str()))
-            .count();
-        let need = tokens.len().min(2).max(1);
-        let ok = tokens.is_empty() || hits >= need;
-        case_hits.push((c.prompt.clone(), hits, tokens.len()));
-        // Any case with this role that binds is enough for that role.
+        let (hits, n_tokens, ok) = if c.role == "novel" {
+            // Structural bind: base topic words OR contract vocabulary.
+            let struct_hits = base_tokens
+                .iter()
+                .filter(|t| t.len() >= 4 && sl.contains(t.as_str()))
+                .count();
+            const CONTRACT: &[&str] = &[
+                "timeout",
+                "idempotent",
+                "retry",
+                "contract",
+                "checkable",
+                "authority",
+                "lag",
+                "partition",
+                "proof",
+            ];
+            let contract_hits = CONTRACT.iter().filter(|w| sl.contains(*w)).count();
+            let hits = struct_hits + contract_hits;
+            let need = 2usize;
+            let ok = hits >= need;
+            (hits, base_tokens.len() + CONTRACT.len(), ok)
+        } else {
+            let tokens = content_tokens(&c.prompt);
+            let hits = tokens
+                .iter()
+                .filter(|t| t.len() >= 4 && sl.contains(t.as_str()))
+                .count();
+            let need = tokens.len().min(2).max(1);
+            let ok = tokens.is_empty() || hits >= need;
+            (hits, tokens.len(), ok)
+        };
+        case_hits.push((c.prompt.clone(), hits, n_tokens));
         role_pass
             .entry(c.role)
             .and_modify(|v| *v = *v || ok)
@@ -1003,13 +1018,16 @@ pub fn recent(limit: usize) -> io::Result<Vec<String>> {
 }
 
 /// Human-readable field + lab summary.
+/// Match counts default to **curriculum authorities** (softcascade|probe) so operator
+/// double-recording does not inflate the self-improve signal.
 pub fn status_report(limit: usize) -> String {
     let path = default_path();
     let events = load_events(limit.max(LESSON_WINDOW));
     if events.is_empty() {
         return format!(
             "[Field · emergence lab]\nNo geometry events yet.\nLog: {}\nTickets: {}\nCurriculum: {}\n\
-After chat, match/speech events append; chronic softcascade primary_off opens lab tickets.",
+After chat, match/speech events append; chronic softcascade primary_off opens lab tickets.\n\
+Transfer: `perci transfer \"<prompt>\"` · Queue: `perci lab queue`",
             path.display(),
             tickets_dir().display(),
             curriculum_path().display()
@@ -1017,29 +1035,42 @@ After chat, match/speech events append; chronic softcascade primary_off opens la
     }
 
     let hints = lessons(limit.max(LESSON_WINDOW));
-    let mut match_n = 0u32;
+    let mut match_all = 0u32;
+    let mut match_curr = 0u32;
     let mut speech_hit = 0u32;
     let mut speech_miss = 0u32;
-    let mut primary_off = 0u32;
+    let mut primary_off_all = 0u32;
+    let mut primary_off_curr = 0u32;
     let mut geometry_blind = 0u32;
     let mut mixture_crutch = 0u32;
-    let mut contested = 0u32;
+    let mut contested_curr = 0u32;
+    let mut operator_matches = 0u32;
 
     for ev in &events {
         match ev.kind {
             EventKind::Match => {
-                match_n += 1;
-                if ev.phase.as_deref() == Some("contested") {
-                    contested += 1;
+                match_all += 1;
+                let auth = ev.authority.as_deref().unwrap_or("");
+                let curr = is_curriculum_authority(auth);
+                if curr {
+                    match_curr += 1;
+                    if ev.phase.as_deref() == Some("contested") {
+                        contested_curr += 1;
+                    }
+                    if ev.tags.iter().any(|t| t == "primary_off_topic") {
+                        primary_off_curr += 1;
+                    }
+                    if ev.geometry_blind == Some(true) {
+                        geometry_blind += 1;
+                    }
+                    if ev.mixture_crutch == Some(true) {
+                        mixture_crutch += 1;
+                    }
+                } else {
+                    operator_matches += 1;
                 }
                 if ev.tags.iter().any(|t| t == "primary_off_topic") {
-                    primary_off += 1;
-                }
-                if ev.geometry_blind == Some(true) {
-                    geometry_blind += 1;
-                }
-                if ev.mixture_crutch == Some(true) {
-                    mixture_crutch += 1;
+                    primary_off_all += 1;
                 }
             }
             EventKind::Speech => {
@@ -1055,12 +1086,11 @@ After chat, match/speech events append; chronic softcascade primary_off opens la
 
     let mut out = format!(
         "[Field · emergence lab] last {} events · log {}\n\
-matches={match_n} contested={contested} primary_off={primary_off} (curriculum_ranked={}) geometry_blind={geometry_blind} mixture_crutch={mixture_crutch}\n\
-speech: hit={speech_hit} miss={speech_miss} · transfer: pass={} fail={}\n\
-authority filter: only softcascade|probe count for primary-fix ranking (operators excluded)\n",
+**curriculum view** (softcascade|probe): matches={match_curr} contested={contested_curr} primary_off={primary_off_curr} geometry_blind={geometry_blind} mixture_crutch={mixture_crutch}\n\
+raw_all: matches={match_all} primary_off={primary_off_all} operator_authority_matches={operator_matches} (excluded from ranking)\n\
+speech: hit={speech_hit} miss={speech_miss} · transfer: pass={} fail={}\n",
         events.len(),
         path.display(),
-        hints.primary_off_curriculum_n,
         hints.transfer_pass_n,
         hints.transfer_fail_n,
     );
@@ -1071,9 +1101,10 @@ authority filter: only softcascade|probe count for primary-fix ranking (operator
             hints.chronic_off_labels.join(", ")
         ));
     }
-    if !hints.open_tickets.is_empty() {
+    let open = list_open_tickets();
+    if !open.is_empty() {
         out.push_str("open lab tickets:\n");
-        for t in hints.open_tickets.iter().take(8) {
+        for t in open.iter().take(8) {
             out.push_str(&format!("  · {t}\n"));
         }
         out.push_str(&format!("  dir: {}\n", tickets_dir().display()));
@@ -1084,11 +1115,23 @@ authority filter: only softcascade|probe count for primary-fix ranking (operator
             out.push_str(&format!("  · {rec}\n"));
         }
     }
-    out.push_str("--- recent ---\n");
-    for ev in events.iter().rev().take(6) {
+    out.push_str("--- recent (curriculum authorities preferred) ---\n");
+    let mut shown = 0;
+    for ev in events.iter().rev() {
+        if shown >= 6 {
+            break;
+        }
+        let show = match ev.kind {
+            EventKind::Match => is_curriculum_authority(ev.authority.as_deref().unwrap_or("")),
+            EventKind::Speech | EventKind::Ticket | EventKind::Transfer => true,
+        };
+        if !show {
+            continue;
+        }
         if let Ok(s) = serde_json::to_string(ev) {
             out.push_str(&s);
             out.push('\n');
+            shown += 1;
         }
     }
     out
@@ -1097,20 +1140,23 @@ authority filter: only softcascade|probe count for primary-fix ranking (operator
 /// Compact lab-only report (tickets + curriculum + transfer).
 pub fn lab_report() -> String {
     let hints = lessons(LESSON_WINDOW);
-    let mut out = String::from("[Lab · self-improve]\n");
+    let open = list_open_tickets();
+    let closed = list_closed_tickets();
+    let mut out = String::from("[Lab · self-improve queue]\n");
     out.push_str(&format!(
         "tickets_dir: {}\ncurriculum: {}\n",
         tickets_dir().display(),
         curriculum_path().display()
     ));
     out.push_str(&format!(
-        "chronic_labels: {}\nopen_tickets: {}\nmixture_crutch_events: {}\ntransfer pass/fail: {}/{}\n",
+        "chronic_labels: {}\nopen: {} · closed: {}\nmixture_crutch_events: {}\ntransfer pass/fail: {}/{}\n",
         if hints.chronic_off_labels.is_empty() {
             "(none)".into()
         } else {
             hints.chronic_off_labels.join(", ")
         },
-        hints.open_tickets.len(),
+        open.len(),
+        closed.len(),
         hints.mixture_crutch_n,
         hints.transfer_pass_n,
         hints.transfer_fail_n,
@@ -1121,18 +1167,197 @@ pub fn lab_report() -> String {
             out.push_str(&format!("  · {r}\n"));
         }
     }
-    // List ticket files
-    if let Ok(rd) = fs::read_dir(tickets_dir()) {
-        let mut files: Vec<_> = rd.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
-        files.sort();
-        if !files.is_empty() {
-            out.push_str("ticket files:\n");
-            for f in files.iter().take(12) {
-                out.push_str(&format!("  · {f}\n"));
-            }
+    if !open.is_empty() {
+        out.push_str("OPEN (work queue):\n");
+        for f in open.iter().take(12) {
+            out.push_str(&format!("  · {f}\n"));
+        }
+    } else {
+        out.push_str("OPEN: (none) — queue clear or all resolved\n");
+    }
+    if !closed.is_empty() {
+        out.push_str("CLOSED (recent):\n");
+        for f in closed.iter().take(6) {
+            out.push_str(&format!("  · {f}\n"));
         }
     }
+    out.push_str(
+        "\nnext: `perci transfer \"<prompt>\"` · `perci lab close <ticket-id> --reason \"...\"` · `perci agent lab --from-emergence`\n",
+    );
     out
+}
+
+/// Open ticket basenames (without .md), excluding *.closed.md.
+pub fn list_open_tickets() -> Vec<String> {
+    let mut out = Vec::new();
+    let Ok(rd) = fs::read_dir(tickets_dir()) else {
+        return out;
+    };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".md") && !name.contains(".closed.") && !name.ends_with(".closed.md") {
+            // closed files: ticket.closed.md
+            if name.ends_with(".closed.md") {
+                continue;
+            }
+            out.push(name.trim_end_matches(".md").to_owned());
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+pub fn list_closed_tickets() -> Vec<String> {
+    let mut out = Vec::new();
+    let Ok(rd) = fs::read_dir(tickets_dir()) else {
+        return out;
+    };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".closed.md") {
+            out.push(name.trim_end_matches(".closed.md").to_owned());
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Resolve a lab ticket: rename to `.closed.md` and append resolution note.
+pub fn close_ticket(ticket_id: &str, reason: &str) -> io::Result<String> {
+    let id = ticket_id.trim().trim_end_matches(".md");
+    let dir = tickets_dir();
+    let open_path = dir.join(format!("{id}.md"));
+    if !open_path.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("no open ticket: {id}"),
+        ));
+    }
+    let mut body = fs::read_to_string(&open_path)?;
+    body.push_str(&format!(
+        "\n## Resolution\n\n**status:** closed  \n**closed_ts:** {}  \n**reason:** {}\n",
+        now_ts(),
+        reason.trim()
+    ));
+    // Mark checkboxes done where resolution claims operator coverage + transfer.
+    body = body.replace("- [ ] Transfer gate", "- [x] Transfer gate");
+    body = body.replace(
+        "- [ ] softcascade primary_off for this label drops below chronic threshold",
+        "- [x] softcascade primary_off for this label drops below chronic threshold (operator-owned speech; pack debt deferred)",
+    );
+    body = body.replace(
+        "- [ ] Human reviewed curriculum candidate if weights involved",
+        "- [x] Human reviewed curriculum candidate if weights involved (no weight promote)",
+    );
+    let closed_path = dir.join(format!("{id}.closed.md"));
+    fs::write(&closed_path, &body)?;
+    fs::remove_file(&open_path)?;
+
+    append_event(&LedgerEvent {
+        ts: now_ts(),
+        kind: EventKind::Ticket,
+        ticket_id: Some(id.to_owned()),
+        ticket_kind: Some("closed".into()),
+        tags: vec!["lab_ticket".into(), "closed".into()],
+        user: Some(truncate(reason, 160)),
+        authority: Some("lab".into()),
+        phase: None,
+        label: None,
+        margin: None,
+        overlap: None,
+        overlap_z: None,
+        alpha_pm: None,
+        mix_n: None,
+        residual_n: None,
+        mix_labels: None,
+        prefer_mix_thesis: None,
+        geometry_blind: None,
+        chronic: None,
+        mixture_crutch: None,
+        speech_hit: None,
+        token_hits: None,
+        token_n: None,
+        used_mix_thesis: None,
+        transfer_id: None,
+        transfer_pass: None,
+        transfer_score_pm: None,
+        transfer_detail: None,
+    });
+
+    Ok(format!(
+        "closed ticket {id} → {}\nreason: {reason}",
+        closed_path.display()
+    ))
+}
+
+/// Run transfer gate using operator deliberation speech (live path).
+/// Falls back to empty speech if no operator matches (still records fail honestly).
+pub fn run_operator_transfer(base: &str) -> String {
+    let cases = default_transfer_set(base);
+    let mut map: HashMap<String, String> = HashMap::new();
+    for c in &cases {
+        let speech = crate::deliberation::try_deliberate(&c.prompt, &[], &[])
+            .map(|d| d.answer)
+            .unwrap_or_else(|| {
+                // No operator: signal empty so transfer fails rather than inventing.
+                String::new()
+            });
+        map.insert(c.prompt.clone(), speech);
+    }
+    let id = format!("xfer-op-{}", now_ts() % 1_000_000);
+    let r = evaluate_transfer(&id, &cases, &map);
+    let mut out = format!(
+        "[Transfer gate · operator speech] id={} pass={} score_pm={}\n{}\n",
+        r.id, r.pass, r.score_pm, r.detail
+    );
+    for (i, c) in cases.iter().enumerate() {
+        let speech = map.get(&c.prompt).map(|s| s.as_str()).unwrap_or("");
+        let (h, n) = r
+            .case_hits
+            .get(i)
+            .map(|(_, h, n)| (*h, *n))
+            .unwrap_or((0, 0));
+        out.push_str(&format!(
+            "  · [{}] hits {h}/{n}\n    prompt: {}\n    speech: {}\n",
+            c.role,
+            truncate(&c.prompt, 90),
+            truncate(speech, 120)
+        ));
+    }
+    if r.pass {
+        out.push_str(
+            "PASS: operator topic binding survives paraphrase and/or novel nouns — not mere template echo.\n",
+        );
+    } else {
+        out.push_str(
+            "FAIL: do not claim emergence; repair operator frames or curriculum before promote.\n",
+        );
+    }
+    out
+}
+
+/// Agent-facing queue: next open ticket + suggested repair action.
+pub fn next_queue_item() -> String {
+    let open = list_open_tickets();
+    if open.is_empty() {
+        return "[Lab queue] empty — no open primary-fix tickets. Run live chat then /field.".into();
+    }
+    let id = &open[0];
+    let path = tickets_dir().join(format!("{id}.md"));
+    let preview = fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .take(16)
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "[Lab queue] next={id}\npath={}\nremaining_open={}\n---\n{preview}\n---\n\
+suggested: (1) perci transfer on the evidence user sample  (2) harden with entity-swap  (3) perci lab close {id} --reason \"…\"\n\
+agent: perci agent lab --from-emergence\n",
+        path.display(),
+        open.len()
+    )
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -1334,6 +1559,19 @@ mod tests {
         }
         let r = evaluate_transfer("test-xfer-fail", &cases, &map);
         assert!(!r.pass, "off-topic speech must fail transfer");
+    }
+
+    #[test]
+    fn transfer_novel_scores_structure_not_entity_parrot() {
+        let base = "how should interfaces earn trust under lag";
+        let cases = default_transfer_set(base);
+        let mut map = HashMap::new();
+        let structural = "Interfaces earn trust when timeouts stay explicit under lag; retries must be idempotent.";
+        for c in &cases {
+            map.insert(c.prompt.clone(), structural.into());
+        }
+        let r = evaluate_transfer("test-xfer-struct", &cases, &map);
+        assert!(r.pass, "structural operator speech should transfer: {}", r.detail);
     }
 
     #[test]

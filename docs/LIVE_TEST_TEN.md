@@ -1,9 +1,17 @@
-# Ten live evaluation questions (v0.5.2+)
+# Ten live evaluation questions (v0.6.20+)
 
 Use these after any version bump. Prefer:
 
 ```powershell
 .\target\release\perci.exe ask "<question>"
+```
+
+After the set, also run:
+
+```powershell
+.\target\release\perci.exe transfer "how should interfaces earn trust under lag and retry?"
+.\target\release\perci.exe lab queue
+python .\scripts\evaluate_hardness.py
 ```
 
 Or interactive: `.\Launch-Perci.ps1` then paste each prompt. Check `/status` for brand/version.

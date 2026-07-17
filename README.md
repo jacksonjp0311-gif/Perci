@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.19-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.6.20-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -46,7 +46,7 @@
 | **SoftCascade thought arc** | thesis → warrant → boundary → check — spoken as human prose, not card dumps |
 | **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
 | **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
-| **Emergence lab** | Typed ledger → mixture crutch + primary-fix tickets + transfer gate · `/field` `/lab` |
+| **Emergence lab** | Typed ledger → tickets → **transfer gate** → close queue · `perci transfer` · `perci lab` · agent `--from-emergence` |
 | **Exact tools** | Math & geometry that *compute*, never guess |
 | **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 

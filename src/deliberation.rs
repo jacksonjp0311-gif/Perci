@@ -2572,11 +2572,18 @@ fn looks_trust_systems_question(text: &str) -> bool {
     if looks_partition_recovery_question(text) {
         return false;
     }
+    // systemsish includes lag/timeout/retry so entity-swap paraphrases still bind
+    // (e.g. ZephyrNode interfaces under Quoril lag) without requiring "distributed".
     let systemsish = text.contains("distributed")
         || text.contains("system")
         || text.contains("interface")
         || text.contains("network")
-        || text.contains("service");
+        || text.contains("service")
+        || text.contains("timeout")
+        || text.contains("lag")
+        || text.contains("retry")
+        || text.contains("caller")
+        || text.contains("callee");
     if !systemsish {
         return false;
     }
@@ -2586,7 +2593,8 @@ fn looks_trust_systems_question(text: &str) -> bool {
         || text.contains("work")
         || text.contains("break")
         || text.contains("earn")
-        || text.contains("should");
+        || text.contains("should")
+        || text.contains("design");
     askish && !text.contains("write ") && !text.contains("implement ")
 }
 
@@ -5178,6 +5186,26 @@ mod tests {
         let low = r.answer.to_ascii_lowercase();
         assert!(
             low.contains("timeout") || low.contains("one-sided") || low.contains("idempotent"),
+            "got: {}",
+            r.answer
+        );
+    }
+
+    #[test]
+    fn trust_entity_swap_still_routes_to_trust_systems() {
+        // Novel nouns must not drop the operator (transfer / emergence bar).
+        let r = run(
+            "how should ZephyrNode interfaces earn trust under Quoril lag and NembitGate retry?",
+            &[],
+        );
+        assert_eq!(r.operator, "trust-systems");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("lag")
+                || low.contains("retry")
+                || low.contains("timeout")
+                || low.contains("idempotent")
+                || low.contains("earn"),
             "got: {}",
             r.answer
         );
