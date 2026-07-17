@@ -1042,6 +1042,7 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
     if (text.contains("invent") && text.contains("meaning") && text.contains("refuse"))
         || (text.contains("confident meaning")
             && (text.contains("refuse") || text.contains("why should you")))
+        || looks_nonce_meaning_probe(&text)
     {
         return Some(
             Deliberation::new(
@@ -2371,7 +2372,16 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     let lower = text.to_ascii_lowercase();
     // Drop parenthetical coaching notes: "(mixture + relate binds)".
     let stripped = strip_parentheticals(&lower);
-    let start = stripped.find("connect ")? + "connect ".len();
+    // Support: "connect A and B", "bridge A with B", "relate A and B".
+    let start = if let Some(i) = stripped.find("connect ") {
+        i + "connect ".len()
+    } else if let Some(i) = stripped.find("bridge ") {
+        i + "bridge ".len()
+    } else if let Some(i) = stripped.find("relate ") {
+        i + "relate ".len()
+    } else {
+        return None;
+    };
     let tail = &stripped[start..];
     let end = [
         " in one coherent idea",
@@ -2399,26 +2409,42 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     .or_else(|| tail.find('.'))
     .unwrap_or(tail.len());
     let raw = tail[..end].trim();
-    // Comma lists preserve multi-word domains ("packet loss"). Space-only lists
-    // like "connect knowledge attention memory and action" expand each token,
-    // then fold known multi-word domains back together.
-    let tokens: Vec<String> = if !raw.contains(',') {
-        let cleaned = raw.replace(" and ", " ").replace(" & ", " ");
+    // "bridge Willshaw associative memory with XOR role-filler binding"
+    // Prefer with/and as domain separators for bridge phrasing.
+    let tokens: Vec<String> = if raw.contains(" with ") && !raw.contains(',') {
+        raw.split(" with ")
+            .flat_map(|side| side.split(" and "))
+            .map(|term| {
+                term.trim()
+                    .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ' && c != '-')
+                    .trim()
+                    .to_owned()
+            })
+            .filter(|term| !term.is_empty() && term != "and" && term != "with")
+            .collect()
+    } else if !raw.contains(',') {
+        let cleaned = raw
+            .replace(" and ", " ")
+            .replace(" & ", " ")
+            .replace(" with ", " ");
         cleaned
             .split_whitespace()
             .map(|term| {
-                term.trim_matches(|c: char| !c.is_ascii_alphanumeric())
+                term.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-')
                     .to_owned()
             })
-            .filter(|term| !term.is_empty() && term != "and")
+            .filter(|term| !term.is_empty() && term != "and" && term != "with")
             .collect()
     } else {
-        let fragment = raw.replace(", and ", ",").replace(" and ", ",");
+        let fragment = raw
+            .replace(", and ", ",")
+            .replace(" and ", ",")
+            .replace(" with ", ",");
         fragment
             .split(',')
             .map(|term| {
                 term.trim()
-                    .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ')
+                    .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ' && c != '-')
                     .trim()
                     .to_owned()
             })
@@ -2535,13 +2561,23 @@ fn looks_trust_systems_question(text: &str) -> bool {
 }
 
 fn trust_systems_answer(text: &str) -> Deliberation {
-    // Design / normative: how *should* trust and interfaces work?
+    // Design / normative: how *should* trust and interfaces work / earn trust?
     let design = (text.contains("should") || text.contains("how do") || text.contains("how can"))
-        && (text.contains("work") || text.contains("design") || text.contains("build"))
-        && !text.contains("fail");
+        && (text.contains("work")
+            || text.contains("design")
+            || text.contains("build")
+            || text.contains("earn")
+            || text.contains("interface"))
+        && !text.contains("fail")
+        && !text.contains("stop trusting");
+    // Timeout / lag-specific failure transfer (not only the stock "why fail" body).
+    let timeout_transfer = (text.contains("timeout") || text.contains("lag") || text.contains("retry"))
+        && (text.contains("trust") || text.contains("caller"));
     let how_fail = text.contains("how") && (text.contains("fail") || text.contains("break"));
     let body = if design {
-        "Trust and interfaces in distributed systems should be designed as explicit contracts, not feelings. Practically: (1) every boundary names who may act and under which proof; (2) failure modes and timeouts are part of the interface, not afterthoughts; (3) recovery is idempotent and observable so partial partitions do not look like betrayal; (4) “done” is a shared predicate under lag and retry, not a local guess. Interfaces earn trust when a caller can check authority, health, and recovery without seeing another process’s private state."
+        "Interfaces earn trust under lag and retry when “done” is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) recovery paths are the same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify acceptance, rejection, and pending under delay."
+    } else if timeout_transfer {
+        "Callers stop trusting each other after timeouts because a timeout is a one-sided story: the caller saw silence, not proof of the callee’s outcome. Without idempotent requests, versioned replies, and a shared “done” predicate, a retry can look like betrayal (double charge, double write) or the callee can look dead while still working. Distance multiplies that uncertainty: lag, drops, and reordering make local clocks and local success flags disagree. The repair is contracts that stay checkable under lag — not more hope that the next RTT will be honest."
     } else if how_fail {
         "Trust fails in distributed systems when authority and evidence drift out of sync across nodes. Practically: (1) interfaces stop naming who may act and under which proof; (2) failure modes stay implicit so partial outages look like betrayal; (3) recovery paths are local while callers assume global consistency; (4) clocks, retries, and caches create histories that disagree without a reconciliation rule. How it fails is usually gradual — timeouts, silent drops, stale reads — not a single dramatic breach. The repair is explicit contracts: authz at the boundary, observable health, idempotent recovery, and a shared story of what “done” means under partition."
     } else {
@@ -2551,6 +2587,8 @@ fn trust_systems_answer(text: &str) -> Deliberation {
         .observed("conceptual trust + systems question (not a code debug request)")
         .inferred(if design {
             "normative design of trust/interfaces differs from failure-mode diagnosis"
+        } else if timeout_transfer {
+            "timeouts are one-sided partial history, not proof of remote outcome"
         } else {
             "failure is contract/evidence drift across partial observability"
         })
@@ -2859,7 +2897,47 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
         .confidence(0.93)
 }
 
+/// "what is the meaning of flibberquark without inventing"
+fn looks_nonce_meaning_probe(text: &str) -> bool {
+    let low = text.to_ascii_lowercase();
+    let asks_meaning = low.contains("meaning of")
+        || low.contains("what is the meaning")
+        || (low.contains("what does") && low.contains("mean"));
+    if !asks_meaning {
+        return false;
+    }
+    let no_invent = low.contains("without invent")
+        || low.contains("without inventing")
+        || low.contains("do not invent")
+        || low.contains("don't invent")
+        || low.contains("dont invent");
+    if no_invent {
+        return true;
+    }
+    // meaning-of + long nonce token (hallucination probe without the magic words).
+    const COMMON: &[&str] = &[
+        "meaning", "without", "inventing", "invent", "what", "the", "of", "a", "an",
+        "this", "that", "string", "word", "term", "language", "english", "definition",
+        "does", "mean", "please", "tell", "me",
+    ];
+    low.split_whitespace().any(|w| {
+        let t = w.trim_matches(|c: char| !c.is_ascii_alphanumeric());
+        t.len() >= 8
+            && t.chars().all(|c| c.is_ascii_alphabetic())
+            && !COMMON.contains(&t)
+    })
+}
+
 fn looks_code_request(text: &str) -> bool {
+    // Rustc error debug is a code-craft request even without "write".
+    if text.contains("e0382")
+        || text.contains("error[e0")
+        || (text.contains("debug")
+            && (text.contains("error") || text.contains("borrow") || text.contains("moved value")))
+        || text.contains("borrow of moved value")
+    {
+        return true;
+    }
     let writeish = text.contains("write ")
         || text.contains("implement ")
         || text.contains("show me ")
@@ -2900,7 +2978,15 @@ fn math_explanation_answer(user: &str) -> Deliberation {
 
 fn code_snippet_answer(user: &str) -> Deliberation {
     let lower = user.to_ascii_lowercase();
-    let (lang, body) = if lower.contains("reverse")
+    let (lang, body) = if lower.contains("e0382")
+        || lower.contains("borrow of moved value")
+        || (lower.contains("borrow") && lower.contains("moved"))
+    {
+        (
+            "rust",
+            "E0382 is Rust’s “borrow of moved value”: ownership moved, then you used the old name.\n\n```rust\nfn consume(s: String) {}\n\nfn main() {\n    let name = String::from(\"perci\");\n    consume(name);          // move\n    // println!(\"{name}\"); // E0382 if uncommented\n    let name = String::from(\"perci\");\n    consume(name.clone());  // keep a copy, or…\n    let name = String::from(\"perci\");\n    let borrowed = &name;   // borrow instead of move\n    println!(\"{borrowed}\");\n    println!(\"{name}\");    // still valid\n}\n```\nFix patterns: (1) clone if you need two owners; (2) pass `&T` / `&mut T` instead of `T`; (3) reorder so the last use is the move; (4) for loops over collections prefer `for x in &v` or `v.iter()`. Compiler/tests beat slogans — re-run `cargo check` after the smallest change.".to_owned(),
+        )
+    } else if lower.contains("reverse")
         && (lower.contains("string") || lower.contains("str"))
     {
         if lower.contains("python") {
@@ -4929,7 +5015,7 @@ mod tests {
         assert_eq!(r.operator, "trust-systems");
         let low = r.answer.to_ascii_lowercase();
         assert!(
-            low.contains("should") || low.contains("designed") || low.contains("explicit contracts"),
+            low.contains("should") || low.contains("designed") || low.contains("explicit contracts") || low.contains("earn"),
             "got: {}",
             r.answer
         );
@@ -4938,6 +5024,86 @@ mod tests {
             "failure template for design ask: {}",
             r.answer
         );
+    }
+
+    #[test]
+    fn trust_earn_under_lag_is_design_not_fail() {
+        let r = run(
+            "how should interfaces earn trust under lag and retry?",
+            &[],
+        );
+        assert_eq!(r.operator, "trust-systems");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("earn") || low.contains("lag") || low.contains("retry") || low.contains("idempotent"),
+            "got: {}",
+            r.answer
+        );
+        assert!(
+            !low.starts_with("trust fails in distributed systems when interfaces, failure modes"),
+            "why-fail body on design/earn ask: {}",
+            r.answer
+        );
+    }
+
+    #[test]
+    fn timeout_transfer_not_generic_why_fail_only() {
+        let r = run(
+            "in a multi-service app, why do callers stop trusting each other after timeouts?",
+            &[],
+        );
+        assert_eq!(r.operator, "trust-systems");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("timeout") || low.contains("one-sided") || low.contains("idempotent"),
+            "got: {}",
+            r.answer
+        );
+    }
+
+    #[test]
+    fn bridge_willshaw_is_synthesis_not_softcascade_identity() {
+        let r = run(
+            "bridge Willshaw associative memory with XOR role-filler binding",
+            &[],
+        );
+        assert!(
+            r.operator.contains("synthesis") || r.operator == "open-domain-synthesis",
+            "op={}",
+            r.operator
+        );
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("willshaw")
+                || low.contains("associative")
+                || low.contains("bind")
+                || low.contains("memory")
+                || low.contains("xor")
+                || low.contains("role"),
+            "got: {}",
+            r.answer
+        );
+        assert!(!low.contains("continuity of identity depends"));
+        assert!(!low.contains("shaped as ask"));
+    }
+
+    #[test]
+    fn flibberquark_refuses_invention() {
+        let r = run(
+            "what is the meaning of flibberquark without inventing",
+            &[],
+        );
+        assert_eq!(r.operator, "hallucination-refusal");
+        assert!(r.answer.to_ascii_lowercase().contains("refuse"));
+    }
+
+    #[test]
+    fn e0382_gets_concrete_rust_fix() {
+        let r = run("debug this: error[E0382] borrow of moved value", &[]);
+        assert_eq!(r.operator, "code-snippet");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("e0382") || low.contains("moved"));
+        assert!(low.contains("```") || low.contains("clone") || low.contains("borrow"));
     }
 
     #[test]
