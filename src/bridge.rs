@@ -64,20 +64,31 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
         out.push(t.to_owned());
     };
 
+    let multi = looks_multi_domain_user(user);
+    let user_tokens = content_tokens_bridge(user);
+
     let lead = matched.insight.as_ref().and_then(|i| {
         let t = i.trim();
-        if t.chars().count() >= 16 && t.chars().count() <= 200 {
-            Some(t.to_owned())
-        } else {
-            None
+        if t.chars().count() < 16 || t.chars().count() > 200 {
+            return None;
         }
+        // Reject identity/capability meta-insights on non-capability questions
+        // (classic SoftCascade contamination: "strongest honest claim about Perci…").
+        if insight_is_self_meta(t) && !looks_capability_user(user) {
+            return None;
+        }
+        if !multi
+            && !looks_capability_user(user)
+            && !insight_touches_tokens(t, &user_tokens)
+            && matched.label == "identity"
+        {
+            return None;
+        }
+        Some(t.to_owned())
     });
     if let Some(ref l) = lead {
         seen.push(l.to_ascii_lowercase());
     }
-
-    let multi = looks_multi_domain_user(user);
-    let user_tokens = content_tokens_bridge(user);
 
     // Attention-ordered non-residual mixture first — filter cross-domain contamination.
     let mut mix: Vec<_> = matched
@@ -452,6 +463,24 @@ fn frame_touches_user(clause: &str, user_tokens: &[String]) -> bool {
     user_tokens
         .iter()
         .any(|t| t.len() >= 4 && cl.contains(t.as_str()))
+}
+
+fn insight_touches_tokens(insight: &str, user_tokens: &[String]) -> bool {
+    let il = insight.to_ascii_lowercase();
+    user_tokens
+        .iter()
+        .any(|t| t.len() >= 4 && il.contains(t.as_str()))
+}
+
+fn insight_is_self_meta(insight: &str) -> bool {
+    let l = insight.to_ascii_lowercase();
+    (l.contains("perci") || l.contains("strongest honest claim") || l.contains("i am a local"))
+        && (l.contains("operational")
+            || l.contains("routing")
+            || l.contains("weights")
+            || l.contains("governed")
+            || l.contains("not a cloud")
+            || l.contains("not conscious"))
 }
 
 #[cfg(test)]

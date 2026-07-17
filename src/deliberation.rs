@@ -147,6 +147,11 @@ pub fn try_deliberate(
         return Some(justify_prior_answer(recent));
     }
 
+    // Partition recovery (follow-up or direct) — before broad trust-fail templates.
+    if looks_partition_recovery_question(&text) {
+        return Some(partition_recovery_answer(&text, recent));
+    }
+
     // Conceptual trust/systems Qs must not fall into code-domain debug cards
     // just because the word "fail" appears.
     if looks_trust_systems_question(&text) {
@@ -2495,6 +2500,10 @@ fn looks_trust_systems_question(text: &str) -> bool {
     if !text.contains("trust") {
         return false;
     }
+    // Handled by partition-recovery operator.
+    if looks_partition_recovery_question(text) {
+        return false;
+    }
     let systemsish = text.contains("distributed")
         || text.contains("system")
         || text.contains("interface")
@@ -2508,21 +2517,70 @@ fn looks_trust_systems_question(text: &str) -> bool {
         || text.contains("fail")
         || text.contains("work")
         || text.contains("break")
-        || text.contains("earn");
+        || text.contains("earn")
+        || text.contains("should");
     askish && !text.contains("write ") && !text.contains("implement ")
 }
 
 fn trust_systems_answer(text: &str) -> Deliberation {
-    let how = text.contains("how");
-    let body = if how {
+    // Design / normative: how *should* trust and interfaces work?
+    let design = (text.contains("should") || text.contains("how do") || text.contains("how can"))
+        && (text.contains("work") || text.contains("design") || text.contains("build"))
+        && !text.contains("fail");
+    let how_fail = text.contains("how") && (text.contains("fail") || text.contains("break"));
+    let body = if design {
+        "Trust and interfaces in distributed systems should be designed as explicit contracts, not feelings. Practically: (1) every boundary names who may act and under which proof; (2) failure modes and timeouts are part of the interface, not afterthoughts; (3) recovery is idempotent and observable so partial partitions do not look like betrayal; (4) “done” is a shared predicate under lag and retry, not a local guess. Interfaces earn trust when a caller can check authority, health, and recovery without seeing another process’s private state."
+    } else if how_fail {
         "Trust fails in distributed systems when authority and evidence drift out of sync across nodes. Practically: (1) interfaces stop naming who may act and under which proof; (2) failure modes stay implicit so partial outages look like betrayal; (3) recovery paths are local while callers assume global consistency; (4) clocks, retries, and caches create histories that disagree without a reconciliation rule. How it fails is usually gradual — timeouts, silent drops, stale reads — not a single dramatic breach. The repair is explicit contracts: authz at the boundary, observable health, idempotent recovery, and a shared story of what “done” means under partition."
     } else {
         "Trust fails in distributed systems when interfaces, failure modes, and recovery stay implicit. Distance multiplies uncertainty: a caller cannot see another service’s internal state, only messages that may be delayed, duplicated, or lost. Without named authority, proof, and recovery, “I trust you” becomes an untested assumption — and assumptions break under load, partition, and version skew. Why it fails is structural: trust is not a feeling between processes; it is earned when contracts stay checkable when something goes wrong."
     };
     Deliberation::new("trust-systems", body)
         .observed("conceptual trust + systems question (not a code debug request)")
-        .inferred("failure is contract/evidence drift across partial observability")
+        .inferred(if design {
+            "normative design of trust/interfaces differs from failure-mode diagnosis"
+        } else {
+            "failure is contract/evidence drift across partial observability"
+        })
         .confidence(0.94)
+}
+
+fn looks_partition_recovery_question(text: &str) -> bool {
+    let has_partition = text.contains("partition")
+        || text.contains("network split")
+        || text.contains("split brain")
+        || text.contains("netsplit");
+    let has_recovery = text.contains("recover")
+        || text.contains("heal")
+        || text.contains("reconcile")
+        || text.contains("failover")
+        || text.contains("what about recovery")
+        || text.contains("about recovery");
+    // Direct partition questions also count.
+    (has_partition && (has_recovery || text.contains("what about") || text.contains("how")))
+        || (has_recovery && has_partition)
+        || (text.contains("recovery under") && text.contains("partition"))
+        || (text.contains("under partition") && (has_recovery || text.contains("what")))
+}
+
+fn partition_recovery_answer(text: &str, recent: &[(String, String)]) -> Deliberation {
+    let prior_trust = recent.iter().rev().any(|(u, a)| {
+        let t = format!("{u} {a}").to_ascii_lowercase();
+        t.contains("trust") && (t.contains("distributed") || t.contains("interface"))
+    });
+    let bridge = if prior_trust {
+        "Continuing the trust/interfaces thread: "
+    } else {
+        ""
+    };
+    let body = format!(
+        "{bridge}Recovery under partition is the hard part of distributed trust. While the network is split, each side has a partial history; “recovery” means reconciling those histories without inventing a false shared past. Practically: (1) prefer idempotent writes and versioned state so replay is safe; (2) make “done” a checkable predicate, not a local success flag; (3) choose explicit consistency (quorum, primary, CRDT merge, or human gate) before healing; (4) surface lag and conflict to callers so silence is not mistaken for agreement. Trust returns when both sides can prove what was accepted under the split and what was rejected or deferred—not when messages simply start flowing again."
+    );
+    let _ = text;
+    Deliberation::new("partition-recovery", body)
+        .observed("user asked about recovery under partition (direct or follow-up)")
+        .inferred("partition recovery is reconciliation under partial history, not mere reconnect")
+        .confidence(0.93)
 }
 
 fn looks_session_situation_question(text: &str) -> bool {
@@ -2550,23 +2608,34 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
         let mut themes: Vec<String> = Vec::new();
         for (u, _) in recent.iter().rev().take(8) {
             let low = u.to_ascii_lowercase();
-            // Skip meta / presence noise — not substantive thread themes.
+            // Skip meta / presence / self-justification noise.
             if looks_session_situation_question(&low)
+                || looks_justify_prior_answer(&low)
                 || low.contains("are you there")
-                || matches!(low.trim(), "hi" | "hello" | "hey" | "yo" | "sup")
+                || low.contains("getting smarter")
+                || low.starts_with("thanks")
+                || matches!(low.trim(), "hi" | "hello" | "hey" | "yo" | "sup" | "thanks")
             {
                 continue;
             }
             let label = if low.contains("trust")
-                && (low.contains("system") || low.contains("distributed"))
+                && (low.contains("system") || low.contains("distributed") || low.contains("interface"))
             {
                 "trust in distributed systems".to_owned()
             } else if low.contains("connect ") {
                 "cross-domain connect / synthesis".to_owned()
+            } else if low.contains("partition") || low.contains("recovery under") {
+                "partition recovery".to_owned()
+            } else if low.contains("2+2") || low.contains("2 + 2") || (low.contains("equal") && low.chars().any(|c| c.is_ascii_digit())) {
+                "explanatory math".to_owned()
             } else if low.contains("latency") || low.contains("slow") {
                 "latency / performance".to_owned()
             } else if low.contains("smarter") || low.contains("evolve") {
                 "capability evolution".to_owned()
+            } else if low.contains("reverse") && low.contains("rust") {
+                "code generation".to_owned()
+            } else if low.contains("plan") && low.contains("transfer") {
+                "transfer-test plan".to_owned()
             } else {
                 let snippet: String = u
                     .split_whitespace()
@@ -2574,6 +2643,10 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
                     .collect::<Vec<_>>()
                     .join(" ");
                 if snippet.is_empty() || snippet.split_whitespace().count() < 3 {
+                    continue;
+                }
+                // Skip pure social / thanks-shaped leftovers.
+                if snippet.split_whitespace().count() <= 2 {
                     continue;
                 }
                 snippet
@@ -4660,6 +4733,40 @@ mod tests {
         assert_eq!(how.operator, "trust-systems");
         assert!(how.answer.to_ascii_lowercase().contains("interface") || how.answer.contains("authority"));
         assert!(!how.answer.contains("failing output"));
+    }
+
+    #[test]
+    fn trust_should_work_is_design_not_fail_template() {
+        let r = run(
+            "how should trust and interfaces work in distributed systems?",
+            &[],
+        );
+        assert_eq!(r.operator, "trust-systems");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("should") || low.contains("designed") || low.contains("explicit contracts"),
+            "got: {}",
+            r.answer
+        );
+        assert!(
+            !low.starts_with("trust fails in distributed systems when authority and evidence"),
+            "failure template for design ask: {}",
+            r.answer
+        );
+    }
+
+    #[test]
+    fn partition_recovery_followup_binds_topic() {
+        let recent = [(
+            "how should trust and interfaces work in distributed systems?".to_owned(),
+            "Trust and interfaces should be contracts.".to_owned(),
+        )];
+        let r = run("what about recovery under partition?", &recent);
+        assert_eq!(r.operator, "partition-recovery");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("partition") && (low.contains("recover") || low.contains("reconcil")));
+        assert!(!low.contains("strongest honest claim about perci"));
+        assert!(!low.contains("not a cloud llm"));
     }
 
     #[test]
