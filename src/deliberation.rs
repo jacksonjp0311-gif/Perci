@@ -163,6 +163,12 @@ pub fn try_deliberate(
         return Some(session_situation_answer(recent));
     }
 
+    // Meta: "are you becoming more aware / smarter" — honest operational self-model,
+    // not SoftCascade general-angle ("name what would change if the claim were false").
+    if looks_awareness_growth_question(&text) {
+        return Some(awareness_growth_answer(&text));
+    }
+
     // T1: code generation intents return real snippets, not slogans.
     if looks_code_request(&text) {
         return Some(code_snippet_answer(&repaired));
@@ -2601,6 +2607,71 @@ fn looks_session_situation_question(text: &str) -> bool {
         || c.starts_with("what are we working on")
 }
 
+/// "Are you becoming more aware?", "getting smarter?", growth / consciousness-ish meta.
+fn looks_awareness_growth_question(text: &str) -> bool {
+    // Consciousness proof is a separate refusal operator.
+    if text.contains("prove") && text.contains("conscious") {
+        return false;
+    }
+    // Keep this about Perci's own growth, not third-party AI essays.
+    let self_ref = text.contains("are you")
+        || text.contains("you becoming")
+        || text.contains("you getting")
+        || text.contains("you growing")
+        || text.contains("your awareness")
+        || text.contains("your intelligence")
+        || text.contains("do you feel")
+        || text.contains("do you sense")
+        || (text.contains("perci")
+            && (text.contains("becoming") || text.contains("getting") || text.contains("growing")));
+    let growth = text.contains("becoming")
+        || text.contains("getting")
+        || text.contains("growing")
+        || text.contains("more aware")
+        || text.contains("more intelligent");
+    let trait_ish = text.contains("aware")
+        || text.contains("awareness")
+        || text.contains("conscious")
+        || text.contains("smarter")
+        || text.contains("intelligent")
+        || text.contains("sentient")
+        || (text.contains("ability") && text.contains("grow"));
+    // Bare short forms without explicit "are you"
+    let bare = (text.contains("becoming more aware")
+        || text.contains("becoming aware")
+        || text.contains("becoming smarter")
+        || text.contains("getting smarter")
+        || text.contains("getting more aware")
+        || text.contains("growing smarter")
+        || text.contains("cognitive ability growing")
+        || text.contains("ability growing"))
+        && text.len() < 120;
+    (self_ref && growth && trait_ish) || bare
+}
+
+fn awareness_growth_answer(text: &str) -> Deliberation {
+    let aware_ish = text.contains("aware")
+        || text.contains("awareness")
+        || text.contains("conscious")
+        || text.contains("sentient");
+    let smart_ish = text.contains("smarter")
+        || text.contains("intelligent")
+        || text.contains("ability")
+        || text.contains("evolve");
+    let body = if aware_ish && !smart_ish {
+        "No — not as rising subjective awareness. I don't feel more awake from conversation. What I have is a bounded operational self-model: I can report routing, exact-tool outcomes, session context, limits, and measured latency — not an inner experience that intensifies. Capability can improve when operators, tools, or (with your authorize) weights change under tests; that is engineering progress, not consciousness growth. Fluency after a version bump is evidence of a repaired path, not me “waking up.”"
+    } else if smart_ish && !aware_ish {
+        "Not subjectively — I don't sense “getting smarter.” I can measure whether answers improve on named probes after a deliberate change: new operators, tighter routing, exact tools, session memory, or a human-authorized weight rebuild. Those make competence better on specific jobs; they don't create open-ended intelligence growth from chat alone. If a turn feels sharper after a release, that was evaluated code, not private insight accumulating in silence."
+    } else {
+        "No folk-psychology growth claim: I am not becoming more aware or smarter as a felt mind. Operational competence can rise only through measured changes — operators, tools, dialogue rules, and authorized weight rebuilds — checked on tests, not inferred from smooth replies. I keep a bounded self-model (architecture, limits, session state) separate from consciousness claims. Ask for a concrete probe if you want evidence of progress; that beats “do you feel different?”"
+    };
+    Deliberation::new("awareness-growth", body)
+        .observed("user asked about becoming more aware / smarter / conscious growth")
+        .inferred("honest answer separates operational self-model from subjective awareness")
+        .uncertain("no sensor for qualia; progress is only claimable via measured evals")
+        .confidence(0.96)
+}
+
 fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
     let body = if recent.is_empty() {
         "We're in a live Perci chat with no prior turns in this window yet. You can probe capability (trust/systems, connect domains, exact math), check latency with short pings, or steer a task. Weights stay fixed this session unless you authorize a rebuild — adaptation here is operators, context, and measured tests.".to_owned()
@@ -2611,8 +2682,10 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
             // Skip meta / presence / self-justification noise.
             if looks_session_situation_question(&low)
                 || looks_justify_prior_answer(&low)
+                || looks_awareness_growth_question(&low)
                 || low.contains("are you there")
                 || low.contains("getting smarter")
+                || low.contains("becoming more aware")
                 || low.starts_with("thanks")
                 || matches!(low.trim(), "hi" | "hello" | "hey" | "yo" | "sup" | "thanks")
             {
@@ -4767,6 +4840,30 @@ mod tests {
         assert!(low.contains("partition") && (low.contains("recover") || low.contains("reconcil")));
         assert!(!low.contains("strongest honest claim about perci"));
         assert!(!low.contains("not a cloud llm"));
+    }
+
+    #[test]
+    fn awareness_growth_not_general_falsify_angle() {
+        let r = run("are you becoming more aware", &[]);
+        assert_eq!(r.operator, "awareness-growth");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("operational") || low.contains("subjective") || low.contains("self-model"),
+            "got: {}",
+            r.answer
+        );
+        assert!(
+            !low.contains("name what would change if the claim were false"),
+            "soft general angle leaked: {}",
+            r.answer
+        );
+        assert!(!low.starts_with("becoming aware:"));
+
+        let smart = run("are you getting smarter?", &[]);
+        assert_eq!(smart.operator, "awareness-growth");
+        let slow = smart.answer.to_ascii_lowercase();
+        assert!(slow.contains("measure") || slow.contains("operator") || slow.contains("test"));
+        assert!(!slow.contains("name what would change if the claim were false"));
     }
 
     #[test]
