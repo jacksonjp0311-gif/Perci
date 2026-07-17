@@ -2373,12 +2373,16 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     // Drop parenthetical coaching notes: "(mixture + relate binds)".
     let stripped = strip_parentheticals(&lower);
     // Support: "connect A and B", "bridge A with B", "relate A and B".
-    let start = if let Some(i) = stripped.find("connect ") {
-        i + "connect ".len()
-    } else if let Some(i) = stripped.find("bridge ") {
-        i + "bridge ".len()
-    } else if let Some(i) = stripped.find("relate ") {
-        i + "relate ".len()
+    // Only treat bridge/relate as synthesis *commands* at the start of the ask —
+    // never "The bridge is cold because…" (ambiguity probes).
+    let start = if stripped.starts_with("connect ") {
+        "connect ".len()
+    } else if stripped.starts_with("bridge ") {
+        "bridge ".len()
+    } else if stripped.starts_with("relate ") {
+        "relate ".len()
+    } else if let Some(i) = stripped.find(" connect ") {
+        i + " connect ".len()
     } else {
         return None;
     };
