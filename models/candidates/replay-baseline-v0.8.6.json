@@ -1,0 +1,33 @@
+{
+  "schema": "perci.replay-baseline.v1",
+  "n": 120,
+  "engines": [
+    {
+      "engine": "entity-slot",
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 1.0,
+      "mean_compositional_score": 44.2
+    },
+    {
+      "engine": "native-decoder",
+      "topic_binding_rate": 0.8333333333333334,
+      "slot_pair_binding_rate": 0.5166666666666667,
+      "mean_compositional_score": 8.666666666666666
+    },
+    {
+      "engine": "reason-loop",
+      "topic_binding_rate": 0.8333333333333334,
+      "slot_pair_binding_rate": 0.5166666666666667,
+      "mean_compositional_score": 8.666666666666666
+    },
+    {
+      "engine": "compositional",
+      "topic_binding_rate": 0.8333333333333334,
+      "slot_pair_binding_rate": 0.5,
+      "mean_compositional_score": 6.066666666666666
+    }
+  ],
+  "promote_recommended": false,
+  "promote_reason": "best_engine=entity-slot; active_native_decoder_topic=0.833; human authorize required; binary field promote only if held-out beats active on full probe",
+  "claim_boundary": "engineering comparison only — not AGI; never auto-promote .pwgt / .bwm / .bphr"
+}

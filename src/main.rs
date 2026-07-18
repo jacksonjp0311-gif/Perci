@@ -206,9 +206,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "regress" | "regression" => {
                     println!("{}", perci::fabric::regress_report());
                 }
+                "decode" => {
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    if prompt.trim().is_empty() {
+                        return Err("usage: perci fabric decode <prompt>".into());
+                    }
+                    let r = perci::native_decoder::decode(prompt.trim(), None);
+                    println!("layers={:?} ok={}\n{}", r.layers, r.ok, r.text);
+                }
+                "reason" => {
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    if prompt.trim().is_empty() {
+                        return Err("usage: perci fabric reason <prompt>".into());
+                    }
+                    let r = perci::reason_loop::run_loop(prompt.trim());
+                    println!("{}", perci::reason_loop::format_receipt(&r));
+                }
+                "replay" | "baselines" => {
+                    let path = args
+                        .next()
+                        .unwrap_or_else(|| "models/candidates/adversarial-v0.8.4-heldout.jsonl".into());
+                    let limit = args
+                        .next()
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .unwrap_or(120);
+                    let report = perci::replay_learn::compare_baselines(
+                        std::path::Path::new(&path),
+                        limit,
+                    )?;
+                    if let Ok(p) = perci::replay_learn::write_report(&report) {
+                        eprintln!("wrote {}", p.display());
+                    }
+                    println!("{}", perci::replay_learn::format_report(&report));
+                }
+                "compose" | "world-compose" => {
+                    println!("{}", perci::compositional_world::CompositionalWorld::status_report());
+                    let prompt = args.collect::<Vec<_>>().join(" ");
+                    if !prompt.trim().is_empty() {
+                        let w = perci::compositional_world::CompositionalWorld::seed();
+                        if let Some(f) = perci::entity_slot::extract_entity_slot_frame(prompt.trim()) {
+                            println!("{}", w.explain_pair(&f.slot_a, &f.slot_b));
+                        } else {
+                            println!("(pass entity-slot style prompt to see multi-hop paths)");
+                        }
+                    }
+                }
                 other => {
                     return Err(format!(
-                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|next|regress|evolve)"
+                        "unknown fabric subcommand: {other} (try: status|plan|knowledge|orchestrate|handoff|next|regress|evolve|decode|reason|replay|compose)"
                     )
                     .into());
                 }
@@ -725,11 +770,13 @@ where
     let sub = args.next().unwrap_or_else(|| "status".into());
     match sub.as_str() {
         "status" | "inspect" => println!(
-            "{}\n\n{}\n\n{}\n\n{}",
+            "{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}",
             perci::binary_language::status_report(),
             perci::binary_phrase::status_report(),
             perci::binary_relation::status_report(),
-            perci::binary_world::status_report()
+            perci::binary_world::status_report(),
+            perci::compositional_world::CompositionalWorld::status_report(),
+            perci::native_decoder::status_report()
         ),
         "train" | "rebuild" => {
             let values = args.collect::<Vec<_>>();

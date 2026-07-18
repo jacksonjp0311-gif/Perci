@@ -1,0 +1,40 @@
+{
+  "tag": "v0.8.6-adversarial-heldout",
+  "questions_requested": 120,
+  "responses_parsed": 120,
+  "topic_binding_rate": 0.975,
+  "slot_pair_binding_rate": 0.6,
+  "family_metrics": {
+    "boundary_limit": {
+      "responses": 20,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 1.0
+    },
+    "contradiction": {
+      "responses": 20,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 0.6
+    },
+    "counterfactual": {
+      "responses": 20,
+      "topic_binding_rate": 0.85,
+      "slot_pair_binding_rate": 0.55
+    },
+    "entity_swap": {
+      "responses": 20,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 1.0
+    },
+    "negation": {
+      "responses": 20,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 0.15
+    },
+    "paraphrase": {
+      "responses": 20,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": 0.3
+    }
+  },
+  "claim_boundary": "measured probe only \u2014 not AGI; no weight promote"
+}

@@ -203,3 +203,29 @@ Measured (held-out adversarial entity_swap family, n=20, `perci ask`):
 | slot_pair_binding | n/a | **100%** |
 
 Claim boundary: operator routing fix under measured gates — not frontier AGI.
+
+### Evolution round 8 — five native depth tracks (v0.8.6)
+
+| Track | Artifact |
+|-------|----------|
+| Full adversarial re-probe | `native-probe-v0.8.6-adversarial-heldout-summary.json` |
+| Compositional multi-hop | `src/compositional_world.rs` |
+| Native decoder | `src/native_decoder.rs` |
+| Reason/search/verify | `src/reason_loop.rs` |
+| Replay baselines | `src/replay_learn.rs` · `promote_recommended=false` always |
+
+**120-q adversarial held-out (v0.8.6 active `perci ask`):**
+
+| Family | topic_binding | slot_pair_binding |
+|--------|-------------:|------------------:|
+| entity_swap | **100%** | **100%** |
+| boundary_limit | 100% | 100% |
+| contradiction | 100% | 60% |
+| counterfactual | 85% | 55% |
+| paraphrase | 100% | 30% |
+| negation | 100% | 15% |
+| **overall** | **97.5%** | **60%** |
+
+Negation/paraphrase slot_pair is limited because the curriculum text often embeds only `motif_a` (e.g. negation never names `motif_b`). Topic binding remains the primary family gate there.
+
+Replay baselines: entity-slot 100%/100% on entity_swap rows; no auto-promote of binary fields.

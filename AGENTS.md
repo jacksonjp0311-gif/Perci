@@ -80,6 +80,10 @@ human         → durable weight promote and high-risk merge
 | Emergence lab | `src/emergence.rs` |
 | Entity-slot transfer | `src/entity_slot.rs` (adversarial entity-swap) |
 | Native binary fields | `src/binary_language.rs`, `binary_phrase.rs`, `binary_relation.rs`, `binary_world.rs` |
+| Compositional multi-hop | `src/compositional_world.rs` · `perci fabric compose` |
+| Native decoder | `src/native_decoder.rs` · `perci fabric decode` |
+| Reason/search/verify | `src/reason_loop.rs` · `perci fabric reason` |
+| Replay baselines | `src/replay_learn.rs` · `perci fabric replay` (never auto-promote) |
 
 ### Interconnection commands
 

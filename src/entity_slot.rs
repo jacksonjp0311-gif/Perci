@@ -49,6 +49,19 @@ pub struct EntitySlotFrame {
     pub slot_b: String,
 }
 
+/// Motifs present in text (ordered by first appearance).
+pub fn motifs_in_text(text: &str) -> Vec<String> {
+    let lower = text.to_ascii_lowercase();
+    let mut found: Vec<(usize, String)> = Vec::new();
+    for motif in KNOWN_SLOTS {
+        if let Some(pos) = lower.find(motif) {
+            found.push((pos, (*motif).to_owned()));
+        }
+    }
+    found.sort_by_key(|(pos, _)| *pos);
+    found.into_iter().map(|(_, m)| m).collect()
+}
+
 /// Detect adversarial-style entity-slot transfer asks.
 ///
 /// Do **not** match pure pedagogy about "entity-swap" without a concrete

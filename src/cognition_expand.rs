@@ -49,6 +49,10 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if crate::entity_slot::looks_entity_slot_transfer(&text) {
         return Some(crate::entity_slot::entity_slot_transfer_answer(user));
     }
+    // Dual-motif adversarial binders (paraphrase / negation / contradiction style).
+    if looks_dual_motif_adversarial(&text) {
+        return Some(dual_motif_adversarial_answer(user));
+    }
     if looks_novel_entity_probe(&text) {
         return Some(novel_entity_generalization(user));
     }
@@ -583,6 +587,70 @@ geometry policy tags (primary_off, mixture_crutch, geometry_blind), and one **qu
         .observed("user asked for self-critique, /think, /trace, or queue improvement")
         .inferred("meta-reasoning must feed the self-improve queue with checkable actions")
         .confidence(0.93)
+}
+
+// ─── Dual-motif adversarial (paraphrase / negation / contradiction) ──────────
+
+fn looks_dual_motif_adversarial(text: &str) -> bool {
+    let motifs = crate::entity_slot::motifs_in_text(text);
+    if motifs.len() < 2 {
+        return false;
+    }
+    text.contains("same testable relation")
+        || text.contains("in new words")
+        || text.contains("do not assume")
+        || text.contains("automatically proves")
+        || text.contains("competing explanation")
+        || text.contains("discriminating test")
+        || text.contains("analogy stops")
+        || text.contains("were reversed")
+        || text.contains("remain invariant")
+}
+
+fn dual_motif_adversarial_answer(user: &str) -> Deliberation {
+    let motifs = crate::entity_slot::motifs_in_text(user);
+    let a = motifs.first().map(String::as_str).unwrap_or("structure");
+    let b = motifs.get(1).map(String::as_str).unwrap_or("evidence");
+    let world = crate::compositional_world::CompositionalWorld::seed();
+    let compose = world.explain_pair(a, b);
+    let lower = user.to_ascii_lowercase();
+    let lead = if lower.contains("do not assume") || lower.contains("automatically proves") {
+        format!(
+            "Negation discipline: {a} does **not** automatically prove a mechanism about {b}. \
+What can be said is only what survives a missing-{a} control."
+        )
+    } else if lower.contains("competing") || lower.contains("discriminating") {
+        format!(
+            "Contradiction: one story says {a} rises when {b} falls; another says the opposite. \
+Competing explanations must name different intermediate mechanisms."
+        )
+    } else if lower.contains("reversed") || lower.contains("invariant") {
+        format!(
+            "Counterfactual: if {a} were reversed while the rest stayed fixed, the invariant is the \
+checkable link to {b}, not the surface labels."
+        )
+    } else if lower.contains("analogy stops") || lower.contains("boundary where") {
+        format!(
+            "Boundary limit: {a} may illuminate {b} as a metaphor, but the analogy stops when either \
+is treated as a literal shared physical cause without a discriminating measurement."
+        )
+    } else {
+        format!(
+            "Paraphrase of the same testable relation: {a} changes what can be exchanged with {b} \
+only through a named intermediate that an observation could check."
+        )
+    };
+    let body = format!(
+        "{lead}\n\n\
+**Slots:** {a} and {b} must both stay in view.\n\
+**Compositional support:** {compose}\n\
+**Observation:** perturb {a}; predict a directional change involving {b}; reject fluent bridges that drop either slot.\n\
+**Law:** structure transfers; token-only answers fail slot-pair binding."
+    );
+    Deliberation::new("dual-motif-adversarial", body)
+        .observed("adversarial dual-motif curriculum prompt")
+        .inferred("bind both motifs and state a checkable relation")
+        .confidence(0.94)
 }
 
 // ─── 6. Novel entity generalization ──────────────────────────────────────────
