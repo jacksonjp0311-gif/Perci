@@ -89,6 +89,17 @@ pub fn is_explanatory_math(lower: &str) -> bool {
         return false;
     }
     // Still allow pure calculation requests through the tool path.
+    // Compound: "What is 17 times 3, and why is authority different?" — compute first.
+    let what_is_compute = lower.contains("what is")
+        && has_digit
+        && has_arith_op
+        && (lower.contains(" times ")
+            || lower.contains(" plus ")
+            || lower.contains(" minus ")
+            || lower.contains("divided by")
+            || lower.contains('+')
+            || lower.contains('*')
+            || lower.contains('/'));
     if lower.contains("calculate")
         || lower.contains("compute")
         || lower.contains("percent of")
@@ -96,6 +107,7 @@ pub fn is_explanatory_math(lower: &str) -> bool {
         || lower.contains("mean of")
         || lower.contains("factorial")
         || (lower.starts_with("what is ") && has_digit && !lower.contains("why"))
+        || what_is_compute
     {
         return false;
     }
@@ -495,6 +507,15 @@ mod tests {
             try_solve_arithmetic("10 divided by 4").unwrap(),
             Some("5/2".to_owned())
         );
+    }
+
+    #[test]
+    fn compound_what_is_times_and_why_still_computes() {
+        let r = try_solve_arithmetic(
+            "What is 17 times 3, and why is that authority different from a metaphor about multiplication?",
+        )
+        .unwrap();
+        assert_eq!(r, Some("51".to_owned()));
     }
 
     #[test]

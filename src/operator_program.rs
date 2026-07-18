@@ -503,7 +503,20 @@ pub fn annotate_deliberation(user: &str, deliberation: &mut Deliberation) {
                     "comfort_collapse" | "generic_checklist" | "missing_domain"
                 )
             }) {
-                if let Some(rewritten) = rewrite_after_critic(user, &program, &report) {
+                // Do not rewrite specialized slot/hop operators into synthesis bridges.
+                let protect = matches!(
+                    deliberation.operator,
+                    "dual-motif-adversarial"
+                        | "multi-hop-compose"
+                        | "entity-slot-transfer"
+                        | "governance-authority"
+                        | "identity-bound"
+                );
+                if protect {
+                    deliberation.inferences.push(
+                        "program critic: rewrite suppressed for specialized operator".to_owned(),
+                    );
+                } else if let Some(rewritten) = rewrite_after_critic(user, &program, &report) {
                     deliberation.answer = rewritten;
                     deliberation
                         .inferences

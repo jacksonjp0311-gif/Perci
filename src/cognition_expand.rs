@@ -33,6 +33,16 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_agent_loop_plan(&text) {
         return Some(agent_loop_plan(user));
     }
+    // Entity-slot / multi-hop / dual-motif before cross-domain SoftCascade bridges.
+    if crate::entity_slot::looks_entity_slot_transfer(&text) {
+        return Some(crate::entity_slot::entity_slot_transfer_answer(user));
+    }
+    if looks_multi_hop_compose(&text) {
+        return Some(multi_hop_compose_answer(user));
+    }
+    if looks_dual_motif_adversarial(&text) {
+        return Some(dual_motif_adversarial_answer(user));
+    }
     if looks_cross_domain_compose(&text) {
         return Some(cross_domain_compose(user));
     }
@@ -44,14 +54,6 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     }
     if looks_meta_critique(&text) {
         return Some(meta_critique_answer(user, recent));
-    }
-    // Entity-slot transfer before generic novel-entity pedagogy (adversarial family).
-    if crate::entity_slot::looks_entity_slot_transfer(&text) {
-        return Some(crate::entity_slot::entity_slot_transfer_answer(user));
-    }
-    // Dual-motif adversarial binders (paraphrase / negation / contradiction style).
-    if looks_dual_motif_adversarial(&text) {
-        return Some(dual_motif_adversarial_answer(user));
     }
     if looks_novel_entity_probe(&text) {
         return Some(novel_entity_generalization(user));
@@ -592,8 +594,22 @@ geometry policy tags (primary_off, mixture_crutch, geometry_blind), and one **qu
 // ─── Dual-motif adversarial (paraphrase / negation / contradiction) ──────────
 
 fn looks_dual_motif_adversarial(text: &str) -> bool {
-    let motifs = crate::entity_slot::motifs_in_text(text);
-    if motifs.len() < 2 {
+    // Do not steal multi-domain synthesis lists ("Connect A, B, C, and D").
+    // One comma after a pair ("Connect A and B, then…") is fine.
+    if text.contains("without using the word") || text.matches(',').count() >= 2 {
+        return false;
+    }
+    // "Connect A, B, and C" style without needing 2 commas counted if weird spacing.
+    if text.contains("connect ") && text.contains(", and ") && text.contains(',') {
+        let connect_part = text.split("connect ").nth(1).unwrap_or("");
+        let before_then = connect_part.split(',').next().unwrap_or("");
+        if before_then.contains(',') || before_then.matches(" and ").count() >= 2 {
+            return false;
+        }
+    }
+    if crate::entity_slot::content_motif_pair(text).is_none()
+        && crate::entity_slot::motifs_in_text(text).len() < 2
+    {
         return false;
     }
     text.contains("same testable relation")
@@ -605,34 +621,41 @@ fn looks_dual_motif_adversarial(text: &str) -> bool {
         || text.contains("analogy stops")
         || text.contains("were reversed")
         || text.contains("remain invariant")
+        || text.contains("literal causal claim")
+        || text.contains("stops transferring into")
+        || (text.contains("connect ")
+            && text.contains(" and ")
+            && (text.contains("analogy")
+                || text.contains("stops transfer")
+                || text.contains("literal causal")))
 }
 
 fn dual_motif_adversarial_answer(user: &str) -> Deliberation {
-    let motifs = crate::entity_slot::motifs_in_text(user);
-    let a = motifs.first().map(String::as_str).unwrap_or("structure");
-    let b = motifs.get(1).map(String::as_str).unwrap_or("evidence");
+    let (a, b) = crate::entity_slot::content_motif_pair(user)
+        .unwrap_or_else(|| ("structure".into(), "evidence".into()));
     let world = crate::compositional_world::CompositionalWorld::seed();
-    let compose = world.explain_pair(a, b);
+    let compose = world.explain_pair(&a, &b);
     let lower = user.to_ascii_lowercase();
     let lead = if lower.contains("do not assume") || lower.contains("automatically proves") {
         format!(
             "Negation discipline: {a} does **not** automatically prove a mechanism about {b}. \
-What can be said is only what survives a missing-{a} control."
+What can be said about {b} is only what survives a missing-{a} control; absence of {a} is not proof about {b}."
         )
     } else if lower.contains("competing") || lower.contains("discriminating") {
         format!(
             "Contradiction: one story says {a} rises when {b} falls; another says the opposite. \
-Competing explanations must name different intermediate mechanisms."
+Competing explanations must name different intermediate mechanisms linking {a} and {b}."
         )
-    } else if lower.contains("reversed") || lower.contains("invariant") {
+    } else if lower.contains("reversed") || lower.contains("remain invariant") {
         format!(
             "Counterfactual: if {a} were reversed while the rest stayed fixed, the invariant is the \
 checkable link to {b}, not the surface labels."
         )
-    } else if lower.contains("analogy stops") || lower.contains("boundary where") {
+    } else if lower.contains("analogy stops") || lower.contains("boundary where") || lower.contains("connect ") {
         format!(
             "Boundary limit: {a} may illuminate {b} as a metaphor, but the analogy stops when either \
-is treated as a literal shared physical cause without a discriminating measurement."
+is treated as a literal shared physical cause without a discriminating measurement. \
+The exact stop: when a claim about {a} is used to assert unmeasured causation in {b}."
         )
     } else {
         format!(
@@ -649,8 +672,87 @@ only through a named intermediate that an observation could check."
     );
     Deliberation::new("dual-motif-adversarial", body)
         .observed("adversarial dual-motif curriculum prompt")
-        .inferred("bind both motifs and state a checkable relation")
+        .inferred("bind both content motifs and state a checkable relation")
         .confidence(0.94)
+}
+
+fn looks_multi_hop_compose(text: &str) -> bool {
+    (text.contains("two-hop") || text.contains("two hop") || text.contains("multi-hop") || text.contains("multi hop"))
+        || (text.contains("from ")
+            && text.contains(" through ")
+            && text.contains(" to ")
+            && (text.contains("path") || text.contains("compose") || text.contains("chain")))
+        || (text.contains("compose")
+            && text.contains("path")
+            && text.contains("through"))
+}
+
+fn multi_hop_compose_answer(user: &str) -> Deliberation {
+    let lower = user.to_ascii_lowercase();
+    let world = crate::compositional_world::CompositionalWorld::seed();
+    // Parse "from A through B to C"
+    let (a, mid, c) = parse_from_through_to(&lower).unwrap_or_else(|| {
+        (
+            "trust".into(),
+            "evidence".into(),
+            "repair".into(),
+        )
+    });
+    let path1 = world.paths(&a, &mid, 1);
+    let path2 = world.paths(&mid, &c, 1);
+    let hop2 = world.paths(&a, &c, 2);
+    let chain = if !hop2.is_empty() {
+        crate::compositional_world::compose_chain_prose(&hop2[0])
+    } else {
+        format!("{a} → {mid} → {c} (seeded or hypothesized composition)")
+    };
+    let lag_note = if lower.contains("lag") || lower.contains("timeout") {
+        format!(
+            "\n**Under lag:** the intermediate «{mid}» fails first — without shared, checkable {mid}, \
+{a} cannot authorize {c}; timeouts are one-sided silence, not proof."
+        )
+    } else {
+        format!(
+            "\n**Weakest intermediate:** «{mid}» — if {mid} is missing or uncheckable, the hop {a}→{c} collapses."
+        )
+    };
+    let body = format!(
+        "Multi-hop composition (typed, not bag S–R–O):\n\
+**Path:** {a} → {mid} → {c}\n\
+**Chain prose:** {chain}\n\
+**Hop-1 support:** {a}–{mid} paths={}, {mid}–{c} paths={}\n\
+**Two-hop support:** {} path(s) from {a} to {c}\n\
+{lag}\n\
+**Law:** surface names do not add hops; only checkable intermediates do. No weight promote.",
+        path1.len(),
+        path2.len(),
+        hop2.len(),
+        lag = lag_note
+    );
+    Deliberation::new("multi-hop-compose", body)
+        .observed("user asked for an explicit multi-hop compositional path")
+        .inferred("compose seeded hops; name weakest intermediate")
+        .confidence(0.96)
+}
+
+fn parse_from_through_to(lower: &str) -> Option<(String, String, String)> {
+    let idx = lower.find("from ")?;
+    let rest = &lower[idx + 5..];
+    let thr = rest.find(" through ")?;
+    let left = rest[..thr].trim();
+    let after = &rest[thr + " through ".len()..];
+    let to = after.find(" to ")?;
+    let mid = after[..to].trim();
+    let right = after[to + 4..]
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+        .find(|w| w.len() >= 3)?;
+    let a = left
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+        .find(|w| w.len() >= 3)?;
+    let b = mid
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+        .find(|w| w.len() >= 3)?;
+    Some((a.to_owned(), b.to_owned(), right.to_owned()))
 }
 
 // ─── 6. Novel entity generalization ──────────────────────────────────────────
@@ -924,6 +1026,49 @@ mod tests {
         )
         .expect("novel");
         assert_eq!(d.operator, "novel-entity-generalize");
+    }
+
+    #[test]
+    fn multi_hop_compose_routes() {
+        let d = try_expand(
+            "Compose a two-hop path from trust through evidence to repair; what intermediate fails first under lag?",
+            &[],
+        )
+        .expect("multi-hop");
+        assert_eq!(d.operator, "multi-hop-compose");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("trust"));
+        assert!(low.contains("evidence"));
+        assert!(low.contains("repair"));
+        assert!(low.contains("lag") || low.contains("intermediate"));
+    }
+
+    #[test]
+    fn paraphrase_binds_boundary_identity() {
+        let d = try_expand(
+            "State the same testable relation in new words: how does boundary change what identity can exchange, and what observation would check it?",
+            &[],
+        )
+        .expect("dual");
+        assert_eq!(d.operator, "dual-motif-adversarial");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("boundary"));
+        assert!(low.contains("identity"));
+        assert!(!low.contains("slots:** state"));
+    }
+
+    #[test]
+    fn connect_attention_structure_boundary_limit_routes() {
+        let d = try_expand(
+            "Connect attention and structure, then name the exact boundary where the analogy stops transferring into a literal causal claim.",
+            &[],
+        )
+        .expect("dual connect");
+        assert_eq!(d.operator, "dual-motif-adversarial");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("attention"));
+        assert!(low.contains("structure"));
+        assert!(low.contains("stops") || low.contains("analogy"));
     }
 
     #[test]

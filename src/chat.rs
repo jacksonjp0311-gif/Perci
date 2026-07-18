@@ -383,8 +383,12 @@ impl ChatEngine {
                     || lower.contains("exactly which layer")
                     || (lower.contains("tool") && lower.contains("authority"))
                     || (lower.contains("bitwork") && lower.contains("calculate"))
+                    || lower.contains("metaphor")
+                    || (lower.contains("authority") && lower.contains("different"))
                 {
-                    text.push_str(" The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.");
+                    text.push_str(
+                        " That number is exact-tool authority (checked arithmetic), not a metaphor or associative prototype vote — definitions and rules decide the value; Bitwork only routes.",
+                    );
                 }
                 let mut deliberation = Deliberation::new("exact-arithmetic", text.clone())
                     .observed(format!("checked rational result={value}"))

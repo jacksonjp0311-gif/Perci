@@ -152,6 +152,12 @@ pub fn try_deliberate(
         return Some(partition_recovery_answer(&text, recent));
     }
 
+    // Multi-hop / dual-motif / entity-slot expansions before trust-systems steals
+    // "trust…lag…repair" compose prompts.
+    if let Some(d) = crate::cognition_expand::try_expand(&repaired, recent) {
+        return Some(d);
+    }
+
     // Conceptual trust/systems Qs must not fall into code-domain debug cards
     // just because the word "fail" appears.
     if looks_trust_systems_question(&text) {
@@ -160,11 +166,6 @@ pub fn try_deliberate(
 
     // Agent-staged auto-repairs (hardness fail catalog) after first-class operators.
     if let Some(d) = crate::auto_repairs::try_auto_repair(&repaired) {
-        return Some(d);
-    }
-
-    // v0.6.22 six-category Bitwork cognition expansions (operators only; no weight promote).
-    if let Some(d) = crate::cognition_expand::try_expand(&repaired, recent) {
         return Some(d);
     }
 
@@ -2622,6 +2623,14 @@ fn fold_synthesis_phrases(tokens: Vec<String>) -> Vec<String> {
 
 fn looks_trust_systems_question(text: &str) -> bool {
     if !text.contains("trust") {
+        return false;
+    }
+    // Multi-hop compose owns "from trust through evidence to repair".
+    if (text.contains("through ") && text.contains(" to "))
+        || text.contains("two-hop")
+        || text.contains("multi-hop")
+        || (text.contains("compose") && text.contains("path"))
+    {
         return false;
     }
     // Handled by partition-recovery operator.
