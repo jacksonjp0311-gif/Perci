@@ -194,7 +194,11 @@ pub struct FabricPlan {
 /// Route a user prompt into a fabric plan (Bitwork/operators remain control plane).
 pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     let t = user.to_ascii_lowercase();
-    let mut engines = vec![FabricEngine::Bitwork, FabricEngine::Operators, FabricEngine::Governance];
+    let mut engines = vec![
+        FabricEngine::Bitwork,
+        FabricEngine::Operators,
+        FabricEngine::Governance,
+    ];
     let mut notes = Vec::new();
     let mut needs_external_facts = false;
     let mut needs_proof = false;
@@ -253,13 +257,20 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
         notes.push("factual knowledge via retrieval + provenance, not pack weights".into());
     }
 
-    // Fluency / explain — language sidecar under critic.
+    // Fluency / explain — native PERCLNG1 field under the Perci critic.
+    let natural_language_request = (t.contains("natural") && t.contains("language"))
+        || t.contains("human sounding")
+        || t.contains("human-like")
+        || t.contains("fluency")
+        || t.contains("open-ended language")
+        || t.contains("language bottleneck");
     if t.contains("explain")
         || t.contains("write a")
         || t.contains("essay")
         || t.contains("summarize")
         || t.contains("in plain language")
         || t.split_whitespace().count() >= 12
+        || natural_language_request
     {
         engines.push(FabricEngine::LanguageSidecar);
         let mut lr = LanguageRequest::default();
@@ -269,13 +280,15 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
             "explain".into()
         };
         lr.intent = "technical_analysis".into();
-        lr.constraints.push("Perci critic must approve before display".into());
+        lr.constraints
+            .push("Perci critic must approve before display".into());
         lr.required_claim_boundaries
             .push("no consciousness claims".into());
         lr.required_claim_boundaries
             .push("no weight auto-promote".into());
         language = Some(lr);
-        notes.push("language sidecar generates prose; Perci governs evidence and boundaries".into());
+        notes
+            .push("native PERCLNG1 language field generates prose; Perci governs evidence and boundaries".into());
     }
 
     engines.push(FabricEngine::Verification);
@@ -448,7 +461,7 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
         authority_law: vec![
             "Bitwork → routing / geometry only".into(),
             "operators → explicit reasoning".into(),
-            "language LM → fluent prose under critic".into(),
+            "native language → PERCLNG1 binary sequence field under critic".into(),
             "retrieval → current facts + provenance".into(),
             "exact tools → arithmetic/geometry truth".into(),
             "proof engine → formal/unresolved receipts".into(),
@@ -457,6 +470,24 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
             "human → durable weight promote and high-risk merge".into(),
         ],
         env_hooks: vec![
+            EnvHook {
+                name: "PERCI_LANGUAGE_WEIGHTS".into(),
+                purpose: "native PERCLNG1 binary language artifact path".into(),
+            },
+            EnvHook {
+                name: "PERCI_MODEL_URL".into(),
+                purpose:
+                    "compatibility-only external endpoint; requires PERCI_ENABLE_EXTERNAL_LM=1"
+                        .into(),
+            },
+            EnvHook {
+                name: "PERCI_MODEL_NAME".into(),
+                purpose: "local model identifier, for example phi-4-mini or phi4-mini".into(),
+            },
+            EnvHook {
+                name: "PERCI_ENABLE_EXTERNAL_LM".into(),
+                purpose: "explicitly opt into legacy external language adapters".into(),
+            },
             EnvHook {
                 name: "PERCI_LANGUAGE_SIDECAR".into(),
                 purpose: "optional external language process (stdin/stdout JSON)".into(),
@@ -517,14 +548,14 @@ pub fn status_report() -> String {
         "explain how Perci routes trust under lag and prove retries need idempotence",
         "status-demo",
     );
-    format!(
+    let report = format!(
         "[Capability Fabric · v{}]\n\
 Perci is the governor. Engines do specialized work.\n\n\
 ## Engines\n\
   · Bitwork — rapid cognitive routing & geometry\n\
   · Operators — explicit reasoning procedures\n\
   · Exact tools — mechanical arithmetic/geometry truth\n\
-  · Language sidecar — fluent synthesis under critic (local + optional process)\n\
+  · Language sidecar — fluent synthesis under critic (local + HTTP/optional process)\n\
   · Knowledge fabric — source-bearing pack + evidence ledger\n\
   · Proof engine — exact tools + formal receipts (PERCI_PROOF_ENGINE optional)\n\
   · Code agent — bounded repo edits under sandbox budgets + worktrees\n\
@@ -538,9 +569,9 @@ engines: {:?}\n\
 needs_external_facts={} needs_proof={} needs_code={}\n\
 notes: {}\n\
 capability write_repo={} network={} git_push={}\n\n\
-## Phase status (v0.7.4 — all phases live + SoftCascade pack-align breadth)\n\
+## Phase status (v0.7.5 — local model language surface + SoftCascade pack-align breadth)\n\
   Phase 1: daemon token + loopback · fail-closed · budgets · semantic eval\n\
-  Phase 2: language_sidecar + knowledge_fabric; PERCI_LANGUAGE_SIDECAR optional\n\
+  Phase 2: language_sidecar + local HTTP model + knowledge_fabric; all optional\n\
   Phase 3: agent worktrees (PERCI_AGENT_WORKTREE=1) · capability tokens · budgets\n\
   Phase 4: proof_engine receipts · exact tools · PERCI_PROOF_ENGINE optional\n\
   SoftCascade align: trust · governance · identity · geometry · planning · logic\n\
@@ -559,7 +590,14 @@ capability write_repo={} network={} git_push={}\n\n\
         sample.capability.capabilities.write_repo,
         sample.capability.capabilities.network,
         sample.capability.capabilities.git_push,
-    )
+    );
+    report
+        .replace("v0.7.5", "v0.8.5")
+        .replace("local model language surface", "native binary language surface")
+        .replace(
+            "Phase 2: language_sidecar + local HTTP model + knowledge_fabric; all optional",
+            "Phase 2: native PERCLNG1 + PERCPHR1 + optional PERCREL1 + PERCIWM1 + language_sidecar + knowledge_fabric; external LM adapters opt-in",
+        )
 }
 
 /// Optimized multi-AI evolve loop (human-readable).
@@ -660,6 +698,16 @@ mod tests {
     }
 
     #[test]
+    fn plan_natural_language_bottleneck_uses_language_engine() {
+        let p = plan_for_prompt(
+            "remove the natural language bottleneck while staying fast",
+            "t3",
+        );
+        assert!(p.engines.contains(&FabricEngine::LanguageSidecar));
+        assert!(p.language.is_some());
+    }
+
+    #[test]
     fn capability_token_denies_expired() {
         let mut tok = CapabilityToken::agent_default("x");
         tok.expires_at = 1;
@@ -685,8 +733,10 @@ mod tests {
         let h = build_handoff("explain trust under lag and implement a hardness case");
         assert_eq!(h.schema, "perci.ai-handoff.v1");
         assert!(!h.entry_checklist.is_empty());
-        assert!(h.plan.engines.contains(&FabricEngine::LanguageSidecar)
-            || h.plan.engines.contains(&FabricEngine::CodeAgent));
+        assert!(
+            h.plan.engines.contains(&FabricEngine::LanguageSidecar)
+                || h.plan.engines.contains(&FabricEngine::CodeAgent)
+        );
         let s = serde_json::to_string(&h).unwrap();
         let back: AiHandoffPacket = serde_json::from_str(&s).unwrap();
         assert_eq!(back.task, h.task);

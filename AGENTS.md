@@ -48,7 +48,7 @@ Any AI agent (Grok, Claude, Codex, Cursor, etc.) may evolve this repo under the 
 ```text
 Bitwork       → routing / geometry only
 operators     → explicit reasoning
-language LM   → fluent prose under critic (PERCI_LANGUAGE_SIDECAR optional)
+native language → PERCLNG1 binary sequence field; external LM adapters opt-in only
 retrieval     → current facts + provenance (never bake into .pwgt silently)
 exact tools   → arithmetic/geometry truth
 proof engine  → formal/unresolved receipts (PERCI_PROOF_ENGINE optional)
@@ -78,6 +78,8 @@ human         → durable weight promote and high-risk merge
 | Semantic eval | `src/semantic_eval.rs`, `scripts/evaluate_semantic_v1.py` |
 | Hardness | `training/hardness/hardness-pack-v1.jsonl` |
 | Emergence lab | `src/emergence.rs` |
+| Entity-slot transfer | `src/entity_slot.rs` (adversarial entity-swap) |
+| Native binary fields | `src/binary_language.rs`, `binary_phrase.rs`, `binary_relation.rs`, `binary_world.rs` |
 
 ### Interconnection commands
 

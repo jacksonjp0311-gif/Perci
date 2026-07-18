@@ -1,5 +1,48 @@
 # Perci Cognitive Weights
 
+## Native language field (PERCLNG1)
+
+Perci also owns a separate binary language artifact:
+
+    models/perci-language-v0.1.blng
+
+Build it without an external model:
+
+    cargo run --release -- language train --repo
+    cargo run --release -- language status
+
+The field stores context records with four binary threshold planes. A set bit
+means that a next ASCII symbol was observed at least 1, 2, 4, or 8 times for
+that context. Context depths 1..=6 provide bounded back-off; Rust inference
+uses mmap, integer scoring, and a deterministic PRNG. The artifact is a
+trainable sequence memory, not a frontier transformer or a source of exact
+facts. Review the corpus before rebuilding; active promotion remains explicit.
+
+Each record is 71 bytes (`depth + 6-byte context + 4 × 128-bit planes`). The
+decoder scores a candidate byte with `depth² × sum(threshold bits)` across
+matching back-off records, so generation is integer-only and bounded. At the
+current 132,525 records that is about 9 MiB; a larger reviewed corpus can grow
+the field without changing the on-disk format.
+
+The companion `models/perci-language-v0.2.bphr` field moves one level up:
+tokens are assigned bounded numeric IDs, each context stores sparse next-token
+edges with four binary count planes, and the index is sorted by numeric token
+IDs. This is why the field can compose readable phrases without pretending to
+be a transformer. The current candidate is roughly 0.5 MiB and is intentionally
+small enough to retrain during an experiment.
+
+The optional `models/perci-world-v0.1.bwm` (`PERCIWM1`) field adds typed edges:
+hashed subject, relation, and object, plus domain, polarity, confidence, and
+evidence bins. It is loaded with mmap and contributes only a bounded reranking
+score to native phrase candidates. It is not a fact database and is never
+auto-promoted. The v0.8.4 candidate was 13,387 records / 0.41 MiB and tied the
+active phrase field on the adversarial held-out pack, so it remains isolated.
+
+Dialogue continuity is separate from the phrase weights: four 64-bit lanes
+form a bounded recurrent state, replayed from recent turns and folded into the
+sampler seed. It is an order-sensitive context fingerprint, not a claim of
+subjective memory or consciousness.
+
 ## GitHub note
 
 `.pwgt` packs are **not committed** (~200 MiB; above GitHub file limits).

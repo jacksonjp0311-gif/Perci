@@ -285,7 +285,7 @@ impl ChatEngine {
             if let Some(ref m) = bitwork {
                 crate::emergence::record_match(input, m, result.operator);
             }
-            // Capability Fabric: knowledge + language sidecar under critic (governor retains control).
+            // Capability Fabric: knowledge + native language under critic (governor retains control).
             let enriched = crate::orchestrate::enrich_answer(input, result.operator, &raw);
             let text = crate::bridge::envelope_with_bitwork(
                 input,

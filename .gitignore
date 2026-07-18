@@ -20,6 +20,14 @@ PowerShell_transcript.*
 *.pwgt.tmp
 *.pwgt.part
 *.pwgt.partial
+*.blng
+models/**/*.blng
+*.bphr
+models/**/*.bphr
+*.brel
+*.bwm
+models/**/*.brel
+models/**/*.bwm
 # Bitwork packs are ~200 MiB — exceed GitHub hard limits; build/download locally.
 # Keep sidecar JSON metadata and .gitkeep under models/.
 *.pwgt

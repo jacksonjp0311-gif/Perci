@@ -164,10 +164,14 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
     ]
     .iter()
     .any(|cue| lower.contains(cue));
+    let binary_minus = lower.as_bytes().windows(3).any(|window| {
+        window[0].is_ascii_digit() && window[1] == b'-' && window[2].is_ascii_digit()
+    });
     let numeric_expression = extract_numbers(&lower).len() >= 2
-        && lower
-            .chars()
-            .any(|character| matches!(character, '+' | '-' | '*' | '/'));
+        && (lower.contains('+')
+            || lower.contains('*')
+            || lower.contains('/')
+            || binary_minus);
     if !explicit_math && !numeric_expression {
         return Ok(None);
     }
@@ -534,6 +538,14 @@ mod tests {
         assert_eq!(
             try_solve_arithmetic(
                 "Design a test that distinguishes transfer from prompt-template recognition."
+            )
+            .unwrap(),
+            None
+        );
+        // Entity labels and curriculum variant numbers are not arithmetic.
+        assert_eq!(
+            try_solve_arithmetic(
+                "Imagine an unseen system called Nara-7 and test relation transfer variant 1."
             )
             .unwrap(),
             None

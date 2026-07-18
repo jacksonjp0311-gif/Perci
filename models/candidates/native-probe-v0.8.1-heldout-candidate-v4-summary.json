@@ -1,0 +1,14 @@
+{
+  "questions_requested": 200,
+  "responses_parsed": 200,
+  "unique_responses": 155,
+  "duplicate_responses": 45,
+  "topic_binding_rate": 0.92,
+  "punctuated_response_rate": 0.935,
+  "mean_chars": 374.6,
+  "median_chars": 143.0,
+  "min_chars": 74,
+  "max_chars": 1257,
+  "families": 20,
+  "topics": 49
+}

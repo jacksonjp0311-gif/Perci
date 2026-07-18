@@ -1,7 +1,7 @@
 //! Capability Fabric orchestrator — single entry for multi-engine answers.
 //!
 //! Flow:
-//!   plan → exact/proof → operators (caller) → knowledge → language sidecar → critic
+//!   plan → exact/proof → operators (caller) → knowledge → native language → critic
 //!
 //! Perci remains governor of acceptance.
 
@@ -10,7 +10,7 @@ use crate::knowledge_fabric;
 use crate::language_sidecar;
 use crate::proof_engine;
 
-/// Enrich an operator/tool seed body with knowledge + optional language sidecar.
+/// Enrich an operator/tool seed body with knowledge + governed language.
 pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
     let plan = fabric::plan_for_prompt(user, "orchestrate");
     let mut body = seed_body.to_owned();

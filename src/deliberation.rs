@@ -184,6 +184,12 @@ pub fn try_deliberate(
         return Some(operational_introspection_answer(&text, recent));
     }
 
+    // Entity-slot transfer: invented device + motif slots (before creative-constraint
+    // steals "invented name" + "without" as a metaphor request).
+    if crate::entity_slot::looks_entity_slot_transfer(&text) {
+        return Some(crate::entity_slot::entity_slot_transfer_answer(&repaired));
+    }
+
     // Constrained creativity: invent/metaphor under rules — not free hallucination.
     if looks_creative_constraint(&text) {
         return Some(creative_constraint_answer(&repaired));
@@ -3030,6 +3036,16 @@ If that block is thin, the turn was operator/tool-led and geometry was only prob
 }
 
 fn looks_creative_constraint(text: &str) -> bool {
+    // Do not steal entity-slot / adversarial entity-swap transfer prompts.
+    // Those match inventish ("invented name") + constrained ("without") and used
+    // to collapse into a switchyard metaphor with ~30% topic binding.
+    if crate::entity_slot::looks_entity_slot_transfer(text)
+        || text.contains("unfamiliar device")
+        || text.contains("transfer one relation")
+        || text.contains("invented name as evidence")
+    {
+        return false;
+    }
     let inventish = text.contains("invent")
         || text.contains("imagine")
         || text.contains("metaphor")
@@ -5336,6 +5352,19 @@ mod tests {
         let low = r.answer.to_ascii_lowercase();
         assert!(low.contains("transfer") || low.contains("does not transfer"));
         assert!(low.contains("check") || low.contains("test") || low.contains("build"));
+    }
+
+    #[test]
+    fn entity_slot_transfer_beats_creative_constraint_steal() {
+        let r = run(
+            "An unfamiliar device called Quoril-7 has trust and change. Transfer one relation to it without treating the invented name as evidence.",
+            &[],
+        );
+        assert_eq!(r.operator, "entity-slot-transfer");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("trust"));
+        assert!(low.contains("change"));
+        assert!(!low.contains("switchyard"));
     }
 
     #[test]

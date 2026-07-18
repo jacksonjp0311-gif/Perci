@@ -1,6 +1,6 @@
 {
   "schema": "perci.heldout-agi-candidate.v1",
-  "evaluated_at_utc": "2026-07-17T21:00:23.897675+00:00",
+  "evaluated_at_utc": "2026-07-18T13:24:28.296255+00:00",
   "status": "PASS",
   "passed": 25,
   "total": 25,
@@ -125,7 +125,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=443 (probe=219 operator=218 softcascade=6) speech hit/miss=18"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=370 (probe=174 operator=171 softcascade=25) speech hit/miss=4"
     },
     {
       "id": "H16",
@@ -133,7 +133,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=443 (probe=219 operator=218 softcascade=6) speech hit/miss=18"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=370 (probe=174 operator=171 softcascade=25) speech hit/miss=4"
     },
     {
       "id": "H17",
@@ -157,7 +157,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=0 closed=10; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=3 closed=10; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
     },
     {
       "id": "H20",
@@ -205,7 +205,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=0 closed=10; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=3 closed=10; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
     }
   ]
 }

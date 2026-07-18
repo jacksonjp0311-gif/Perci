@@ -237,7 +237,8 @@ Urgent work that is **not** “more prototypes”:
 | Follow-up state binding | `justify-prior-answer` (v0.6.3) |
 | Reject unrelated mixture | SoftCascade relevance gate + lexical concept gate |
 | Pack-side VSA | **Still requires human-authorized rebuild** — query-side only today |
-| Optional Phi / LM surface | `PERCI_MODEL_CMD` sidecar — never replaces Bitwork core |
+| Native language surface | PERCLNG1 binary threshold decoder; no external model by default |
+| External LM compatibility | Opt-in only via PERCI_ENABLE_EXTERNAL_LM=1; never replaces Bitwork core |
 
 ## 9. Bottom line
 

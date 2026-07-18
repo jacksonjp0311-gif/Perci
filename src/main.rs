@@ -20,6 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if matches!(command.as_str(), "daemon" | "serve") {
         return perci::daemon::run_server().map_err(|e| e);
     }
+    // Language weight maintenance must not require loading the active chat
+    // backend; this also lets a rebuild replace an older binary format.
+    if matches!(command.as_str(), "language" | "lang") {
+        return run_language_command(&mut args);
+    }
 
     let personality = load_personality();
     let memory_path = env::var_os("PERCI_MEMORY")
@@ -95,6 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             print_teaching_result(&mut engine, &claim)?;
         }
+        "language" | "lang" => run_language_command(&mut args)?,
         "intel" | "intelligence" | "probe" => run_intelligence_probe()?,
         "bench" => run_benchmark(&mut engine)?,
         "ping" => {
@@ -164,7 +170,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", perci::orchestrate::plan_json(prompt.trim()));
                     let seed = deliberation::try_deliberate(prompt.trim(), &[], &[])
                         .map(|d| d.answer)
-                        .unwrap_or_else(|| "No operator match; SoftCascade/pack path applies.".into());
+                        .unwrap_or_else(|| {
+                            "No operator match; SoftCascade/pack path applies.".into()
+                        });
                     let out = perci::orchestrate::enrich_answer(prompt.trim(), "fabric-cli", &seed);
                     println!("---\n{out}");
                 }
@@ -232,7 +240,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", perci::emergence::status_report(32));
                 }
                 "close" => {
-                    let id = args.next().ok_or("usage: perci lab close <ticket-id> --reason \"…\"")?;
+                    let id = args
+                        .next()
+                        .ok_or("usage: perci lab close <ticket-id> --reason \"…\"")?;
                     let mut reason = String::from("resolved");
                     let rest: Vec<String> = args.collect();
                     let mut i = 0;
@@ -274,10 +284,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
                 other => {
-                    return Err(format!(
-                        "unknown lab subcommand: {other} (try: perci lab help)"
-                    )
-                    .into());
+                    return Err(
+                        format!("unknown lab subcommand: {other} (try: perci lab help)").into(),
+                    );
                 }
             }
         }
@@ -412,10 +421,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         "traces" | "trace-history" => {
-            let n: usize = args
-                .next()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(10);
+            let n: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(10);
             let rows = perci::decision_trace::recent(n)?;
             if rows.is_empty() {
                 println!(
@@ -477,6 +483,12 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             "/status" => print_status(engine),
             "/cortex" => println!("cortex: {}", engine.cortex_status()),
             "/learning" | "/learn" => print_learning(engine),
+            "/language" | "/lang" => println!(
+                "{}\n\n{}\n\n{}",
+                perci::binary_language::status_report(),
+                perci::binary_phrase::status_report(),
+                perci::binary_relation::status_report()
+            ),
             "/trace" | "/thought" => println!("{}", engine.deliberation_trace()),
             "/field" | "/emergence" | "/geometry" => {
                 println!("{}", perci::emergence::status_report(24));
@@ -704,6 +716,106 @@ fn benchmark_case(engine: &mut ChatEngine, label: &str, input: &str) -> io::Resu
 fn load_personality() -> Personality {
     let path = env::var("PERCI_PERSONALITY").unwrap_or_else(|_| "config/personality.prompt".into());
     Personality::load(path).unwrap_or_else(|_| Personality::default_perci())
+}
+
+fn run_language_command<I>(args: &mut I) -> Result<(), Box<dyn std::error::Error>>
+where
+    I: Iterator<Item = String>,
+{
+    let sub = args.next().unwrap_or_else(|| "status".into());
+    match sub.as_str() {
+        "status" | "inspect" => println!(
+            "{}\n\n{}\n\n{}\n\n{}",
+            perci::binary_language::status_report(),
+            perci::binary_phrase::status_report(),
+            perci::binary_relation::status_report(),
+            perci::binary_world::status_report()
+        ),
+        "train" | "rebuild" => {
+            let values = args.collect::<Vec<_>>();
+            let source = values.first().map(String::as_str).unwrap_or("--repo");
+            let output = values
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or_else(perci::binary_language::default_weight_path);
+            let order = values
+                .get(2)
+                .and_then(|value| value.parse::<usize>().ok())
+                .unwrap_or(6);
+            let stats = perci::binary_language::train_source(source, &output, order)?;
+            let phrase_output = if output == perci::binary_language::default_weight_path() {
+                perci::binary_phrase::default_weight_path()
+            } else {
+                output.with_extension("bphr")
+            };
+            let phrase_stats = perci::binary_phrase::train_source(
+                source,
+                &phrase_output,
+                order.min(4),
+            )?;
+            let relation_output = if output == perci::binary_language::default_weight_path() {
+                perci::binary_relation::default_weight_path()
+            } else {
+                output.with_extension("brel")
+            };
+            let relation_stats =
+                perci::binary_relation::train_source(source, &relation_output)?;
+            let world_output = if output == perci::binary_language::default_weight_path() {
+                perci::binary_world::default_weight_path()
+            } else {
+                output.with_extension("bwm")
+            };
+            let world_stats = perci::binary_world::train_source(source, &world_output)?;
+            println!(
+                "native language rebuilt\n  byte output: {}\n  byte order: {}\n  byte records: {}\n  byte transitions: {}\n  byte source bytes: {}\n  byte file bytes: {}\n  phrase output: {}\n  phrase order: {}\n  phrase vocabulary: {}\n  phrase records: {}\n  phrase transitions: {}\n  phrase file bytes: {}\n  relation output: {}\n  relation records: {}\n  relation source bytes: {}\n  relation file bytes: {}\n  world output: {}\n  world records: {}\n  world source bytes: {}\n  world file bytes: {}",
+                output.display(),
+                stats.order,
+                stats.records,
+                stats.unique_transitions,
+                stats.source_bytes,
+                stats.file_bytes,
+                phrase_output.display(),
+                phrase_stats.order,
+                phrase_stats.vocabulary,
+                phrase_stats.records,
+                phrase_stats.entries,
+                phrase_stats.file_bytes,
+                relation_output.display(),
+                relation_stats.records,
+                relation_stats.source_bytes,
+                relation_stats.file_bytes,
+                world_output.display(),
+                world_stats.records,
+                world_stats.source_bytes,
+                world_stats.file_bytes,
+            );
+        }
+        "sample" | "ask" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci language sample <prompt>".into());
+            }
+            let text = if let Some(model) = perci::binary_phrase::BinaryPhraseModel::discover()? {
+                model.generate_reply(&prompt, "general", 520, 1)
+            } else {
+                let model = perci::binary_language::BinaryLanguageModel::discover()?.ok_or(
+                    "native language weights are not trained; run perci language train --repo",
+                )?;
+                model.generate_reply(&prompt, "general", 520, 1)
+            };
+            println!("{text}");
+        }
+        "help" | "--help" | "-h" => println!(
+            "Native language commands:\n  perci language status\n  perci language train --repo [output] [order]\n  perci language train <file-or-directory> [output] [order]\n  perci language sample <prompt>\n\nTraining rebuilds PERCLNG1, PERCPHR1, PERCREL1, and PERCIWM1 typed native fields; no external model is used."
+        ),
+        other => {
+            return Err(format!(
+                "unknown language subcommand: {other} (try: status|train|sample|help)"
+            )
+            .into())
+        }
+    }
+    Ok(())
 }
 
 /// JSON classify for Lumen hybrid (`schema/label/variant/score/overlap`).

@@ -1,4 +1,4 @@
-# Perci v0.7.3 — Capability Fabric
+# Perci v0.7.5 — Capability Fabric
 
 **Design law:** Do not stretch Bitwork until it impersonates every missing capability.
 

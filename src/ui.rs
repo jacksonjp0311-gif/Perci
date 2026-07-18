@@ -124,7 +124,10 @@ impl BloodUi {
         );
         println!(
             "  {}",
-            self.paint(ASH, "type /help · /think · /field · /concise · /deep · /quit")
+            self.paint(
+                ASH,
+                "type /help · /think · /field · /concise · /deep · /quit"
+            )
         );
     }
 
@@ -133,11 +136,7 @@ impl BloodUi {
         if line.is_empty() {
             return;
         }
-        println!(
-            "\n  {} {}",
-            self.paint(ASH, "◆"),
-            self.paint(IRON, line)
-        );
+        println!("\n  {} {}", self.paint(ASH, "◆"), self.paint(IRON, line));
     }
 
     pub fn prompt(&self) -> io::Result<()> {

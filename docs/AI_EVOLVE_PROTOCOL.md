@@ -31,7 +31,7 @@ user / AI agent
 
 | Gap | Engine to extend | Do not |
 |-----|------------------|--------|
-| Fluency | `language_sidecar` + external process | Stuff pack with prose |
+| Fluency | native PERCLNG1 binary language + operators | Stuff pack with prose |
 | Fresh facts | `knowledge_fabric` + evidence JSONL | Auto-promote weights |
 | Formal math | `proof_engine` + PERCI_PROOF_ENGINE | Accept “sounds proven” |
 | Code change | `agent` + worktree + tests | Edit outside allowlist |
@@ -47,7 +47,29 @@ Response schema: `perci.language-response.v1`.
 $env:PERCI_LANGUAGE_SIDECAR = "python scripts/perci_language_sidecar.py"
 ```
 
-Default: in-process local governed synthesizer (deterministic).
+Default: native PERCLNG1 binary sequence field plus the in-process governed
+synthesizer. Train or inspect it with:
+
+    cargo run --release -- language train --repo
+    cargo run --release -- language status
+
+The native field is dependency-free and remains bounded; exact tools and
+abstention operators retain authority.
+
+An external local model may still be attached for compatibility comparisons,
+but only with explicit opt-in:
+
+```powershell
+$env:PERCI_MODEL_URL = "http://127.0.0.1:1234/v1/chat/completions"
+$env:PERCI_MODEL_NAME = "phi-4-mini"
+$env:PERCI_ENABLE_EXTERNAL_LM = "1"
+```
+
+The v0.7.5 HTTP adapter also accepts Ollama's `/api/chat`. Requests carry
+Bitwork routing hints and recent dialogue as untrusted context; responses are
+critic-checked and bounded by timeout/output limits before display. If the
+endpoint is unavailable or rejected, the deterministic/operator path remains
+authoritative.
 
 ## 5. Knowledge fabric
 

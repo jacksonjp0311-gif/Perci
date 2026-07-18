@@ -184,7 +184,7 @@ That is a concrete, implementable fix and a hardness case waiting to be written.
 
 ### P5 — L7 hybrid LM (only if needed)
 
-16. Attach local LM via `PERCI_MODEL_CMD` **under** Bitwork+tool authority after P1–P2 still leave code/prose &lt;70% task success.  
+16. Train and measure the native PERCLNG1 language field before considering any external LM compatibility path.
 17. Never give LM exact-tool or promote authority.
 
 ### Explicitly deprioritize

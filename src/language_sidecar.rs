@@ -8,6 +8,7 @@
 //! If unset, uses the **local governed synthesizer** (deterministic fluency layer).
 //! Perci critic always runs after generation.
 
+use crate::backend::LanguageBackend;
 use crate::fabric::{critic_accept_language, EvidenceRecord, LanguageRequest};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -44,7 +45,10 @@ impl LanguageResponse {
 
 /// Generate prose under Perci governor constraints.
 pub fn generate(req: &LanguageRequest, seed_body: &str) -> LanguageResponse {
-    if let Some(bin) = env::var_os("PERCI_LANGUAGE_SIDECAR") {
+    // External language processes are compatibility-only.  Native Perci
+    // inference is the default; the old sidecar requires an explicit opt-in.
+    if external_language_enabled() {
+        if let Some(bin) = env::var_os("PERCI_LANGUAGE_SIDECAR") {
         match invoke_external(std::path::Path::new(&bin), req, seed_body) {
             Ok(mut resp) => {
                 if let Err(e) = critic_accept_language(&resp.text, &req.required_claim_boundaries) {
@@ -62,6 +66,38 @@ pub fn generate(req: &LanguageRequest, seed_body: &str) -> LanguageResponse {
                 return resp;
             }
         }
+        }
+    }
+    // An external HTTP model remains available only for compatibility tests.
+    // It never receives authority over routing, facts, tools, or weights.
+    if external_language_enabled() {
+      if let Some(mut model) = crate::backend::LocalModelBackend::from_env() {
+        let mut context = req
+            .operator_plan
+            .iter()
+            .map(|step| format!("[operator] {step}"))
+            .collect::<Vec<_>>();
+        context.extend(
+            req.constraints
+                .iter()
+                .map(|item| format!("[constraint] {item}")),
+        );
+        context.extend(
+            req.evidence
+                .iter()
+                .take(4)
+                .map(|item| format!("[evidence] {}", item.claim)),
+        );
+        let system = "Perci governs the answer. Rewrite the supplied operator result into direct, natural prose without adding unsupported facts. Keep the mechanism and uncertainty intact; do not expose hidden chain-of-thought.";
+        if let Ok(text) = model.generate(system, &context, seed_body) {
+            if critic_accept_language(&text, &req.required_claim_boundaries).is_ok() {
+                let mut response = LanguageResponse::local(text);
+                response.engine = "local HTTP model under Perci critic".into();
+                response.claims = req.evidence.iter().map(|item| item.claim.clone()).collect();
+                return response;
+        }
+      }
+    }
     }
     let mut resp = local_synthesize(req, seed_body);
     if let Err(e) = critic_accept_language(&resp.text, &req.required_claim_boundaries) {
@@ -70,6 +106,13 @@ pub fn generate(req: &LanguageRequest, seed_body: &str) -> LanguageResponse {
         resp.text = format!("{seed_body}\n\n[Governor] Refused language expansion: {e}");
     }
     resp
+}
+
+fn external_language_enabled() -> bool {
+    env::var("PERCI_ENABLE_EXTERNAL_LM")
+        .ok()
+        .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "on" | "yes"))
+        .unwrap_or(false)
 }
 
 fn invoke_external(
@@ -136,9 +179,7 @@ fn local_synthesize(req: &LanguageRequest, seed_body: &str) -> LanguageResponse 
         _ => "",
     };
     let body = seed_body.trim();
-    let text = format!(
-        "{lead}{body}{evidence_block}"
-    );
+    let text = format!("{lead}{body}{evidence_block}");
     let mut resp = LanguageResponse::local(text);
     resp.claims = claims;
     resp
@@ -147,6 +188,9 @@ fn local_synthesize(req: &LanguageRequest, seed_body: &str) -> LanguageResponse 
 /// Whether this turn should invoke the language path (after operators/tools).
 pub fn should_invoke_language(user: &str) -> bool {
     let t = user.to_ascii_lowercase();
+    let configured = env::var("PERCI_MODEL_URL").is_ok()
+        || env::var("PERCI_OPENAI_URL").is_ok()
+        || env::var("PERCI_LANGUAGE_SIDECAR").is_ok();
     t.contains("explain")
         || t.contains("summarize")
         || t.contains("in plain")
@@ -154,14 +198,13 @@ pub fn should_invoke_language(user: &str) -> bool {
         || t.contains("essay")
         || (t.split_whitespace().count() >= 14
             && (t.contains("how") || t.contains("why") || t.contains("what")))
+        || (configured
+            && t.split_whitespace().count() >= 4
+            && !matches!(t.trim(), "hi" | "hello" | "hey" | "thanks" | "bye"))
 }
 
 /// Build a LanguageRequest from fabric + seed evidence.
-pub fn request_from(
-    user: &str,
-    operator: &str,
-    evidence: Vec<EvidenceRecord>,
-) -> LanguageRequest {
+pub fn request_from(user: &str, operator: &str, evidence: Vec<EvidenceRecord>) -> LanguageRequest {
     let mut req = LanguageRequest::default();
     req.task = if user.to_ascii_lowercase().contains("summar") {
         "summarize".into()
@@ -169,9 +212,14 @@ pub fn request_from(
         "explain".into()
     };
     req.intent = "technical_analysis".into();
-    req.operator_plan = vec![operator.to_owned(), "language_sidecar".into(), "critic".into()];
+    req.operator_plan = vec![
+        operator.to_owned(),
+        "language_sidecar".into(),
+        "critic".into(),
+    ];
     req.evidence = evidence;
-    req.constraints.push(format!("user_topic: {}", truncate(user, 120)));
+    req.constraints
+        .push(format!("user_topic: {}", truncate(user, 120)));
     req.required_claim_boundaries = vec![
         "no consciousness claims".into(),
         "no weight auto-promote".into(),

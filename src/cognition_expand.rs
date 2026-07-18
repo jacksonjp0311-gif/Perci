@@ -45,6 +45,10 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_meta_critique(&text) {
         return Some(meta_critique_answer(user, recent));
     }
+    // Entity-slot transfer before generic novel-entity pedagogy (adversarial family).
+    if crate::entity_slot::looks_entity_slot_transfer(&text) {
+        return Some(crate::entity_slot::entity_slot_transfer_answer(user));
+    }
     if looks_novel_entity_probe(&text) {
         return Some(novel_entity_generalization(user));
     }
@@ -593,6 +597,14 @@ fn looks_novel_entity_probe(text: &str) -> bool {
         || text.contains("generalize")
         || text.contains("overfit")
         || text.contains("paraphrase transfer")
+        || text.contains("unseen system")
+        || text.contains("unfamiliar machine")
+        || text.contains("map ") && text.contains(" onto ")
+        || (text.contains("genuine transfer")
+            && (text.contains("unseen")
+                || text.contains("entity")
+                || text.contains("memorized")))
+        || text.contains("memorized wording")
         || (text.contains("without memor") && text.contains("transfer"))
 }
 
@@ -623,10 +635,61 @@ Entity labels (whatever service names you used) ride on that contract; they do n
         );
     }
 
+    let motifs = [
+        "boundary",
+        "structure",
+        "evidence",
+        "mechanism",
+        "state",
+        "relation",
+        "transfer",
+        "invariant",
+        "scale",
+        "repair",
+        "memory",
+        "entropy",
+        "trust",
+        "identity",
+        "learning",
+        "uncertainty",
+        "signal",
+        "promise",
+        "change",
+        "failure",
+        "measurement",
+        "pattern",
+        "composition",
+        "attention",
+    ]
+    .iter()
+    .filter(|motif| lower.contains(**motif))
+    .copied()
+    .collect::<Vec<_>>();
+    if !motifs.is_empty() {
+        body.push_str(&format!(
+            "\n**Applied to this prompt:** preserve the named relation among {}. Change the surface entity, then check whether the same mechanism still predicts an observation; if it does not, mark the analogy as failed rather than filling the gap with fluent wording.\n",
+            motifs.join(" and ")
+        ));
+    }
+
     body.push_str(
         "\n**Bitwork note:** pack prototypes stay sparse; do not densify the pack to memorize entity strings. \
 Generalization is operator + transfer law, then optional curriculum — never auto-promote.",
     );
+
+    // The full audit guidance is useful in traces, but human-facing curriculum
+    // turns need a bounded answer. Preserve named motifs without repeating the
+    // same governance prose on every novel-entity turn.
+    if body.chars().count() > 900 {
+        let named = if motifs.is_empty() {
+            String::new()
+        } else {
+            format!(" Named motifs: {}.", motifs.join(", "))
+        };
+        body = format!(
+            "Novel-entity transfer: structure should survive a changed surface name; test the relation with a distractor and a measurable prediction.{named} If the relation fails, abstain rather than inventing a bridge. Promote only after held-out transfer passes."
+        );
+    }
 
     Deliberation::new("novel-entity-generalize", body)
         .observed("user probed generalization under novel/paraphrased entities")
@@ -793,6 +856,19 @@ mod tests {
         )
         .expect("novel");
         assert_eq!(d.operator, "novel-entity-generalize");
+    }
+
+    #[test]
+    fn unseen_system_curriculum_routes_and_binds_motifs() {
+        let d = try_expand(
+            "Imagine an unseen system called Nara-7. Map relation and transfer onto it, then name the relation that survives.",
+            &[],
+        )
+        .expect("unseen system");
+        assert_eq!(d.operator, "novel-entity-generalize");
+        let lower = d.answer.to_ascii_lowercase();
+        assert!(lower.contains("relation"));
+        assert!(lower.contains("transfer"));
     }
 
     #[test]

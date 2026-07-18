@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.7.4-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.8.4-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -47,7 +47,7 @@
 | **Operators** | Trust/systems, partition recovery, synthesis, refuse-hallucinate, code, plans, introspection |
 | **Self-critique** | Thin drafts get one residual second angle — silent metacognition |
 | **Emergence lab (L8)** | Tickets → **transfer suite** → repair/close · `release_gates.py` · agent `--full --repair` |
-| **Capability Fabric (v0.7.4)** | Governor: language · knowledge · proof · code · multi-AI handoff/next/regress · SoftCascade pack-align |
+| **Capability Fabric (v0.8.4)** | Governor: native language · typed world model · knowledge · proof · code · multi-AI handoff/next/regress · SoftCascade pack-align |
 | **Exact tools** | Math & geometry that *compute*, never guess |
 | **Governance** | Append-only memory · Cortex · style memory · weight promote only with **human authorize** |
 
@@ -100,13 +100,28 @@ The system now treats three memories as distinct: the Bitwork pack, append-only 
 
 Conversational repairs are regression targets too. “What are you sensing?” must reach operational introspection, while cross-domain prompts such as geometry plus life must preserve a concrete relation and its boundary instead of reusing a stock concept. The local language sidecar keeps the operator’s answer in the foreground; provenance and governance remain inspectable without forcing the same header/footer into every response.
 
+## v0.8.4 native binary language + typed world model (external adapters now opt-in)
+
+The native PERCLNG1 field is the default language surface. The compatibility
+path below is disabled unless PERCI_ENABLE_EXTERNAL_LM=1 is explicitly set.
+
+The open-language bottleneck now has a bounded escape hatch instead of a
+silent preset: `PERCI_MODEL_URL` connects a local OpenAI-compatible endpoint
+directly to the warm CompositeBackend. The adapter supports LM Studio,
+llama.cpp/vLLM-style `/v1/chat/completions`, and Ollama `/api/chat` payloads.
+It adds a 4-second default timeout, short output budget, Bitwork routing hints,
+recent dialogue, and a critic gate. A failed model call or rejected answer
+falls back to the existing deterministic path, so enabling a model cannot
+remove exact tools, abstention, or weight governance. This is a language
+quality path, not evidence of unrestricted intelligence.
+
 ---
 
 ## Numbers that are true today
 
 | Property | Value |
 |----------|------:|
-| Software | **v0.7.4** (`Cargo.toml` · badge auto-stamped) |
+| Software | **v0.8.4** (`Cargo.toml` · badge auto-stamped) |
 | Pack format | **PERCIW03** |
 | Pack size | **209,710,296** bytes (~200 MiB) |
 | Prototypes | **403,163** |
@@ -114,7 +129,8 @@ Conversational repairs are regression targets too. “What are you sensing?” m
 | Activation | **4,096** bits · 64 × u64 |
 | Expert domains | **16** |
 | Hot path | Integer **AND / POPCOUNT** only |
-| Weights in git | **No** (GitHub size limits — local pack required) |
+| Native language field | **PERCLNG1** · mmap · binary threshold planes |
+| Weights in git | **Cognitive pack local** · native language rebuilt locally |
 
 Version is **never** hand-edited in the badge: `build.rs` stamps `assets/generated/*` from `Cargo.toml`.
 
@@ -256,17 +272,128 @@ See [`docs/CORTEX_INTEGRATION.md`](docs/CORTEX_INTEGRATION.md).
 
 ---
 
-## Optional external LM
+## Native binary language training
 
-Bitwork stays the governor. A language sidecar is optional and must return the
-typed `perci.language-response.v1` schema. The checked-in Python sidecar is a
-protocol reference; a Phi-family or other local model can replace it without
-moving authority out of Perci:
+The default Perci language path is now a Perci-owned PERCLNG1 binary field.
+It learns multi-order context transitions with four binary threshold planes
+(at least 1, 2, 4, or 8 observations), mmap-loads them in Rust, and generates
+bounded continuations with integer-only back-off.
+
+    cargo run --release -- language train --repo
+    cargo run --release -- language status
+    cargo run --release -- language sample "what is geometry teaching us about life"
+
+The native field is a compact sequence learner, not a claim of frontier-model
+breadth. Exact arithmetic and geometry remain deterministic tools. The older
+HTTP/command adapters are compatibility paths only and require
+PERCI_ENABLE_EXTERNAL_LM=1.
+
+The same rebuild also creates `PERCPHR1`, a bounded word/phrase transition
+field. It uses a capped binary vocabulary, order-4 numeric token contexts, and
+threshold-coded next-token edges. Perci selects a state-conditioned learned
+primer, then composes a continuation through numeric back-off; no response
+card is treated as truth. Both artifacts remain local generated weights and
+must be rebuilt deliberately from a reviewed corpus.
+
+The rebuild can also create `PERCREL1`, an optional mmap relation field. It
+stores hashed prompt-to-response edges and scores native continuations as an
+inspectable tie-breaker. Held-out tests currently keep it isolated because the
+field does not yet beat the active selector on generalization.
+
+The same rebuild creates `PERCIWM1`, an optional typed world-model field. It
+stores bounded subject/relation/object edges plus a coarse domain, polarity,
+confidence, and evidence bin. At inference it rewards a candidate that
+preserves a learned typed relation from the current prompt; it cannot synthesize
+new prose or promote a claim as truth. The field is mmap-loaded and remains
+isolated until an adversarial held-out pack shows a real gain.
+
+Native dialogue also carries a fixed 256-bit recurrent state. User and
+assistant turns are absorbed with integer rotation/XOR updates, so turn order
+changes the next primer and sampling path without creating an unbounded memory
+blob or introducing a neural runtime.
+
+The phrase backend now samples six bounded binary continuations and chooses the
+one with the best topic binding, recent-response novelty, and topic-neighbor
+relation score. The conservative relation weight is tunable with
+`PERCI_NATIVE_RELATION_WEIGHT` (default `12`); held-out comparison still
+controls weight promotion.
+
+Run the broad native probe and review its evidence:
+
+    python scripts/native_probe.py
+
+It asks 1,000 questions in one persistent process and writes a JSONL transcript
+plus summary under `models/candidates/`. The probe is measurement data; it does
+not auto-promote its candidate weights.
+
+To compare an isolated phrase candidate against the active field, use a new
+tag and pass the candidate path. This leaves the active weights untouched:
+
+    python scripts/native_probe.py --tag v0.8.1-novelty --phrase-weights models/candidates/native-probe-candidate.bphr
+
+To cap repeated training examples before a candidate rebuild:
+
+    python scripts/clean_probe.py models/candidates/native-probe-v0.8.1-novelty-active.jsonl models/candidates/native-probe-v0.8.1-clean.jsonl --limit-per-response 2
+
+To build and run the next emergence curriculum, mine the prior transcript into
+counterexamples, perturbations, and unseen-entity transfer questions:
+
+    python scripts/emergence_curriculum.py models/candidates/native-probe-v0.8.1-relation12-active.jsonl models/candidates/emergence-curriculum-v0.8.3.jsonl --count 1000
+    python scripts/native_probe.py --tag v0.8.3-emergence-curriculum --questions-file models/candidates/emergence-curriculum-v0.8.3.jsonl
+
+For the next gate, generate adversarial questions that target paraphrase
+collapse, negation loss, contradiction handling, entity substitution, and
+analogy boundaries. Keep the offset-separated file held out from training:
+
+    python scripts/adversarial_curriculum.py models/candidates/adversarial-v0.8.4.jsonl --count 300
+    python scripts/adversarial_curriculum.py models/candidates/adversarial-v0.8.4-heldout.jsonl --count 120 --offset 300
+    python scripts/native_probe.py --tag v0.8.4-adversarial --questions-file models/candidates/adversarial-v0.8.4.jsonl
+
+To evaluate a world-model candidate without replacing the active artifact:
+
+    cargo run --release -- language train models/candidates/native-probe-v0.8.3-emergence-curriculum-final.jsonl models/candidates/world-candidate-v0.8.4.blng 6
+    python scripts/native_probe.py --tag v0.8.4-world-candidate --questions-file models/candidates/adversarial-v0.8.4-heldout.jsonl --world-weights models/candidates/world-candidate-v0.8.4.bwm
+
+The command emits four native files next to the requested output; only the
+`.bwm` path is used by the isolated world-field comparison. Promotion remains
+human-authorized and requires no regression in exact tools, abstention, or
+topic binding.
+
+## External model compatibility (disabled by default)
+
+Bitwork stays the governor. Perci can now use a local OpenAI-compatible model
+as a fast language surface while keeping routing, tools, evidence, memory, and
+weight promotion under Perci's control. LM Studio, llama.cpp servers, Ollama,
+and Phi-family local endpoints are supported. The model is a renderer, not the
+authority layer; failed, empty, overlong, or boundary-violating output falls
+back to the governed local path.
+
+```powershell
+# LM Studio / llama.cpp / vLLM style endpoint
+$env:PERCI_MODEL_URL = "http://127.0.0.1:1234/v1/chat/completions"
+$env:PERCI_MODEL_NAME = "phi-4-mini"
+
+# Ollama style endpoint (use the model name you installed)
+# $env:PERCI_MODEL_URL = "http://127.0.0.1:11434/api/chat"
+# $env:PERCI_MODEL_NAME = "phi4-mini"
+
+$env:PERCI_MODEL_TIMEOUT_MS = "4000"
+$env:PERCI_MODEL_MAX_TOKENS = "320"
+cargo run --release -- chat
+```
+
+The optional command adapter remains available through `PERCI_MODEL_CMD`.
+The typed language sidecar is still useful when a process must return
+`perci.language-response.v1` explicitly:
 
 ```powershell
 $env:PERCI_LANGUAGE_SIDECAR = "python scripts/perci_language_sidecar.py"
 cargo run --release -- chat
 ```
+
+The HTTP path is zero-cost when `PERCI_MODEL_URL` is unset. It uses a bounded
+local request timeout, sends Bitwork hints as untrusted routing notes, and
+tries the deterministic/operator response whenever the model is unavailable.
 
 ---
 
@@ -340,5 +467,5 @@ Progress = **hardness · transfer · latency · binding quality · honest absten
 <p align="center">
   <img src="assets/icons/perci-darkblood-mark.jpg" width="72" height="72" alt="Perci">
   <br>
-  <sub>PERCI · dark-blood · governed sparse cognition · v0.7.4</sub>
+  <sub>PERCI · dark-blood · governed sparse cognition · v0.8.4</sub>
 </p>

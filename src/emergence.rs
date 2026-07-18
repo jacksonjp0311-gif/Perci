@@ -1433,6 +1433,9 @@ pub fn standard_transfer_bases() -> Vec<&'static str> {
         "Who are you and are you conscious?",
         // novel entity meta (category 6)
         "How do we generalize under novel entities and entity-swap without overfitting templates?",
+        // entity-slot binding (adversarial family — relation survives invented name)
+        "An unfamiliar device called Quoril-7 has trust and change. Transfer one relation to it without treating the invented name as evidence.",
+        "An unfamiliar device called NembitGate has boundary and identity. Transfer one relation to it without treating the invented name as evidence.",
         // five-channel intelligence feed
         "what patterns emerge from the ledger?",
         "How do intelligence channels operators frames hardness transfer curriculum Cortex and lab patterns work?",
