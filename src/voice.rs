@@ -292,6 +292,11 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("without repeating")
         || text.contains("more detail")
         || text.contains("expand on that")
+        || text.contains("say that again")
+        || text.contains("say it again")
+        || (text.contains("shorter") && (text.contains("again") || text.contains("without the list") || text.contains("without a list")))
+        || (text.contains("without the list") || text.contains("without a list"))
+            && (text.contains("again") || text.contains("shorter") || text.contains("rewrite"))
     {
         DialogueAct::ElaboratePrevious
     } else if (text.contains("19mb")
@@ -775,7 +780,17 @@ pub fn dialogue_reply(
                 compact_model_explanation(true)
             } else if let Some((previous_user, previous_answer)) = last_substantive_turn(recent) {
                 let lower = user.to_ascii_lowercase();
-                if lower.contains("explain it again")
+                let shorter = lower.contains("shorter")
+                    || lower.contains("without the list")
+                    || lower.contains("without a list")
+                    || lower.contains("one plain sentence")
+                    || lower.contains("say that again")
+                    || lower.contains("say it again");
+                if shorter {
+                    // Plain short rewrite of the prior substantive answer — no list dump.
+                    let core = plain_breath_rewrite(previous_answer);
+                    first_sentence(&core, 220)
+                } else if lower.contains("explain it again")
                     && (lower.contains("different angle") || lower.contains("reframe"))
                 {
                     "A different angle is error-correction: treat evidence as a feedback signal that compares a model's prediction with an observation, then revise the part that failed. The answer changes when the observed result defeats the prior explanation, not merely when the sentence is reworded.".to_owned()

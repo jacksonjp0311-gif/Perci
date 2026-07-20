@@ -89,6 +89,18 @@ pub fn is_explanatory_math(lower: &str) -> bool {
     if !has_digit && !has_arith_op {
         return false;
     }
+    // "why does 2+2 equal 4? do not just compute, explain" is explanatory even
+    // though it contains the word "compute". Negated compute + explain/why wins.
+    let explain_not_compute = (lower.contains("explain") || lower.contains("why"))
+        && (lower.contains("do not")
+            || lower.contains("don't")
+            || lower.contains("dont")
+            || lower.contains("not just")
+            || lower.contains("without just"))
+        && (lower.contains("compute") || lower.contains("calculate"));
+    if explain_not_compute {
+        return true;
+    }
     // Still allow pure calculation requests through the tool path.
     // Compound: "What is 17 times 3, and why is authority different?" — compute first.
     let what_is_compute = lower.contains("what is")
@@ -119,6 +131,9 @@ pub fn is_explanatory_math(lower: &str) -> bool {
         || lower.contains("explain why")
         || lower.contains("justify why")
         || lower.contains("what does it mean")
+        || (lower.contains("explain")
+            && (lower.contains("equal") || has_arith_op)
+            && has_digit)
         || (lower.contains("prove that") && (has_digit || has_arith_op))
         || (lower.starts_with("why ") && (lower.contains("equal") || lower.contains("true")));
     if whyish {

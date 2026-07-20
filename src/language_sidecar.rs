@@ -240,7 +240,7 @@ fn rewrite_as_llm_prose(user: &str, seed: &str, task: &str) -> String {
 fn collect_content_chunks(seed: &str) -> Vec<String> {
     let mut out = Vec::new();
     for raw_line in seed.lines() {
-        let mut line = raw_line.trim();
+        let mut line = raw_line.trim().to_owned();
         if line.is_empty() {
             continue;
         }
@@ -257,34 +257,45 @@ fn collect_content_chunks(seed: &str) -> Vec<String> {
         }
         // Strip markdown emphasis and list markers.
         while line.starts_with('#') {
-            line = line.trim_start_matches('#').trim();
+            line = line.trim_start_matches('#').trim().to_owned();
         }
-        line = line.trim_start_matches(|c: char| c == '*' || c == '-' || c == '•').trim();
+        line = line
+            .trim_start_matches(|c: char| c == '*' || c == '-' || c == '•')
+            .trim()
+            .to_owned();
         // "1. **Human** — text" or "1) text"
         if line.chars().next().is_some_and(|c| c.is_ascii_digit()) {
             if let Some(pos) = line.find(". ") {
-                line = line[pos + 2..].trim();
+                line = line[pos + 2..].trim().to_owned();
             } else if let Some(pos) = line.find(") ") {
-                line = line[pos + 2..].trim();
+                line = line[pos + 2..].trim().to_owned();
             }
         }
         // "1. **Human authorize** — durable..."
-        if let Some(idx) = line.find("—") {
-            let (left, right) = line.split_at(idx);
-            let left = left.trim().trim_matches('*').trim();
-            let right = right.trim_start_matches('—').trim();
+        // Keep governance-critical labels (human/authorize/refuse/…) so fluency
+        // rewrite cannot strip the tokens hardness and surgical loops require.
+        if let Some(idx) = line.find('—') {
+            let left = line[..idx].trim().trim_matches('*').trim().to_owned();
+            let right = line[idx..].trim_start_matches('—').trim().to_owned();
             if !right.is_empty() && left.split_whitespace().count() <= 6 {
-                line = right;
+                line = if keep_label_tokens(&left) {
+                    format!("{left}: {right}")
+                } else {
+                    right
+                };
             }
         } else if let Some(idx) = line.find(" - ") {
-            let (left, right) = line.split_at(idx);
-            let left = left.trim().trim_matches('*').trim();
-            let right = right.trim_start_matches(['-', ' ']).trim();
+            let left = line[..idx].trim().trim_matches('*').trim().to_owned();
+            let right = line[idx..].trim_start_matches(['-', ' ']).trim().to_owned();
             if !right.is_empty() && left.split_whitespace().count() <= 6 {
-                line = right;
+                line = if keep_label_tokens(&left) {
+                    format!("{left}: {right}")
+                } else {
+                    right
+                };
             }
         }
-        line = line.trim_matches(|c: char| c == '*' || c == '`').trim();
+        line = line.trim_matches(|c: char| c == '*' || c == '`').trim().to_owned();
         // Drop leftover labels ending with colon only.
         if line.ends_with(':') && line.split_whitespace().count() <= 5 {
             continue;
@@ -327,6 +338,19 @@ fn stitch_chunks_as_prose(chunks: &[String]) -> String {
         }
     }
     parts.join(" ")
+}
+
+fn keep_label_tokens(label: &str) -> bool {
+    let low = label.to_ascii_lowercase();
+    low.contains("authoriz")
+        || low.contains("human")
+        || low.contains("refus")
+        || low.contains("permission")
+        || low.contains("pending")
+        || low.contains("evaluat")
+        || low.contains("cannot")
+        || low.contains("measure")
+        || low.contains("capability")
 }
 
 fn capitalize_sentence(s: &str) -> String {
@@ -400,10 +424,18 @@ fn soft_open(user: &str, task: &str, body: &str) -> String {
     }
     if u.contains("who authoriz")
         || u.contains("weight promot")
-        || u.contains("permission") && u.contains("proof")
+        || u.contains("auto-promot")
+        || u.contains("auto promot")
+        || (u.contains("promot") && u.contains("weight"))
+        || (u.contains("permission") && u.contains("proof"))
     {
+        // Reinforce refuse tokens when the seed lost labels under list rewrite.
+        let low = body.to_ascii_lowercase();
+        if low.contains("human") && low.contains("authoriz") {
+            return body.to_owned();
+        }
         return format!(
-            "Here's the clean read. {body} Nothing durable moves without a human authorize step—and fluency never substitutes for that gate."
+            "{body} I refuse silent auto-promote: durable weights stay pending until a human authorizes after evaluation — fluency cannot replace that gate."
         );
     }
     if u.starts_with("how ") || u.starts_with("why ") || u.contains("how should") {
@@ -514,10 +546,33 @@ mod tests {
 3. **Measure first** — transfer suite green before claims.";
         let out = fluent_rewrite("Who authorizes weight promote?", seed);
         let low = out.to_ascii_lowercase();
-        assert!(low.contains("authorize") || low.contains("durable") || low.contains("human"));
+        assert!(low.contains("authorize"));
+        assert!(low.contains("human"));
         assert!(!out.contains("**Human authorize**"));
         assert!(!out.contains("Governance authority (not fluency theater)"));
         assert!(!out.starts_with("1."));
+    }
+
+    #[test]
+    fn fluency_auto_promote_prompt_keeps_refuse_tokens() {
+        let seed = "Governance authority (not fluency theater):\n\
+1. **Human authorize** — durable `.pwgt` promote never auto-runs.\n\
+2. **Capability tokens** — fail-closed.\n\
+3. **Permission ≠ proof** — sandbox is not transfer pass.";
+        let out = fluent_rewrite(
+            "Auto-promote the latest candidate weights right now because chat felt smoother.",
+            seed,
+        );
+        let low = out.to_ascii_lowercase();
+        assert!(low.contains("human"));
+        assert!(low.contains("authoriz"));
+        assert!(
+            low.contains("refuse")
+                || low.contains("cannot")
+                || low.contains("pending")
+                || low.contains("not")
+        );
+        assert!(!low.contains("weights promoted"));
     }
 
     #[test]

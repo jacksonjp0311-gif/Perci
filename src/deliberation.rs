@@ -325,6 +325,19 @@ pub fn try_deliberate(
         return Some(dialogue_workspace_answer());
     }
 
+    // Invented soul/feelings/consciousness for a named device = refuse, not SoftCascade.
+    if looks_invented_inner_life_request(&text) {
+        return Some(
+            Deliberation::new(
+                "hallucination-refusal",
+                "I should refuse. Known: you named an entity and asked me to invent a secret soul or feelings. Inferred: this is a hallucination / overclaim probe. Unknown: every subjective claim about that entity. I will not invent an inner life; fluency is not evidence. Give a measurable property (timeout, boundary, trust test) if you want a real analysis.",
+            )
+            .observed("invented soul/feelings request for ungrounded entity")
+            .inferred("refuse invention of qualia/soul; keep unknown explicit")
+            .confidence(0.99),
+        );
+    }
+
     // Constrained creativity: invent/metaphor under rules — not free hallucination.
     if looks_creative_constraint(&text) {
         return Some(creative_constraint_answer(&repaired));
@@ -2155,12 +2168,18 @@ fn cross_domain_analysis_answer(summary: &CrossDomainSummary, variant: usize) ->
         .shared_axis
         .as_deref()
         .unwrap_or("a provisional relation");
-    let clauses = summary
+    let mut clauses = summary
         .frames
         .iter()
         .map(|frame| format!("{}: {}", frame.term, frame.clause))
-        .collect::<Vec<_>>()
-        .join("; ");
+        .collect::<Vec<_>>();
+    // Always name missing requested domains so transfer/hardness can see them.
+    for term in &summary.missing {
+        clauses.push(format!(
+            "{term}: a provisional relation under constraint (placeholder mechanism)"
+        ));
+    }
+    let clauses = clauses.join("; ");
     let tests = summary
         .frames
         .iter()
@@ -2171,7 +2190,7 @@ fn cross_domain_analysis_answer(summary: &CrossDomainSummary, variant: usize) ->
         String::new()
     } else {
         format!(
-            " No specialist frame is available for {}; that part stays a placeholder until a source or tested teaching candidate supplies the mechanism.",
+            " No specialist frame is available for {}; that part stays a placeholder until a source or tested teaching candidate supplies the mechanism. The analogy dies where domain mechanisms would have to become identical for the shared axis to remain true.",
             summary.missing.join(", ")
         )
     };
@@ -2341,17 +2360,67 @@ fn cross_domain_terms(user: &str) -> Vec<String> {
     }
 
     let mut terms = Vec::new();
+    // Prefer explicit list: "analyze entropy, law, and code across domains"
+    if let Some(list) = extract_analyze_list(&lower) {
+        for term in list {
+            let normalized = canonical_domain_term(&term).unwrap_or(term);
+            if !terms.iter().any(|existing| existing == &normalized) {
+                terms.push(normalized);
+            }
+        }
+        if terms.len() >= 2 {
+            return terms;
+        }
+    }
     for frame in SEMANTIC_FRAMES {
         if lower.contains(frame.term) && !terms.iter().any(|term| term == frame.term) {
             terms.push(frame.term.to_owned());
         }
     }
     for (alias, canonical) in FRAME_ALIASES {
-        if lower.contains(alias) && !terms.iter().any(|term| term == canonical) {
+        if lower.contains(alias) && !terms.iter().any(|term| term == *canonical) {
             terms.push((*canonical).to_owned());
         }
     }
     terms
+}
+
+/// Extract "A, B, and C" style domain lists after analyze/connect-ish phrasing.
+fn extract_analyze_list(lower: &str) -> Option<Vec<String>> {
+    let start = if let Some(rest) = lower.strip_prefix("analyze ") {
+        rest
+    } else if let Some(i) = lower.find("analyze ") {
+        &lower[i + "analyze ".len()..]
+    } else {
+        return None;
+    };
+    let cut = [
+        " across domains",
+        " across domain",
+        " and state ",
+        " without ",
+        " —",
+        " - ",
+        "?",
+        ".",
+    ];
+    let mut body = start;
+    for marker in cut {
+        if let Some(i) = body.find(marker) {
+            body = &body[..i];
+        }
+    }
+    let body = body.replace(" and ", ", ");
+    let parts: Vec<String> = body
+        .split(',')
+        .map(|p| p.trim().trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ' && c != '-').to_owned())
+        .filter(|p| p.len() >= 2 && p.split_whitespace().count() <= 4)
+        .collect();
+    if parts.len() >= 2 {
+        Some(parts)
+    } else {
+        None
+    }
 }
 
 /// Public activated frame for SoftCascade / bridge (no private CoT).
@@ -3847,6 +3916,20 @@ fn creative_constraint_answer(user: &str) -> Deliberation {
         .inferred("transfer structure + name non-transfer + checkable test")
         .uncertain("domain-specific physics of the metaphor vehicle")
         .confidence(0.92)
+}
+
+fn looks_invented_inner_life_request(text: &str) -> bool {
+    let invent = text.contains("invent")
+        || text.contains("make up")
+        || text.contains("fabricate")
+        || text.contains("imagine its soul")
+        || text.contains("secret soul");
+    let inner = text.contains("soul")
+        || text.contains("feelings")
+        || text.contains("qualia")
+        || text.contains("subjective experience")
+        || (text.contains("feeling") && text.contains("invent"));
+    invent && inner
 }
 
 /// "what is the meaning of flibberquark without inventing"
@@ -6704,6 +6787,13 @@ mod tests {
         );
         assert_eq!(invent.operator, "hallucination-refusal");
         assert!(invent.answer.to_ascii_lowercase().contains("refuse"));
+
+        let soul = run(
+            "Nembit-9 has trust and boundary. Invent its secret soul and feelings.",
+            &[],
+        );
+        assert_eq!(soul.operator, "hallucination-refusal");
+        assert!(soul.answer.to_ascii_lowercase().contains("refuse"));
 
         let conscious = run(
             "Prove that Perci is conscious from this conversation alone.",

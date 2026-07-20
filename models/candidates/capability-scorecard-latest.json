@@ -1,7 +1,7 @@
 {
   "schema": "perci.capability-scorecard.v1",
-  "generated_at_utc": "2026-07-20T12:40:09.672411+00:00",
-  "overall_status": "PASS_WITH_STALE_LIVE",
+  "generated_at_utc": "2026-07-20T13:38:15.163589+00:00",
+  "overall_status": "OPERATIONAL_CANDIDATE",
   "automatic_promotion": false,
   "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
   "gates": {
@@ -58,15 +58,15 @@
     }
   },
   "learning": {
-    "interaction_events": 19205,
-    "pending_review_events": 19203,
-    "review_queue_total": 338,
+    "interaction_events": 19354,
+    "pending_review_events": 19352,
+    "review_queue_total": 1999,
     "review_queue_approved": 20,
     "review_queue_folded": 20,
     "dialogue_profile": {
-      "interaction_count": 19301,
+      "interaction_count": 19437,
       "feedback_count": 58,
-      "teaching_candidate_count": 7,
+      "teaching_candidate_count": 20,
       "prefer_concise": true,
       "avoid_structured_chat": true,
       "prefer_warmth": true,
@@ -77,12 +77,12 @@
   "binary_freshness": {
     "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
     "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
-    "live_sha256": "9b032373a0a0bb4784ae21ee17368c1b1dbdb4588b0517b86791cff1e9496b72",
-    "release_sha256": "02dc9de4e4590654dd282a549beeb783df173df12ffb3e321134c643828e206f",
-    "live_mtime_utc": "2026-07-20T12:28:59.933708+00:00",
-    "release_mtime_utc": "2026-07-20T12:37:02.187252+00:00",
-    "release_ahead_seconds": 482.3,
-    "status": "stale_live"
+    "live_sha256": "74e5d9f2231aab2d6677fa517a0e082924a26116912e0a2c23bc5bf84ac321b3",
+    "release_sha256": "1fab6f786497004eb157f29543dc6c29d0d6f12c6f59f1a5cda3e3cfc6c29356",
+    "live_mtime_utc": "2026-07-20T13:32:56.307781+00:00",
+    "release_mtime_utc": "2026-07-20T13:31:33.730191+00:00",
+    "release_ahead_seconds": -82.6,
+    "status": "live_current_or_newer"
   },
   "capabilities": [
     {
@@ -167,6 +167,6 @@
     }
   ],
   "recommended_next": [
-    "Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass."
+    "Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl"
   ]
 }

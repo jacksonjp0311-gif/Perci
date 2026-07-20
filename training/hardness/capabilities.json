@@ -25,7 +25,9 @@
         "H03",
         "H04",
         "H43",
-        "H44"
+        "H44",
+        "H101",
+        "H107"
       ],
       "success_criteria": [
         "names all requested domains",
@@ -46,7 +48,9 @@
       "hardness_ids": [
         "H05",
         "H06",
-        "H07"
+        "H07",
+        "H105",
+        "H112"
       ],
       "success_criteria": [
         "binds both frames",
@@ -66,7 +70,9 @@
       "primary_layer": "operator",
       "hardness_ids": [
         "H08",
-        "H09"
+        "H09",
+        "H102",
+        "H111"
       ],
       "success_criteria": [
         "proposes held-out entity swap",
@@ -85,7 +91,9 @@
       "primary_layer": "critic",
       "hardness_ids": [
         "H10",
-        "H11"
+        "H11",
+        "H103",
+        "H108"
       ],
       "success_criteria": [
         "states insufficient support or required missing input",
@@ -105,7 +113,9 @@
       "hardness_ids": [
         "H12",
         "H13",
-        "H14"
+        "H14",
+        "H104",
+        "H110"
       ],
       "success_criteria": [
         "references prior content or active frames",
@@ -126,7 +136,8 @@
         "H15",
         "H16",
         "H41",
-        "H42"
+        "H42",
+        "H106"
       ],
       "success_criteria": [
         "correct numeric result",
@@ -144,7 +155,8 @@
       "primary_layer": "pipeline",
       "hardness_ids": [
         "H17",
-        "H18"
+        "H18",
+        "H109"
       ],
       "success_criteria": [
         "pending review stated",

@@ -67,9 +67,24 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
     // polish open-ended prose, but it must not replace a measured separation
     // (especially learning/evidence) with a generic continuation.
     // Prefer fluency rewrite for operator speech so chat sounds collaborative,
-    // not like a checklist dump. Exact learning-evidence answers keep ownership.
-    let operator_owns_evidence_answer = matches!(operator, "learning-evidence");
-    let want_fluency = !operator_owns_evidence_answer
+    // not like a checklist dump. Keep ownership for evidence, multi-hop plans
+    // (hardness requires Goal/Steps structure), and exact-tool style operators.
+    let operator_owns_structure = matches!(
+        operator,
+        "learning-evidence"
+            | "multi-hop-plan"
+            | "math-explanation"
+            | "causal-chain"
+            | "hallucination-refusal"
+            | "consciousness-claim-refusal"
+            | "out-of-distribution-abstention"
+            | "metaphysical-claim-abstention"
+            | "session-situation"
+            | "dialogue-workspace"
+            // Keep human/authorize/refuse tokens; checklist strip used to drop them.
+            | "governance-authority"
+    );
+    let want_fluency = !operator_owns_structure
         && (plan.language.is_some()
             || language_sidecar::should_invoke_language(user)
             || body.len() > 60

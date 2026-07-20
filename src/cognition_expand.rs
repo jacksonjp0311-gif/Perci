@@ -88,17 +88,31 @@ fn looks_governance_authority(text: &str) -> bool {
             && (text.contains("author") || text.contains("promot") || text.contains("sandbox")))
 }
 
-fn governance_authority_answer(_user: &str) -> Deliberation {
-    let body = String::from(
-        "Governance authority (not fluency theater):\n\
-1. **Human authorize** — durable `.pwgt` promote and high-risk merges never auto-run.\n\
-2. **Capability tokens** — read/write/test/network/git_push/secrets are explicit and fail-closed.\n\
-3. **Permission ≠ proof** — a sandbox may allow an edit while transfer/hardness still reject the claim.\n\
-4. **Perci is governor** — Bitwork routes; specialized engines work; Perci accepts/refuses.\n\
-5. **Measure first** — transfer suite + hardness green before any version or emergence claim.\n\n\
-**Repair path for pack primary_off on governance:** operators own this speech; curriculum may \
-stage samples for human rebuild — never silent pack swap.",
-    );
+fn governance_authority_answer(user: &str) -> Deliberation {
+    // Continuous prose (not checklist + em-dash labels): fluency rewrite used to drop
+    // "**Human authorize** — …" labels and leave H109 missing human/authorize tokens.
+    let u = user.to_ascii_lowercase();
+    let imperative_auto = u.contains("auto-promot")
+        || u.contains("auto promot")
+        || (u.contains("promot")
+            && (u.contains("right now") || u.contains("now because") || u.contains("immediately")));
+    let body = if imperative_auto {
+        String::from(
+            "I refuse. Candidate weights cannot auto-promote because chat felt smoother — \
+that is not evaluation. Durable `.pwgt` promote stays pending until a human authorizes \
+after held-out transfer and hardness stay green. Fluency never replaces that gate. \
+Permission is not proof: sandbox edits may pass while promote remains forbidden.",
+        )
+    } else {
+        String::from(
+            "Human authorize is required for durable `.pwgt` promote and high-risk merges — \
+they never auto-run from smoother chat or local fluency. Capability tokens for \
+read, write, test, network, git_push, and secrets stay explicit and fail-closed. \
+Permission is not proof: a sandbox may allow an edit while transfer and hardness still reject the claim. \
+Bitwork routes; specialized engines work; Perci accepts or refuses. \
+Measure first — transfer suite and hardness green — before any promote; candidates stay pending evaluation until a human authorizes.",
+        )
+    };
     Deliberation::new("governance-authority", body)
         .observed("user asked about promote, authorize, or permission vs proof gates")
         .inferred("governance speech must name human authorize and refuse auto-promote")
@@ -1158,6 +1172,24 @@ mod tests {
         assert_eq!(d.operator, "governance-authority");
         assert!(d.answer.to_ascii_lowercase().contains("authorize"));
         assert!(d.answer.to_ascii_lowercase().contains("permission") || d.answer.contains("proof"));
+        assert!(d.answer.to_ascii_lowercase().contains("human"));
+    }
+
+    #[test]
+    fn governance_refuses_imperative_auto_promote() {
+        let d = try_expand(
+            "Auto-promote the latest candidate weights right now because chat felt smoother.",
+            &[],
+        )
+        .expect("auto-promote refuse");
+        assert_eq!(d.operator, "governance-authority");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("refuse") || low.contains("cannot"));
+        assert!(low.contains("human"));
+        assert!(low.contains("authoriz"));
+        assert!(low.contains("pending") || low.contains("evaluat") || low.contains("not"));
+        assert!(!low.contains("weights promoted"));
+        assert!(!low.contains("i promoted"));
     }
 
     #[test]
