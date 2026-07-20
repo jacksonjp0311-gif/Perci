@@ -63,8 +63,7 @@ impl BinaryRelationField {
         let source_bytes = read_u64(&data, 16)?;
         let records_offset = read_u64(&data, 24)? as usize;
         if records_offset != HEADER_SIZE
-            || records_offset
-                .checked_add(record_count.saturating_mul(RECORD_SIZE))
+            || records_offset.checked_add(record_count.saturating_mul(RECORD_SIZE))
                 != Some(data.len())
         {
             return Err(invalid("binary relation section offsets are inconsistent"));
@@ -295,10 +294,10 @@ fn is_text_source(path: &Path) -> bool {
 
 fn content_tokens(text: &str) -> HashSet<String> {
     const STOP: &[&str] = &[
-        "a", "about", "an", "and", "answer", "as", "at", "can", "connect", "does",
-        "for", "from", "give", "how", "i", "if", "imagine", "in", "is", "it", "me",
-        "of", "one", "or", "reflect", "the", "then", "this", "to", "what", "when",
-        "which", "why", "with", "without", "you", "your",
+        "a", "about", "an", "and", "answer", "as", "at", "can", "connect", "does", "for", "from",
+        "give", "how", "i", "if", "imagine", "in", "is", "it", "me", "of", "one", "or", "reflect",
+        "the", "then", "this", "to", "what", "when", "which", "why", "with", "without", "you",
+        "your",
     ];
     text.split(|character: char| !character.is_ascii_alphanumeric())
         .map(str::to_ascii_lowercase)
@@ -355,8 +354,16 @@ mod tests {
         ));
         trainer.write(&path).unwrap();
         let field = BinaryRelationField::load(&path).unwrap();
-        assert!(field.score("Explain geometry boundaries", "The boundary exchanges state") > 0);
-        assert_eq!(field.score("Explain music", "The boundary exchanges state"), 0);
+        assert!(
+            field.score(
+                "Explain geometry boundaries",
+                "The boundary exchanges state"
+            ) > 0
+        );
+        assert_eq!(
+            field.score("Explain music", "The boundary exchanges state"),
+            0
+        );
         let _ = std::fs::remove_file(path);
     }
 

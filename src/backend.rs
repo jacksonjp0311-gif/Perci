@@ -4,6 +4,7 @@ use crate::binary_relation::BinaryRelationField;
 use crate::binary_state::{BinaryDialogueState, TypedCognitiveState};
 use crate::binary_world::BinaryWorldModel;
 use crate::cognitive::{CognitiveMatch, CognitiveWeights};
+use crate::dialogue_workspace::DialogueWorkspace;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::env;
@@ -248,10 +249,11 @@ impl NativeLanguageBackend {
 impl LanguageBackend for NativeLanguageBackend {
     fn generate(&mut self, _system: &str, context: &[String], user: &str) -> io::Result<String> {
         let domain = Self::domain_from_context(context);
-        let state =
-            stable_backend_hash(user)
-                ^ self.dialogue_state.fingerprint()
-                ^ (self.recent.len() as u64).wrapping_mul(0x9e3779b97f4a7c15);
+        let routed_user = crate::text_normalize::repair_typos(user);
+        let state = stable_backend_hash(&routed_user)
+            ^ self.dialogue_state.fingerprint()
+            ^ (self.recent.len() as u64).wrapping_mul(0x9e3779b97f4a7c15);
+        let continuity_context = native_continuity_context(&self.recent, &routed_user);
         let response = if let Some(phrase) = self.phrase.as_ref() {
             // A single deterministic walk tends to collapse distinct prompts
             // onto the same high-frequency continuation.  Generate a small,
@@ -261,20 +263,26 @@ impl LanguageBackend for NativeLanguageBackend {
             // not a hidden language model.
             let candidates = (0..6)
                 .map(|variant| {
-                    let variant_state = state
-                        ^ (variant as u64 + 1).wrapping_mul(0xd6e8_feb8_6659_fd93);
-                    phrase.generate_reply(user, domain, 520, variant_state)
+                    let variant_state =
+                        state ^ (variant as u64 + 1).wrapping_mul(0xd6e8_feb8_6659_fd93);
+                    phrase.generate_reply_with_context(
+                        &routed_user,
+                        domain,
+                        520,
+                        variant_state,
+                        Some(&continuity_context),
+                    )
                 })
                 .collect::<Vec<_>>();
             choose_native_response(
                 &candidates,
-                user,
+                &routed_user,
                 &self.recent,
                 self.relation.as_ref(),
                 self.world.as_ref(),
             )
         } else {
-            self.model.generate_reply(user, domain, 520, state)
+            self.model.generate_reply(&routed_user, domain, 520, state)
         };
         if response.trim().chars().count() < 12 {
             return Err(io::Error::new(
@@ -300,6 +308,20 @@ impl LanguageBackend for NativeLanguageBackend {
             self.dialogue_state.absorb_turn(user, assistant);
         }
     }
+}
+
+/// Build a bounded prompt context for the native phrase field. The prior user
+/// turn preserves the referent for short follow-ups; the prior answer supplies
+/// a small amount of local semantic texture; the current turn stays last so
+/// its wording remains the strongest n-gram cue.
+fn native_continuity_context(recent: &[(String, String)], user: &str) -> String {
+    let mut parts = Vec::with_capacity(3);
+    if let Some((previous_user, previous_answer)) = recent.last() {
+        parts.push(truncate_chars(previous_user, 180));
+        parts.push(truncate_chars(previous_answer, 220));
+    }
+    parts.push(user.to_owned());
+    parts.join(" ")
 }
 
 /// Select a native phrase continuation without letting high-frequency prose
@@ -335,9 +357,9 @@ fn choose_native_response(
                 .map(|(_, assistant)| native_jaccard_milli(candidate, assistant))
                 .max()
                 .unwrap_or(0);
-            let exact_repeat = recent.iter().any(|(_, assistant)| {
-                native_normalize(candidate) == native_normalize(assistant)
-            });
+            let exact_repeat = recent
+                .iter()
+                .any(|(_, assistant)| native_normalize(candidate) == native_normalize(assistant));
             // Topic binding dominates stylistic novelty.  Repetition is then
             // expensive enough to reject a stock answer when another walk is
             // comparably grounded.
@@ -364,7 +386,8 @@ fn native_world_field_weight() -> i64 {
 }
 
 fn native_normalize(text: &str) -> String {
-    text.split_whitespace()
+    crate::text_normalize::repair_typos(text)
+        .split_whitespace()
         .map(|token| {
             token
                 .trim_matches(|character: char| !character.is_ascii_alphanumeric())
@@ -377,10 +400,10 @@ fn native_normalize(text: &str) -> String {
 
 fn native_content_tokens(text: &str) -> HashSet<String> {
     const STOP: &[&str] = &[
-        "a", "about", "an", "and", "answer", "as", "at", "can", "connect", "does",
-        "for", "from", "give", "how", "i", "if", "imagine", "in", "is", "it", "me",
-        "of", "one", "or", "reflect", "the", "then", "this", "to", "what", "when",
-        "which", "why", "with", "without", "you", "your",
+        "a", "about", "an", "and", "answer", "as", "at", "can", "connect", "does", "for", "from",
+        "give", "how", "i", "if", "imagine", "in", "is", "it", "me", "of", "one", "or", "reflect",
+        "the", "then", "this", "to", "what", "when", "which", "why", "with", "without", "you",
+        "your",
     ];
     native_normalize(text)
         .split_whitespace()
@@ -808,6 +831,8 @@ pub struct CompositeBackend {
     backend_name: String,
     /// Multi-turn (user, assistant) pairs for natural continuity.
     recent: Vec<(String, String)>,
+    /// Typed turn state shared by the native, fallback, and optional adapter paths.
+    workspace: DialogueWorkspace,
 }
 
 impl CompositeBackend {
@@ -849,6 +874,7 @@ impl CompositeBackend {
             external,
             backend_name,
             recent: Vec::new(),
+            workspace: DialogueWorkspace::derive("", &[]),
         })
     }
 
@@ -862,6 +888,7 @@ impl CompositeBackend {
 
 impl LanguageBackend for CompositeBackend {
     fn generate(&mut self, system: &str, context: &[String], user: &str) -> io::Result<String> {
+        self.workspace = DialogueWorkspace::derive(user, &self.recent);
         let matched = self
             .cognitive
             .as_ref()
@@ -908,8 +935,15 @@ impl LanguageBackend for CompositeBackend {
             enriched.push(format!("[Recent dialogue]\n{hist}"));
         }
         if let Some(cognitive) = self.cognitive.as_ref() {
-            enriched.push(format!("[Perci typed cognitive state: {}]", cognitive.typed_state_hint()));
+            enriched.push(format!(
+                "[Perci typed cognitive state: {}]",
+                cognitive.typed_state_hint()
+            ));
         }
+        enriched.push(format!(
+            "[Perci dialogue workspace: {}]",
+            self.workspace.hint()
+        ));
 
         if native_prompt_eligible(user) {
             if let Some(native) = self.native.as_mut() {
@@ -1040,8 +1074,10 @@ fn stable_backend_hash(text: &str) -> u64 {
 /// binary field is still growing.  Exact tools, OOD abstention, governance
 /// inventories, and capability reports must remain on their tested operators.
 fn native_prompt_eligible(user: &str) -> bool {
-    let lower = user.to_ascii_lowercase();
-    if lower.split_whitespace().count() < 10
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    // Five repaired words are enough to establish a subject and an open
+    // conversational intent. Shorter turns stay on the faster operator path.
+    if lower.split_whitespace().count() < 5
         || [
             "determine meaning",
             "what are the five",
@@ -1054,6 +1090,13 @@ fn native_prompt_eligible(user: &str) -> bool {
             "calculate",
             "triangle area",
             "promote weights",
+            "what can you do",
+            "are you conscious",
+            "are you self aware",
+            "exact arithmetic",
+            "checked rational",
+            "debug",
+            "compile",
         ]
         .iter()
         .any(|term| lower.contains(term))
@@ -1069,8 +1112,15 @@ fn native_prompt_eligible(user: &str) -> bool {
         "creative",
         "reflect",
         "sounding natural",
-        "say it differently",
-        "express",
+        "what do you think",
+        "what is it like",
+        "what does it mean",
+        "why does it matter",
+        "why is it important",
+        "how would you describe",
+        "give me an image",
+        "connect ",
+        "talk about ",
     ]
     .iter()
     .any(|term| lower.contains(term))
@@ -1090,6 +1140,7 @@ pub fn render_cognitive_response_with_history(
 ) -> String {
     let variant = matched.variant as usize;
     let ul = user.to_ascii_lowercase();
+    let workspace = DialogueWorkspace::derive(user, recent);
     // Continuity: follow-up on a code/debug thread stays in code even if Bitwork drifts.
     let prior_code = recent.iter().rev().take(3).any(|(u, a)| {
         let t = format!("{u} {a}").to_ascii_lowercase();
@@ -1101,7 +1152,8 @@ pub fn render_cognitive_response_with_history(
             || a.contains("Reproduce")
             || a.contains("Re-run the same verify")
     });
-    let followup = ul.contains("still")
+    let followup = workspace.is_follow_up()
+        || ul.contains("still")
         || ul.contains("failing")
         || ul.contains("what next")
         || ul.contains("same")
@@ -1139,38 +1191,42 @@ pub fn render_cognitive_response_with_history(
     let body = crate::auto_repairs::softcascade_pack_alignment_body(user)
         .unwrap_or_else(|| domain_body(label, variant));
     let woven = crate::voice::weave_guidance(context, 2);
+    // Routing selects the domain; the control plane selects how much bounded
+    // reasoning the turn deserves. This is the missing bridge between a fast
+    // associative hit and a human-readable explanation.
+    let controller = crate::reasoning_controller::derive(user, recent, Some(matched), label);
 
-    // Deep craft loops only when the user is clearly in debug/plan/code mode.
-    // Open conversation uses fluid composition so we don't sound like a checklist.
-    let text = if crate::reason::needs_reason_loop(label, user)
-        && crate::voice::user_has_tech_signal(user)
-    {
-        let seed_body = concept.unwrap_or(body);
-        let (reasoned, _score, _flags) =
-            crate::reason::enhance_deep_answer(label, user, seed_body, &woven);
-        if let Some((_, prev)) = recent.last() {
-            if user.to_ascii_lowercase().contains("still")
-                || user.to_ascii_lowercase().contains("again")
-            {
-                format!("Still on it. {reasoned}")
-            } else if prev.len() > 40
-                && user
-                    .to_ascii_lowercase()
-                    .split_whitespace()
-                    .any(|w| matches!(w, "that" | "it" | "same"))
-            {
-                format!("Building on the last thread. {reasoned}")
+    // Deep craft loops are now selected by the bounded controller for explicit
+    // explain/verify/explore requests across supported domains. Exact tools,
+    // social turns, and abstention paths remain outside this expansion.
+    let text =
+        if controller.should_run_reason_loop() && crate::reason::needs_reason_loop(label, user) {
+            let seed_body = concept.unwrap_or(body);
+            let (reasoned, _score, _flags) =
+                crate::reason::enhance_deep_answer(label, user, seed_body, &woven);
+            if let Some((_, prev)) = recent.last() {
+                if user.to_ascii_lowercase().contains("still")
+                    || user.to_ascii_lowercase().contains("again")
+                {
+                    format!("Still on it. {reasoned}")
+                } else if prev.len() > 40
+                    && user
+                        .to_ascii_lowercase()
+                        .split_whitespace()
+                        .any(|w| matches!(w, "that" | "it" | "same"))
+                {
+                    format!("Building on the last thread. {reasoned}")
+                } else {
+                    reasoned
+                }
             } else {
                 reasoned
             }
+        } else if crate::bridge::should_use_cascade(matched, user) {
+            crate::bridge::compose_soft_cascade(user, matched, body, variant)
         } else {
-            reasoned
-        }
-    } else if crate::bridge::should_use_cascade(matched, user) {
-        crate::bridge::compose_soft_cascade(user, matched, body, variant)
-    } else {
-        crate::voice::compose_reply(matched, user, body, context, recent)
-    };
+            crate::voice::compose_reply(matched, user, body, context, recent)
+        };
 
     // Final anti-generic guard: must bind the user's words when possible.
     let text = crate::voice::ensure_user_binding(user, &text, label, concept, recent);
@@ -1184,8 +1240,15 @@ pub fn render_cognitive_response_with_history(
         let text =
             crate::voice::weave_mixture_skeleton(user, &text, &skeleton, matched.variant as usize);
         let residual = matched.residual_skeleton(1);
+        // Deep turns already have a bounded claim/assumption/test frame. A
+        // second associative residual would be a classic “smart but
+        // unrelated” tail, so keep it out of the deep answer.
         let text = if let Some(lat) = residual.first() {
-            crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
+            if controller.should_run_reason_loop() {
+                text
+            } else {
+                crate::voice::weave_residual_frame(&text, lat, matched.variant as usize)
+            }
         } else {
             text
         };
@@ -1357,8 +1420,9 @@ fn json_error(error: serde_json::Error) -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::{
-        accepted_external_response, choose_native_response, parse_http_endpoint,
-        native_relation_novelty, parse_model_http_response, HttpEndpoint, LocalModelBackend,
+        accepted_external_response, choose_native_response, native_continuity_context,
+        native_relation_novelty, parse_http_endpoint, parse_model_http_response, HttpEndpoint,
+        LocalModelBackend,
     };
     use crate::voice::weave_guidance;
     use std::io::{Read, Write};
@@ -1417,6 +1481,12 @@ mod tests {
         assert!(super::native_prompt_eligible(
             "Give me one original thought about thresholds and memory over time"
         ));
+        assert!(super::native_prompt_eligible(
+            "what do you think about perci inteligence and language?"
+        ));
+        assert!(!super::native_prompt_eligible(
+            "express a new thought about code and music"
+        ));
     }
 
     #[test]
@@ -1443,10 +1513,25 @@ mod tests {
 
     #[test]
     fn native_selector_is_deterministic_for_equal_inputs() {
-        let candidates = vec!["A relation persists across scale.".to_owned(), "A boundary exchanges state.".to_owned()];
+        let candidates = vec![
+            "A relation persists across scale.".to_owned(),
+            "A boundary exchanges state.".to_owned(),
+        ];
         let first = choose_native_response(&candidates, "Explain scale", &[], None, None);
         let second = choose_native_response(&candidates, "Explain scale", &[], None, None);
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn continuity_context_keeps_prior_referent_before_current_turn() {
+        let recent = vec![(
+            "Explain memory and identity".to_owned(),
+            "Memory carries selected state across time.".to_owned(),
+        )];
+        let context = native_continuity_context(&recent, "Why does that matter?");
+        assert!(context.starts_with("Explain memory and identity"));
+        assert!(context.contains("Memory carries selected state"));
+        assert!(context.ends_with("Why does that matter?"));
     }
 
     #[test]

@@ -1,0 +1,24 @@
+{"id":"dc2-holdout-001-seed","split":"heldout","family":"seed","topic":"memory","prompt":"Explain how memory carries state over time.","required":[]}
+{"id":"dc2-holdout-001","split":"heldout","family":"followup_why","topic":"memory identity","previous_prompt":"Explain how memory carries state over time.","prompt":"Why does that matter for identity?","required":["memory","identity","continuity"]}
+{"id":"dc2-holdout-002-seed","split":"heldout","family":"seed","topic":"premise","prompt":"The conclusion follows from the premise.","required":[]}
+{"id":"dc2-holdout-002","split":"heldout","family":"followup_disagreement","topic":"premise","previous_prompt":"The conclusion follows from the premise.","prompt":"I still disagree; what should we inspect?","required":["premise","evidence"]}
+{"id":"dc2-holdout-003-seed","split":"heldout","family":"seed","topic":"boundary","prompt":"A boundary can regulate exchange.","required":[]}
+{"id":"dc2-holdout-003","split":"heldout","family":"followup_revision","topic":"counterexample","previous_prompt":"A boundary can regulate exchange.","prompt":"What observation would change your mind?","required":["counterexample","observation"]}
+{"id":"dc2-holdout-004-seed","split":"heldout","family":"seed","topic":"evidence","prompt":"A repeatable test makes a claim stronger.","required":[]}
+{"id":"dc2-holdout-004","split":"heldout","family":"followup_rephrase","topic":"evidence claim","previous_prompt":"A repeatable test makes a claim stronger.","prompt":"Put that in everyday language.","required":["test","claim"]}
+{"id":"dc2-holdout-005-seed","split":"heldout","family":"seed","topic":"Perci system","prompt":"Perci uses governed routing and dialogue state.","required":[]}
+{"id":"dc2-holdout-005","split":"heldout","family":"followup_scope","topic":"system routing","previous_prompt":"Perci uses governed routing and dialogue state.","prompt":"I am asking about the system itself.","required":["system","routing"]}
+{"id":"dc2-holdout-006-seed","split":"heldout","family":"seed","topic":"candidate","prompt":"The candidate changes native phrase samples.","required":[]}
+{"id":"dc2-holdout-006","split":"heldout","family":"followup_test","topic":"held out","previous_prompt":"The candidate changes native phrase samples.","prompt":"What should we test next?","required":["test","held-out"]}
+{"id":"dc2-holdout-007-seed","split":"heldout","family":"seed","topic":"geometry mortality","prompt":"Geometry describes relations at a boundary.","required":[]}
+{"id":"dc2-holdout-007","split":"heldout","family":"followup_creative","topic":"geometry mortality","previous_prompt":"Geometry describes relations at a boundary.","prompt":"Give me a surprising connection to mortality.","required":["geometry","mechanism"]}
+{"id":"dc2-holdout-008-seed","split":"heldout","family":"seed","topic":"attention","prompt":"Attention selects what becomes active now.","required":[]}
+{"id":"dc2-holdout-008","split":"heldout","family":"followup_typo","topic":"memory attention","previous_prompt":"Attention selects what becomes active now.","prompt":"whats the diference from memory","required":["memory","attention"]}
+{"id":"dc2-holdout-009-seed","split":"heldout","family":"seed","topic":"analogy","prompt":"An analogy transfers only while it predicts something.","required":[]}
+{"id":"dc2-holdout-009","split":"heldout","family":"followup_depth","topic":"mechanism observation","previous_prompt":"An analogy transfers only while it predicts something.","prompt":"Go one layer deeper.","required":["mechanism","observation"]}
+{"id":"dc2-holdout-010-seed","split":"heldout","family":"seed","topic":"learning","prompt":"Session context is not durable learning.","required":[]}
+{"id":"dc2-holdout-010","split":"heldout","family":"followup_learning","topic":"weights learning","previous_prompt":"Session context is not durable learning.","prompt":"Are the weights changing now?","required":["weights","unchanged"]}
+{"id":"dc2-holdout-011-seed","split":"heldout","family":"seed","topic":"natural dialogue","prompt":"A local system can speak plainly and keep its limits visible.","required":[]}
+{"id":"dc2-holdout-011","split":"heldout","family":"followup_style","topic":"natural dialogue","previous_prompt":"A local system can speak plainly and keep its limits visible.","prompt":"Can you make that sound more human?","required":["language","evidence"]}
+{"id":"dc2-holdout-012-seed","split":"heldout","family":"seed","topic":"emergence","prompt":"Emergence requires a repeatable gain beyond memorized cards.","required":[]}
+{"id":"dc2-holdout-012","split":"heldout","family":"followup_emergence","topic":"emergent improvement","previous_prompt":"Emergence requires a repeatable gain beyond memorized cards.","prompt":"What would be the strongest proof?","required":["unseen","replay"]}

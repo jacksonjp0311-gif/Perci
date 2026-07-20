@@ -1,6 +1,6 @@
 # AI Evolve Protocol — multi-agent interconnection (v0.7.1)
 
-**Purpose:** Any AI can enter this repository and evolve Perci without violating the Capability Fabric.
+**Purpose:** Any AI can enter this repository and evolve Perci without violating the Capability Fabric or the governed-core charter in [`docs/GOVERNED_WILL.md`](GOVERNED_WILL.md).
 
 ## 1. Identity of the system
 

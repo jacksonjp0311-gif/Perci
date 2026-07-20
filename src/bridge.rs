@@ -153,7 +153,10 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
             return;
         }
         let low = t.to_ascii_lowercase();
-        if seen.iter().any(|e| e == &low || e.contains(&low[..low.len().min(36)])) {
+        if seen
+            .iter()
+            .any(|e| e == &low || e.contains(&low[..low.len().min(36)]))
+        {
             return;
         }
         // Suppress stock method cards.
@@ -249,8 +252,7 @@ pub fn assemble(matched: &CognitiveMatch, user: &str) -> BridgePacket {
     let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
     let frame_n = frames.len();
     let composition = matched.composition.clone();
-    let contested =
-        matched.margin < 16 || residual_n > 0 || frame_n >= 2 || composition.len() >= 3;
+    let contested = matched.margin < 16 || residual_n > 0 || frame_n >= 2 || composition.len() >= 3;
     let rich = lead.is_some()
         || !supports.is_empty()
         || !residual_supports.is_empty()
@@ -305,8 +307,8 @@ pub fn compose_soft_cascade(
     let geo = crate::emergence::analyze(matched, user);
     crate::emergence::set_session_policy(geo.clone());
     // Pack-alignment body for trust/lag (SoftCascade-only path).
-    let aligned_domain = crate::auto_repairs::softcascade_trust_alignment_body(user)
-        .unwrap_or(domain_body);
+    let aligned_domain =
+        crate::auto_repairs::softcascade_trust_alignment_body(user).unwrap_or(domain_body);
     let mix_thesis = if geo.prefer_mixture_thesis {
         crate::emergence::preferred_mixture_insight(matched, user)
     } else {
@@ -315,7 +317,10 @@ pub fn compose_soft_cascade(
     // Prefer structural trust alignment as thesis when primary is off-topic on trust/lag.
     let align_thesis = if mix_thesis.is_none()
         && crate::auto_repairs::softcascade_trust_alignment_body(user).is_some()
-        && geo.tags.iter().any(|t| *t == "primary_off_topic" || *t == "geometry_blind")
+        && geo
+            .tags
+            .iter()
+            .any(|t| *t == "primary_off_topic" || *t == "geometry_blind")
     {
         crate::auto_repairs::softcascade_trust_alignment_body(user)
             .map(|s| s.trim().trim_end_matches('.').to_owned())
@@ -400,8 +405,7 @@ pub fn compose_soft_cascade(
     let mut plan = LengthPlan::from_bitwork(user, matched, &packet, CognitionPath::Cascade);
     plan = plan.apply_style_depth(style_depth());
     // Contested / multipartite / blind geometry → slightly more room to think.
-    if (packet.contested || geo.force_multipartite_arc || geo.geometry_blind)
-        && style_depth() != 1
+    if (packet.contested || geo.force_multipartite_arc || geo.geometry_blind) && style_depth() != 1
     {
         plan.words = (plan.words.saturating_add(24)).min(LengthPlan::L_MAX as usize);
     }
@@ -430,9 +434,7 @@ impl ThoughtArc {
         depth: u8,
         force_multipartite: bool,
     ) -> Self {
-        let clean = |s: &str| -> String {
-            s.trim().trim_end_matches('.').trim().to_owned()
-        };
+        let clean = |s: &str| -> String { s.trim().trim_end_matches('.').trim().to_owned() };
         let mut thesis = packet
             .lead
             .as_ref()
@@ -475,14 +477,15 @@ impl ThoughtArc {
                     .filter(|s| s.chars().count() >= 20 && !near_dup(s, &thesis))
             })
             .or_else(|| {
-                packet.frames.first().map(|s| clean(s)).filter(|s| {
-                    s.chars().count() >= 16 && !near_dup(s, &thesis)
-                })
+                packet
+                    .frames
+                    .first()
+                    .map(|s| clean(s))
+                    .filter(|s| s.chars().count() >= 16 && !near_dup(s, &thesis))
             });
 
         // Check = second residual / second support when contested, multipartite force, or deep.
-        let need_check =
-            packet.contested || margin < 14 || depth == 2 || force_multipartite;
+        let need_check = packet.contested || margin < 14 || depth == 2 || force_multipartite;
         let check = if need_check {
             packet
                 .residual_supports
@@ -526,14 +529,20 @@ impl ThoughtArc {
     ) -> String {
         let mut out = String::new();
         let lower = user.to_ascii_lowercase();
-        let follow =
-            lower.contains("what about")
-                || lower.contains("and ")
-                || lower.starts_with("also")
-                || lower.contains("still")
-                || lower.contains("then ")
-                || lower.contains("under partition")
-                || lower.contains("more carefully");
+        // Continuity only for explicit follow-up cues. Bare "and " matches almost
+        // every multi-clause prompt and splices a stale session premise into a
+        // fresh topic (the old "Keeping last thread in view" leak).
+        let follow = lower.contains("what about")
+            || lower.starts_with("and ")
+            || lower.starts_with("also")
+            || lower.starts_with("still")
+            || lower.contains(" still ")
+            || lower.starts_with("then ")
+            || lower.contains("under partition")
+            || lower.contains("more carefully")
+            || lower.contains("go on")
+            || lower.contains("continue that")
+            || lower.contains("from there");
 
         // Soft session continuity — only when continuing, not on cold opens.
         if follow {
@@ -556,20 +565,14 @@ impl ThoughtArc {
         match (ask, variant % 4) {
             (AskShape::Why, 0) => out.push_str(&format!("{t}.")),
             (AskShape::Why, 1) => out.push_str(&format!("For {topic}, {t0}.")),
-            (AskShape::Why, _) => out.push_str(&format!(
-                "It comes down to this: {t0}."
-            )),
+            (AskShape::Why, _) => out.push_str(&format!("It comes down to this: {t0}.")),
             (AskShape::How, 0) => out.push_str(&format!("{t}.")),
             (AskShape::How, 1) => out.push_str(&format!("In practice, {t0}.")),
             (AskShape::How, _) => out.push_str(&format!("The workable path is when {t0}.")),
             (AskShape::What, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::What, _) => out.push_str(&format!(
-                "The cleanest read of {topic}: {t0}."
-            )),
+            (AskShape::What, _) => out.push_str(&format!("The cleanest read of {topic}: {t0}.")),
             (AskShape::Connect, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::Connect, _) => out.push_str(&format!(
-                "A bridge for {topic}: {t0}."
-            )),
+            (AskShape::Connect, _) => out.push_str(&format!("A bridge for {topic}: {t0}.")),
             (AskShape::Open, 0) => out.push_str(&format!("{t}.")),
             (AskShape::Open, _) => out.push_str(&format!("On {topic}: {t0}.")),
         }
@@ -715,9 +718,8 @@ impl LengthPlan {
             }
         }
         let experts = domains.len() as u32;
-        let cd_units = experts
-            + (packet.frame_n as u32).min(4)
-            + (matched.composition.len() as u32).min(4);
+        let cd_units =
+            experts + (packet.frame_n as u32).min(4) + (matched.composition.len() as u32).min(4);
         let alpha_pm = matched.primary_attention_pm as u32;
         let intent_pm = intent_multiplier_pm(user);
         let base_b = base_words(path, user);
@@ -832,8 +834,8 @@ impl LengthPlan {
             }
             2 => {
                 // deep: grow budget ~30%, allow deeper cap
-                self.words = ((self.words as u32).saturating_mul(130) / 100)
-                    .min(LengthPlan::L_MAX) as usize;
+                self.words =
+                    ((self.words as u32).saturating_mul(130) / 100).min(LengthPlan::L_MAX) as usize;
                 self.intent_pm = self.intent_pm.max(1500);
             }
             _ => {}
@@ -894,7 +896,12 @@ impl LengthPlan {
         let domains = if self.domains.is_empty() {
             "—".to_owned()
         } else {
-            self.domains.iter().take(5).cloned().collect::<Vec<_>>().join(" + ")
+            self.domains
+                .iter()
+                .take(5)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" + ")
         };
         let mut out = String::new();
         out.push_str("[Cognition Trace · backend]\n");
@@ -930,7 +937,12 @@ impl LengthPlan {
         if !self.composition.is_empty() {
             out.push_str(&format!(
                 "• VSA bind: {}\n",
-                self.composition.iter().take(4).cloned().collect::<Vec<_>>().join(" · ")
+                self.composition
+                    .iter()
+                    .take(4)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(" · ")
             ));
         }
         out.push_str(&format!(
@@ -1160,10 +1172,7 @@ pub fn render_prototype_tree(matched: &CognitiveMatch, packet: &BridgePacket) ->
     let mut lines = Vec::new();
     lines.push("[Prototype tree]".to_owned());
     let alpha = matched.primary_attention_pm / 10;
-    lines.push(format!(
-        "  ◆ lead  {}  α={}%" ,
-        matched.label, alpha
-    ));
+    lines.push(format!("  ◆ lead  {}  α={}%", matched.label, alpha));
     let mut mix: Vec<_> = matched.mixture.iter().filter(|m| !m.residual).collect();
     mix.sort_by_key(|m| std::cmp::Reverse(m.attention_pm));
     let res: Vec<_> = matched.mixture.iter().filter(|m| m.residual).collect();
@@ -1211,7 +1220,12 @@ pub fn render_prototype_tree(matched: &CognitiveMatch, packet: &BridgePacket) ->
 
 /// \(1 + 0.6\alpha + 1.2 H_r + 0.4\log_2(1+C) + N_r + I_u\) in permille.
 /// \(N_r\): novelty/residual bonus when multipartite mass is present.
-fn length_factor_pm(alpha_pm: u32, residual_hops: u32, cd_units: u32, intent_pm: u32) -> (u32, u32) {
+fn length_factor_pm(
+    alpha_pm: u32,
+    residual_hops: u32,
+    cd_units: u32,
+    intent_pm: u32,
+) -> (u32, u32) {
     // 0.6 * α  → alpha_pm * 600 / 1000
     let alpha_term = (alpha_pm.saturating_mul(600)) / 1000;
     // 1.2 * H_r → hops * 1200 (H_r is dimensionless count 0–2)
@@ -1239,7 +1253,10 @@ fn integer_log2_floor(n: u32) -> u32 {
 }
 
 fn finalize_words(base_b: u32, factor_pm: u32, path: CognitionPath, intent_pm: u32) -> usize {
-    let raw = ((base_b as u64).saturating_mul(factor_pm as u64).saturating_add(999)) / 1000;
+    let raw = ((base_b as u64)
+        .saturating_mul(factor_pm as u64)
+        .saturating_add(999))
+        / 1000;
     let l_max = if intent_pm >= 1800 {
         LengthPlan::L_MAX
     } else {
@@ -1266,7 +1283,11 @@ fn base_words(path: CognitionPath, user: &str) -> u32 {
             }
         }
         CognitionPath::Cascade | CognitionPath::Open => {
-            if lower.contains("detailed") || lower.contains("thorough") {
+            if lower.contains("detailed")
+                || lower.contains("thorough")
+                || lower.contains("deep")
+                || lower.contains("in depth")
+            {
                 160
             } else {
                 120
@@ -1280,7 +1301,11 @@ fn intent_multiplier_pm(user: &str) -> u32 {
     let lower = user.to_ascii_lowercase();
     if lower.contains("detailed")
         || lower.contains("thorough")
+        || lower.contains("deep")
         || lower.contains("in depth")
+        || lower.contains("go deeper")
+        || lower.contains("one level deeper")
+        || lower.contains("more detail")
         || lower.contains("think step")
         || lower.contains("step by step")
     {
@@ -1296,6 +1321,9 @@ fn intent_multiplier_pm(user: &str) -> u32 {
         1500
     } else if lower.contains("brief")
         || lower.contains("short answer")
+        || lower.contains("one sentence")
+        || lower.contains("quick answer")
+        || lower.contains("concise")
         || lower.contains("tl;dr")
         || lower.contains("tldr")
     {
@@ -1442,7 +1470,10 @@ fn decapitalize_if_mid(s: &str) -> String {
     match c.next() {
         Some(first) if first.is_uppercase() => {
             // Keep acronyms / short all-caps.
-            if s.chars().take(3).all(|ch| ch.is_uppercase() || !ch.is_alphabetic()) {
+            if s.chars()
+                .take(3)
+                .all(|ch| ch.is_uppercase() || !ch.is_alphabetic())
+            {
                 s.to_owned()
             } else {
                 first.to_lowercase().collect::<String>() + c.as_str()
@@ -1500,11 +1531,11 @@ fn looks_open_fluency_user(lower: &str) -> bool {
 
 fn content_tokens_bridge(user: &str) -> Vec<String> {
     const STOP: &[&str] = &[
-        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this", "what",
-        "when", "where", "which", "who", "why", "how", "can", "could", "would", "should",
-        "will", "just", "really", "very", "your", "you", "me", "my", "our", "we", "i", "is",
-        "are", "was", "were", "be", "been", "do", "does", "did", "to", "of", "in", "on", "for",
-        "it", "its", "as", "at", "by", "not", "no", "please", "tell", "about", "with", "from",
+        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this", "what", "when",
+        "where", "which", "who", "why", "how", "can", "could", "would", "should", "will", "just",
+        "really", "very", "your", "you", "me", "my", "our", "we", "i", "is", "are", "was", "were",
+        "be", "been", "do", "does", "did", "to", "of", "in", "on", "for", "it", "its", "as", "at",
+        "by", "not", "no", "please", "tell", "about", "with", "from",
     ];
     user.split_whitespace()
         .map(|w| {
@@ -1577,7 +1608,10 @@ fn support_is_relevant(
     // Share a content token between user and insight.
     if let Some(ref insight) = m.insight {
         let il = insight.to_ascii_lowercase();
-        if user_tokens.iter().any(|t| t.len() >= 4 && il.contains(t.as_str())) {
+        if user_tokens
+            .iter()
+            .any(|t| t.len() >= 4 && il.contains(t.as_str()))
+        {
             return true;
         }
     }
@@ -1745,7 +1779,12 @@ mod tests {
         );
         // Backend plan still available.
         let plan = peek_last_verbose_trace().expect("plan sealed");
-        assert!(plan.contains("Lead:") || plan.contains("α") || plan.contains("Length") || plan.contains("Thought mode"));
+        assert!(
+            plan.contains("Lead:")
+                || plan.contains("α")
+                || plan.contains("Length")
+                || plan.contains("Thought mode")
+        );
     }
 
     #[test]
@@ -1786,12 +1825,8 @@ mod tests {
             &packet,
             CognitionPath::Cascade,
         );
-        let brief = LengthPlan::from_bitwork(
-            "brief: trust fail",
-            &m,
-            &packet,
-            CognitionPath::Cascade,
-        );
+        let brief =
+            LengthPlan::from_bitwork("brief: trust fail", &m, &packet, CognitionPath::Cascade);
         assert!(open.words >= 80, "open L={}", open.words);
         assert!(open.intent_pm >= 1500);
         assert!(brief.intent_pm <= 1000 || brief.words <= open.words);
@@ -1852,12 +1887,8 @@ mod tests {
     fn style_depth_shrinks_concise_budget() {
         let m = sample_match();
         let packet = assemble(&m, "why does trust fail?");
-        let base = LengthPlan::from_bitwork(
-            "why does trust fail?",
-            &m,
-            &packet,
-            CognitionPath::Cascade,
-        );
+        let base =
+            LengthPlan::from_bitwork("why does trust fail?", &m, &packet, CognitionPath::Cascade);
         let concise = base.clone().apply_style_depth(1);
         let deep = base.clone().apply_style_depth(2);
         assert!(concise.words <= base.words);
@@ -1960,12 +1991,10 @@ mod tests {
         // Primary insight is phenomenology fluff; mixture hits the user question.
         let mut m = sample_match();
         m.margin = 2;
-        m.insight = Some(
-            "Behavioral complexity is observable; subjective experience is inferred.".into(),
-        );
-        m.mixture[0].insight = Some(
-            "Interfaces earn trust when timeouts and retries stay explicit under lag.".into(),
-        );
+        m.insight =
+            Some("Behavioral complexity is observable; subjective experience is inferred.".into());
+        m.mixture[0].insight =
+            Some("Interfaces earn trust when timeouts and retries stay explicit under lag.".into());
         m.mixture[0].attention_pm = 350;
         let user = "how should interfaces earn trust under lag and retry?";
         let geo = crate::emergence::analyze(&m, user);

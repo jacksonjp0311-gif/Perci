@@ -160,7 +160,12 @@ fn answer_for_engine(engine: &str, prompt: &str) -> String {
 pub fn compare_baselines(path: &Path, limit: usize) -> std::io::Result<ReplayReport> {
     let rows = load_rows(path, limit)?;
     let world = CompositionalWorld::seed();
-    let engines = ["entity-slot", "native-decoder", "reason-loop", "compositional"];
+    let engines = [
+        "entity-slot",
+        "native-decoder",
+        "reason-loop",
+        "compositional",
+    ];
     let mut summaries = Vec::new();
 
     for eng in engines {
@@ -236,8 +241,7 @@ human authorize required; binary field promote only if held-out beats active on 
         promote_recommended,
         promote_reason,
         claim_boundary:
-            "engineering comparison only — not AGI; never auto-promote .pwgt / .bwm / .bphr"
-                .into(),
+            "engineering comparison only — not AGI; never auto-promote .pwgt / .bwm / .bphr".into(),
     })
 }
 
@@ -251,7 +255,11 @@ pub fn write_report(report: &ReplayReport) -> std::io::Result<PathBuf> {
         .write(true)
         .truncate(true)
         .open(&path)?;
-    writeln!(f, "{}", serde_json::to_string_pretty(report).unwrap_or_default())?;
+    writeln!(
+        f,
+        "{}",
+        serde_json::to_string_pretty(report).unwrap_or_default()
+    )?;
     Ok(path)
 }
 

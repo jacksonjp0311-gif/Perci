@@ -1,0 +1,205 @@
+{
+  "schema": "perci.dialogue-candidate-evaluation.v1",
+  "questions": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v1-heldout.jsonl",
+  "questions_sha256": "71673a98daaafd1de52f2ebba0ac9770ab1ad9dbeb5c1109c394359b7892e614",
+  "phrase_candidate": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v1.bphr",
+  "phrase_candidate_sha256": "c9ee340a649dcfa7e5bd86067e94996816ae32cdf851c0cdb47c6c0e68fe0602",
+  "baseline": {
+    "summary": {
+      "questions_requested": 12,
+      "responses_parsed": 12,
+      "unique_responses": 12,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 1.0,
+      "mean_chars": 298.67,
+      "median_chars": 291.0,
+      "min_chars": 148,
+      "max_chars": 541,
+      "families": 12,
+      "topics": 12,
+      "family_metrics": {
+        "creative": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "depth": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "disagreement": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "emergence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "memory_identity": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "rephrase": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "revision": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "scope": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "test_next": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "typo": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 12,
+      "required_passed": 5,
+      "required_rate": 0.4167,
+      "responses": 12
+    }
+  },
+  "candidate": {
+    "summary": {
+      "questions_requested": 12,
+      "responses_parsed": 12,
+      "unique_responses": 12,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 1.0,
+      "mean_chars": 298.67,
+      "median_chars": 291.0,
+      "min_chars": 148,
+      "max_chars": 541,
+      "families": 12,
+      "topics": 12,
+      "family_metrics": {
+        "creative": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "depth": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "disagreement": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "emergence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "memory_identity": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "rephrase": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "revision": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "scope": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "test_next": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "typo": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 12,
+      "required_passed": 5,
+      "required_rate": 0.4167,
+      "responses": 12
+    }
+  },
+  "candidate_not_worse": true,
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Human authorization and broader gates are still required even when this small held-out set improves."
+}

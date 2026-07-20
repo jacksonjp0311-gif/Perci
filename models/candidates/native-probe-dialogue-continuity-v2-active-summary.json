@@ -1,0 +1,95 @@
+{
+  "questions_requested": 24,
+  "responses_parsed": 24,
+  "unique_responses": 24,
+  "duplicate_responses": 0,
+  "topic_binding_rate": 0.2917,
+  "slot_pair_binding_rate": null,
+  "punctuated_response_rate": 1.0,
+  "mean_chars": 278,
+  "median_chars": 289.5,
+  "min_chars": 93,
+  "max_chars": 468,
+  "families": 13,
+  "topics": 21,
+  "family_metrics": {
+    "followup_creative": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_depth": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_disagreement": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_emergence": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_learning": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_rephrase": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_revision": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_scope": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_style": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_test": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_typo": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_why": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "seed": {
+      "responses": 12,
+      "unique_responses": 12,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    }
+  }
+}

@@ -251,10 +251,8 @@ pub fn analyze(matched: &CognitiveMatch, user: &str) -> GeometryPolicy {
         tags.push("needs_primary_fix");
     }
 
-    let force_multipartite_arc = phase == FieldPhase::Contested
-        || distinct_labels >= 3
-        || geometry_blind
-        || chronic;
+    let force_multipartite_arc =
+        phase == FieldPhase::Contested || distinct_labels >= 3 || geometry_blind || chronic;
     let lower_critique_threshold =
         (phase == FieldPhase::Contested && residual_n > 0) || geometry_blind || chronic;
 
@@ -289,11 +287,11 @@ fn primary_insight_off_topic(matched: &CognitiveMatch, user: &str) -> bool {
 
 pub(crate) fn content_tokens(user: &str) -> Vec<String> {
     const STOP: &[&str] = &[
-        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this", "what",
-        "when", "where", "which", "who", "why", "how", "can", "could", "would", "should",
-        "will", "just", "really", "very", "your", "you", "me", "my", "our", "we", "i", "is",
-        "are", "was", "were", "be", "been", "do", "does", "did", "to", "of", "in", "on", "for",
-        "it", "its", "as", "at", "by", "not", "no", "about", "with", "from", "into", "under",
+        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this", "what", "when",
+        "where", "which", "who", "why", "how", "can", "could", "would", "should", "will", "just",
+        "really", "very", "your", "you", "me", "my", "our", "we", "i", "is", "are", "was", "were",
+        "be", "been", "do", "does", "did", "to", "of", "in", "on", "for", "it", "its", "as", "at",
+        "by", "not", "no", "about", "with", "from", "into", "under",
     ];
     user.split_whitespace()
         .map(|w| {
@@ -464,10 +462,7 @@ pub fn lessons(window: usize) -> EvolutionHints {
 
     for (lab, n) in off_curriculum {
         if n >= CHRONIC_OFF_THRESHOLD {
-            if resolved_labels
-                .iter()
-                .any(|r| r.eq_ignore_ascii_case(&lab))
-            {
+            if resolved_labels.iter().any(|r| r.eq_ignore_ascii_case(&lab)) {
                 continue; // chronic hygiene: closed ticket = law satisfied at operator layer
             }
             hints.chronic_off_labels.push(lab);
@@ -629,36 +624,36 @@ Mixture thesis is a **temporary crutch** — not the durable fix.
 
     // Ledger ticket event only when we actually open or reaffirm an open ticket.
     if !already_closed {
-    append_event(&LedgerEvent {
-        ts: now_ts(),
-        kind: EventKind::Ticket,
-        ticket_id: Some(id.clone()),
-        ticket_kind: Some("primary_fix".into()),
-        label: Some(label.to_owned()),
-        user: Some(truncate(user, 160)),
-        tags: vec!["lab_ticket".into(), "primary_fix".into()],
-        phase: None,
-        margin: None,
-        overlap: None,
-        overlap_z: None,
-        alpha_pm: None,
-        mix_n: None,
-        residual_n: None,
-        mix_labels: None,
-        prefer_mix_thesis: None,
-        geometry_blind: None,
-        chronic: None,
-        mixture_crutch: Some(true),
-        authority: Some("lab".into()),
-        speech_hit: None,
-        token_hits: None,
-        token_n: None,
-        used_mix_thesis: None,
-        transfer_id: None,
-        transfer_pass: None,
-        transfer_score_pm: None,
-        transfer_detail: None,
-    });
+        append_event(&LedgerEvent {
+            ts: now_ts(),
+            kind: EventKind::Ticket,
+            ticket_id: Some(id.clone()),
+            ticket_kind: Some("primary_fix".into()),
+            label: Some(label.to_owned()),
+            user: Some(truncate(user, 160)),
+            tags: vec!["lab_ticket".into(), "primary_fix".into()],
+            phase: None,
+            margin: None,
+            overlap: None,
+            overlap_z: None,
+            alpha_pm: None,
+            mix_n: None,
+            residual_n: None,
+            mix_labels: None,
+            prefer_mix_thesis: None,
+            geometry_blind: None,
+            chronic: None,
+            mixture_crutch: Some(true),
+            authority: Some("lab".into()),
+            speech_hit: None,
+            token_hits: None,
+            token_n: None,
+            used_mix_thesis: None,
+            transfer_id: None,
+            transfer_pass: None,
+            transfer_score_pm: None,
+            transfer_detail: None,
+        });
     }
 
     Some(id)
@@ -857,13 +852,11 @@ pub fn evaluate_transfer(
         transfer_pass: Some(pass),
         transfer_score_pm: Some(score_pm),
         transfer_detail: Some(detail),
-        tags: vec![
-            if pass {
-                "transfer_pass".into()
-            } else {
-                "transfer_fail".into()
-            },
-        ],
+        tags: vec![if pass {
+            "transfer_pass".into()
+        } else {
+            "transfer_fail".into()
+        }],
         phase: None,
         label: None,
         margin: None,
@@ -907,7 +900,9 @@ pub fn transfer_gate_report(base: &str, speech_for: &HashMap<String, String>) ->
             "FAIL: policy/speech does not transfer under paraphrase or novel nouns — not emergence.\n",
         );
     } else {
-        out.push_str("PASS: topic binding survives at least one transform (paraphrase or novel).\n");
+        out.push_str(
+            "PASS: topic binding survives at least one transform (paraphrase or novel).\n",
+        );
     }
     out
 }
@@ -1375,7 +1370,8 @@ pub fn next_queue_item() -> String {
     let open = list_open_tickets();
     if open.is_empty() {
         return "[Lab queue] empty — no open primary-fix tickets. Run live chat then /field.\n\
-Regression: `perci transfer-suite` · `perci agent lab --full`".into();
+Regression: `perci transfer-suite` · `perci agent lab --full`"
+            .into();
     }
     let id = &open[0];
     let path = tickets_dir().join(format!("{id}.md"));
@@ -1459,9 +1455,8 @@ pub fn open_work_items() -> Vec<OpenWorkItem> {
             "geometry" | "math" => "exact tools + proof_engine",
             _ => "operators/frames first; curriculum only with human authorize",
         };
-        let command = format!(
-            "perci fabric handoff \"close lab ticket {label} via operator transfer\""
-        );
+        let command =
+            format!("perci fabric handoff \"close lab ticket {label} via operator transfer\"");
         items.push(OpenWorkItem {
             ticket_id: id,
             label,
@@ -1735,8 +1730,7 @@ pub fn pattern_intelligence_report() -> String {
                 } else {
                     op_n += 1;
                 }
-                if is_curriculum_authority(auth)
-                    && ev.tags.iter().any(|t| t == "primary_off_topic")
+                if is_curriculum_authority(auth) && ev.tags.iter().any(|t| t == "primary_off_topic")
                 {
                     primary_off_curr += 1;
                     if let Some(lab) = &ev.label {
@@ -1870,7 +1864,9 @@ pub fn hygiene_dual_tickets() -> String {
             if path.is_file() {
                 let _ = fs::remove_file(&path);
                 removed += 1;
-                lines.push_str(&format!("removed reopen thrash: {id}.md (closed remains)\n"));
+                lines.push_str(&format!(
+                    "removed reopen thrash: {id}.md (closed remains)\n"
+                ));
             }
         }
     }
@@ -1978,7 +1974,9 @@ SoftCascade pack-align: trust · governance · identity · geometry · planning 
             let n = fs::read_to_string(&p)
                 .map(|t| t.lines().filter(|l| !l.trim().is_empty()).count())
                 .unwrap_or(0);
-            out.push_str(&format!("  {s}: {n} lines [human-review / authorize only]\n"));
+            out.push_str(&format!(
+                "  {s}: {n} lines [human-review / authorize only]\n"
+            ));
         } else {
             out.push_str(&format!("  {s}: missing\n"));
         }
@@ -2012,10 +2010,7 @@ fn extract_json_numberish_from(window: &str, key: &str) -> Option<String> {
     let pat = format!("\"{key}\":");
     let idx = window.find(&pat)?;
     let rest = window[idx + pat.len()..].trim_start();
-    let num: String = rest
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect();
+    let num: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
     if num.is_empty() {
         None
     } else {
@@ -2043,7 +2038,11 @@ mod tests {
     // Serialize tests that touch global ledger paths.
     static LOCK: Mutex<()> = Mutex::new(());
 
-    fn sample_match(margin: i32, insight: Option<&str>, mix_insight: Option<&str>) -> CognitiveMatch {
+    fn sample_match(
+        margin: i32,
+        insight: Option<&str>,
+        mix_insight: Option<&str>,
+    ) -> CognitiveMatch {
         CognitiveMatch {
             label: "general".into(),
             variant: 1,
@@ -2100,11 +2099,9 @@ mod tests {
         assert!(p.tags.contains(&"primary_off_topic"));
         assert!(p.tags.contains(&"mixture_crutch"));
         assert!(!p.geometry_blind);
-        let pref = preferred_mixture_insight(
-            &m,
-            "how should interfaces earn trust under lag and retry?",
-        )
-        .expect("mix");
+        let pref =
+            preferred_mixture_insight(&m, "how should interfaces earn trust under lag and retry?")
+                .expect("mix");
         let pl = pref.to_ascii_lowercase();
         assert!(
             pl.contains("trust")
@@ -2234,7 +2231,11 @@ mod tests {
             map.insert(c.prompt.clone(), structural.into());
         }
         let r = evaluate_transfer("test-xfer-struct", &cases, &map);
-        assert!(r.pass, "structural operator speech should transfer: {}", r.detail);
+        assert!(
+            r.pass,
+            "structural operator speech should transfer: {}",
+            r.detail
+        );
     }
 
     #[test]
@@ -2265,7 +2266,9 @@ mod tests {
             "test2",
         );
         assert_eq!(id1, id2);
-        assert!(tickets.join(format!("{}.md", id1.as_ref().unwrap())).is_file());
+        assert!(tickets
+            .join(format!("{}.md", id1.as_ref().unwrap()))
+            .is_file());
         // Curriculum grew twice.
         let cur = fs::read_to_string(&curriculum).unwrap_or_default();
         assert_eq!(cur.lines().filter(|l| !l.is_empty()).count(), 2);
@@ -2281,7 +2284,9 @@ mod tests {
     fn speech_outcome_hit_detection() {
         let user = "how should interfaces earn trust under lag";
         let tokens = content_tokens(user);
-        assert!(tokens.iter().any(|t| t.contains("trust") || t.contains("interface")));
+        assert!(tokens
+            .iter()
+            .any(|t| t.contains("trust") || t.contains("interface")));
         let good = "Interfaces earn trust when timeouts stay explicit under lag.";
         let gl = good.to_ascii_lowercase();
         let hits = tokens.iter().filter(|t| gl.contains(t.as_str())).count();

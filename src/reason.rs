@@ -32,6 +32,13 @@ pub fn needs_reason_loop(label: &str, user: &str) -> bool {
             | "governance"
             | "comparison"
             | "explanation"
+            | "geometry"
+            | "memory"
+            | "language"
+            | "identity"
+            | "trust"
+            | "trust-systems"
+            | "conceptual"
     );
     let asks_for_depth = [
         "why ",

@@ -1,0 +1,12 @@
+{"id":"typo-intelligence","prompt":"what do you think about perci inteligence?","canonical":"what do you think about perci intelligence?","must_contain":["perci","intelligence"]}
+{"id":"typo-language","prompt":"why is natral langauge hard?","canonical":"why is natural language hard?","must_contain":["natural","language"]}
+{"id":"typo-attention","prompt":"can you exlpain memory and atention?","canonical":"can you explain memory and attention?","must_contain":["memory","attention"]}
+{"id":"typo-evolution","prompt":"how does low bit evoluton preserve magnitute?","canonical":"how does low bit evolution preserve magnitude?","must_contain":["evolution","magnitude"]}
+{"id":"typo-learning","prompt":"is this converstaion learning?","canonical":"is this conversation learning?","must_contain":["conversation","learning"]}
+{"id":"typo-cross-domain","prompt":"what is the differnce between geometry and life?","canonical":"what is the difference between geometry and life?","must_contain":["difference","geometry","life"]}
+{"id":"typo-math","prompt":"calcualte 17 percent of 240","canonical":"calculate 17 percent of 240","must_contain":["40.8","204/5"]}
+{"id":"typo-reasoning","prompt":"how can natral langauge support reasning?","canonical":"how can natural language support reasoning?","must_contain":["natural","language","reasoning"]}
+{"id":"typo-emergence","prompt":"what is emergnce in an adpative system?","canonical":"what is emergence in an adaptive system?","must_contain":["emergence","adaptive"]}
+{"id":"typo-reflection","prompt":"make a refelctive answer about the system","canonical":"make a reflective answer about the system","must_contain":["reflective","system"]}
+{"id":"typo-weights","prompt":"what would prove that a weight changed?","canonical":"what would prove that a weight changed?","must_contain":["weight","changed"]}
+{"id":"typo-ood","prompt":"klaz vexor qint what can you determine?","canonical":"klaz vexor qint what can you determine?","must_contain":["unknown"]}

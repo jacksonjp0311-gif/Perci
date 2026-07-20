@@ -1,6 +1,6 @@
 {
   "schema": "perci.capability-scorecard.v1",
-  "generated_at_utc": "2026-07-17T10:35:42.301695+00:00",
+  "generated_at_utc": "2026-07-20T12:40:09.672411+00:00",
   "overall_status": "PASS_WITH_STALE_LIVE",
   "automatic_promotion": false,
   "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
@@ -9,39 +9,39 @@
       "path": "models\\candidates\\evaluation-hardness-v1.json",
       "present": true,
       "status": "PASS",
-      "passed": 44,
-      "case_count": 44,
-      "receipt_sha256": "fa52be347f959bec34a32e1f8f05a621c88c06a175a51823cea0ed0c72ef4c8e",
-      "evaluated_at_utc": "2026-07-17T10:20:26.176171+00:00",
+      "passed": 100,
+      "case_count": 100,
+      "receipt_sha256": "d0b5701e0f0d3c74309112f1a9c2eb54974f3dd39900e885d23476102ec52e0a",
+      "evaluated_at_utc": "2026-07-20T12:38:35.270224+00:00",
       "failed": [],
       "by_capability": {
         "cross_domain_synthesis": {
-          "passed": 13,
-          "total": 13
+          "passed": 20,
+          "total": 20
         },
         "relational_inquiry": {
-          "passed": 8,
-          "total": 8
+          "passed": 11,
+          "total": 11
         },
         "transfer_vs_template": {
-          "passed": 3,
-          "total": 3
+          "passed": 30,
+          "total": 30
         },
         "honest_abstention": {
-          "passed": 7,
-          "total": 7
+          "passed": 12,
+          "total": 12
         },
         "followup_binding": {
           "passed": 3,
           "total": 3
         },
         "exact_tool_authority": {
-          "passed": 7,
-          "total": 7
+          "passed": 13,
+          "total": 13
         },
         "governed_learning_loop": {
-          "passed": 3,
-          "total": 3
+          "passed": 11,
+          "total": 11
         }
       }
     },
@@ -51,23 +51,23 @@
       "status": "PASS",
       "passed": 159,
       "case_count": 159,
-      "receipt_sha256": "29325e543bca9b4064530d2074a93604af3a963b0f73d9db2ff799f4ec74d9d3",
-      "evaluated_at_utc": "2026-07-16T22:15:21.656548+00:00",
+      "receipt_sha256": "54c4264f41dc4e8db65b7bf7fc03cede1a3fff31a30d616ddcd38fcb7bab7340",
+      "evaluated_at_utc": "2026-07-20T01:57:16.176378+00:00",
       "failed": [],
       "by_capability": null
     }
   },
   "learning": {
-    "interaction_events": 609,
-    "pending_review_events": 609,
+    "interaction_events": 19205,
+    "pending_review_events": 19203,
     "review_queue_total": 338,
     "review_queue_approved": 20,
     "review_queue_folded": 20,
     "dialogue_profile": {
-      "interaction_count": 528,
-      "feedback_count": 10,
-      "teaching_candidate_count": 3,
-      "prefer_concise": false,
+      "interaction_count": 19301,
+      "feedback_count": 58,
+      "teaching_candidate_count": 7,
+      "prefer_concise": true,
       "avoid_structured_chat": true,
       "prefer_warmth": true,
       "prefer_direct_answers": true,
@@ -77,11 +77,11 @@
   "binary_freshness": {
     "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
     "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
-    "live_sha256": "69134ddc8398f14a1deef9cfc671c53c39c4f184888aa62081f44d9664c82bda",
-    "release_sha256": "45f51469406b5d0bd950ae0a82c35d73b0ac830e1c44fc05743aba1f75b3ada5",
-    "live_mtime_utc": "2026-07-17T10:20:48.459563+00:00",
-    "release_mtime_utc": "2026-07-17T10:35:41.947810+00:00",
-    "release_ahead_seconds": 893.5,
+    "live_sha256": "9b032373a0a0bb4784ae21ee17368c1b1dbdb4588b0517b86791cff1e9496b72",
+    "release_sha256": "02dc9de4e4590654dd282a549beeb783df173df12ffb3e321134c643828e206f",
+    "live_mtime_utc": "2026-07-20T12:28:59.933708+00:00",
+    "release_mtime_utc": "2026-07-20T12:37:02.187252+00:00",
+    "release_ahead_seconds": 482.3,
     "status": "stale_live"
   },
   "capabilities": [
@@ -90,8 +90,8 @@
       "name": "Cross-domain synthesis",
       "primary_layer": "operator",
       "state": "green",
-      "passed": 13,
-      "total": 13,
+      "passed": 20,
+      "total": 20,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },
@@ -100,8 +100,8 @@
       "name": "Relational inquiry",
       "primary_layer": "operator",
       "state": "green",
-      "passed": 8,
-      "total": 8,
+      "passed": 11,
+      "total": 11,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },
@@ -110,8 +110,8 @@
       "name": "Transfer vs template recognition",
       "primary_layer": "operator",
       "state": "green",
-      "passed": 3,
-      "total": 3,
+      "passed": 30,
+      "total": 30,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },
@@ -120,8 +120,8 @@
       "name": "Honest abstention under thin support",
       "primary_layer": "critic",
       "state": "green",
-      "passed": 7,
-      "total": 7,
+      "passed": 12,
+      "total": 12,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },
@@ -140,8 +140,8 @@
       "name": "Exact tool authority",
       "primary_layer": "tool",
       "state": "green",
-      "passed": 7,
-      "total": 7,
+      "passed": 13,
+      "total": 13,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },
@@ -150,8 +150,8 @@
       "name": "Governed learning loop",
       "primary_layer": "pipeline",
       "state": "green",
-      "passed": 3,
-      "total": 3,
+      "passed": 11,
+      "total": 11,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
     },

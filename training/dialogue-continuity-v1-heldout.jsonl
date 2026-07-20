@@ -1,0 +1,12 @@
+{"id":"dc-holdout-001","split":"heldout","family":"memory_identity","topic":"memory","prompt":"How does memory help identity survive change?","required":["memory","identity","continuity"]}
+{"id":"dc-holdout-002","split":"heldout","family":"disagreement","topic":"premise","prompt":"I dont think that conclusion follows.","required":["challenge","premise"]}
+{"id":"dc-holdout-003","split":"heldout","family":"revision","topic":"counterexample","prompt":"What evidence could make you revise that view?","required":["counterexample","prediction"]}
+{"id":"dc-holdout-004","split":"heldout","family":"rephrase","topic":"claim","prompt":"Rephrase the previous explanation in plainer language.","required":["claim","explanation"]}
+{"id":"dc-holdout-005","split":"heldout","family":"scope","topic":"system","prompt":"I am asking about Perci's system, not a human being.","required":["system","routing"]}
+{"id":"dc-holdout-006","split":"heldout","family":"test_next","topic":"test","prompt":"What is the smallest next test for this repair?","required":["test","held-out"]}
+{"id":"dc-holdout-007","split":"heldout","family":"creative","topic":"geometry","prompt":"Find a fresh connection between geometry and mortality.","required":["geometry","mechanism"]}
+{"id":"dc-holdout-008","split":"heldout","family":"typo","topic":"difference","prompt":"whats the diference between memory and attention","required":["memory","attention"]}
+{"id":"dc-holdout-009","split":"heldout","family":"depth","topic":"mechanism","prompt":"Take that explanation one layer deeper.","required":["mechanism","observation"]}
+{"id":"dc-holdout-010","split":"heldout","family":"evidence","topic":"evidence","prompt":"In one sentence, why should I trust the result?","required":["evidence","repeatable"]}
+{"id":"dc-holdout-011","split":"heldout","family":"learning","topic":"learning","prompt":"Are you learning this permanently or only remembering it?","required":["learning","reviewed"]}
+{"id":"dc-holdout-012","split":"heldout","family":"emergence","topic":"emergent","prompt":"How would we distinguish emergence from a preset?","required":["held-out","preset"]}

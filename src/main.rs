@@ -25,6 +25,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if matches!(command.as_str(), "language" | "lang") {
         return run_language_command(&mut args);
     }
+    // Layered low-bit maintenance/probes do not require the chat backend.
+    if matches!(command.as_str(), "lowbit" | "low-bit" | "bitlayer") {
+        return run_lowbit_command(&mut args);
+    }
 
     let personality = load_personality();
     let memory_path = env::var_os("PERCI_MEMORY")
@@ -223,28 +227,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", perci::reason_loop::format_receipt(&r));
                 }
                 "replay" | "baselines" => {
-                    let path = args
-                        .next()
-                        .unwrap_or_else(|| "models/candidates/adversarial-v0.8.4-heldout.jsonl".into());
+                    let path = args.next().unwrap_or_else(|| {
+                        "models/candidates/adversarial-v0.8.4-heldout.jsonl".into()
+                    });
                     let limit = args
                         .next()
                         .and_then(|s| s.parse::<usize>().ok())
                         .unwrap_or(120);
-                    let report = perci::replay_learn::compare_baselines(
-                        std::path::Path::new(&path),
-                        limit,
-                    )?;
+                    let report =
+                        perci::replay_learn::compare_baselines(std::path::Path::new(&path), limit)?;
                     if let Ok(p) = perci::replay_learn::write_report(&report) {
                         eprintln!("wrote {}", p.display());
                     }
                     println!("{}", perci::replay_learn::format_report(&report));
                 }
                 "compose" | "world-compose" => {
-                    println!("{}", perci::compositional_world::CompositionalWorld::status_report());
+                    println!(
+                        "{}",
+                        perci::compositional_world::CompositionalWorld::status_report()
+                    );
                     let prompt = args.collect::<Vec<_>>().join(" ");
                     if !prompt.trim().is_empty() {
                         let w = perci::compositional_world::CompositionalWorld::seed();
-                        if let Some(f) = perci::entity_slot::extract_entity_slot_frame(prompt.trim()) {
+                        if let Some(f) =
+                            perci::entity_slot::extract_entity_slot_frame(prompt.trim())
+                        {
                             println!("{}", w.explain_pair(&f.slot_a, &f.slot_b));
                         } else {
                             println!("(pass entity-slot style prompt to see multi-hop paths)");
@@ -620,6 +627,10 @@ fn print_status(engine: &ChatEngine) {
     ui.row("packs", perci::intel_packs::status_summary());
     ui.row("cognition", "4,096-bit experts · deduplicated prototypes");
     ui.row("weights", "mmap · PERCIW03 concepts · v2/v1 read fallback");
+    ui.row(
+        "low-bit",
+        "PERCLBW1 sidecar · ternary blocks · residual planes · INT4 escape lane",
+    );
     ui.row("reasoning", "checked i128/rational · symbolic geometry");
     ui.row("memory", "append-only JSONL · Cortex · offline packs");
     ui.row("learning", engine.learning_status());
@@ -721,6 +732,91 @@ fn run_intelligence_probe() -> io::Result<()> {
         "claim ceiling",
         "diagnostic probe only · sealed evaluation remains authoritative",
     );
+    Ok(())
+}
+
+fn run_lowbit_command<I>(args: &mut I) -> Result<(), Box<dyn std::error::Error>>
+where
+    I: Iterator<Item = String>,
+{
+    match args.next().as_deref().unwrap_or("status") {
+        "status" | "inspect" => {
+            println!("{}", perci::low_bit::status_report());
+        }
+        "probe" | "test" => {
+            let probe = perci::low_bit::run_probe()?;
+            println!("layered low-bit probe");
+            println!("  baseline weight MSE: {:.8}", probe.baseline_mse);
+            println!("  corrected weight MSE: {:.8}", probe.corrected_mse);
+            println!("  INT4 activation MSE: {:.8}", probe.activation_mse);
+            println!("  sparse outliers: {}", probe.outliers);
+            println!(
+                "  Hadamard roundtrip max error: {:.8}",
+                probe.hadamard_roundtrip_max_error
+            );
+            println!("  PERCLBW1 bytes: {}", probe.serialized_bytes);
+            println!(
+                "  binary roundtrip max error: {:.8}",
+                probe.serialized_roundtrip_max_error
+            );
+            println!(
+                "  result: {}",
+                if probe.corrected_mse <= probe.baseline_mse
+                    && probe.hadamard_roundtrip_max_error < 1.0e-5
+                    && probe.serialized_roundtrip_max_error < 1.0e-6
+                {
+                    "PASS"
+                } else {
+                    "FAIL"
+                }
+            );
+        }
+        "train" | "pack" => {
+            let input = args
+                .next()
+                .ok_or("usage: perci lowbit train <dataset.json> <candidate.blw> [--block-size N] [--residual-planes N] [--rank N]")?;
+            let output = args
+                .next()
+                .ok_or("usage: perci lowbit train <dataset.json> <candidate.blw> [--block-size N] [--residual-planes N] [--rank N]")?;
+            let rest: Vec<String> = args.collect();
+            let mut config = perci::low_bit::LayeredWeightConfig::default();
+            let mut index = 0usize;
+            while index < rest.len() {
+                let flag = rest[index].as_str();
+                let value = rest
+                    .get(index + 1)
+                    .ok_or_else(|| format!("missing value for {flag}; expected an integer"))?;
+                match flag {
+                    "--block-size" => config.block_size = value.parse()?,
+                    "--residual-planes" => config.residual_planes = value.parse()?,
+                    "--rank" | "--correction-rank" => config.correction_rank = value.parse()?,
+                    other => return Err(format!("unknown lowbit train option: {other}").into()),
+                }
+                index += 2;
+            }
+            let report = perci::low_bit::train_from_json(&input, &output, config)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+        "assess" | "evaluate" => {
+            let input = args
+                .next()
+                .ok_or("usage: perci lowbit assess <dataset.json> <candidate.blw>")?;
+            let candidate = args
+                .next()
+                .ok_or("usage: perci lowbit assess <dataset.json> <candidate.blw>")?;
+            let report = perci::low_bit::assess_candidate_from_json(&input, &candidate)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            if report.assessment != "PASS" {
+                std::process::exit(1);
+            }
+        }
+        other => {
+            return Err(format!(
+                "unknown lowbit subcommand: {other} (try: status|probe|train|assess)"
+            )
+            .into());
+        }
+    }
     Ok(())
 }
 

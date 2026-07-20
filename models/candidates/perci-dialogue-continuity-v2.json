@@ -1,0 +1,22 @@
+{
+  "schema": "perci.dialogue-candidate.v1",
+  "corpus": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v2.jsonl",
+  "corpus_sha256": "caee25744ceb6a0c86c7bd09363ca515c3752fea94b8905c4a9f3627420b7c51",
+  "train_rows": 24,
+  "response_source_only": true,
+  "primer_conditioned": true,
+  "topic_conditioned": true,
+  "prompt_conditioned": true,
+  "context_rows": 24,
+  "primer_count": 5,
+  "order": 4,
+  "byte_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.blng",
+  "byte_field_sha256": "16180fd1233438ed4c6286e1d1ce0e7a7d923238765e2a102b271cd21b1bd6ce",
+  "phrase_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.bphr",
+  "phrase_field_sha256": "2aa3bcfaabd432c6bed6c758da31f8dc05535182d93581d0e128483e39dd6d8f",
+  "phrase_field_bytes": 119465,
+  "trainer_stdout_tail": "native language rebuilt\n  byte output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.blng\n  byte order: 4\n  byte records: 5833\n  byte transitions: 10821\n  byte source bytes: 48001\n  byte file bytes: 414191\n  phrase output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.bphr\n  phrase order: 4\n  phrase vocabulary: 525\n  phrase records: 6081\n  phrase transitions: 8071\n  phrase file bytes: 119465\n  relation output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.brel\n  relation records: 0\n  relation source bytes: 0\n  relation file bytes: 48\n  world output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-continuity-v2.bwm\n  world records: 0\n  world source bytes: 0\n  world file bytes: 64\n",
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Candidate is isolated until fresh-process held-out comparison passes."
+}

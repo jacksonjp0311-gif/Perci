@@ -131,8 +131,7 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
     let needs_branch = plan.actions.iter().any(|a| {
         matches!(
             a,
-            PlannedAction::AppendHardness { .. }
-                | PlannedAction::WriteFile { .. }
+            PlannedAction::AppendHardness { .. } | PlannedAction::WriteFile { .. }
         )
     }) && (opts.merge_if_green || !opts.dry_run);
 
@@ -185,7 +184,10 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
         && env::var("PERCI_AGENT_WORKTREE").ok().as_deref() == Some("1")
         && needs_branch
     {
-        let wt = root.join(".perci").join("worktrees").join(format!("agent-{stamp}"));
+        let wt = root
+            .join(".perci")
+            .join("worktrees")
+            .join(format!("agent-{stamp}"));
         let _ = fs::create_dir_all(wt.parent().unwrap_or(Path::new(".perci")));
         match git(
             &root,
@@ -272,7 +274,11 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                     }
                 }
             }
-            PlannedAction::WriteFile { rel_path, content, note } => {
+            PlannedAction::WriteFile {
+                rel_path,
+                content,
+                note,
+            } => {
                 if let Err(err) = assert_writable(rel_path) {
                     report.steps.push(AgentStep {
                         name: "repo.edit".into(),
@@ -366,7 +372,13 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
     if opts.run_tests && report.ok && !opts.dry_run {
         match run_allowlisted(
             &root,
-            &["cargo".into(), "test".into(), "--lib".into(), "--".into(), "--test-threads=1".into()],
+            &[
+                "cargo".into(),
+                "test".into(),
+                "--lib".into(),
+                "--".into(),
+                "--test-threads=1".into(),
+            ],
         ) {
             Ok(out) => report.steps.push(AgentStep {
                 name: "test.run".into(),
@@ -398,14 +410,13 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
 
     if opts.merge_if_green && report.ok && !opts.dry_run {
         // Stage only agent-touched paths under allowlist; never models/*.pwgt.
-        let _ = git(&root, &["add", "training/hardness", "src", "docs", "scripts"]);
+        let _ = git(
+            &root,
+            &["add", "training/hardness", "src", "docs", "scripts"],
+        );
         match git(
             &root,
-            &[
-                "commit",
-                "-m",
-                &format!("agent: {}", truncate(goal, 72)),
-            ],
+            &["commit", "-m", &format!("agent: {}", truncate(goal, 72))],
         ) {
             Ok(out) => report.steps.push(AgentStep {
                 name: "git.commit".into(),
@@ -528,7 +539,9 @@ pub fn run_lab_from_hardness(dry_run: bool) -> io::Result<AgentReport> {
         Err(err) => {
             report.steps.push(AgentStep {
                 name: "hardness.read".into(),
-                detail: format!("missing evaluation: {err} — run python scripts/evaluate_hardness.py"),
+                detail: format!(
+                    "missing evaluation: {err} — run python scripts/evaluate_hardness.py"
+                ),
                 ok: false,
             });
             report.ok = false;
@@ -538,8 +551,8 @@ pub fn run_lab_from_hardness(dry_run: bool) -> io::Result<AgentReport> {
 
     // Minimal parse: find "pass": false cases and ids without full serde dependency.
     let failed = extract_failed_hardness_cases(&eval_text);
-    let status_pass = eval_text.contains("\"status\": \"PASS\"")
-        || eval_text.contains("\"status\":\"PASS\"");
+    let status_pass =
+        eval_text.contains("\"status\": \"PASS\"") || eval_text.contains("\"status\":\"PASS\"");
 
     report.steps.push(AgentStep {
         name: "hardness.scan".into(),
@@ -616,7 +629,11 @@ pub fn run_lab_from_hardness(dry_run: bool) -> io::Result<AgentReport> {
                 missing = case.missing.join(", "),
                 forbidden = case.forbidden.join(", "),
             );
-            let rel = format!("models/candidates/impasse-{}-{}.md", case.id, stamp + i as u64);
+            let rel = format!(
+                "models/candidates/impasse-{}-{}.md",
+                case.id,
+                stamp + i as u64
+            );
             if dry_run {
                 report.steps.push(AgentStep {
                     name: "impasse.ticket".into(),
@@ -725,7 +742,10 @@ pub fn run_lab_from_emergence_opts(opts: LabFromEmergenceOpts) -> io::Result<Age
         ok: suite_pass,
     });
     // Keep a short excerpt in steps for audit.
-    for line in suite_report.lines().filter(|l| l.contains("PASS") || l.contains("FAIL") || l.contains("summary")) {
+    for line in suite_report
+        .lines()
+        .filter(|l| l.contains("PASS") || l.contains("FAIL") || l.contains("summary"))
+    {
         if line.trim().starts_with('[') {
             continue;
         }
@@ -814,11 +834,7 @@ mode={} closed by agent lab --from-emergence",
                             detail: msg.lines().next().unwrap_or("closed").to_owned(),
                             ok: true,
                         });
-                        crate::decision_trace::append_lab(
-                            "ticket-close",
-                            id,
-                            1,
-                        );
+                        crate::decision_trace::append_lab("ticket-close", id, 1);
                     }
                     Err(err) => {
                         report.steps.push(AgentStep {
@@ -1071,9 +1087,7 @@ fn synthesize_repair_from_fail(case: &FailedCase) -> crate::auto_repairs::AutoRe
     }
     let answer = if (case.capability == "transfer_vs_template"
         || case.capability == "cross_domain_synthesis")
-        && (prompt_l.contains("trust")
-            || prompt_l.contains("lag")
-            || prompt_l.contains("timeout"))
+        && (prompt_l.contains("trust") || prompt_l.contains("lag") || prompt_l.contains("timeout"))
     {
         crate::auto_repairs::softcascade_trust_alignment_body(&case.prompt)
             .unwrap_or(
@@ -1287,10 +1301,7 @@ fn extract_json_numberish(window: &str, key: &str) -> Option<String> {
     let pat = format!("\"{key}\":");
     let idx = window.rfind(&pat)?;
     let rest = window[idx + pat.len()..].trim_start();
-    let num: String = rest
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect();
+    let num: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
     if num.is_empty() {
         None
     } else {
@@ -1303,7 +1314,9 @@ fn guess_repair_layer(capability: &str) -> &'static str {
         "exact_tool_authority" => "tool",
         "honest_abstention" => "critic",
         "governed_learning_loop" => "pipeline",
-        "followup_binding" | "relational_inquiry" | "cross_domain_synthesis"
+        "followup_binding"
+        | "relational_inquiry"
+        | "cross_domain_synthesis"
         | "transfer_vs_template" => "operator",
         _ => "operator",
     }
@@ -1311,14 +1324,22 @@ fn guess_repair_layer(capability: &str) -> &'static str {
 
 #[derive(Debug, Clone)]
 enum PlannedAction {
-    Read { rel_path: String },
-    AppendHardness { case_json: String, note: String },
+    Read {
+        rel_path: String,
+    },
+    AppendHardness {
+        case_json: String,
+        note: String,
+    },
     WriteFile {
         rel_path: String,
         content: String,
         note: String,
     },
-    Shell { argv: Vec<String>, note: String },
+    Shell {
+        argv: Vec<String>,
+        note: String,
+    },
 }
 
 struct GoalPlan {
@@ -1331,7 +1352,10 @@ fn plan_goal(goal: &str) -> GoalPlan {
 
     // Known MVP goal: add hardness case for why-does-math / explanatory math.
     if lower.contains("hardness")
-        && (lower.contains("why") || lower.contains("math") || lower.contains("2+2") || lower.contains("explan"))
+        && (lower.contains("why")
+            || lower.contains("math")
+            || lower.contains("2+2")
+            || lower.contains("explan"))
     {
         let case = serde_json_like_hardness_why_math();
         return GoalPlan {
@@ -1355,12 +1379,10 @@ fn plan_goal(goal: &str) -> GoalPlan {
         let case = r#"{"id":"H42","capability":"exact_tool_authority","hardness":3,"prompt":"Write a Rust function that reverses a string","required_any":[["fn reverse","chars().rev","reverse_string"]],"forbidden":["invalid integer","stuck is normal"],"notes":"Code intent must emit a snippet, not a craft slogan."}"#.to_owned();
         return GoalPlan {
             description: "add hardness case for code-snippet path".into(),
-            actions: vec![
-                PlannedAction::AppendHardness {
-                    case_json: case,
-                    note: "H42 code reverse string".into(),
-                },
-            ],
+            actions: vec![PlannedAction::AppendHardness {
+                case_json: case,
+                note: "H42 code reverse string".into(),
+            }],
         };
     }
 
@@ -1445,12 +1467,19 @@ fn serde_json_like_hardness_why_math() -> String {
 fn append_hardness_case(path: &Path, case_json: &str) -> io::Result<()> {
     let existing = fs::read_to_string(path).unwrap_or_default();
     // Idempotent: skip if id already present.
-    if let Some(id) = case_json.split("\"id\":\"").nth(1).and_then(|s| s.split('"').next()) {
+    if let Some(id) = case_json
+        .split("\"id\":\"")
+        .nth(1)
+        .and_then(|s| s.split('"').next())
+    {
         if existing.contains(&format!("\"id\":\"{id}\"")) {
             return Ok(());
         }
     }
-    let mut file = fs::OpenOptions::new().create(true).append(true).open(path)?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
     if !existing.is_empty() && !existing.ends_with('\n') {
         file.write_all(b"\n")?;
     }
@@ -1511,7 +1540,9 @@ fn assert_writable(rel: &str) -> Result<(), String> {
         }
     }
     if normalized.starts_with("models/") && !normalized.starts_with("models/candidates/") {
-        return Err(format!("refusing write outside models/candidates: {normalized}"));
+        return Err(format!(
+            "refusing write outside models/candidates: {normalized}"
+        ));
     }
     let allowed = ALLOWED_EDIT_PREFIXES
         .iter()
@@ -1540,7 +1571,10 @@ fn run_allowlisted(root: &Path, argv: &[String]) -> Result<String, String> {
         if !git_ok {
             return Err(format!("git subcommand not allowlisted: {sub}"));
         }
-        if argv.iter().any(|a| a == "--force" || a == "-f" || a == "push") {
+        if argv
+            .iter()
+            .any(|a| a == "--force" || a == "-f" || a == "push")
+        {
             return Err("git force/push forbidden".into());
         }
     }
@@ -1560,9 +1594,7 @@ fn run_allowlisted(root: &Path, argv: &[String]) -> Result<String, String> {
 
     let mut cmd = Command::new(prog);
     cmd.args(&argv[1..]).current_dir(root);
-    let output = cmd
-        .output()
-        .map_err(|e| format!("spawn {prog}: {e}"))?;
+    let output = cmd.output().map_err(|e| format!("spawn {prog}: {e}"))?;
     let mut text = String::new();
     text.push_str(&String::from_utf8_lossy(&output.stdout));
     if !output.stderr.is_empty() {
@@ -1643,7 +1675,10 @@ mod tests {
     #[test]
     fn plan_why_math_hardness() {
         let plan = plan_goal("add hardness case for why-does-math");
-        assert!(plan.actions.iter().any(|a| matches!(a, PlannedAction::AppendHardness { .. })));
+        assert!(plan
+            .actions
+            .iter()
+            .any(|a| matches!(a, PlannedAction::AppendHardness { .. })));
     }
 
     #[test]

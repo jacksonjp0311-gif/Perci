@@ -49,55 +49,57 @@ pub fn generate(req: &LanguageRequest, seed_body: &str) -> LanguageResponse {
     // inference is the default; the old sidecar requires an explicit opt-in.
     if external_language_enabled() {
         if let Some(bin) = env::var_os("PERCI_LANGUAGE_SIDECAR") {
-        match invoke_external(std::path::Path::new(&bin), req, seed_body) {
-            Ok(mut resp) => {
-                if let Err(e) = critic_accept_language(&resp.text, &req.required_claim_boundaries) {
-                    resp.ok = false;
-                    resp.error = Some(e);
-                    resp.text = format!(
+            match invoke_external(std::path::Path::new(&bin), req, seed_body) {
+                Ok(mut resp) => {
+                    if let Err(e) =
+                        critic_accept_language(&resp.text, &req.required_claim_boundaries)
+                    {
+                        resp.ok = false;
+                        resp.error = Some(e);
+                        resp.text = format!(
                         "{seed_body}\n\n[Governor] Language sidecar output refused: boundary violation."
                     );
+                    }
+                    return resp;
                 }
-                return resp;
+                Err(e) => {
+                    let mut resp = local_synthesize(req, seed_body);
+                    resp.engine = format!("local-fallback after sidecar error: {e}");
+                    return resp;
+                }
             }
-            Err(e) => {
-                let mut resp = local_synthesize(req, seed_body);
-                resp.engine = format!("local-fallback after sidecar error: {e}");
-                return resp;
-            }
-        }
         }
     }
     // An external HTTP model remains available only for compatibility tests.
     // It never receives authority over routing, facts, tools, or weights.
     if external_language_enabled() {
-      if let Some(mut model) = crate::backend::LocalModelBackend::from_env() {
-        let mut context = req
-            .operator_plan
-            .iter()
-            .map(|step| format!("[operator] {step}"))
-            .collect::<Vec<_>>();
-        context.extend(
-            req.constraints
+        if let Some(mut model) = crate::backend::LocalModelBackend::from_env() {
+            let mut context = req
+                .operator_plan
                 .iter()
-                .map(|item| format!("[constraint] {item}")),
-        );
-        context.extend(
-            req.evidence
-                .iter()
-                .take(4)
-                .map(|item| format!("[evidence] {}", item.claim)),
-        );
-        let system = "Perci governs the answer. Rewrite the supplied operator result into direct, natural prose without adding unsupported facts. Keep the mechanism and uncertainty intact; do not expose hidden chain-of-thought.";
-        if let Ok(text) = model.generate(system, &context, seed_body) {
-            if critic_accept_language(&text, &req.required_claim_boundaries).is_ok() {
-                let mut response = LanguageResponse::local(text);
-                response.engine = "local HTTP model under Perci critic".into();
-                response.claims = req.evidence.iter().map(|item| item.claim.clone()).collect();
-                return response;
+                .map(|step| format!("[operator] {step}"))
+                .collect::<Vec<_>>();
+            context.extend(
+                req.constraints
+                    .iter()
+                    .map(|item| format!("[constraint] {item}")),
+            );
+            context.extend(
+                req.evidence
+                    .iter()
+                    .take(4)
+                    .map(|item| format!("[evidence] {}", item.claim)),
+            );
+            let system = "Perci governs the answer. Rewrite the supplied operator result into direct, natural prose without adding unsupported facts. Keep the mechanism and uncertainty intact; do not expose hidden chain-of-thought.";
+            if let Ok(text) = model.generate(system, &context, seed_body) {
+                if critic_accept_language(&text, &req.required_claim_boundaries).is_ok() {
+                    let mut response = LanguageResponse::local(text);
+                    response.engine = "local HTTP model under Perci critic".into();
+                    response.claims = req.evidence.iter().map(|item| item.claim.clone()).collect();
+                    return response;
+                }
+            }
         }
-      }
-    }
     }
     let mut resp = local_synthesize(req, seed_body);
     if let Err(e) = critic_accept_language(&resp.text, &req.required_claim_boundaries) {
@@ -111,7 +113,12 @@ pub fn generate(req: &LanguageRequest, seed_body: &str) -> LanguageResponse {
 fn external_language_enabled() -> bool {
     env::var("PERCI_ENABLE_EXTERNAL_LM")
         .ok()
-        .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "on" | "yes"))
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "on" | "yes"
+            )
+        })
         .unwrap_or(false)
 }
 

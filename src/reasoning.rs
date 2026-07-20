@@ -82,9 +82,10 @@ pub fn is_explanatory_math(lower: &str) -> bool {
         || lower.contains(" times ")
         || lower.contains("divided by")
         || lower.contains("multiplied by")
-        || lower.as_bytes().windows(3).any(|w| {
-            w[1] == b'-' && w[0].is_ascii_digit() && w[2].is_ascii_digit()
-        });
+        || lower
+            .as_bytes()
+            .windows(3)
+            .any(|w| w[1] == b'-' && w[0].is_ascii_digit() && w[2].is_ascii_digit());
     if !has_digit && !has_arith_op {
         return false;
     }
@@ -180,10 +181,7 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
         window[0].is_ascii_digit() && window[1] == b'-' && window[2].is_ascii_digit()
     });
     let numeric_expression = extract_numbers(&lower).len() >= 2
-        && (lower.contains('+')
-            || lower.contains('*')
-            || lower.contains('/')
-            || binary_minus);
+        && (lower.contains('+') || lower.contains('*') || lower.contains('/') || binary_minus);
     if !explicit_math && !numeric_expression {
         return Ok(None);
     }
@@ -200,7 +198,9 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
     }
 
     // percent change from A to B
-    if (lower.contains("percent change") || lower.contains("% change") || lower.contains("percentage change"))
+    if (lower.contains("percent change")
+        || lower.contains("% change")
+        || lower.contains("percentage change"))
         && extract_numbers(&lower).len() >= 2
     {
         let numbers = extract_numbers(&lower);
@@ -218,7 +218,8 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
     }
 
     // average / mean of a list
-    if (lower.contains("average") || lower.contains("mean of")) && extract_numbers(&lower).len() >= 2
+    if (lower.contains("average") || lower.contains("mean of"))
+        && extract_numbers(&lower).len() >= 2
     {
         let numbers = extract_numbers(&lower);
         let mut sum: i128 = 0;
@@ -256,15 +257,20 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
     }
 
     // gcd of two integers
-    if (lower.contains("gcd") || lower.contains("greatest common")) && extract_numbers(&lower).len() >= 2
+    if (lower.contains("gcd") || lower.contains("greatest common"))
+        && extract_numbers(&lower).len() >= 2
     {
         let numbers = extract_numbers(&lower);
-        let g = gcd_i128(numbers[0].unsigned_abs() as i128, numbers[1].unsigned_abs() as i128);
+        let g = gcd_i128(
+            numbers[0].unsigned_abs() as i128,
+            numbers[1].unsigned_abs() as i128,
+        );
         return Ok(Some(format!("gcd = {g}")));
     }
 
     // lcm of two integers
-    if (lower.contains("lcm") || lower.contains("least common")) && extract_numbers(&lower).len() >= 2
+    if (lower.contains("lcm") || lower.contains("least common"))
+        && extract_numbers(&lower).len() >= 2
     {
         let numbers = extract_numbers(&lower);
         let a = numbers[0].unsigned_abs() as i128;
@@ -273,7 +279,10 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
             return Ok(Some("lcm = 0".to_owned()));
         }
         let g = gcd_i128(a, b);
-        let lcm = a.checked_div(g).and_then(|q| q.checked_mul(b)).ok_or(ReasoningError::Overflow)?;
+        let lcm = a
+            .checked_div(g)
+            .and_then(|q| q.checked_mul(b))
+            .ok_or(ReasoningError::Overflow)?;
         return Ok(Some(format!("lcm = {lcm}")));
     }
 
@@ -572,10 +581,7 @@ mod tests {
             None
         );
         // Live failure: explanatory equality must not enter the integer parser.
-        assert_eq!(
-            try_solve_arithmetic("why does 2+2 equal 4?").unwrap(),
-            None
-        );
+        assert_eq!(try_solve_arithmetic("why does 2+2 equal 4?").unwrap(), None);
         assert_eq!(
             try_solve_arithmetic("Why does 2 + 2 equal 4?").unwrap(),
             None

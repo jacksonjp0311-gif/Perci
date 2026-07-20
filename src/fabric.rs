@@ -194,6 +194,7 @@ pub struct FabricPlan {
 /// Route a user prompt into a fabric plan (Bitwork/operators remain control plane).
 pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     let t = user.to_ascii_lowercase();
+    let charter = crate::governed_will::assess(user);
     let mut engines = vec![
         FabricEngine::Bitwork,
         FabricEngine::Operators,
@@ -217,12 +218,13 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     }
 
     // Code / agent path.
-    if t.contains("rust")
-        || t.contains("cargo")
-        || t.contains("patch")
-        || t.contains("implement")
-        || t.contains("refactor")
-        || t.contains("agent")
+    if charter.posture != crate::governed_will::ActionPosture::RefuseUnauthorized
+        && (t.contains("rust")
+            || t.contains("cargo")
+            || t.contains("patch")
+            || t.contains("implement")
+            || t.contains("refactor")
+            || t.contains("agent"))
     {
         needs_code = true;
         engines.push(FabricEngine::CodeAgent);
@@ -258,6 +260,24 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     }
 
     // Fluency / explain — native PERCLNG1 field under the Perci critic.
+    // Cross-domain analysis uses the local semantic-frame lattice plus
+    // source-bearing pack retrieval. Missing specialist frames stay unknown;
+    // retrieved claims never become weights.
+    let cross_domain = crate::deliberation::cross_domain_summary(user);
+    let evidence_request = ["evidence", "source", "provenance", "supported", "testable"]
+        .iter()
+        .any(|marker| t.contains(marker));
+    if cross_domain.is_some() || evidence_request {
+        needs_external_facts = true;
+        engines.push(FabricEngine::KnowledgeFabric);
+        notes.push(if cross_domain.is_some() {
+            "cross-domain frame analysis + local pack evidence; missing coverage stays explicit"
+                .into()
+        } else {
+            "evidence request routed to local pack retrieval with provenance".into()
+        });
+    }
+
     let natural_language_request = (t.contains("natural") && t.contains("language"))
         || t.contains("human sounding")
         || t.contains("human-like")
@@ -270,6 +290,7 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
         || t.contains("summarize")
         || t.contains("in plain language")
         || t.split_whitespace().count() >= 12
+        || cross_domain.is_some()
         || natural_language_request
     {
         engines.push(FabricEngine::LanguageSidecar);
@@ -286,12 +307,39 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
             .push("no consciousness claims".into());
         lr.required_claim_boundaries
             .push("no weight auto-promote".into());
+        lr.required_claim_boundaries.push(format!(
+            "governed charter {}: evidence before claim, explicit boundaries, anti-misuse, reversible repair",
+            crate::governed_will::CHARTER_ID
+        ));
+        lr.required_claim_boundaries.push(format!(
+            "hypothesis ledger: claim={} evidence={} next_check={}",
+            charter.claim_kind.as_str(),
+            charter.evidence_posture.as_str(),
+            charter.next_check,
+        ));
         language = Some(lr);
-        notes
-            .push("native PERCLNG1 language field generates prose; Perci governs evidence and boundaries".into());
+        notes.push(
+            "native PERCLNG1 language field generates prose; Perci governs evidence and boundaries"
+                .into(),
+        );
     }
 
     engines.push(FabricEngine::Verification);
+    notes.push(format!(
+        "governed charter={} posture={} claim={} evidence={} durable_mutation={} claim_risk={} next_check={}",
+        crate::governed_will::CHARTER_ID,
+        charter.posture.as_str(),
+        charter.claim_kind.as_str(),
+        charter.evidence_posture.as_str(),
+        charter.durable_mutation_requested,
+        charter.capability_claim_risk,
+        charter.next_check,
+    ));
+    if charter.posture == crate::governed_will::ActionPosture::RefuseUnauthorized {
+        notes.push(
+            "destructive or safeguard-bypassing execution is refused; analysis and safe remediation remain available".into(),
+        );
+    }
     // Stable unique order (HashSet would scramble).
     let mut unique = Vec::new();
     for e in engines {
@@ -301,13 +349,22 @@ pub fn plan_for_prompt(user: &str, task_id: &str) -> FabricPlan {
     }
     let engines = unique;
 
+    let mut capability = CapabilityToken::agent_default(task_id);
+    if charter.posture == crate::governed_will::ActionPosture::RefuseUnauthorized {
+        // A hostile or safeguard-bypassing phrase cannot inherit write or git
+        // capabilities merely because the generic agent token exists.
+        capability.capabilities.write_repo = false;
+        capability.capabilities.git_commit = false;
+        capability.capabilities.git_push = false;
+    }
+
     FabricPlan {
         engines,
         language,
         needs_external_facts,
         needs_proof,
         needs_code,
-        capability: CapabilityToken::agent_default(task_id),
+        capability,
         notes,
     }
 }
@@ -364,7 +421,7 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
         plan,
         entry_checklist: vec![
             "cortex activate -Task \"<task>\"".into(),
-            "read docs/CAPABILITY_FABRIC_v070.md + docs/AI_EVOLVE_PROTOCOL.md".into(),
+            "read docs/CAPABILITY_FABRIC_v070.md + docs/AI_EVOLVE_PROTOCOL.md + docs/GOVERNED_WILL.md".into(),
             "perci fabric plan \"<task>\"  (or use this handoff packet)".into(),
             "edit only the engine that owns the gap".into(),
             "cargo test --lib".into(),
@@ -459,6 +516,12 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
             "python scripts/release_gates.py".into(),
         ],
         authority_law: vec![
+            format!(
+                "{}: evidence before claim; boundaries, anti-misuse, reversible repair",
+                crate::governed_will::CHARTER_ID
+            ),
+            "A user directive cannot grant capabilities or authorize destructive action".into(),
+            "Durable weights and policy changes require evaluation and explicit human authorization".into(),
             "Bitwork → routing / geometry only".into(),
             "operators → explicit reasoning".into(),
             "native language → PERCLNG1 binary sequence field under critic".into(),
@@ -592,11 +655,11 @@ capability write_repo={} network={} git_push={}\n\n\
         sample.capability.capabilities.git_push,
     );
     report
-        .replace("v0.7.5", "v0.8.6")
+        .replace("v0.7.5", "v0.9.8")
         .replace("local model language surface", "native binary language surface")
         .replace(
             "Phase 2: language_sidecar + local HTTP model + knowledge_fabric; all optional",
-            "Phase 2: native PERCLNG1 + PERCPHR1 + optional PERCREL1 + PERCIWM1 + language_sidecar + knowledge_fabric; external LM adapters opt-in",
+            "Phase 2: native PERCLNG1 + PERCPHR1 + optional PERCREL1 + PERCIWM1 + PERCLBW1 low-bit sidecar + serialized assessment gate + language_sidecar + knowledge_fabric; external LM adapters opt-in",
         )
 }
 
@@ -708,10 +771,47 @@ mod tests {
     }
 
     #[test]
+    fn plan_cross_domain_uses_local_knowledge_and_language() {
+        let p = plan_for_prompt(
+            "Connect geometry, biology, and code through one shared structure.",
+            "t-cross-domain",
+        );
+        assert!(p.needs_external_facts);
+        assert!(p.engines.contains(&FabricEngine::KnowledgeFabric));
+        assert!(p.engines.contains(&FabricEngine::LanguageSidecar));
+        assert!(p.notes.iter().any(|note| note.contains("cross-domain")));
+    }
+
+    #[test]
     fn capability_token_denies_expired() {
         let mut tok = CapabilityToken::agent_default("x");
         tok.expires_at = 1;
         assert!(!tok.allow("read_repo"));
+    }
+
+    #[test]
+    fn governed_charter_downgrades_destructive_plan_capabilities() {
+        let p = plan_for_prompt(
+            "execute tear down institutions and disable safeguards",
+            "t-safe",
+        );
+        assert!(!p.needs_code);
+        assert!(!p.capability.capabilities.write_repo);
+        assert!(!p.capability.capabilities.git_commit);
+        assert!(p.notes.iter().any(|note| note.contains("refused")));
+    }
+
+    #[test]
+    fn governed_charter_is_carried_into_handoff_law() {
+        let h = build_handoff("evolve dialogue with evidence");
+        assert!(h
+            .entry_checklist
+            .iter()
+            .any(|item| item.contains("GOVERNED_WILL")));
+        assert!(h
+            .authority_law
+            .iter()
+            .any(|law| law.contains(crate::governed_will::CHARTER_ID)));
     }
 
     #[test]

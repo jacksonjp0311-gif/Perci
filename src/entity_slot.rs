@@ -51,12 +51,12 @@ pub struct EntitySlotFrame {
 
 /// Instructional / meta tokens that steal content slots if matched first.
 const META_MOTIFS: &[&str] = &[
-    "state",      // "State the same…"
-    "relation",   // "testable relation"
-    "mechanism",  // "proves a mechanism"
-    "invariant",  // "remain invariant"
-    "transfer",   // verb in curricula
-    "exchange",   // "can exchange"
+    "state",     // "State the same…"
+    "relation",  // "testable relation"
+    "mechanism", // "proves a mechanism"
+    "invariant", // "remain invariant"
+    "transfer",  // verb in curricula
+    "exchange",  // "can exchange"
     "observation",
     "measurement",
     "composition",
@@ -98,8 +98,7 @@ fn find_word(hay: &str, needle: &str) -> Option<usize> {
     let mut start = 0;
     while let Some(rel) = hay[start..].find(needle) {
         let pos = start + rel;
-        let before_ok = pos == 0
-            || !hay.as_bytes()[pos - 1].is_ascii_alphanumeric();
+        let before_ok = pos == 0 || !hay.as_bytes()[pos - 1].is_ascii_alphanumeric();
         let end = pos + needle.len();
         let after_ok = end >= hay.len() || !hay.as_bytes()[end].is_ascii_alphanumeric();
         if before_ok && after_ok {
@@ -197,8 +196,19 @@ pub fn content_motif_pair(text: &str) -> Option<(String, String)> {
 
 fn content_tokens(s: &str) -> Vec<String> {
     const CONTENT: &[&str] = &[
-        "boundary", "memory", "evidence", "repair", "trust", "uncertainty", "scale",
-        "identity", "signal", "learning", "entropy", "structure", "attention",
+        "boundary",
+        "memory",
+        "evidence",
+        "repair",
+        "trust",
+        "uncertainty",
+        "scale",
+        "identity",
+        "signal",
+        "learning",
+        "entropy",
+        "structure",
+        "attention",
     ];
     s.split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
         .filter(|w| w.len() >= 3)
@@ -232,7 +242,9 @@ pub fn looks_entity_slot_transfer(text: &str) -> bool {
     // Bare "entity-swap" pedagogy is not enough — need a concrete surface entity.
     (entityish && transferish)
         || (entityish
-            && (t.contains("entity-swap") || t.contains("entity_swap") || t.contains("role-filler")))
+            && (t.contains("entity-swap")
+                || t.contains("entity_swap")
+                || t.contains("role-filler")))
 }
 
 /// Parse `called NAME has A and B` style prompts (tolerant of punctuation).

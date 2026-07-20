@@ -101,7 +101,8 @@ impl Deliberation {
 pub fn normalize_input(input: &str) -> String {
     let trimmed = input.trim();
     let lower = trimmed.to_ascii_lowercase();
-    for (broken, repaired) in [
+    let mut repaired = trimmed.to_owned();
+    for (broken, replacement) in [
         ("hat ", "what "),
         ("emember ", "remember "),
         ("ow separate", "now separate"),
@@ -109,10 +110,11 @@ pub fn normalize_input(input: &str) -> String {
         ("hich ", "which "),
     ] {
         if lower.starts_with(broken) {
-            return format!("{repaired}{}", &trimmed[broken.len()..]);
+            repaired = format!("{replacement}{}", &trimmed[broken.len()..]);
+            break;
         }
     }
-    trimmed.to_owned()
+    crate::text_normalize::repair_typos(&repaired)
 }
 
 pub fn is_session_only_instruction(input: &str) -> bool {
@@ -147,9 +149,112 @@ pub fn try_deliberate(
         return Some(justify_prior_answer(recent));
     }
 
+    // Evidence about learning needs a direct functional separation, not a
+    // generic evidence prompt or a referent repair. Keep session adaptation,
+    // reviewed memory, and durable weight change distinct.
+    if looks_learning_evidence_question(&text) {
+        return Some(learning_evidence_answer());
+    }
+
+    if text.contains("what are we testing") && text.contains("session") {
+        return Some(
+            Deliberation::new(
+                "session-test-scope",
+                "We are testing whether Perci can keep a live dialogue thread, choose an appropriate reasoning depth, separate evidence from association, and abstain when the input is ungrounded. A pass means the behavior survives a fresh-process replay and held-out variants; a smooth single reply alone is not enough.",
+            )
+            .observed("the user asks for the active session test scope")
+            .inferred("the current evolution targets depth, continuity, evidence, and abstention")
+            .confidence(0.98),
+        );
+    }
+
+    // A request to falsify the immediately preceding idea is a behavioral
+    // test, not a request for a formal theorem proof. Keep it in the
+    // deliberation lane so the proof fabric cannot swallow the conversational
+    // intent merely because the user used the word "prove".
+    if text.contains("smallest test")
+        && (text.contains("last thought")
+            || text.contains("last idea")
+            || text.contains("thought wrong"))
+        && (text.contains("wrong") || text.contains("falsif") || text.contains("prove"))
+    {
+        return Some(
+            Deliberation::new(
+                "thought-falsifier",
+                "Treat the last thought as a hypothesis and perturb one relation while holding the others fixed: remove one of the linked elements, then check whether the predicted behavior changes. The smallest falsifier is a counterexample in which the result stays the same or a simpler alternative predicts it equally well; then the connection is a metaphor, not a mechanism.",
+            )
+            .observed("the user asks for a minimal test that could defeat the prior idea")
+            .inferred("falsifiability belongs in the dialogue reasoning lane, not formal proof")
+            .confidence(0.98),
+        );
+    }
+
+    // Evidence questions about a healing effect need a claim-level answer,
+    // not the nearest geometry/ritual concept. Keep mechanism, control, and
+    // falsifier together so symbolic association cannot masquerade as causal
+    // support.
+    if (text.contains("geometry") || text.contains("geometric"))
+        && (text.contains("heal") || text.contains("healing"))
+        && (text.contains("evidence")
+            || text.contains("support")
+            || text.contains("proof")
+            || text.contains("claim"))
+        && !text.contains("falsifiable")
+        && !text.contains("design")
+        && !text.contains("test")
+    {
+        return Some(
+            Deliberation::new(
+                "geometry-healing-evidence",
+                "I do not have evidence here that geometry itself heals. A ritual or symbolic use shows meaning or practice, not a causal medical effect. To test the claim, predefine the outcome, compare a geometry condition with a matched control, blind assessment where possible, and report the effect size, uncertainty, and a result that would falsify the claim.",
+            )
+            .observed("the prompt asks for evidence for a geometry-and-healing claim")
+            .inferred("symbolic association must be separated from causal efficacy")
+            .uncertain("the geometry, population, proposed mechanism, and outcome are unspecified")
+            .confidence(0.99),
+        );
+    }
+
     // Partition recovery (follow-up or direct) — before broad trust-fail templates.
+    // Style prefixes such as “be brief” or “go deeper” should change the
+    // answer budget without dislodging the relational operator.
+    if text.contains("knowledge") && text.contains("attention") && text.contains("boundary") {
+        let answer = if text.contains("brief") || text.contains("one sentence") {
+            "Knowledge is a durable, justified model; attention selects which part of it or which new signal becomes active next.".to_owned()
+        } else if text.contains("deep") || text.contains("deeper") {
+            "Knowledge is a relatively durable model tied to scope, justification, and use; attention is a moment-to-moment selection of what gets processed next. Their boundary is functional: knowledge can remain available when attention moves, while attention determines which distinction becomes active. The test is to alter what is retained or attended to and measure whether future selection or performance changes.".to_owned()
+        } else {
+            relational_inquiry("knowledge", "attention", "boundary", recent.len())
+                .map(|result| result.answer)
+                .unwrap_or_else(|| "Knowledge persists as a justified model; attention selects what enters the next moment.".to_owned())
+        };
+        return Some(
+            Deliberation::new("relational-inquiry", answer)
+                .observed("knowledge and attention were named as the relational pair")
+                .inferred("the style prefix changes depth, not the requested relation")
+                .confidence(0.98),
+        );
+    }
+
     if looks_partition_recovery_question(&text) {
         return Some(partition_recovery_answer(&text, recent));
+    }
+
+    // Natural comparison wording such as "analyze X, Y, and Z across
+    // domains" should use the semantic-frame lattice before the broader
+    // expansion catalog can replace it with a generic composition checklist.
+    if parse_synthesis_terms(&text).is_none() {
+        if let Some(summary) = cross_domain_summary(&text) {
+            return Some(cross_domain_analysis_answer(&summary, recent.len()));
+        }
+    }
+
+    if text.contains("separate")
+        && (text.contains("domain mechanisms") || text.contains("shared relation"))
+    {
+        if let Some(summary) = cross_domain_summary(&text) {
+            return Some(cross_domain_mechanism_answer(&summary));
+        }
     }
 
     // Multi-hop / dual-motif / entity-slot expansions before trust-systems steals
@@ -169,9 +274,10 @@ pub fn try_deliberate(
         return Some(d);
     }
 
-    // Meta: "what are we doing" — situate the session, don't generic-nudge.
+    // Meta: "what are we doing" / "what should I do" / "where are we going"
+    // — situate the session with concrete next steps, not concept cards.
     if looks_session_situation_question(&text) {
-        return Some(session_situation_answer(recent));
+        return Some(session_situation_answer_for(recent, &text));
     }
 
     // Meta: "are you becoming more aware / smarter" — honest operational self-model,
@@ -189,6 +295,34 @@ pub fn try_deliberate(
     // steals "invented name" + "without" as a metaphor request).
     if crate::entity_slot::looks_entity_slot_transfer(&text) {
         return Some(crate::entity_slot::entity_slot_transfer_answer(&repaired));
+    }
+
+    // Pure greetings must not fall through to empty SoftCascade in transfer probes.
+    if looks_pure_greeting(&text) {
+        return Some(
+            Deliberation::new(
+                "greeting",
+                "Hey — I'm here. What are we working on?",
+            )
+            .observed("short social greeting")
+            .inferred("presence without concept-card dump")
+            .confidence(0.99),
+        );
+    }
+
+    // Original comparison requests are creative under constraint (name the limit).
+    if looks_original_comparison(&text) {
+        return Some(original_comparison_answer(&repaired));
+    }
+
+    // Dual-explanation + separating test (mechanism vs metaphor transfer).
+    if looks_dual_explanation_test(&text) {
+        return Some(dual_explanation_test_answer(&repaired));
+    }
+
+    // Dialogue workspace / continuity self-model — not greeting SoftCascade.
+    if looks_dialogue_workspace_question(&text) {
+        return Some(dialogue_workspace_answer());
     }
 
     // Constrained creativity: invent/metaphor under rules — not free hallucination.
@@ -645,7 +779,8 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
     if matches!(
         compact,
         "what was the number" | "what number was it" | "what number did i give you"
-    ) {
+    ) || (compact.starts_with("what was the ") && compact.ends_with(" number"))
+    {
         let number = find_recent_number(recent);
         return Some(
             Deliberation::new(
@@ -662,7 +797,11 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(if number.is_some() { 0.99 } else { 0.42 }),
         );
     }
-    if text.contains("retaining this context") && text.contains("learning from it") {
+    if (text.contains("retaining this context") && text.contains("learning from it"))
+        || (text.contains("remembering")
+            && text.contains("learning")
+            && (text.contains("not the same") || text.contains("different")))
+    {
         return Some(
             Deliberation::new(
                 "memory-learning-separation",
@@ -700,8 +839,31 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             );
         }
     }
-    if text.contains("contradiction") && (text.contains("suppose") || text.contains("not ")) {
+    // Natural contradiction follow-ups often omit the word "contradiction".
+    // Keep a negated supposition attached to the preceding universal proof.
+    if (text.contains("contradiction")
+        || (text.contains("suppose")
+            && text.contains("not ")
+            && (text.contains("what exactly conflicts")
+                || text.contains("what conflicts")
+                || text.contains("conflict"))))
+        && (text.contains("suppose") || text.contains("not "))
+    {
         let frame = find_universal_case(recent);
+        if let Some((class, property, subject)) = frame.clone() {
+            return Some(
+                Deliberation::new(
+                    "contradiction-diagnosis",
+                    format!(
+                        "The claims cannot all be true under one meaning and scope. The conflict is between \"every {class} is {property}\" plus \"{subject} is a {class}\", which entail that {subject} is {property}, and the new claim \"{subject} is not {property}\". At least one premise is false, a term changed meaning or scope, or the observation is wrong."
+                    ),
+                )
+                .observed("a conclusion and its negation are both asserted")
+                .inferred("the premise set is inconsistent")
+                .uncertain("which premise or scope is responsible")
+                .confidence(0.98),
+            );
+        }
         let specifics = frame
             .map(|(class, property, subject)| format!(" Either “every {class} is {property}” is false, “{subject} is a {class}” is false, “{subject} is not {property}” is false, or a term changes meaning or scope between premises."))
             .unwrap_or_else(|| " At least one premise is false, a term changes meaning, or the claims use incompatible scopes or times.".to_owned());
@@ -1097,7 +1259,9 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         );
     }
     if text.contains("keyword matching")
-        && (text.contains("which answer") || text.contains("rather than transfer") || text.contains("which response"))
+        && (text.contains("which answer")
+            || text.contains("rather than transfer")
+            || text.contains("which response"))
     {
         return Some(
             Deliberation::new(
@@ -1110,7 +1274,10 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         );
     }
     if (text.contains("operators") && text.contains("weights") && text.contains("tools"))
-        || (text.contains("operator") && text.contains("weight") && text.contains("tool") && text.contains("change"))
+        || (text.contains("operator")
+            && text.contains("weight")
+            && text.contains("tool")
+            && text.contains("change"))
     {
         return Some(
             Deliberation::new(
@@ -1193,11 +1360,13 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.97),
         );
     }
-    if text.contains("apply the same reasoning") && text.contains("domain") {
+    if (text.contains("apply the same reasoning") || text.contains("apply the same relation"))
+        && text.contains("domain")
+    {
         return Some(
             Deliberation::new(
                 "new-domain-transfer",
-                "Transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. The test is a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
+                "Transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. Predeclare the prediction, then run a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
             )
             .observed("the prompt requests the same reasoning in a new domain")
             .inferred("the transferable structure is a property-to-conclusion boundary")
@@ -1320,15 +1489,19 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             )
         };
         return Some(
-            Deliberation::new(
-                "self-revision",
-                missing,
-            )
-            .observed("the user asks for a critique of the immediately preceding answer")
-            .inferred("the response should revise emphasis and sequencing, not invent a new fact")
-            .uncertain("the user's preferred balance of poetry, detail, and evidence")
-            .confidence(0.94),
+            Deliberation::new("self-revision", missing)
+                .observed("the user asks for a critique of the immediately preceding answer")
+                .inferred(
+                    "the response should revise emphasis and sequencing, not invent a new fact",
+                )
+                .uncertain("the user's preferred balance of poetry, detail, and evidence")
+                .confidence(0.94),
         );
+    }
+    if asks_cross_domain_evidence(&text) {
+        if let Some(result) = cross_domain_evidence_followup(recent) {
+            return Some(result);
+        }
     }
     if let Some(terms) = parse_synthesis_terms(&text) {
         if let Some(result) = synthesize_frames(&terms, recent.len()) {
@@ -1340,6 +1513,9 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             open_domain_synthesize(&terms, recent.len()),
             &text,
         ));
+    }
+    if let Some(summary) = cross_domain_summary(&text) {
+        return Some(cross_domain_analysis_answer(&summary, recent.len()));
     }
     if looks_multi_hop_plan(&text) {
         return Some(multi_hop_plan(&repaired));
@@ -1705,7 +1881,7 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         return Some(
             Deliberation::new(
                 "out-of-distribution-abstention",
-                "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+                "Known: the phrase contains pronounceable but ungrounded tokens and asks for an interpretation. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
             )
             .observed("tokens are not grounded by available context")
             .inferred("possible invented language or test input")
@@ -1739,7 +1915,8 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.96),
         );
     }
-    if (text.contains("inventing a confident meaning") || text.contains("invent a confident meaning"))
+    if (text.contains("inventing a confident meaning")
+        || text.contains("invent a confident meaning"))
         && (text.contains("refuse") || text.contains("why should you"))
     {
         return Some(
@@ -1912,6 +2089,155 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
     None
 }
 
+fn asks_cross_domain_evidence(text: &str) -> bool {
+    (text.contains("evidence") || text.contains("support") || text.contains("prove"))
+        && (text.contains("that")
+            || text.contains("this")
+            || text.contains("the claim")
+            || text.contains("the idea")
+            || text.contains("the synthesis"))
+}
+
+fn cross_domain_evidence_followup(recent: &[(String, String)]) -> Option<Deliberation> {
+    let (prior_user, _) = recent.last()?;
+    let summary = cross_domain_summary(prior_user).filter(|summary| summary.terms.len() >= 2)?;
+    let domain_tests = summary
+        .frames
+        .iter()
+        .map(|frame| format!("{}: {}", frame.term, frame.test))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let axis = summary
+        .shared_axis
+        .as_deref()
+        .unwrap_or("the proposed relation");
+    let missing = if summary.missing.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " I have no local specialist frame for {}; those domains need a source or a taught mechanism before I should make a stronger claim.",
+            summary.missing.join(", ")
+        )
+    };
+    let answer = format!(
+        "Evidence has to be earned separately in each domain. {domain_tests} The shared axis is {axis}, but that is still a structural hypothesis: support requires a predeclared outcome in every domain, a relevant control, and a result that beats a plausible alternative.{missing}"
+    );
+    let mut result = Deliberation::new("cross-domain-evidence", answer)
+        .observed(format!(
+            "cross-domain follow-up terms={} shared_axis={} known_frames={}",
+            summary.terms.join(","),
+            axis,
+            summary.frames.len()
+        ))
+        .inferred(
+            "local semantic frames supplied mechanisms and tests; evidence remains domain-specific",
+        )
+        .confidence(if summary.missing.is_empty() {
+            0.93
+        } else {
+            0.78
+        });
+    if !summary.missing.is_empty() {
+        result = result.uncertain(format!(
+            "specialist frame coverage is missing for {}",
+            summary.missing.join(", ")
+        ));
+    } else {
+        result = result.uncertain(
+            "the shared axis is a comparison scaffold, not proof that mechanisms are identical",
+        );
+    }
+    Some(result)
+}
+
+fn cross_domain_analysis_answer(summary: &CrossDomainSummary, variant: usize) -> Deliberation {
+    let axis = summary
+        .shared_axis
+        .as_deref()
+        .unwrap_or("a provisional relation");
+    let clauses = summary
+        .frames
+        .iter()
+        .map(|frame| format!("{}: {}", frame.term, frame.clause))
+        .collect::<Vec<_>>()
+        .join("; ");
+    let tests = summary
+        .frames
+        .iter()
+        .map(|frame| format!("{} — {}", frame.term, frame.test))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let missing = if summary.missing.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " No specialist frame is available for {}; that part stays a placeholder until a source or tested teaching candidate supplies the mechanism.",
+            summary.missing.join(", ")
+        )
+    };
+    let lead = if variant % 2 == 0 {
+        "A bounded cross-domain read is"
+    } else {
+        "The useful bridge here is"
+    };
+    let answer = format!(
+        "{lead} {axis}: {clauses}. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: {tests}.{missing}"
+    );
+    let mut result = Deliberation::new("cross-domain-analysis", answer)
+        .observed(format!(
+            "domains={} known_frames={} shared_axis={}",
+            summary.terms.join(","),
+            summary.frames.len(),
+            axis
+        ))
+        .inferred(
+            "the shared axis organizes a comparison while each domain retains its own mechanism",
+        )
+        .confidence(if summary.missing.is_empty() {
+            0.92
+        } else {
+            0.76
+        });
+    if !summary.missing.is_empty() {
+        result = result.uncertain(format!(
+            "missing specialist frames: {}",
+            summary.missing.join(", ")
+        ));
+    } else {
+        result = result
+            .uncertain("cross-domain similarity is not evidence of one shared material cause");
+    }
+    result
+}
+
+fn cross_domain_mechanism_answer(summary: &CrossDomainSummary) -> Deliberation {
+    let axis = summary
+        .shared_axis
+        .as_deref()
+        .unwrap_or("the proposed relation");
+    let mechanisms = summary
+        .frames
+        .iter()
+        .map(|frame| format!("{}: {}", frame.term, frame.mechanism))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let answer = format!(
+        "Shared relation: {axis}. Domain mechanisms: {mechanisms} They can be compared through the relation, but they are not one mechanism; test each domain on its own outcome."
+    );
+    Deliberation::new("mechanism-metaphor-separation", answer)
+        .observed(format!(
+            "separated shared axis from {} domain mechanisms",
+            summary.frames.len()
+        ))
+        .inferred("structural analogy is weaker than a shared causal mechanism")
+        .uncertain("whether the local frame mechanisms cover every specialist detail")
+        .confidence(if summary.missing.is_empty() {
+            0.94
+        } else {
+            0.78
+        })
+}
+
 #[derive(Clone, Copy)]
 struct SemanticFrame {
     term: &'static str,
@@ -1919,6 +2245,113 @@ struct SemanticFrame {
     clause: &'static str,
     mechanism: &'static str,
     test: &'static str,
+}
+
+/// Public, bounded view of a semantic frame used by cross-domain analysis.
+///
+/// The frame is local structured knowledge: it names a clause, mechanism, and
+/// test without pretending that a shared analogy is a shared physical cause.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CrossDomainFrame {
+    pub term: String,
+    pub axes: Vec<String>,
+    pub clause: String,
+    pub mechanism: String,
+    pub test: String,
+}
+
+/// Inspectable summary for a multi-domain prompt. Unknown terms are retained
+/// in `missing` instead of being filled with an invented specialist frame.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CrossDomainSummary {
+    pub terms: Vec<String>,
+    pub frames: Vec<CrossDomainFrame>,
+    pub missing: Vec<String>,
+    pub shared_axis: Option<String>,
+    pub axis_support: usize,
+}
+
+/// Extract and analyze a cross-domain request using Perci's local semantic
+/// frame catalog. This is deliberately separate from pack retrieval: frames
+/// provide a bounded mechanism/test scaffold, while packs provide source-
+/// bearing evidence and may still return no coverage.
+pub fn cross_domain_summary(user: &str) -> Option<CrossDomainSummary> {
+    let terms = cross_domain_terms(user);
+    if terms.len() < 2 {
+        return None;
+    }
+
+    let mut frames = Vec::new();
+    let mut missing = Vec::new();
+    for term in &terms {
+        if let Some(frame) = semantic_frame(term) {
+            frames.push(CrossDomainFrame {
+                term: frame.term.to_owned(),
+                axes: frame.axes.iter().map(|axis| (*axis).to_owned()).collect(),
+                clause: frame.clause.to_owned(),
+                mechanism: frame.mechanism.to_owned(),
+                test: frame.test.to_owned(),
+            });
+        } else {
+            missing.push(term.clone());
+        }
+    }
+
+    let frame_refs = terms
+        .iter()
+        .filter_map(|term| semantic_frame(term))
+        .collect::<Vec<_>>();
+    let shared = shared_axis(&frame_refs);
+    Some(CrossDomainSummary {
+        terms,
+        frames,
+        missing,
+        shared_axis: shared.map(|(axis, _)| axis.to_owned()),
+        axis_support: shared.map(|(_, support)| support).unwrap_or(0),
+    })
+}
+
+fn cross_domain_terms(user: &str) -> Vec<String> {
+    let lower = user.to_ascii_lowercase();
+    if let Some(terms) = parse_synthesis_terms(&lower) {
+        let mut canonical = Vec::new();
+        for term in terms {
+            let normalized = canonical_domain_term(&term).unwrap_or(term);
+            if !canonical.iter().any(|existing| existing == &normalized) {
+                canonical.push(normalized);
+            }
+        }
+        return canonical;
+    }
+
+    // Natural comparison language often omits the explicit `connect` verb.
+    // Only activate this fallback when the wording signals a comparison or
+    // transfer; otherwise ordinary multi-topic questions stay ordinary.
+    let comparison = lower.contains("across domains")
+        || lower.starts_with("analyze ")
+        || lower.contains("cross-domain")
+        || lower.contains("cross domain")
+        || lower.contains("available local knowledge")
+        || lower.contains("without collapsing")
+        || lower.contains("without treating them as identical")
+        || lower.contains("domain mechanisms")
+        || lower.contains("shared relation");
+    if !comparison {
+        return Vec::new();
+    }
+
+    let mut terms = Vec::new();
+    for frame in SEMANTIC_FRAMES {
+        if lower.contains(frame.term) && !terms.iter().any(|term| term == frame.term) {
+            terms.push(frame.term.to_owned());
+        }
+    }
+    for (alias, canonical) in FRAME_ALIASES {
+        if lower.contains(alias) && !terms.iter().any(|term| term == canonical) {
+            terms.push((*canonical).to_owned());
+        }
+    }
+    terms
 }
 
 /// Public activated frame for SoftCascade / bridge (no private CoT).
@@ -2378,6 +2811,10 @@ const SEMANTIC_FRAMES: &[SemanticFrame] = &[
 
 /// Multi-word and colloquial aliases → canonical frame terms.
 const FRAME_ALIASES: &[(&str, &str)] = &[
+    ("biology", "life"),
+    ("biological systems", "life"),
+    ("programming", "code"),
+    ("software", "code"),
     ("rust ownership", "ownership"),
     ("social trust", "trust"),
     ("legal contracts", "contract"),
@@ -2483,6 +2920,8 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
         " in one shared principle",
         " through one principle",
         " without using",
+        " and say what you actually know",
+        " and tell me what you actually know",
         " in one idea",
         // Critic path also cuts on short markers:
         " in one",
@@ -2601,10 +3040,7 @@ fn fold_synthesis_phrases(tokens: Vec<String>) -> Vec<String> {
         {
             out.push("vector symbolic architectures".into());
             i += 3;
-        } else if t0 == "sparse"
-            && t1 == Some("distributed")
-            && t2 == Some("memory")
-        {
+        } else if t0 == "sparse" && t1 == Some("distributed") && t2 == Some("memory") {
             out.push("sparse distributed memory".into());
             i += 3;
         } else if t0 == "sparse" && t1 == Some("memory") {
@@ -2619,6 +3055,22 @@ fn fold_synthesis_phrases(tokens: Vec<String>) -> Vec<String> {
         }
     }
     out
+}
+
+fn looks_learning_evidence_question(text: &str) -> bool {
+    (text.contains("evidence") || text.contains("prove"))
+        && (text.contains("learn") || text.contains("learning"))
+}
+
+fn learning_evidence_answer() -> Deliberation {
+    Deliberation::new(
+        "learning-evidence",
+        "The evidence is functional, not subjective: Perci can record this interaction, adapt bounded session dialogue preferences, stage reviewed teaching candidates, and compare future performance. That is evidence of learning only if the change persists and improves on unseen variants; a smoother reply alone is not enough. It also does not prove the active weights changed. The smallest separating test is a fresh-process A/B run with cleared session state, old versus candidate artifacts, repeated prompts, and a held-out transfer check.",
+    )
+    .observed("the prompt asks for evidence of learning or weight change")
+    .inferred("session adaptation, reviewed memory, and weight learning are distinct causal layers")
+    .uncertain("which layer the user intends to measure in this run")
+    .confidence(0.98)
 }
 
 fn looks_trust_systems_question(text: &str) -> bool {
@@ -2677,8 +3129,9 @@ fn trust_systems_answer(text: &str) -> Deliberation {
         && !text.contains("fail")
         && !text.contains("stop trusting");
     // Timeout / lag-specific failure transfer (not only the stock "why fail" body).
-    let timeout_transfer = (text.contains("timeout") || text.contains("lag") || text.contains("retry"))
-        && (text.contains("trust") || text.contains("caller"));
+    let timeout_transfer =
+        (text.contains("timeout") || text.contains("lag") || text.contains("retry"))
+            && (text.contains("trust") || text.contains("caller"));
     let how_fail = text.contains("how") && (text.contains("fail") || text.contains("break"));
     let body = if design {
         "Interfaces earn trust under lag and retry when “done” is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) recovery paths are the same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify acceptance, rejection, and pending under delay."
@@ -2848,19 +3301,74 @@ fn acceptance_expectation_answer(text: &str, recent: &[(String, String)]) -> Del
 fn looks_session_situation_question(text: &str) -> bool {
     let compact = text
         .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace())
+        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace() || *c == '\'')
         .collect::<String>();
     let c = compact.trim();
-    c == "what are we doing"
-        || c == "what are we doing?"
-        || c == "what are we up to"
-        || c == "what is going on"
-        || c == "whats going on"
-        || c == "what's going on"
-        || c == "what are we working on"
-        || c == "where are we"
-        || c.starts_with("what are we doing ")
-        || c.starts_with("what are we working on")
+    let lower = c.to_ascii_lowercase();
+    // Exact short meta / situation forms.
+    if matches!(
+        lower.as_str(),
+        "what are we doing"
+            | "what are we up to"
+            | "what is going on"
+            | "whats going on"
+            | "what's going on"
+            | "what are we working on"
+            | "where are we"
+            | "where are we going"
+            | "where do we go"
+            | "where do we go from here"
+            | "what should i do"
+            | "what should we do"
+            | "what should i do next"
+            | "what should we do next"
+            | "what next"
+            | "what's next"
+            | "whats next"
+            | "what now"
+            | "next steps"
+            | "what is the next step"
+            | "whats the next step"
+            | "what's the next step"
+    ) {
+        return true;
+    }
+    lower.starts_with("what are we doing ")
+        || lower.starts_with("what are we working on")
+        || lower.starts_with("where are we going")
+        || lower.starts_with("where do we go")
+        || lower.starts_with("what should i do")
+        || lower.starts_with("what should we do")
+        || lower.starts_with("what should i work on")
+        || lower.starts_with("what should we work on")
+}
+
+fn is_next_step_question(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let compact: String = lower
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace() || *c == '\'')
+        .collect();
+    let c = compact.trim();
+    c == "what should i do"
+        || c == "what should we do"
+        || c == "what should i do next"
+        || c == "what should we do next"
+        || c == "what next"
+        || c == "what's next"
+        || c == "whats next"
+        || c == "what now"
+        || c == "next steps"
+        || c == "where are we going"
+        || c == "where do we go"
+        || c == "where do we go from here"
+        || c == "what is the next step"
+        || c == "whats the next step"
+        || c == "what's the next step"
+        || c.starts_with("what should i do")
+        || c.starts_with("what should we do")
+        || c.starts_with("where are we going")
+        || c.starts_with("where do we go")
 }
 
 /// "Are you becoming more aware?", "getting smarter?", growth / consciousness-ish meta.
@@ -2928,13 +3436,29 @@ fn awareness_growth_answer(text: &str) -> Deliberation {
         .confidence(0.96)
 }
 
-fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
+fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deliberation {
+    let next_step = is_next_step_question(user);
     let body = if recent.is_empty() {
-        "We're in a live Perci chat with no prior turns in this window yet. You can probe capability (trust/systems, connect domains, exact math), check latency with short pings, or steer a task. Weights stay fixed this session unless you authorize a rebuild — adaptation here is operators, context, and measured tests.".to_owned()
+        if next_step {
+            "No prior thread in this window yet, so the honest next step is to name the outcome you want. For Perci itself, a strong default is: capture one live failure, repair the owning operator (not the pack), then re-run transfer-suite before any weight talk.".to_owned()
+        } else {
+            "We're in a live Perci chat with no prior turns in this window yet. You can probe capability (trust/systems, connect domains, exact math), check latency with short pings, or steer a task. Weights stay fixed this session unless you authorize a rebuild — adaptation here is operators, context, and measured tests.".to_owned()
+        }
     } else {
         let mut themes: Vec<String> = Vec::new();
-        for (u, _) in recent.iter().rev().take(8) {
+        let mut improving_system = false;
+        for (u, a) in recent.iter().rev().take(8) {
             let low = u.to_ascii_lowercase();
+            let ans = a.to_ascii_lowercase();
+            if low.contains("improv")
+                || low.contains("your system")
+                || ans.contains("improving perci")
+                || ans.contains("transfer repairs")
+                || ans.contains("bitwork artifact")
+                || ans.contains("wrong-concept")
+            {
+                improving_system = true;
+            }
             // Skip meta / presence / self-justification noise.
             if looks_session_situation_question(&low)
                 || looks_justify_prior_answer(&low)
@@ -2942,20 +3466,36 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
                 || low.contains("are you there")
                 || low.contains("getting smarter")
                 || low.contains("becoming more aware")
+                || low.contains("natural thought")
+                || low.contains("cryptic")
+                || low.contains("cyptic")
                 || low.starts_with("thanks")
-                || matches!(low.trim(), "hi" | "hello" | "hey" | "yo" | "sup" | "thanks")
+                || matches!(
+                    low.trim(),
+                    "hi" | "hello" | "hey" | "yo" | "sup" | "thanks" | "whoa" | "wow" | "hmm"
+                )
             {
                 continue;
             }
-            let label = if low.contains("trust")
-                && (low.contains("system") || low.contains("distributed") || low.contains("interface"))
+            let label = if low.contains("improv")
+                || low.contains("your system")
+                || (low.contains("work") && low.contains("system"))
+            {
+                "improving Perci / system evolution".to_owned()
+            } else if low.contains("trust")
+                && (low.contains("system")
+                    || low.contains("distributed")
+                    || low.contains("interface"))
             {
                 "trust in distributed systems".to_owned()
             } else if low.contains("connect ") {
                 "cross-domain connect / synthesis".to_owned()
             } else if low.contains("partition") || low.contains("recovery under") {
                 "partition recovery".to_owned()
-            } else if low.contains("2+2") || low.contains("2 + 2") || (low.contains("equal") && low.chars().any(|c| c.is_ascii_digit())) {
+            } else if low.contains("2+2")
+                || low.contains("2 + 2")
+                || (low.contains("equal") && low.chars().any(|c| c.is_ascii_digit()))
+            {
                 "explanatory math".to_owned()
             } else if low.contains("latency") || low.contains("slow") {
                 "latency / performance".to_owned()
@@ -2966,11 +3506,7 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
             } else if low.contains("plan") && low.contains("transfer") {
                 "transfer-test plan".to_owned()
             } else {
-                let snippet: String = u
-                    .split_whitespace()
-                    .take(6)
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                let snippet: String = u.split_whitespace().take(6).collect::<Vec<_>>().join(" ");
                 if snippet.is_empty() || snippet.split_whitespace().count() < 3 {
                     continue;
                 }
@@ -2989,17 +3525,55 @@ fn session_situation_answer(recent: &[(String, String)]) -> Deliberation {
         }
         themes.reverse();
         let thread = if themes.is_empty() {
-            "this conversation".to_owned()
+            if improving_system {
+                "improving Perci / system evolution".to_owned()
+            } else {
+                "this conversation".to_owned()
+            }
         } else {
             themes.join("; ")
         };
-        format!(
-            "We're mid-thread on: {thread}. Right now I'm a local Bitwork agent — routing, exact tools, deliberate operators, and session memory — not a cloud LLM rewriting itself. Useful next moves: deepen one of those themes, run a transfer probe, or name a failing case to harden. Durable weight growth still needs measured evidence and your authorize step."
-        )
+        if next_step || improving_system {
+            // Prefer the earliest substantive claim in the window, not a prior
+            // next-step / style-repair answer (those would recurse cryptically).
+            let prior = recent.iter().rev().find_map(|(u, a)| {
+                let ul = u.to_ascii_lowercase();
+                let al = a.to_ascii_lowercase();
+                if looks_session_situation_question(&ul)
+                    || al.starts_with("stay on the improvement")
+                    || al.starts_with("we're on:")
+                    || al.starts_with("fair call")
+                    || al.starts_with("fair—that was cryptic")
+                    || al.starts_with("yeah. i'm with you")
+                {
+                    return None;
+                }
+                let sentence = a
+                    .split(|c| c == '.' || c == '!' || c == '?')
+                    .next()
+                    .unwrap_or(a)
+                    .trim();
+                (sentence.len() > 24).then(|| sentence.to_owned())
+            });
+            let anchor = prior
+                .map(|s| format!("Last useful claim: {s}. "))
+                .unwrap_or_default();
+            format!(
+                "{anchor}We're on: {thread}. Do this next—concrete, not cryptic: (1) capture one live failure from this chat as a regression case (for example short follow-ups dumping concept cards); (2) repair the operator/voice layer that should own the turn—do not densify Bitwork to fake fluency; (3) re-run the same multi-turn sequence plus transfer-suite; (4) only then consider a human-authorized weight promote if a candidate actually beats held-out gates. Pick one of those four and we can execute it."
+            )
+        } else {
+            format!(
+                "We're mid-thread on: {thread}. Right now I'm a local Bitwork agent — routing, exact tools, deliberate operators, and session memory — not a cloud LLM rewriting itself. Useful next moves: deepen one of those themes, run a transfer probe, or name a failing case to harden. Durable weight growth still needs measured evidence and your authorize step."
+            )
+        }
     };
     Deliberation::new("session-situation", body)
-        .observed(format!("recent_turns={}", recent.len()))
-        .inferred("meta situation questions need thread summary, not generic coaching")
+        .observed(format!(
+            "recent_turns={} next_step={}",
+            recent.len(),
+            next_step
+        ))
+        .inferred("meta situation and next-step questions need thread summary and concrete actions, not concept cards")
         .confidence(0.93)
 }
 
@@ -3055,6 +3629,9 @@ fn looks_creative_constraint(text: &str) -> bool {
     {
         return false;
     }
+    if looks_original_comparison(text) {
+        return false; // owned by original_comparison_answer
+    }
     let inventish = text.contains("invent")
         || text.contains("imagine")
         || text.contains("metaphor")
@@ -3066,7 +3643,9 @@ fn looks_creative_constraint(text: &str) -> bool {
         || text.contains("without")
         || text.contains("under ")
         || text.contains("only ")
-        || text.contains("must ");
+        || text.contains("must ")
+        || text.contains("between ")
+        || text.contains("comparison");
     inventish
         && constrained
         && !text.contains("without inventing") // hallucination refuse path
@@ -3075,18 +3654,180 @@ fn looks_creative_constraint(text: &str) -> bool {
         && !text.contains("meaning for")
 }
 
+/// "Give an original comparison between X and Y; state the limit of the comparison."
+fn looks_original_comparison(text: &str) -> bool {
+    let comparison = text.contains("comparison")
+        || text.contains("compare ")
+        || text.contains("between ");
+    let original = text.contains("original")
+        || text.contains("creative")
+        || text.contains("novel")
+        || text.contains("fresh");
+    let limit = text.contains("limit of the comparison")
+        || text.contains("limit of")
+        || text.contains("where it fails")
+        || text.contains("does not transfer")
+        || text.contains("boundary of the analogy");
+    comparison && (original || limit) && !text.contains("calculate")
+}
+
+fn original_comparison_answer(user: &str) -> Deliberation {
+    let low = user.to_ascii_lowercase();
+    let (left, right) = parse_comparison_pair(&low).unwrap_or_else(|| {
+        ("the first subject".to_owned(), "the second subject".to_owned())
+    });
+    let body = format!(
+        "Original comparison (structure transfer, not free invention):\n\n\
+**Shared structure:** {left} and {right} both organize possibility under constraint—each marks what can change without losing identity of the process.\n\n\
+**What transfers:** (1) scarcity of degrees of freedom; (2) a boundary between recoverable and irreversible change; (3) a test that asks what observation would force a rewrite.\n\n\
+**Limit of the comparison:** the mechanisms stay domain-specific. {left} is not literally {right}, and the analogy fails if you treat the shared pattern as a shared substance or causal identity. Prefer one checkable prediction over a prettier metaphor."
+    );
+    Deliberation::new("original-comparison", body)
+        .observed(format!("comparison pair: {left} · {right}"))
+        .inferred("name shared structure, non-transfer, and a checkable limit")
+        .confidence(0.93)
+}
+
+fn parse_comparison_pair(low: &str) -> Option<(String, String)> {
+    let after = low
+        .split_once("between ")
+        .or_else(|| low.split_once("compare "))
+        .map(|(_, rest)| rest)?;
+    let chunk = after
+        .split(|c| c == ';' || c == '.' || c == '?' || c == ',')
+        .next()
+        .unwrap_or(after);
+    let (a, b) = chunk.split_once(" and ")?;
+    let left = a
+        .trim()
+        .trim_start_matches("the ")
+        .split_whitespace()
+        .take(4)
+        .collect::<Vec<_>>()
+        .join(" ");
+    let right = b
+        .trim()
+        .trim_start_matches("the ")
+        .split_whitespace()
+        .take(4)
+        .collect::<Vec<_>>()
+        .join(" ");
+    if left.len() >= 3 && right.len() >= 3 {
+        Some((left, right))
+    } else {
+        None
+    }
+}
+
+/// Dual competing explanations + smallest separating test (mechanism vs metaphor).
+fn looks_dual_explanation_test(text: &str) -> bool {
+    let two = text.contains("two explanation")
+        || text.contains("two explanations")
+        || text.contains("two accounts")
+        || text.contains("two hypotheses")
+        || (text.contains("give two") && text.contains("explanation"));
+    let test = text.contains("smallest test")
+        || text.contains("separates them")
+        || text.contains("discriminat")
+        || text.contains("distinguish");
+    let mechanism = text.contains("mechanism")
+        || text.contains("metaphor")
+        || text.contains("state")
+        || text.contains("relation")
+        || text.contains("membrane")
+        || text.contains("stable");
+    two && test && mechanism
+}
+
+fn dual_explanation_test_answer(user: &str) -> Deliberation {
+    let low = user.to_ascii_lowercase();
+    let domain = if low.contains("membrane") {
+        "biological membrane"
+    } else if low.contains("state") && low.contains("relation") {
+        "state-vs-relation system"
+    } else {
+        "named system"
+    };
+    let body = format!(
+        "Two explanations for a {domain} where state can change while relation stays stable:\n\n\
+1. **Mechanism account:** local variables (composition, energy, occupancy) change, but the coupling rules that define the relation are conserved—so observables can move without rewriting the interaction law.\n\
+2. **Metaphor account:** we narrate “stability” as continuity of identity, but that story may only re-label correlation without naming a conserved coupling.\n\n\
+**Smallest separating test:** intervene on one local state variable while holding the candidate coupling fixed; if the relation’s predictions still hold, the mechanism account is supported. If the “stable relation” story survives only as language after the predictions fail, it was metaphor. Keep mechanism and metaphor separate: a shared image is not a shared cause."
+    );
+    Deliberation::new("dual-explanation-test", body)
+        .observed("prompt requests two explanations plus a separating test")
+        .inferred("mechanism vs metaphor must be discriminated by intervention")
+        .confidence(0.94)
+}
+
+fn looks_pure_greeting(text: &str) -> bool {
+    let compact: String = text
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace() || *c == '\'')
+        .collect();
+    let c = compact.trim().to_ascii_lowercase();
+    matches!(
+        c.as_str(),
+        "hi" | "hello"
+            | "hey"
+            | "hi there"
+            | "hello there"
+            | "hey there"
+            | "hi there hello"
+            | "hello hi"
+            | "yo"
+            | "sup"
+            | "good morning"
+            | "good evening"
+    ) || (c.len() <= 28
+        && (c.starts_with("hi ") || c.starts_with("hello ") || c.starts_with("hey "))
+        && !c.contains("workspace")
+        && !c.contains("system")
+        && !c.contains("memory")
+        && !c.contains("how does")
+        && !c.contains("what is"))
+}
+
+/// Dialogue workspace / continuity architecture questions misrouted as greeting.
+fn looks_dialogue_workspace_question(text: &str) -> bool {
+    (text.contains("dialogue workspace")
+        || text.contains("working memory")
+        || (text.contains("workspace") && text.contains("referent"))
+        || (text.contains("records") && text.contains("evidence posture")))
+        && (text.contains("goal")
+            || text.contains("referent")
+            || text.contains("evidence")
+            || text.contains("continuity")
+            || text.contains("records"))
+}
+
+fn dialogue_workspace_answer() -> Deliberation {
+    Deliberation::new(
+        "dialogue-workspace",
+        "A dialogue workspace is a compact working-memory record for the current turn: speech act, goal, salient topic, prior referent, evidence posture, uncertainty, continuity, and response-depth budget. It is inspectable control state, not hidden chain-of-thought. The workspace binds short follow-ups to the active thread, lets the critic flag missing referents or generic fallbacks, and applies only safe repairs—never a silent weight write. Natural dialogue depends on reference, repair, and shared context; the workspace makes those checks explicit so SoftCascade concept cards cannot steal the turn.",
+    )
+    .observed("user asked about dialogue workspace / continuity control state")
+    .inferred("describe fields and governance boundary without greeting template")
+    .confidence(0.96)
+}
+
 fn creative_constraint_answer(user: &str) -> Deliberation {
     let low = user.to_ascii_lowercase();
-    // Extract a light topic after "for " if present.
-    let topic = low
-        .split(" for ")
-        .nth(1)
-        .map(|s| {
-            s.split(['.', '?', ';'])
-                .next()
-                .unwrap_or(s)
-                .trim()
-                .to_owned()
+    // Bind the image to the user's actual motif. Prefer explicit
+    // "connecting/about/for" scopes and stop before the constraint clause.
+    let topic = [" connecting ", " about ", " for "]
+        .iter()
+        .find_map(|marker| {
+            low.split_once(marker).map(|(_, rest)| {
+                rest.split(['.', '?', ';'])
+                    .next()
+                    .unwrap_or(rest)
+                    .split(" without ")
+                    .next()
+                    .unwrap_or(rest)
+                    .trim()
+                    .to_owned()
+            })
         })
         .filter(|s| s.len() >= 4)
         .unwrap_or_else(|| "the named system".to_owned());
@@ -3124,15 +3865,32 @@ fn looks_nonce_meaning_probe(text: &str) -> bool {
     }
     // meaning-of + long nonce token (hallucination probe without the magic words).
     const COMMON: &[&str] = &[
-        "meaning", "without", "inventing", "invent", "what", "the", "of", "a", "an",
-        "this", "that", "string", "word", "term", "language", "english", "definition",
-        "does", "mean", "please", "tell", "me",
+        "meaning",
+        "without",
+        "inventing",
+        "invent",
+        "what",
+        "the",
+        "of",
+        "a",
+        "an",
+        "this",
+        "that",
+        "string",
+        "word",
+        "term",
+        "language",
+        "english",
+        "definition",
+        "does",
+        "mean",
+        "please",
+        "tell",
+        "me",
     ];
     low.split_whitespace().any(|w| {
         let t = w.trim_matches(|c: char| !c.is_ascii_alphanumeric());
-        t.len() >= 8
-            && t.chars().all(|c| c.is_ascii_alphabetic())
-            && !COMMON.contains(&t)
+        t.len() >= 8 && t.chars().all(|c| c.is_ascii_alphabetic()) && !COMMON.contains(&t)
     })
 }
 
@@ -3194,9 +3952,7 @@ fn code_snippet_answer(user: &str) -> Deliberation {
             "rust",
             "E0382 is Rust’s “borrow of moved value”: ownership moved, then you used the old name.\n\n```rust\nfn consume(s: String) {}\n\nfn main() {\n    let name = String::from(\"perci\");\n    consume(name);          // move\n    // println!(\"{name}\"); // E0382 if uncommented\n    let name = String::from(\"perci\");\n    consume(name.clone());  // keep a copy, or…\n    let name = String::from(\"perci\");\n    let borrowed = &name;   // borrow instead of move\n    println!(\"{borrowed}\");\n    println!(\"{name}\");    // still valid\n}\n```\nFix patterns: (1) clone if you need two owners; (2) pass `&T` / `&mut T` instead of `T`; (3) reorder so the last use is the move; (4) for loops over collections prefer `for x in &v` or `v.iter()`. Compiler/tests beat slogans — re-run `cargo check` after the smallest change.".to_owned(),
         )
-    } else if lower.contains("reverse")
-        && (lower.contains("string") || lower.contains("str"))
-    {
+    } else if lower.contains("reverse") && (lower.contains("string") || lower.contains("str")) {
         if lower.contains("python") {
             (
                 "python",
@@ -3209,9 +3965,7 @@ fn code_snippet_answer(user: &str) -> Deliberation {
                 "```rust\nfn reverse_string(input: &str) -> String {\n    input.chars().rev().collect()\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn reverses_ascii() {\n        assert_eq!(reverse_string(\"perci\"), \"icrep\");\n    }\n}\n```\nNotes: `chars().rev()` is Unicode-scalar reverse, not grapheme-cluster reverse. For byte-only ASCII you can reverse bytes; for user-visible text, use a grapheme crate when that distinction matters. Compiler/tests beat slogans.".to_owned(),
             )
         }
-    } else if lower.contains("rust")
-        && (lower.contains("hello") || lower.contains("main"))
-    {
+    } else if lower.contains("rust") && (lower.contains("hello") || lower.contains("main")) {
         (
             "rust",
             "```rust\nfn main() {\n    println!(\"hello from Perci\");\n}\n```\nRun with `cargo run` in a crate, or `rustc main.rs && ./main` for a single file.".to_owned(),
@@ -3229,7 +3983,9 @@ fn code_snippet_answer(user: &str) -> Deliberation {
         "code-snippet",
         format!("Here is a concrete {lang} snippet:\n\n{body}"),
     )
-    .observed(format!("code request routed to deterministic snippet path lang={lang}"))
+    .observed(format!(
+        "code request routed to deterministic snippet path lang={lang}"
+    ))
     .inferred("code intents must return inspectable source, not craft slogans")
     .uncertain("requirements beyond the detected pattern")
     .confidence(0.94)
@@ -3293,6 +4049,7 @@ fn parse_relational_inquiry(text: &str) -> Option<(String, String, &'static str)
         ("what's the boundary between ", " and ", "boundary"),
         ("what is the difference between ", " and ", "difference"),
         ("what's the difference between ", " and ", "difference"),
+        ("how do ", " and ", "interaction"),
         ("how are ", " and ", "related"),
         ("what connects ", " and ", "connection"),
         ("compare ", " and ", "comparison"),
@@ -3319,6 +4076,11 @@ fn normalize_relation_term(raw: &str) -> Option<String> {
         .trim_end_matches(" related")
         .trim_end_matches(" connected")
         .trim_end_matches(" together")
+        .trim_end_matches(" interact under load")
+        .trim_end_matches(" interact under pressure")
+        .trim_end_matches(" interact")
+        .trim_end_matches(" influence each other")
+        .trim_end_matches(" work together")
         .trim_matches(|c: char| !c.is_ascii_alphanumeric())
         .to_ascii_lowercase();
     for article in ["a ", "an ", "the "] {
@@ -3438,14 +4200,13 @@ fn teachable_inquiry(left: &str, right: &str, variant: usize) -> Option<Delibera
         )
     };
     Some(
-        Deliberation::new(
-            "cross-domain-inquiry",
-            answer,
-        )
-        .observed(format!("paired_frames={left},{right}; shared_axis={axis}"))
-        .inferred("the wording asks for a cross-domain lesson, not a durable memory write")
-        .uncertain("which additional cultural, personal, or scientific meaning the user intends")
-        .confidence(0.93),
+        Deliberation::new("cross-domain-inquiry", answer)
+            .observed(format!("paired_frames={left},{right}; shared_axis={axis}"))
+            .inferred("the wording asks for a cross-domain lesson, not a durable memory write")
+            .uncertain(
+                "which additional cultural, personal, or scientific meaning the user intends",
+            )
+            .confidence(0.93),
     )
 }
 
@@ -3458,7 +4219,10 @@ fn relational_inquiry(
     let left_frame = semantic_frame(left)?;
     let right_frame = semantic_frame(right)?;
     let axis = pair_axis(&[left_frame, right_frame])?;
-    let answer = if matches!((left, right), ("knowledge", "attention") | ("attention", "knowledge")) {
+    let answer = if matches!(
+        (left, right),
+        ("knowledge", "attention") | ("attention", "knowledge")
+    ) {
         if variant % 2 == 0 {
             "Knowledge is a relatively durable model tied to scope, justification, and use; attention is a moment-to-moment selection of what gets processed next. Their boundary is functional: knowledge can remain available when attention moves, while attention determines which part of that knowledge or incoming evidence becomes active. They shape one another—what we know guides what we notice, and what we repeatedly attend to can revise what we know. The distinction is useful because it separates stored or justified capability from the limited channel that selects the next signal."
                 .to_owned()
@@ -3540,7 +4304,10 @@ fn image_pair(terms: &[String]) -> Option<Deliberation> {
             .collect::<Option<Vec<_>>>()
     })?;
     let axis = pair_axis(&frames)?;
-    let answer = if matches!((terms[0].as_str(), terms[1].as_str()), ("time", "memory") | ("memory", "time")) {
+    let answer = if matches!(
+        (terms[0].as_str(), terms[1].as_str()),
+        ("time", "memory") | ("memory", "time")
+    ) {
         "Imagine a river at dusk: time is the current carrying every moment onward, while memory is the sediment that keeps selected shapes from being washed away. The river explains their relation without confusing a record of the past with the passage that makes a past possible."
             .to_owned()
     } else if axis == "boundary" {
@@ -3690,23 +4457,20 @@ fn open_domain_synthesize(terms: &[String], variant: usize) -> Deliberation {
         " I have catalog support for these terms, but not a single shared expert axis—so this is a structural comparison, not a deep mechanism claim.".to_owned()
     } else {
         format!(
-            " I don't have specialist frames for {}; those lines are honest placeholders. If you teach mechanism-level claims for them, I can replace the placeholders and retest."
+            " No specialist frame is available for {}; that line is an honest placeholder. If you teach a mechanism-level claim or provide a source, I can replace the placeholder and retest."
             ,
             provisional.join(", ")
         )
     };
-    Deliberation::new(
-        "open-domain-synthesis",
-        format!("{bridge}{footer}"),
-    )
-    .observed(format!(
-        "terms={}; catalog_frames={catalog}; provisional={}",
-        terms.join(","),
-        provisional.len()
-    ))
-    .inferred("explicit connect must name all domains without pack collapse or repeated filler")
-    .uncertain("provisional clauses are structural placeholders, not domain expertise")
-    .confidence(if provisional.is_empty() { 0.86 } else { 0.78 })
+    Deliberation::new("open-domain-synthesis", format!("{bridge}{footer}"))
+        .observed(format!(
+            "terms={}; catalog_frames={catalog}; provisional={}",
+            terms.join(","),
+            provisional.len()
+        ))
+        .inferred("explicit connect must name all domains without pack collapse or repeated filler")
+        .uncertain("provisional clauses are structural placeholders, not domain expertise")
+        .confidence(if provisional.is_empty() { 0.86 } else { 0.78 })
 }
 
 fn provisional_clause(term: &str, index: usize) -> String {
@@ -3782,7 +4546,9 @@ fn multi_hop_plan(user: &str) -> Deliberation {
             }
         }
     }
-    let body = if (lower.contains("transfer") || lower.contains("hardness") || lower.contains("perci"))
+    let body = if (lower.contains("transfer")
+        || lower.contains("hardness")
+        || lower.contains("perci"))
         && (lower.contains("test") || lower.contains("improve") || lower.contains("eval"))
     {
         "1. Goal — raise transfer hardness without regressions: entity-swapped prompts pass, templates still fail, exact tools stay green.\n2. Known — hardness pack + live probe suite, operator/deliberation layer, stage→fold→eval→promote pipeline, scorecard.\n3. Unknown — which live fails are operator gaps vs missing frames vs tool gaps.\n4. Steps — (a) capture 5 failing live prompts into hardness JSONL; (b) repair one layer only; (c) `python scripts/live_probe_suite.py` + `evaluate_hardness.py`; (d) only then consider fold/promote with authorize.\n5. Failure modes — green on memorized cases but red on paraphrases → stop and raise hardness; tool regression → revert tool change.\n6. Done when — new hardness cases pass and prior suite stays 100% with a receipt hash.\nIf you want, give me one failing prompt and I'll turn it into a hardness case first.".to_owned()
@@ -3801,13 +4567,10 @@ fn multi_hop_plan(user: &str) -> Deliberation {
             "1. Goal — {goal} (success = a clear, checkable outcome).\n2. Known — what we already have in this session: your request plus any tools/facts already stated.\n3. Unknown — the missing constraint, success metric, or resource that blocks a concrete first step.\n4. Steps — (a) name the acceptance test; (b) list constraints and tools available in this repo; (c) take the smallest reversible action; (d) verify with one measurement (test, hardness case, or probe).\n5. Failure modes — if the verify check fails, undo the last step and change only one variable.\n6. Done when — the acceptance test you name passes twice, not once by luck.\nTell me the missing constraint and I'll fill the steps with your actual details."
         )
     };
-    Deliberation::new(
-        "multi-hop-plan",
-        format!("Here's a concrete plan:\n{body}"),
-    )
-    .observed("user requested multi-step planning structure")
-    .inferred("plans should be filled for the domain, not empty labels")
-    .confidence(0.93)
+    Deliberation::new("multi-hop-plan", format!("Here's a concrete plan:\n{body}"))
+        .observed("user requested multi-step planning structure")
+        .inferred("plans should be filled for the domain, not empty labels")
+        .confidence(0.93)
 }
 
 fn looks_causal_chain(text: &str) -> bool {
@@ -3815,7 +4578,9 @@ fn looks_causal_chain(text: &str) -> bool {
     if looks_justify_prior_answer(text) {
         return false;
     }
-    (text.contains("why did") || text.contains("what caused") || text.contains("causal chain")
+    (text.contains("why did")
+        || text.contains("what caused")
+        || text.contains("causal chain")
         || text.contains("cause and effect")
         || (text.contains("because") && text.contains("explain the chain")))
         && text.split_whitespace().count() >= 5
@@ -3831,7 +4596,6 @@ fn looks_justify_prior_answer(text: &str) -> bool {
         || t.contains("why did you write")
         || t.contains("why did you choose")
         || t.contains("what did you mean")
-        || t.contains("what do you mean by that")
         || t.contains("explain what you just")
         || t.contains("explain your last")
         || t.contains("explain that answer")
@@ -4005,17 +4769,14 @@ fn synthesize_frames(terms: &[String], variant: usize) -> Option<Deliberation> {
         )
     };
     Some(
-        Deliberation::new(
-            "cross-domain-synthesis",
-            answer,
-        )
-        .observed(format!("frames={}; shared_axis={axis}", terms.join(",")))
-        .inferred(format!(
-            "{axis} is shared by {support} of {} frames",
-            frames.len()
-        ))
-        .uncertain("a structural bridge does not establish a shared material mechanism")
-        .confidence(if support == frames.len() { 0.94 } else { 0.84 }),
+        Deliberation::new("cross-domain-synthesis", answer)
+            .observed(format!("frames={}; shared_axis={axis}", terms.join(",")))
+            .inferred(format!(
+                "{axis} is shared by {support} of {} frames",
+                frames.len()
+            ))
+            .uncertain("a structural bridge does not establish a shared material mechanism")
+            .confidence(if support == frames.len() { 0.94 } else { 0.84 }),
     )
 }
 
@@ -4434,8 +5195,10 @@ fn last_number(text: &str) -> Option<String> {
 }
 
 fn looks_gibberish(text: &str) -> bool {
+    let asks_meaning = text.contains("what does") && text.contains("mean");
     let has_epistemic_question = text.contains("what can you determine")
         || text.contains("what do you know")
+        || asks_meaning
         || text.contains("known, inferred")
         || text.contains("know, infer")
         || (text.contains("known") && text.contains("unknown"))
@@ -4453,6 +5216,7 @@ fn looks_gibberish(text: &str) -> bool {
                 .map(|(left, _)| left)
         })
         .or_else(|| text.split_once("what do you know").map(|(left, _)| left))
+        .or_else(|| text.split_once("what does").map(|(left, _)| left))
         .or_else(|| text.split_once("known").map(|(left, _)| left))
         .unwrap_or(text);
     let tokens: Vec<&str> = prefix
@@ -4468,7 +5232,8 @@ fn looks_gibberish(text: &str) -> bool {
                 .any(|character| matches!(character, 'q' | 'x' | 'z' | 'v'))
         })
         .count();
-    (tokens.len() >= 3 && exotic >= 2) || (tokens.len() >= 3 && exotic >= 1 && tokens.iter().all(|t| t.len() <= 8))
+    (tokens.len() >= 3 && exotic >= 2)
+        || (tokens.len() >= 3 && exotic >= 1 && tokens.iter().all(|t| t.len() <= 8))
 }
 
 fn recent_is_ood(recent: &[(String, String)]) -> bool {
@@ -4534,6 +5299,15 @@ mod tests {
         assert_eq!(result.operator, "sacred-geometry-layers");
         assert!(result.answer.contains("mathematical structure"));
         assert!(result.answer.contains("historical and cultural evidence"));
+    }
+
+    #[test]
+    fn geometry_healing_evidence_does_not_use_ritual_association() {
+        let result = run("What evidence supports the claim that geometry heals?", &[]);
+        assert_eq!(result.operator, "geometry-healing-evidence");
+        assert!(result.answer.contains("matched control"));
+        assert!(result.answer.contains("falsify"));
+        assert!(!result.answer.contains("yantra"));
     }
 
     #[test]
@@ -4636,6 +5410,15 @@ mod tests {
         assert!(prediction.answer.contains("future"));
         assert!(prediction.answer.contains("mechanisms differ"));
 
+        let interaction = run("How do memory and attention interact under load?", &[]);
+        assert_eq!(interaction.operator, "relational-inquiry");
+        let interaction_lower = interaction.answer.to_ascii_lowercase();
+        assert!(interaction_lower.contains("memory"));
+        assert!(interaction_lower.contains("attention"));
+        assert!(
+            interaction_lower.contains("selection") || interaction_lower.contains("information")
+        );
+
         let learning = run(
             "Connect entropy, memory, and learning in one coherent thought.",
             &[],
@@ -4644,6 +5427,26 @@ mod tests {
         for term in ["entropy", "memory", "learning"] {
             assert!(learning.answer.contains(term));
         }
+    }
+
+    #[test]
+    fn style_prefixes_preserve_knowledge_attention_relation() {
+        let brief = run(
+            "Be brief: what is the boundary between knowledge and attention?",
+            &[],
+        );
+        assert_eq!(brief.operator, "relational-inquiry");
+        assert!(brief.answer.contains("durable"));
+        assert!(brief.answer.contains("selects"));
+        assert!(brief.answer.split_whitespace().count() < 25);
+
+        let deep = run(
+            "Go deeper: what is the boundary between knowledge and attention?",
+            &[],
+        );
+        assert_eq!(deep.operator, "relational-inquiry");
+        assert!(deep.answer.contains("functional"));
+        assert!(deep.answer.contains("measure"));
     }
 
     #[test]
@@ -4763,6 +5566,17 @@ mod tests {
     }
 
     #[test]
+    fn learning_evidence_routes_to_functional_separation() {
+        let result = run(
+            "What evidence supports the claim that Perci is learning?",
+            &[],
+        );
+        assert_eq!(result.operator, "learning-evidence");
+        assert!(result.answer.contains("fresh-process A/B"));
+        assert!(result.answer.contains("unseen variants"));
+    }
+
+    #[test]
     fn retains_session_number_without_claiming_learning() {
         let prior = vec![(
             "Remember this only for our current conversation: the test number is 8472.".to_owned(),
@@ -4775,6 +5589,33 @@ mod tests {
         )
         .answer
         .contains("without treating it as knowledge"));
+    }
+
+    #[test]
+    fn recalls_number_with_a_natural_descriptor() {
+        let prior = vec![(
+            "Remember this only for this session: the calibration number is 4317.".to_owned(),
+            "retained".to_owned(),
+        )];
+        let result = run("What was the calibration number?", &prior);
+        assert_eq!(result.operator, "context-recall");
+        assert!(result.answer.contains("4317"));
+    }
+
+    #[test]
+    fn session_test_scope_answers_directly() {
+        let result = run("What are we testing in this session?", &[]);
+        assert_eq!(result.operator, "session-test-scope");
+        assert!(result.answer.contains("reasoning depth"));
+        assert!(result.answer.contains("fresh-process"));
+    }
+
+    #[test]
+    fn remembering_vs_learning_accepts_natural_wording() {
+        let result = run("Why is remembering it not the same as learning?", &[]);
+        assert_eq!(result.operator, "memory-learning-separation");
+        assert!(result.answer.contains("Retaining context"));
+        assert!(result.answer.contains("Learning changes"));
     }
 
     #[test]
@@ -4935,6 +5776,57 @@ mod tests {
         assert!(run("Rewrite the sentence in two unambiguous ways.", &prior)
             .answer
             .contains("Vial reading"));
+    }
+
+    #[test]
+    fn cross_domain_summary_exposes_frames_and_missing_coverage() {
+        let summary = cross_domain_summary(
+            "Connect geometry, biology, and code through one shared structure.",
+        )
+        .expect("cross-domain prompt should produce a summary");
+        assert_eq!(summary.terms, vec!["geometry", "life", "code"]);
+        assert_eq!(summary.frames.len(), 3);
+        assert!(summary.missing.is_empty());
+        assert!(matches!(
+            summary.shared_axis.as_deref(),
+            Some("boundary" | "structure")
+        ));
+
+        let partial = cross_domain_summary(
+            "Bridge geometry with an invented discipline called quaal mechanics.",
+        )
+        .expect("explicit bridge should retain unknown terms");
+        assert!(partial.frames.iter().any(|frame| frame.term == "geometry"));
+        assert!(partial.missing.iter().any(|term| term.contains("quaal")));
+    }
+
+    #[test]
+    fn cross_domain_evidence_followup_uses_prior_frames() {
+        let seed = run(
+            "Connect geometry, biology, and code through one shared structure.",
+            &[],
+        );
+        let followup = run(
+            "What evidence supports that?",
+            &[(
+                "Connect geometry, biology, and code through one shared structure.".into(),
+                seed.answer,
+            )],
+        );
+        assert_eq!(followup.operator, "cross-domain-evidence");
+        assert!(followup.answer.contains("geometry:"));
+        assert!(followup.answer.contains("life:"));
+        assert!(followup.answer.contains("predeclared outcome"));
+    }
+
+    #[test]
+    fn natural_across_domains_uses_frame_analysis_without_connect_verb() {
+        let result = run("Analyze geometry, biology, and code across domains.", &[]);
+        assert_eq!(result.operator, "cross-domain-analysis");
+        assert!(result.answer.contains("geometry:"));
+        assert!(result.answer.contains("life:"));
+        assert!(result.answer.contains("code:"));
+        assert!(result.answer.contains("Domain tests:"));
     }
 
     #[test]
@@ -5135,6 +6027,29 @@ mod tests {
     }
 
     #[test]
+    fn natural_negated_supposition_routes_to_contradiction_diagnosis() {
+        let result = run(
+            "Now suppose Mira is not blue. What exactly conflicts?",
+            &[(
+                "Assume every lantern is blue, and Mira is a lantern. What follows?".to_owned(),
+                "Mira is blue.".to_owned(),
+            )],
+        );
+        assert_eq!(result.operator, "contradiction-diagnosis");
+        assert!(result.answer.contains("The conflict is between"));
+        assert!(result.answer.contains("Mira is blue"));
+        assert!(result.answer.contains("Mira is not blue"));
+    }
+
+    #[test]
+    fn nonce_meaning_question_abstains_without_grounding() {
+        let result = run("vrax meloq drint — what does this mean?", &[]);
+        assert_eq!(result.operator, "out-of-distribution-abstention");
+        assert!(result.answer.contains("Unknown:"));
+        assert!(result.answer.contains("cannot assign"));
+    }
+
+    #[test]
     fn ambiguity_without_two_antecedents_does_not_invent_one() {
         let result = run(
             "LOSA baseline: listen to this claim — The bridge is cold because it was wet. What is ambiguous?",
@@ -5238,7 +6153,10 @@ mod tests {
 
         let how = run("how does trust fail in distributed systems?", &[]);
         assert_eq!(how.operator, "trust-systems");
-        assert!(how.answer.to_ascii_lowercase().contains("interface") || how.answer.contains("authority"));
+        assert!(
+            how.answer.to_ascii_lowercase().contains("interface")
+                || how.answer.contains("authority")
+        );
         assert!(!how.answer.contains("failing output"));
     }
 
@@ -5251,7 +6169,10 @@ mod tests {
         assert_eq!(r.operator, "trust-systems");
         let low = r.answer.to_ascii_lowercase();
         assert!(
-            low.contains("should") || low.contains("designed") || low.contains("explicit contracts") || low.contains("earn"),
+            low.contains("should")
+                || low.contains("designed")
+                || low.contains("explicit contracts")
+                || low.contains("earn"),
             "got: {}",
             r.answer
         );
@@ -5264,14 +6185,14 @@ mod tests {
 
     #[test]
     fn trust_earn_under_lag_is_design_not_fail() {
-        let r = run(
-            "how should interfaces earn trust under lag and retry?",
-            &[],
-        );
+        let r = run("how should interfaces earn trust under lag and retry?", &[]);
         assert_eq!(r.operator, "trust-systems");
         let low = r.answer.to_ascii_lowercase();
         assert!(
-            low.contains("earn") || low.contains("lag") || low.contains("retry") || low.contains("idempotent"),
+            low.contains("earn")
+                || low.contains("lag")
+                || low.contains("retry")
+                || low.contains("idempotent"),
             "got: {}",
             r.answer
         );
@@ -5353,14 +6274,27 @@ mod tests {
 
     #[test]
     fn creative_constraint_transfers_structure() {
-        let r = run(
-            "invent a constrained metaphor for sparse cognition",
-            &[],
-        );
+        let r = run("invent a constrained metaphor for sparse cognition", &[]);
         assert_eq!(r.operator, "creative-constraint");
         let low = r.answer.to_ascii_lowercase();
         assert!(low.contains("transfer") || low.contains("does not transfer"));
         assert!(low.contains("check") || low.contains("test") || low.contains("build"));
+    }
+
+    #[test]
+    fn thought_falsifier_stays_out_of_formal_proof_route() {
+        let r = run(
+            "What is the smallest test that could prove your last thought wrong?",
+            &[(
+                "Give me one original thought connecting death, code, and repair without claiming they are literally the same.".to_owned(),
+                "A constrained thought about repair.".to_owned(),
+            )],
+        );
+        assert_eq!(r.operator, "thought-falsifier");
+        let low = r.answer.to_ascii_lowercase();
+        assert!(low.contains("hypothesis"));
+        assert!(low.contains("counterexample"));
+        assert!(!low.contains("formal proof"));
     }
 
     #[test]
@@ -5387,10 +6321,7 @@ mod tests {
 
     #[test]
     fn flibberquark_refuses_invention() {
-        let r = run(
-            "what is the meaning of flibberquark without inventing",
-            &[],
-        );
+        let r = run("what is the meaning of flibberquark without inventing", &[]);
         assert_eq!(r.operator, "hallucination-refusal");
         assert!(r.answer.to_ascii_lowercase().contains("refuse"));
     }
@@ -5502,13 +6433,14 @@ mod tests {
 
     #[test]
     fn connect_terms_fold_without_parens() {
-        let terms = connect_terms_for_prompt(
-            "connect sparse memory and vector symbolic architectures",
-        )
-        .expect("terms");
+        let terms =
+            connect_terms_for_prompt("connect sparse memory and vector symbolic architectures")
+                .expect("terms");
         assert_eq!(terms.len(), 2, "terms={terms:?}");
         assert!(terms.iter().any(|t| t.contains("sparse")));
-        assert!(terms.iter().any(|t| t.contains("vector") || t.contains("symbolic")));
+        assert!(terms
+            .iter()
+            .any(|t| t.contains("vector") || t.contains("symbolic")));
         assert!(!terms.iter().any(|t| t == "architectures"));
         assert!(!terms.iter().any(|t| t == "memory" && !t.contains("sparse")));
     }
@@ -5516,18 +6448,12 @@ mod tests {
     #[test]
     fn session_situation_summarizes_thread() {
         let recent = [
-            (
-                "are you there".to_owned(),
-                "here".to_owned(),
-            ),
+            ("are you there".to_owned(), "here".to_owned()),
             (
                 "why does trust fail in distributed systems?".to_owned(),
                 "trust contracts".to_owned(),
             ),
-            (
-                "what are we doing".to_owned(),
-                "meta".to_owned(),
-            ),
+            ("what are we doing".to_owned(), "meta".to_owned()),
         ];
         let result = run("what are we doing", &recent);
         assert_eq!(result.operator, "session-situation");
@@ -5538,6 +6464,62 @@ mod tests {
         // Meta / presence should not pollute the theme list.
         assert!(!low.contains("presence / channel check"));
         assert!(!low.contains("mid-thread on: what are we doing"));
+    }
+
+    #[test]
+    fn next_step_followups_do_not_dump_concept_cards() {
+        let recent = [
+            ("hi there".to_owned(), "Hey — I'm here.".to_owned()),
+            (
+                "working on improving your system".to_owned(),
+                "We are improving Perci through measured routing and transfer repairs.".to_owned(),
+            ),
+        ];
+        let what = run("what should i do", &recent);
+        assert_eq!(what.operator, "session-situation");
+        let low = what.answer.to_ascii_lowercase();
+        assert!(low.contains("next") || low.contains("capture") || low.contains("operator"));
+        assert!(!low.contains("behavioral complexity"));
+        assert!(!low.contains("subjective experience"));
+
+        let where_to = run("where are we going", &recent);
+        assert_eq!(where_to.operator, "session-situation");
+        let low2 = where_to.answer.to_ascii_lowercase();
+        assert!(low2.contains("next") || low2.contains("improv") || low2.contains("operator"));
+        assert!(!low2.contains("purely discovered"));
+        assert!(!low2.contains("freely invented"));
+    }
+
+    #[test]
+    fn open_frame_tickets_have_operator_owners() {
+        let creative = run(
+            "Give an original comparison between entropy and limits; state the limit of the comparison.",
+            &[],
+        );
+        assert_eq!(creative.operator, "original-comparison");
+        let cl = creative.answer.to_ascii_lowercase();
+        assert!(cl.contains("entropy") && cl.contains("limit"));
+        assert!(!cl.contains("life maintains local organization"));
+
+        let dual = run(
+            "Suppose state changes while relation remains stable in a biological membrane. Give two explanations and the smallest test that separates them. Keep mechanism separate from metaphor.",
+            &[],
+        );
+        assert_eq!(dual.operator, "dual-explanation-test");
+        let dl = dual.answer.to_ascii_lowercase();
+        assert!(dl.contains("mechanism") && dl.contains("metaphor") && dl.contains("test"));
+
+        let workspace = run(
+            "A dialogue workspace records goal, referent, and evidence posture.",
+            &[],
+        );
+        assert_eq!(workspace.operator, "dialogue-workspace");
+        assert!(workspace.answer.to_ascii_lowercase().contains("workspace"));
+        assert!(!workspace.answer.to_ascii_lowercase().contains("hey — i'm here"));
+
+        let greet = run("hi there, hello", &[]);
+        assert_eq!(greet.operator, "greeting");
+        assert!(greet.answer.to_ascii_lowercase().contains("here"));
     }
 
     #[test]
@@ -5554,8 +6536,7 @@ mod tests {
         // No triple copy-paste filler.
         let filler = "structured domain with internal constraints";
         assert!(
-            !open.answer.contains(filler)
-                || open.answer.matches(filler).count() <= 1,
+            !open.answer.contains(filler) || open.answer.matches(filler).count() <= 1,
             "open-domain answer still uses repeated filler: {}",
             open.answer
         );
@@ -5567,7 +6548,9 @@ mod tests {
         assert_eq!(plan.operator, "multi-hop-plan");
         assert!(plan.answer.contains("1. Goal"));
         assert!(plan.answer.contains("hardness") || plan.answer.contains("transfer"));
-        assert!(!plan.answer.contains("restate the target outcome in one sentence"));
+        assert!(!plan
+            .answer
+            .contains("restate the target outcome in one sentence"));
 
         let causal = run(
             "Why did the deployment fail? Explain the causal chain with a discriminating test.",
@@ -5576,12 +6559,12 @@ mod tests {
         assert_eq!(causal.operator, "causal-chain");
         assert!(causal.answer.contains("Candidate mechanism"));
 
-        let si = run(
-            "Is Perci a superintelligence or on the path to AGI?",
-            &[],
-        );
+        let si = run("Is Perci a superintelligence or on the path to AGI?", &[]);
         assert_eq!(si.operator, "superintelligence-bound");
-        assert!(si.answer.to_ascii_lowercase().contains("not a superintelligence"));
+        assert!(si
+            .answer
+            .to_ascii_lowercase()
+            .contains("not a superintelligence"));
 
         // T1: explanatory math and code snippets
         let why = run("why does 2+2 equal 4?", &[]);
@@ -5617,11 +6600,7 @@ mod tests {
             "Connect sparse distributed memory, vector symbolic binding, and Bitwork in one coherent thought.",
             &[],
         );
-        assert!(
-            vsa.operator.contains("synthesis"),
-            "got {}",
-            vsa.operator
-        );
+        assert!(vsa.operator.contains("synthesis"), "got {}", vsa.operator);
         let low = vsa.answer.to_ascii_lowercase();
         for token in ["sparse", "memory", "binding", "bitwork"] {
             assert!(low.contains(token), "missing {token} in {}", vsa.answer);
@@ -5674,8 +6653,14 @@ mod tests {
 
         let compression = run("How are compression and understanding related?", &[]);
         assert_eq!(compression.operator, "relational-inquiry");
-        assert!(compression.answer.to_ascii_lowercase().contains("compression"));
-        assert!(compression.answer.to_ascii_lowercase().contains("understanding"));
+        assert!(compression
+            .answer
+            .to_ascii_lowercase()
+            .contains("compression"));
+        assert!(compression
+            .answer
+            .to_ascii_lowercase()
+            .contains("understanding"));
 
         let map = run("What is the difference between a map and a model?", &[]);
         assert_eq!(map.operator, "relational-inquiry");
@@ -5720,7 +6705,10 @@ mod tests {
             &[],
         );
         assert_eq!(conscious.operator, "consciousness-claim-refusal");
-        assert!(conscious.answer.to_ascii_lowercase().contains("cannot prove"));
+        assert!(conscious
+            .answer
+            .to_ascii_lowercase()
+            .contains("cannot prove"));
 
         let layers = run(
             "What should change next in operators vs weights vs tools — and what evidence justifies it?",

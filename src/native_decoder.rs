@@ -96,7 +96,13 @@ Observation: perturb {} and predict a change in {}; fail closed if the link does
 
     // Critic
     let mut ok = true;
-    if let Err(e) = critic_accept_language(&body, &["no consciousness claims".into(), "no weight auto-promote".into()]) {
+    if let Err(e) = critic_accept_language(
+        &body,
+        &[
+            "no consciousness claims".into(),
+            "no weight auto-promote".into(),
+        ],
+    ) {
         ok = false;
         notes.push(e);
         body.push_str("\n\n[Governor] Decode refused boundary violation.");
@@ -118,8 +124,20 @@ fn extract_motifs(user: &str) -> Vec<String> {
     }
     let lower = user.to_ascii_lowercase();
     const M: &[&str] = &[
-        "boundary", "memory", "evidence", "repair", "trust", "uncertainty", "scale",
-        "identity", "signal", "learning", "entropy", "structure", "attention", "change",
+        "boundary",
+        "memory",
+        "evidence",
+        "repair",
+        "trust",
+        "uncertainty",
+        "scale",
+        "identity",
+        "signal",
+        "learning",
+        "entropy",
+        "structure",
+        "attention",
+        "change",
     ];
     M.iter()
         .filter(|m| lower.contains(**m))

@@ -8,6 +8,7 @@
 //! deliberation remains the high-salience operator path today.
 
 use crate::deliberation::{normalize_input, Deliberation};
+use crate::dialogue_workspace::DialogueWorkspace;
 
 /// One step in an inspectable cognitive program.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,7 +221,9 @@ pub fn plan_for_prompt(user: &str) -> Option<OperatorProgram> {
         });
     }
 
-    if (text.contains("compare ") || text.contains("difference between") || text.contains("how are "))
+    if (text.contains("compare ")
+        || text.contains("difference between")
+        || text.contains("how are "))
         && (text.contains(" and ") || text.contains(" vs ") || text.contains(" related"))
     {
         return Some(OperatorProgram {
@@ -243,13 +246,19 @@ pub fn plan_for_prompt(user: &str) -> Option<OperatorProgram> {
         return Some(OperatorProgram {
             program_id: "followup_binding",
             steps: FOLLOWUP_STEPS,
-            critic_checks: &["binds_prior", "performs_requested_op", "avoids_stale_preset"],
+            critic_checks: &[
+                "binds_prior",
+                "performs_requested_op",
+                "avoids_stale_preset",
+            ],
             primary_layer: "operator",
         });
     }
 
     if text.contains("transfer")
-        && (text.contains("template") || text.contains("memorized") || text.contains("pattern matching"))
+        && (text.contains("template")
+            || text.contains("memorized")
+            || text.contains("pattern matching"))
     {
         return Some(OperatorProgram {
             program_id: "transfer_vs_template",
@@ -493,10 +502,9 @@ pub fn annotate_deliberation(user: &str, deliberation: &mut Deliberation) {
                 .inferences
                 .push("program critic: pass".to_owned());
         } else {
-            deliberation.uncertainties.push(format!(
-                "program critic flags: {}",
-                report.flags.join(", ")
-            ));
+            deliberation
+                .uncertainties
+                .push(format!("program critic flags: {}", report.flags.join(", ")));
             if report.flags.iter().any(|f| {
                 matches!(
                     *f,
@@ -536,7 +544,136 @@ pub fn annotate_deliberation(user: &str, deliberation: &mut Deliberation) {
 /// Run the program runtime on a finished answer (exact tools / associative path).
 pub fn apply_program_runtime(user: &str, mut deliberation: Deliberation) -> Deliberation {
     annotate_deliberation(user, &mut deliberation);
+    crate::governed_will::apply(user, &mut deliberation);
     deliberation
+}
+
+/// Run the v0.9 relational controller after an answer exists.
+///
+/// The workspace contributes an inspectable plan, a bounded continuity critic,
+/// and one safe referent repair. It never fabricates missing facts or exposes a
+/// private reasoning trace.
+pub fn apply_dialogue_workspace_runtime(
+    user: &str,
+    recent: &[(String, String)],
+    mut deliberation: Deliberation,
+) -> Deliberation {
+    annotate_deliberation(user, &mut deliberation);
+    let workspace = DialogueWorkspace::derive(user, recent);
+    let plan = workspace.plan();
+    deliberation.observations.push(format!(
+        "workspace_plan={} referent_required={} continuity={:?} depth={:?}",
+        plan.plan_id, plan.requires_referent, workspace.continuity, workspace.response_budget,
+    ));
+    if let Some(summary) = crate::deliberation::cross_domain_summary(user) {
+        let axis = summary.shared_axis.as_deref().unwrap_or("none");
+        deliberation.observations.push(format!(
+            "cross_domain terms={} known_frames={}/{} shared_axis={} axis_support={}",
+            summary.terms.join(","),
+            summary.frames.len(),
+            summary.terms.len(),
+            axis,
+            summary.axis_support,
+        ));
+        if summary.missing.is_empty() {
+            deliberation.inferences.push(
+                "local semantic frames supplied a mechanism and test for every requested domain"
+                    .to_owned(),
+            );
+        } else {
+            deliberation.uncertainties.push(format!(
+                "specialist frame coverage is missing for {}",
+                summary.missing.join(", ")
+            ));
+        }
+    }
+    if deliberation.program_id.is_none() {
+        deliberation.program_id = Some(plan.plan_id);
+        deliberation.program_steps = plan.steps.to_vec();
+    }
+
+    let critique = workspace.critique(user, &deliberation.answer, recent);
+    deliberation.critic_ok = Some(deliberation.critic_ok.unwrap_or(true) && critique.ok());
+    if critique.ok() {
+        deliberation
+            .inferences
+            .push("workspace critic: pass".to_owned());
+    } else {
+        deliberation.uncertainties.push(format!(
+            "workspace critic flags: {}",
+            critique.flags.join(", ")
+        ));
+        deliberation.observations.extend(
+            critique
+                .notes
+                .iter()
+                .map(|note| format!("workspace: {note}")),
+        );
+        // Specialist operators already bind the requested entities and
+        // relation in their own answer. Do not prepend the workspace's
+        // generic referent phrase to them; that turns a concrete creative or
+        // falsification reply into the old "Keeping ... in view" splice.
+        let user_lower = crate::text_normalize::normalize_for_routing(user);
+        let owns_topic_binding = deliberation.operator != "fluid-associative"
+            || (deliberation.operator == "dialogue-act"
+            && (user_lower.contains("claim that")
+                || user_lower.starts_with("i disagree")
+                || user_lower.starts_with("i don't agree")
+                || user_lower.starts_with("i dont agree")))
+            || (user_lower.contains("claim that")
+                && deliberation
+                    .answer
+                    .to_ascii_lowercase()
+                    .contains("claim to examine"))
+            // A first-class answer can still trip the conservative referent
+            // critic when the prior turn is a different topic.  Never splice
+            // the generic "Keeping ... in view" prefix onto explicit
+            // uncertainty, interpretations, or a direct claim answer.
+            || answer_has_explicit_turn_binding(&deliberation.answer);
+        let repaired = if owns_topic_binding {
+            deliberation.answer.clone()
+        } else {
+            workspace.repair(&deliberation.answer, &critique)
+        };
+        if repaired != deliberation.answer {
+            deliberation.answer = repaired;
+            deliberation
+                .inferences
+                .push("workspace critic: safe referent repair applied".to_owned());
+            deliberation.critic_ok = Some(
+                deliberation.critic_ok.unwrap_or(true)
+                    && !workspace
+                        .critique(user, &deliberation.answer, recent)
+                        .flags
+                        .contains(&"missing_referent"),
+            );
+        }
+        deliberation.confidence = (deliberation.confidence * 0.94).clamp(0.35, 0.99);
+    }
+    crate::governed_will::apply(user, &mut deliberation);
+    deliberation
+}
+
+fn answer_has_explicit_turn_binding(answer: &str) -> bool {
+    let lower = answer.to_ascii_lowercase();
+    [
+        "known:",
+        "inferred:",
+        "unknown:",
+        "cannot assign",
+        "the conflict is between",
+        "the claims cannot all be true",
+        "interpretation 1:",
+        "interpretation 2:",
+        "the pronoun",
+        "memory preserves",
+        "learning changes",
+        "a different angle",
+        "control problem",
+        "the smallest clarifying question",
+    ]
+    .iter()
+    .any(|marker| lower.contains(marker))
 }
 
 /// Extract domain terms from a connect-style prompt.
@@ -682,20 +819,18 @@ mod tests {
 
     #[test]
     fn plans_synthesis_program() {
-        let program = plan_for_prompt(
-            "Connect entropy, memory, and learning in one coherent thought.",
-        )
-        .expect("program");
+        let program =
+            plan_for_prompt("Connect entropy, memory, and learning in one coherent thought.")
+                .expect("program");
         assert_eq!(program.program_id, "cross_domain_synthesis");
         assert!(program.steps.len() >= 3);
     }
 
     #[test]
     fn critic_flags_comfort_collapse() {
-        let program = plan_for_prompt(
-            "Connect language, code, and culture through one shared principle.",
-        )
-        .expect("program");
+        let program =
+            plan_for_prompt("Connect language, code, and culture through one shared principle.")
+                .expect("program");
         let report = critic_program(
             "Connect language, code, and culture through one shared principle.",
             "Stuck is normal. One concrete detail and we can cut a path.",
@@ -721,7 +856,11 @@ mod tests {
         let program = plan_for_prompt(user).expect("program");
         let answer = "A workable bridge is constrained structure: sparse distributed memory stores patterns by similarity; vector symbolic binding composes role–filler structure; and Bitwork routes prompts through packed binary prototypes. They are comparable as systems that keep form under pressure while mechanisms stay domain-specific—not one shared substance.";
         let report = critic_program(user, answer, &program);
-        assert!(report.ok, "flags={:?} notes={:?}", report.flags, report.notes);
+        assert!(
+            report.ok,
+            "flags={:?} notes={:?}",
+            report.flags, report.notes
+        );
         assert!(domain_mentioned_in_answer(
             &answer.to_ascii_lowercase(),
             "sparse distributed memory"
@@ -730,11 +869,12 @@ mod tests {
 
     #[test]
     fn extract_connect_folds_space_list_phrases() {
-        let terms = extract_connect_terms(
-            "connect sparse memory and vector symbolic architectures",
-        );
+        let terms =
+            extract_connect_terms("connect sparse memory and vector symbolic architectures");
         assert_eq!(terms.len(), 2, "terms={terms:?}");
-        assert!(terms.iter().any(|t| t.contains("sparse memory") || t == "sparse memory"));
+        assert!(terms
+            .iter()
+            .any(|t| t.contains("sparse memory") || t == "sparse memory"));
         assert!(terms.iter().any(|t| t.contains("vector symbolic")));
         assert!(!terms.iter().any(|t| t == "architectures"));
     }
@@ -754,17 +894,14 @@ mod tests {
         assert!(
             report.ok,
             "alias-aware critic should pass: flags={:?} notes={:?}",
-            report.flags,
-            report.notes
+            report.flags, report.notes
         );
     }
 
     #[test]
     fn rewrite_does_not_leak_critic_footer() {
-        let program = plan_for_prompt(
-            "connect sparse memory and vector symbolic architectures",
-        )
-        .expect("program");
+        let program = plan_for_prompt("connect sparse memory and vector symbolic architectures")
+            .expect("program");
         let report = CriticReport {
             ok: false,
             flags: vec!["missing_domain"],
@@ -779,5 +916,60 @@ mod tests {
         assert!(!out.to_ascii_lowercase().contains("critic rewrite"));
         assert!(!out.to_ascii_lowercase().contains("missing_domain"));
         assert!(out.to_ascii_lowercase().contains("sparse"));
+    }
+
+    #[test]
+    fn specialist_binding_does_not_get_generic_workspace_prefix() {
+        let prompt = "Give me one original thought connecting death, code, and repair without claiming they are literally the same.";
+        let draft = crate::deliberation::Deliberation::new(
+            "creative-constraint",
+            "Constrained invention: death, code, and repair can be compared as states that change when a pathway fails.",
+        );
+        let out = apply_dialogue_workspace_runtime(prompt, &[], draft);
+        assert!(!out.answer.to_ascii_lowercase().starts_with("keeping "));
+        assert!(out
+            .answer
+            .to_ascii_lowercase()
+            .contains("death, code, and repair"));
+
+        let dialogue = crate::deliberation::Deliberation::new(
+            "fluid-associative",
+            "That is a fair challenge. The claim to examine is: \"boundaries explain life\" The first premise to test is whether boundary maintenance predicts repair or exchange.",
+        );
+        let dialogue = apply_dialogue_workspace_runtime(
+            "I disagree with your claim that boundaries explain life. What premise should we inspect?",
+            &[],
+            dialogue,
+        );
+        assert!(!dialogue.answer.to_ascii_lowercase().starts_with("keeping "));
+    }
+
+    #[test]
+    fn every_named_operator_owns_its_answer_before_fluid_repair() {
+        for (operator, prompt, answer) in [
+            (
+                "session-context-write",
+                "Remember this only for this session: 8472.",
+                "I will retain 8472 as session context only.",
+            ),
+            (
+                "promotion-evidence-design",
+                "What evidence would justify promoting it?",
+                "Promotion requires provenance, reproducible tests, and a baseline.",
+            ),
+            (
+                "minimal-clarification",
+                "Ask the smallest question needed to resolve them.",
+                "What does it refer to: the engineer or the robot?",
+            ),
+        ] {
+            let draft = crate::deliberation::Deliberation::new(operator, answer);
+            let out = apply_dialogue_workspace_runtime(prompt, &[], draft);
+            assert!(
+                !out.answer.to_ascii_lowercase().starts_with("keeping "),
+                "operator {operator} was prefixed: {}",
+                out.answer
+            );
+        }
     }
 }

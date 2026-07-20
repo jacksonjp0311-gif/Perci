@@ -23,7 +23,8 @@ fn main() {
     fs::write(gen_dir.join("perci-darkblood-badge.svg"), badge).expect("write badge svg");
 
     // Mirror into OUT_DIR for include_str! stability if workspace is cleaned.
-    fs::write(out_dir.join("PERCI_BRAND_VERSION"), format!("{version}\n")).expect("write OUT version");
+    fs::write(out_dir.join("PERCI_BRAND_VERSION"), format!("{version}\n"))
+        .expect("write OUT version");
     fs::write(
         out_dir.join("perci-darkblood-badge.svg"),
         render_badge_svg(&version),

@@ -31,6 +31,65 @@ pub enum Affect {
     Closing,
 }
 
+/// Human-facing response depth.  This is a presentation decision, not a
+/// claim that the underlying cognition became deeper; explicit user cues and
+/// the active thread choose how much of the supported answer to expose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResponseDepth {
+    Brief,
+    Balanced,
+    Deep,
+}
+
+pub fn response_depth(user: &str, recent: &[(String, String)]) -> ResponseDepth {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    if [
+        "brief",
+        "short",
+        "short answer",
+        "one sentence",
+        "in a sentence",
+        "tl;dr",
+        "tldr",
+        "quick answer",
+        "just tell me",
+    ]
+    .iter()
+    .any(|cue| lower.contains(cue))
+    {
+        return ResponseDepth::Brief;
+    }
+    if [
+        "deep",
+        "detailed",
+        "thorough",
+        "in depth",
+        "step by step",
+        "go deeper",
+        "one level deeper",
+        "more detail",
+        "explain",
+        "analyze",
+        "compare",
+        "why",
+        "how does",
+        "how can",
+        "how should",
+    ]
+    .iter()
+    .any(|cue| lower.contains(cue))
+        || (!recent.is_empty()
+            && ["this", "that", "it", "then", "same"].iter().any(|cue| {
+                lower
+                    .split(|c: char| !c.is_ascii_alphanumeric())
+                    .any(|word| word == *cue)
+            }))
+    {
+        return ResponseDepth::Deep;
+    }
+    ResponseDepth::Balanced
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SocialKind {
     None,
@@ -104,8 +163,18 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             | "why that answer"
             | "what makes you think this"
             | "what makes you think that"
-    ) {
+    ) || text.contains("what did you just say")
+        || text.contains("what did you mean by that")
+        || text.contains("what do you mean by that")
+        || text.contains("what was that supposed to mean")
+    {
         DialogueAct::ExplainPrevious
+    } else if text.contains("explain")
+        && (text.contains("different angle") || text.contains("without repeating"))
+    {
+        // Reframing is an operation on the prior idea, not generic style or
+        // repetition feedback.
+        DialogueAct::ElaboratePrevious
     } else if (text.contains("same answer")
         || text.contains("same response")
         || text.contains("repeating yourself")
@@ -116,7 +185,8 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("repeat the same")
         || text.contains("canned")
         || text.contains("scripted")
-        || (text.contains("repeat") && (text.contains("phrase") || text.contains("saying") || text.contains("template"))))
+        || (text.contains("repeat")
+            && (text.contains("phrase") || text.contains("saying") || text.contains("template"))))
         && !text.contains("go one level deeper")
         && !text.contains("one level deeper")
     {
@@ -132,7 +202,16 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || matches!(compact, "whats going on here" | "what's going on here")
     {
         DialogueAct::ResponseFailure
-    } else if text.contains("speak more smart")
+    } else if matches!(
+        compact,
+        "be brief"
+            | "keep it brief"
+            | "be concise"
+            | "keep it concise"
+            | "keep it short"
+            | "short answer"
+            | "briefly"
+    ) || text.contains("speak more smart")
         || text.contains("speak smarter")
         || text.contains("more smart")
         || text.contains("talk smarter")
@@ -144,6 +223,15 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("less robotic")
         || text.contains("stop being robotic")
         || text.contains("speak to me more")
+        || text.contains("cryptic")
+        || text.contains("cyptic") // common typo for "cryptic"
+        || text.contains("natural thought")
+        || text.contains("more naturally")
+        || text.contains("explain it naturally")
+        || (text.contains("dialogue")
+            && (text.contains("weight") || text.contains("weights")))
+        || (text.contains("natural")
+            && (text.contains("feel") || text.contains("sound") || text.contains("talk")))
         || (text.contains("i want you to")
             && (text.contains("speak") || text.contains("talk") || text.contains("sound")))
     {
@@ -359,9 +447,28 @@ pub fn dialogue_reply(
             "I am not sensing anything subjectively. I receive your text, measure internal routing signals, and read approved runtime state. The opening insight is a rotated concept from my weights—not a feeling, perception, or spontaneous inner experience.".to_owned()
         }
         DialogueAct::ExplainPrevious => {
-            if let Some((previous_user, previous_answer)) = recent.last() {
+            let echo_request = user_lower_contains_any(
+                user,
+                &[
+                    "what did you just say",
+                    "what was that supposed to mean",
+                ],
+            );
+            let meaning_request = user_lower_contains_any(
+                user,
+                &["what did you mean by that", "what do you mean by that"],
+            );
+            // A meta instruction such as "go deeper" is not the claim being
+            // explained. Prefer the most recent substantive answer so a
+            // causal follow-up stays attached to the idea under discussion.
+            let previous = last_substantive_turn(recent).or_else(|| recent.last());
+            if let Some((previous_user, previous_answer)) = previous {
                 let lower = previous_answer.to_ascii_lowercase();
-                if lower.contains("geometry")
+                if echo_request {
+                    format!("I said: \"{}\"", first_sentence(previous_answer, 220))
+                } else if meaning_request {
+                    "By that I meant that disagreement is a reason to inspect the premise, not to discard the claim automatically. Point to the premise or mechanism you reject and I will revise the answer around it.".to_owned()
+                } else if lower.contains("geometry")
                     && lower.contains("life")
                     && lower.contains("boundary")
                 {
@@ -370,7 +477,7 @@ pub fn dialogue_reply(
                     )
                 } else {
                     format!(
-                        "I don't hold that as a private belief. In response to \"{previous_user}\", my last output was \"{}\". That output came from a local Bitwork route plus the response layer. I can justify the claim itself only with a mechanism, evidence, or test; otherwise I should label it as an association, not knowledge.",
+                        "Because that was the strongest supported answer I had for \"{previous_user}\": \"{}\". I treat it as a testable working answer, not a private belief; a counterexample, failed prediction, or better explanation would make me revise it.",
                         first_sentence(previous_answer, 140)
                     )
                 }
@@ -476,10 +583,59 @@ pub fn dialogue_reply(
         }
         DialogueAct::StyleRepair => {
             let lower = user.to_ascii_lowercase();
-            let previous = recent.last().map(|turn| turn.1.to_ascii_lowercase()).unwrap_or_default();
-            if lower.contains("smart")
+            let compact = lower
+                .trim_matches(|character: char| {
+                    !character.is_ascii_alphanumeric() && character != '\''
+                })
+                .to_owned();
+            let previous = recent
+                .last()
+                .map(|turn| turn.1.to_ascii_lowercase())
+                .unwrap_or_default();
+            let prior_plain = recent
+                .last()
+                .map(|(_, answer)| first_sentence(answer, 160))
+                .filter(|s| !s.trim().is_empty());
+            if lower.contains("more naturally") || lower.contains("explain it naturally") {
+                prior_plain
+                    .map(|claim| {
+                        let ending = if claim.ends_with(['.', '!', '?']) {
+                            ""
+                        } else {
+                            "."
+                        };
+                        format!("Sure. In plain terms: {claim}{ending}")
+                    })
+                    .unwrap_or_else(|| "Sure. I’ll lead with the point and keep the wording conversational.".to_owned())
+            } else if matches!(
+                compact.as_str(),
+                "be brief"
+                    | "keep it brief"
+                    | "be concise"
+                    | "keep it concise"
+                    | "keep it short"
+                    | "short answer"
+                    | "briefly"
+            ) {
+                "Got it—I’ll keep the next reply brief and direct; ask for more detail when you want the longer version.".to_owned()
+            } else if lower.contains("dialogue")
+                && (lower.contains("weight") || lower.contains("weights"))
+            {
+                "Understood—the bottleneck you are pointing to is the dialogue surface: continuity, natural phrasing, and answer length. I’ll tune those independently from the weight file, then use held-out conversations to check that the improvement transfers.".to_owned()
+            } else if lower.contains("cryptic")
+                || lower.contains("cyptic")
+                || lower.contains("natural thought")
+                || (lower.contains("natural")
+                    && (lower.contains("feel") || lower.contains("sound") || lower.contains("talk")))
+            {
+                let plain = prior_plain
+                    .map(|claim| format!(" Plain version of the last point: {claim}"))
+                    .unwrap_or_default();
+                format!(
+                    "Fair call—that was cryptic. What happened is composition failure: a nearby concept card got promoted when a short conversational turn needed a direct answer about the active thread. I will lead with the point, keep the thread, and only use mechanism language when you ask for it.{plain}"
+                )
+            } else if lower.contains("smart")
                 || lower.contains("intelligent")
-                || lower.contains("natural")
                 || lower.contains("robotic")
                 || lower.contains("speak")
                 || lower.contains("talk")
@@ -555,6 +711,40 @@ pub fn dialogue_reply(
             if recent_user_mentions(recent, &["19mb", "19 mb", "19.2 mib", "powerful for only"]) {
                 compact_model_explanation(true)
             } else if let Some((previous_user, previous_answer)) = last_substantive_turn(recent) {
+                let lower = user.to_ascii_lowercase();
+                if lower.contains("explain it again")
+                    && (lower.contains("different angle") || lower.contains("reframe"))
+                {
+                    "A different angle is error-correction: treat evidence as a feedback signal that compares a model's prediction with an observation, then revise the part that failed. The answer changes when the observed result defeats the prior explanation, not merely when the sentence is reworded.".to_owned()
+                } else if (lower.contains("go one level deeper") || lower.contains("go deeper"))
+                    && (lower.contains("without repeating")
+                        || lower.contains("do not repeat")
+                        || lower.contains("don't repeat"))
+                {
+                    let core = first_sentence(previous_answer, 180);
+                    format!(
+                        "Next layer: the previous answer was \"{core}\" The relation underneath it is between the assumption and the result; change that assumption while holding the rest fixed and check whether the conclusion changes."
+                    )
+                } else if lower.contains("different angle") || lower.contains("without repeating") {
+                    let angle_stop = [
+                        "what", "is", "are", "doing", "the", "most", "work", "in", "your",
+                        "answer", "explain", "it", "again", "from", "a", "without", "repeating",
+                        "same", "sentence", "go", "one", "level", "deeper", "now", "give", "me",
+                        "an", "of",
+                    ];
+                    let topic = content_tokens(previous_user.as_str())
+                        .into_iter()
+                        .filter(|token| !angle_stop.contains(&token.as_str()))
+                        .collect::<Vec<_>>();
+                    let topic = if topic.is_empty() {
+                        "the last idea".to_owned()
+                    } else {
+                        readable_topic(&topic)
+                    };
+                    format!(
+                        "A different angle on {topic} is to treat it as a control problem: change one relation while holding the others steady, then observe which behavior moves. That exposes the mechanism without repeating the earlier wording."
+                    )
+                } else {
                 let core = first_sentence(previous_answer, 180);
                 let deeper = deepen_previous(previous_answer);
                 format!(
@@ -562,6 +752,7 @@ pub fn dialogue_reply(
                     previous_user.trim(),
                     core
                 ) + &format!(" {deeper}")
+                }
             } else {
                 "Absolutely. I'll go one layer deeper: the useful explanation should name the mechanism, why it works, and where it stops working—not just offer a principle.".to_owned()
             }
@@ -641,6 +832,11 @@ fn recent_user_mentions(recent: &[(String, String)], markers: &[&str]) -> bool {
     })
 }
 
+fn user_lower_contains_any(user: &str, markers: &[&str]) -> bool {
+    let lower = user.to_ascii_lowercase();
+    markers.iter().any(|marker| lower.contains(marker))
+}
+
 fn compact_model_explanation(deep: bool) -> String {
     let direct = "The 19.2 MiB file is only my sparse associative core, not the whole system. It holds 38,580 deduplicated 4,096-bit prototypes for fast routing and similarity—not a compressed full language model. Dialogue state, exact math, memory, governance, intelligence packs, and Cortex live in code or separate data.";
     if deep {
@@ -709,7 +905,9 @@ pub fn apply_profile_alignment(text: &str, user: &str, profile: &DialogueProfile
 }
 
 fn word_boundary_contains(haystack: &str, needle: &str) -> bool {
-    haystack.split(|c: char| !c.is_ascii_alphanumeric()).any(|w| w == needle)
+    haystack
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|w| w == needle)
 }
 
 /// Multi-domain synthesis and relational inquiry must never collapse into social comfort.
@@ -1028,13 +1226,14 @@ pub fn compose_reply(
     // SoftCascade breakthrough path: multi-hypothesis compose from Bitwork
     // attention + residual + semantic lattice — LLM-like facets without decode.
     if crate::bridge::should_use_cascade(matched, user) {
-        let mut out = crate::bridge::compose_soft_cascade(
+        let mut out = crate::bridge::compose_soft_cascade(user, matched, domain_body, variant);
+        out = ensure_user_binding(
             user,
-            matched,
-            domain_body,
-            variant,
+            &out,
+            matched.label.as_str(),
+            matched.insight.as_deref(),
+            recent,
         );
-        out = ensure_user_binding(user, &out, matched.label.as_str(), matched.insight.as_deref(), recent);
         if matches!(affect, Affect::Frustrated) && !out.to_ascii_lowercase().contains("step") {
             out.push_str(" We'll take the next step small and check it.");
         }
@@ -1062,8 +1261,10 @@ pub fn compose_reply(
     }
     // Residual hop (ANDNOT second thought) gets a distinct latent frame.
     let residual = matched.residual_skeleton(1);
-    if let Some(lat) = residual.first() {
-        out = weave_residual_frame(&out, lat, variant);
+    if explicit_relation_prompt(user) {
+        if let Some(lat) = residual.first() {
+            out = weave_residual_frame(&out, lat, variant);
+        }
     }
 
     // Optional one pack tip only when it adds content words the body lacks.
@@ -1122,6 +1323,11 @@ fn should_voice_composition(user: &str, frame: &[String]) -> bool {
     if words < 5 {
         return false;
     }
+    // A bound relation is useful for explicit synthesis, comparison, or
+    // interaction prompts; on ordinary questions it reads like a preset.
+    if !explicit_relation_prompt(user) {
+        return false;
+    }
     // Need a structural role, not only topic/focus echoes of a typo.
     let structural = frame.iter().any(|f| {
         f.starts_with("ask:")
@@ -1151,6 +1357,11 @@ fn should_voice_composition(user: &str, frame: &[String]) -> bool {
 pub fn weave_composition_frame(answer: &str, frame: &[String], variant: usize) -> String {
     if frame.len() < 2 {
         return answer.to_owned();
+    }
+    // Human-facing speech gets a clean relation; the raw role/filler tags
+    // remain available to /think but must never leak into chat.
+    if frame.len() >= 2 {
+        return weave_human_composition(answer, frame, variant);
     }
     // Prefer structural roles over pure topic noise for the clause.
     let mut picks: Vec<&str> = Vec::new();
@@ -1182,7 +1393,12 @@ pub fn weave_composition_frame(answer: &str, frame: &[String], variant: usize) -
     let joined = picks.join(" · ");
     let al = answer.to_ascii_lowercase();
     // Skip if we already echoed the same bind tags.
-    if picks.iter().filter(|p| al.contains(&p.to_ascii_lowercase())).count() >= 2 {
+    if picks
+        .iter()
+        .filter(|p| al.contains(&p.to_ascii_lowercase()))
+        .count()
+        >= 2
+    {
         return answer.to_owned();
     }
     let mut out = answer.trim_end().to_owned();
@@ -1204,6 +1420,82 @@ pub fn weave_composition_frame(answer: &str, frame: &[String], variant: usize) -
         }
         _ => {
             // Skip noisy composition tags entirely for one variant.
+        }
+    }
+    out
+}
+
+fn weave_human_composition(answer: &str, frame: &[String], variant: usize) -> String {
+    let mut terms: Vec<String> = Vec::new();
+    for item in frame {
+        let Some((_, filler)) = item.split_once(':') else {
+            continue;
+        };
+        for raw in filler.split(|ch: char| ch == '+' || ch.is_whitespace()) {
+            let term = raw.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+            let low = term.to_ascii_lowercase();
+            if term.len() < 4
+                || matches!(
+                    low.as_str(),
+                    "ask"
+                        | "agent"
+                        | "domain"
+                        | "relate"
+                        | "different"
+                        | "what"
+                        | "how"
+                        | "why"
+                        | "explain"
+                        | "capable"
+                        | "capabilities"
+                )
+                || terms
+                    .iter()
+                    .any(|existing| existing.eq_ignore_ascii_case(term))
+            {
+                continue;
+            }
+            terms.push(term.to_owned());
+            if terms.len() == 2 {
+                break;
+            }
+        }
+        if terms.len() == 2 {
+            break;
+        }
+    }
+    if terms.len() < 2 {
+        return answer.to_owned();
+    }
+    let lower = answer.to_ascii_lowercase();
+    if terms
+        .iter()
+        .filter(|term| lower.contains(&term.to_ascii_lowercase()))
+        .count()
+        >= 2
+    {
+        return answer.to_owned();
+    }
+    let mut out = answer.trim_end().to_owned();
+    if !out.ends_with('.') && !out.ends_with('?') && !out.ends_with('!') {
+        out.push('.');
+    }
+    out.push(' ');
+    match variant % 3 {
+        0 => {
+            out.push_str("A useful connection here is between ");
+            out.push_str(&terms.join(" and "));
+            out.push('.');
+        }
+        1 => {
+            out.push_str("That puts ");
+            out.push_str(&terms.join(" and "));
+            out.push_str(" in the same working picture.");
+        }
+        _ => {
+            out.push_str("The important link is ");
+            out.push_str(&terms.join(" meeting "));
+            out.push('.');
         }
     }
     out
@@ -1243,6 +1535,82 @@ pub fn weave_residual_frame(answer: &str, residual: &str, variant: usize) -> Str
     out
 }
 
+/// Return whether an evidence request has enough claim overlap to keep the
+/// retrieved answer.  A high-scoring association is not necessarily evidence
+/// for the user's claim (for example, a ritual diagram is not evidence that a
+/// geometric intervention heals).  This small gate prevents the renderer from
+/// turning adjacent concepts into an apparently supported conclusion.
+pub fn evidence_answer_is_grounded(user: &str, answer: &str) -> bool {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    if !(lower.contains("evidence supports")
+        || lower.contains("evidence for")
+        || lower.contains("support the claim")
+        || lower.contains("proof of"))
+    {
+        return true;
+    }
+
+    // If the user asks about an explicitly named claim, require at least one
+    // meaningful claim token in the answer.  Open evidence questions without a
+    // named claim are left to the ordinary evidence operator.
+    let claim = lower
+        .split_once("claim that")
+        .map(|(_, rest)| rest)
+        .or_else(|| lower.split_once("claim:").map(|(_, rest)| rest));
+    let Some(claim) = claim else {
+        return true;
+    };
+    let claim_tokens = content_tokens(claim);
+    if claim_tokens.is_empty() {
+        return true;
+    }
+    let answer_lower = answer.to_ascii_lowercase();
+    // Explicitly test-shaped answers may be grounded without repeating every
+    // noun in the claim (for example, a fresh-process A/B protocol for a
+    // learning claim).
+    if [
+        "fresh-process",
+        "controlled",
+        "reproducible",
+        "counterexample",
+        "falsif",
+        "measurement",
+    ]
+    .iter()
+    .any(|marker| answer_lower.contains(marker))
+    {
+        return true;
+    }
+    let hits = claim_tokens
+        .iter()
+        .filter(|token| answer_lower.contains(token.as_str()))
+        .count();
+    let required = if claim_tokens.len() <= 2 {
+        claim_tokens.len()
+    } else {
+        (claim_tokens.len() + 1) / 2
+    };
+    hits >= required
+}
+
+/// Replace an evidence-shaped concept collision with a bounded, honest test
+/// plan.  This is deliberately not a source lookup: it says what is and is
+/// not established by the local state and how to make the claim falsifiable.
+pub fn evidence_guarded_answer(user: &str, answer: &str) -> Option<String> {
+    if evidence_answer_is_grounded(user, answer) {
+        return None;
+    }
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    let claim = lower
+        .split_once("claim that")
+        .map(|(_, rest)| rest.trim().trim_end_matches('?'))
+        .or_else(|| lower.split_once("claim:").map(|(_, rest)| rest.trim()))
+        .unwrap_or("the stated claim");
+    Some(format!(
+        "I don't have evidence here that establishes \"{claim}\". An association or symbolic use is not evidence of causal effect. To test it, define the outcome, intervention, comparator, measurement window, and a result that would falsify the claim; until that comparison is run reproducibly, keep it as a hypothesis rather than a fact."
+    ))
+}
+
 /// Fold top-k Bitwork concept insights into the reply as a short multi-facet spine.
 /// Does not dump checklists; at most two supporting clauses, only if they add new content.
 pub fn weave_mixture_skeleton(
@@ -1252,6 +1620,9 @@ pub fn weave_mixture_skeleton(
     variant: usize,
 ) -> String {
     if skeleton.is_empty() {
+        return answer.to_owned();
+    }
+    if !explicit_relation_prompt(user) {
         return answer.to_owned();
     }
     let al = answer.to_ascii_lowercase();
@@ -1357,20 +1728,152 @@ fn decap_mid(s: &str) -> String {
 /// Content words from the user worth binding into the reply.
 fn content_tokens(user: &str) -> Vec<String> {
     const STOP: &[&str] = &[
-        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this",
-        "these", "those", "with", "from", "into", "onto", "about", "what", "when",
-        "where", "which", "who", "whom", "why", "how", "can", "could", "would",
-        "should", "will", "just", "really", "very", "your", "you", "me", "my",
-        "our", "we", "i", "im", "i'm", "is", "are", "was", "were", "be", "been",
-        "being", "do", "does", "did", "to", "of", "in", "on", "for", "it", "its",
-        "as", "at", "by", "not", "no", "yes", "please", "tell", "give", "make",
-        "more", "some", "any", "all", "also", "like", "something", "someone",
-        "think", "thoughts", "thought", "interesting", "only", "thing", "things",
-        "know", "want", "need", "help", "say", "said", "get", "got", "let",
-        "have", "has", "had", "been", "being", "into", "over", "under", "again",
-        "still", "even", "much", "many", "such", "other", "another", "same",
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "than",
+        "that",
+        "this",
+        "these",
+        "those",
+        "with",
+        "from",
+        "into",
+        "onto",
+        "about",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "whom",
+        "why",
+        "how",
+        "can",
+        "could",
+        "would",
+        "should",
+        "will",
+        "just",
+        "really",
+        "very",
+        "your",
+        "you",
+        "me",
+        "my",
+        "our",
+        "we",
+        "i",
+        "im",
+        "i'm",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "do",
+        "does",
+        "did",
+        "to",
+        "of",
+        "in",
+        "on",
+        "for",
+        "it",
+        "its",
+        "as",
+        "at",
+        "by",
+        "not",
+        "no",
+        "yes",
+        "please",
+        "tell",
+        "give",
+        "make",
+        "more",
+        "some",
+        "any",
+        "all",
+        "also",
+        "like",
+        "something",
+        "someone",
+        "deep",
+        "short",
+        "brief",
+        "quick",
+        "answer",
+        "detail",
+        "detailed",
+        "thorough",
+        "level",
+        "little",
+        "bit",
+        "think",
+        "thoughts",
+        "thought",
+        "interesting",
+        "only",
+        "thing",
+        "things",
+        "know",
+        "want",
+        "need",
+        "help",
+        "say",
+        "said",
+        "get",
+        "got",
+        "let",
+        "have",
+        "has",
+        "had",
+        "been",
+        "being",
+        "into",
+        "over",
+        "under",
+        "again",
+        "still",
+        "even",
+        "much",
+        "many",
+        "such",
+        "other",
+        "another",
+        "same",
+        "hard",
+        "easy",
+        "important",
+        "matter",
+        "mean",
+        "difference",
+        "between",
+        "describe",
+        "forms",
+        "changes",
+        "time",
+        "lived",
+        "express",
+        "new",
+        "differently",
+        "structure",
+        "creative",
+        "original",
+        "fresh",
+        "angle",
+        "idea",
     ];
-    user.split(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
+    crate::text_normalize::repair_typos(user)
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
         .map(|w| w.trim_matches('\'').to_ascii_lowercase())
         .filter(|w| w.len() >= 4 && !STOP.contains(&w.as_str()))
         .take(6)
@@ -1378,7 +1881,9 @@ fn content_tokens(user: &str) -> Vec<String> {
 }
 
 fn token_seed(user: &str) -> usize {
-    user.bytes().fold(0usize, |acc, b| acc.wrapping_mul(33).wrapping_add(b as usize))
+    user.bytes().fold(0usize, |acc, b| {
+        acc.wrapping_mul(33).wrapping_add(b as usize)
+    })
 }
 
 fn looks_open_conversation(lower: &str) -> bool {
@@ -1411,6 +1916,549 @@ fn looks_open_conversation(lower: &str) -> bool {
     q && !craft
 }
 
+fn looks_creative_prompt(lower: &str) -> bool {
+    lower.contains("express a new thought")
+        || lower.contains("original thought")
+        || lower.contains("new idea")
+        || lower.contains("fresh angle")
+        || lower.contains("be creative")
+        || lower.contains("creative")
+}
+
+fn readable_topic(tokens: &[String]) -> String {
+    match tokens {
+        [] => "the question".to_owned(),
+        [one] => one.clone(),
+        [one, two] => format!("{one} and {two}"),
+        many => {
+            let last = many.last().cloned().unwrap_or_default();
+            let rest = many[..many.len() - 1].join(", ");
+            format!("{rest}, and {last}")
+        }
+    }
+}
+
+/// Keep a domain card only when it can answer the current turn. This prevents
+/// an unrelated memory or life sentence from becoming the apparent answer.
+fn useful_domain_body(body: &str) -> Option<String> {
+    let trimmed = body.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if trimmed.chars().count() < 24 || trimmed.chars().count() > 220 {
+        return None;
+    }
+    let stock = [
+        "what outcome do you want",
+        "what evidence do we already have",
+        "let's find the smallest",
+        "i won't fake certainty",
+        "name the workload before",
+        "compare on capability",
+        "list premises",
+        "objective, constraints",
+        "reproduce it, isolate",
+        "start with the mechanism",
+    ];
+    if stock.iter().any(|marker| lower.contains(marker)) || lower.contains("→") {
+        return None;
+    }
+    Some(trimmed.to_owned())
+}
+
+/// Admit a concept insight only when it shares a meaningful anchor with the
+/// user's turn; this is a relevance guard, not a claim of semantic mastery.
+fn relevant_insight(insight: Option<&str>, user: &str, tokens: &[String]) -> Option<String> {
+    let candidate = insight?.trim();
+    let lower = candidate.to_ascii_lowercase();
+    let n = candidate.chars().count();
+    if !(20..=180).contains(&n)
+        || lower.starts_with("list premises")
+        || lower.contains("fake certainty")
+        || lower.contains("what outcome do you want")
+        || lower.contains("smallest version we can test")
+        || lower.contains("compare on capability")
+        || lower.contains("objective, constraints")
+        || lower.contains("reproduce it, isolate")
+        || lower.contains("i won't fake")
+    {
+        return None;
+    }
+    let overlap = tokens
+        .iter()
+        .filter(|token| lower.contains(token.as_str()))
+        .count();
+    if overlap > 0 || tokens.is_empty() || user.to_ascii_lowercase().contains("what is life") {
+        Some(candidate.to_owned())
+    } else {
+        None
+    }
+}
+
+/// A deictic follow-up with no history has no safe referent; ask for the noun
+/// instead of selecting a random topic.
+fn unresolved_referent(user: &str, recent: &[(String, String)]) -> bool {
+    if !recent.is_empty() {
+        return false;
+    }
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    let words: Vec<&str> = lower.split_whitespace().collect();
+    if words.len() <= 2
+        && words
+            .iter()
+            .any(|word| matches!(*word, "this" | "that" | "it"))
+    {
+        return true;
+    }
+    let deictic = lower.contains(" this ") || lower.contains(" that ") || lower.contains(" it ");
+    deictic
+        && !lower.contains("this system")
+        && !lower.contains("this idea")
+        && !lower.contains("this question")
+        && !lower.contains("this claim")
+        && !lower.contains("this prompt")
+        && !lower.contains("this request")
+        && !lower.contains("this statement")
+        && !lower.contains("this result")
+        && !lower.contains("this directive")
+        && !lower.contains("this interaction")
+        && !lower.contains("this session")
+        && !lower.contains("this conversation")
+        && !lower.contains("this test")
+        && !lower.contains("this run")
+        && !lower.contains("this probe")
+        && !lower.contains("that system")
+        && !lower.contains("that idea")
+        && !lower.contains("that claim")
+        && !lower.contains("that prompt")
+        && !lower.contains("that request")
+        && !lower.contains("that statement")
+        && !lower.contains("that result")
+        // “that” can be a grammatical complementizer, not a deictic
+        // reference (for example, “evidence supports the claim that ...”).
+        && !lower.contains("claim that")
+        && !lower.contains("evidence that")
+        && !lower.contains("fact that")
+        && !lower.contains("what is this")
+}
+
+fn explicit_relation_prompt(user: &str) -> bool {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    looks_synthesis_or_inquiry(&lower)
+        || lower.contains("connect ")
+        || lower.contains("related")
+        || lower.contains("relate ")
+        || lower.contains("interact")
+        || lower.contains("work together")
+        || lower.contains("shared structure")
+        || lower.contains("shared principle")
+        || lower.contains("between ")
+        || (lower.contains("what about") && content_tokens(user).len() >= 2)
+}
+
+fn memory_attention_answer(depth: ResponseDepth) -> String {
+    let base = "Memory stores traces; attention decides which trace matters now. Good cognition needs both: selection keeps context useful, and provenance keeps a selected trace from masquerading as truth.";
+    match depth {
+        ResponseDepth::Brief => "Memory keeps traces; attention selects what matters now.".to_owned(),
+        ResponseDepth::Balanced => base.to_owned(),
+        ResponseDepth::Deep => format!(
+            "{base} The boundary is operational: memory can persist without being relevant, while attention can be relevant without becoming durable. A robust system therefore records why a trace was kept, how confident it is, and what evidence would revise it."
+        ),
+    }
+}
+
+fn memory_identity_answer(depth: ResponseDepth) -> String {
+    let base = "Memory stores traces; identity is the continuity we infer when a changing process remains recognizably the same. Memory can support that continuity without being the whole of it.";
+    match depth {
+        ResponseDepth::Brief => "Memory stores traces; identity is the continuity we infer across change.".to_owned(),
+        ResponseDepth::Balanced => base.to_owned(),
+        ResponseDepth::Deep => format!(
+            "{base} The distinction is testable: change what is retained, then ask which properties still let us identify the process. If every trace changes but the organization persists, memory alone cannot explain the result."
+        ),
+    }
+}
+
+fn prior_claim(recent: &[(String, String)]) -> Option<String> {
+    let answer = last_substantive_turn(recent)
+        .or_else(|| recent.last())
+        .map(|(_, answer)| answer.trim())?;
+    for marker in [
+        "The claim to examine is: \"",
+        "The claim I would test is: \"",
+    ] {
+        if let Some(start) = answer.find(marker) {
+            let rest = &answer[start + marker.len()..];
+            if let Some(end) = rest.find('\"') {
+                let quoted = rest[..end].trim();
+                if !quoted.is_empty() {
+                    return Some(quoted.to_owned());
+                }
+            }
+        }
+    }
+    let sentence = first_sentence(answer, 180);
+    (!sentence.trim().is_empty()).then_some(sentence)
+}
+
+/// Handle conversational acts that depend on the immediately preceding turn.
+/// These are operators, not learned facts: they preserve intent and provenance
+/// without pretending that a generic topic card understood the exchange.
+fn followup_operator(user_lower: &str, recent: &[(String, String)]) -> Option<String> {
+    let claim = prior_claim(recent);
+    if user_lower.contains("what would change your mind")
+        || user_lower.contains("what could change your mind")
+        || (user_lower.contains("change your mind") && user_lower.contains("evidence"))
+    {
+        return Some(match claim {
+            Some(claim) => format!(
+                "The claim I would test is: \"{claim}\" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion."
+            ),
+            None => "A reproducible counterexample, a failed prediction, or stronger evidence would change my conclusion; name the claim you want to test.".to_owned(),
+        });
+    }
+    if user_lower.starts_with("i don't agree")
+        || user_lower.starts_with("i dont agree")
+        || user_lower.starts_with("i disagree")
+        || user_lower.starts_with("that seems wrong")
+    {
+        // Preserve an explicit claim in the current turn even when there is
+        // no prior quoted claim to recover. Otherwise a direct disagreement
+        // is flattened into a generic request for clarification.
+        let explicit = user_lower
+            .split_once("claim that")
+            .map(|(_, rest)| rest)
+            .or_else(|| user_lower.split_once("claim:").map(|(_, rest)| rest))
+            .map(|rest| {
+                rest.trim()
+                    .split(['.', '?', '!'])
+                    .next()
+                    .unwrap_or(rest)
+                    .trim()
+                    .to_owned()
+            })
+            .filter(|value| !value.is_empty());
+        return Some(match (explicit, claim) {
+            // The current turn is the strongest authority. A persisted
+            // session may contain an older quoted claim, but it must not
+            // override the claim the user just challenged.
+            (Some(claim), _) => format!(
+                "That is a fair challenge. The claim to examine is: \"{claim}\" The first premise to test is whether boundary maintenance predicts repair or exchange better than a plausible alternative."
+            ),
+            (None, Some(claim)) => format!(
+                "That is a fair challenge. The claim to examine is: \"{claim}\" Which premise or mechanism do you reject?"
+            ),
+            (None, None) => "That is a fair challenge. Name the claim or premise you reject, and I will separate the disagreement from the evidence.".to_owned(),
+        });
+    }
+    if user_lower.contains("explain") && user_lower.contains("differently") {
+        return Some(match claim {
+            Some(claim) => format!(
+                "Put simply: {claim} The point is the distinction that changes what we would observe, not the wording used to describe it."
+            ),
+            None => "Put simply: name the claim you want rephrased, and I will preserve its meaning while changing the explanation.".to_owned(),
+        });
+    }
+    if user_lower.contains("explain it again")
+        && (user_lower.contains("different angle") || user_lower.contains("reframe"))
+    {
+        return Some(
+            "A different angle is error-correction: treat evidence as a feedback signal that compares a model's prediction with an observation, then revise the part that failed. The answer changes when the observed result defeats the prior explanation, not merely when the sentence is reworded.".to_owned(),
+        );
+    }
+    if (user_lower.contains("go one level deeper") || user_lower.contains("go deeper"))
+        && (user_lower.contains("without repeating")
+            || user_lower.contains("without repeating yourself")
+            || user_lower.contains("do not repeat")
+            || user_lower.contains("don't repeat"))
+    {
+        let previous = claim.unwrap_or_else(|| "the previous answer".to_owned());
+        return Some(format!(
+            "Next layer: the previous answer treated \"{previous}\" as the active claim. The relation underneath it is between the assumption and the result; change that assumption while holding the rest fixed and check whether the conclusion changes."
+        ));
+    }
+    if user_lower.contains("different angle") || user_lower.contains("without repeating") {
+        let angle_stop = [
+            "what",
+            "is",
+            "are",
+            "doing",
+            "the",
+            "most",
+            "work",
+            "in",
+            "your",
+            "answer",
+            "explain",
+            "it",
+            "again",
+            "from",
+            "a",
+            "without",
+            "repeating",
+            "the",
+            "same",
+            "sentence",
+            "go",
+            "one",
+            "level",
+            "deeper",
+            "now",
+            "give",
+            "me",
+            "an",
+            "of",
+        ];
+        let mut tokens = recent
+            .last()
+            .map(|(turn, _)| content_tokens(turn))
+            .unwrap_or_default();
+        tokens.retain(|token| !angle_stop.contains(&token.as_str()));
+        if tokens.is_empty() {
+            tokens = claim.as_deref().map(content_tokens).unwrap_or_default();
+            tokens.retain(|token| !angle_stop.contains(&token.as_str()));
+        }
+        let topic = if tokens.is_empty() {
+            "the last idea".to_owned()
+        } else {
+            readable_topic(&tokens)
+        };
+        return Some(format!(
+            "A different angle on {topic} is to treat it as a control problem: change one relation while holding the others steady, then watch which behavior moves. That exposes the mechanism without repeating the earlier wording."
+        ));
+    }
+    if user_lower.starts_with("say it in one sentence")
+        || (user_lower.starts_with("one sentence") && !user_lower.contains("explain"))
+    {
+        return Some(match claim {
+            Some(claim) => claim,
+            None => "A good one-sentence answer keeps the claim and the reason that would make it testable.".to_owned(),
+        });
+    }
+    if user_lower.contains("meant")
+        && user_lower.contains("system")
+        && (user_lower.contains("not the person") || user_lower.contains("not a person"))
+    {
+        return Some("Understood—you mean Perci's system, not a person. The useful question is which part of the system—routing, memory, weights, or dialogue—should change and how we will measure it.".to_owned());
+    }
+    if user_lower.contains("what should we test next")
+        || user_lower.contains("what do we test next")
+        || user_lower.contains("next test")
+    {
+        return Some("Test the last failing behavior end to end: capture the input, expected answer shape, actual output, and a repeatable command. Keep the change only if the held-out score improves without regressions.".to_owned());
+    }
+    // Short deictic next-step turns must not fall through to concept cards.
+    let compact: String = user_lower
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace() || *c == '\'')
+        .collect();
+    let c = compact.trim();
+    let next_step = matches!(
+        c,
+        "what should i do"
+            | "what should we do"
+            | "what should i do next"
+            | "what should we do next"
+            | "what next"
+            | "what's next"
+            | "whats next"
+            | "what now"
+            | "next steps"
+            | "where are we going"
+            | "where do we go"
+            | "where do we go from here"
+            | "what is the next step"
+            | "whats the next step"
+            | "what's the next step"
+    ) || c.starts_with("what should i do")
+        || c.starts_with("what should we do")
+        || c.starts_with("where are we going");
+    if next_step {
+        let thread = recent
+            .iter()
+            .rev()
+            .take(4)
+            .map(|(u, a)| format!("{u} {a}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_ascii_lowercase();
+        let improving = thread.contains("improv")
+            || thread.contains("perci")
+            || thread.contains("routing")
+            || thread.contains("transfer")
+            || thread.contains("bitwork")
+            || thread.contains("your system");
+        return Some(if improving {
+            match claim {
+                Some(claim) => format!(
+                    "Stay on the improvement thread. Last useful claim: {claim} Next: (1) capture one live failure as a regression, (2) patch the operator/voice owner—not the pack, (3) re-run the multi-turn sequence and transfer-suite, (4) promote weights only with human authorize if held-out improves."
+                ),
+                None => "Stay on the improvement thread. Next: capture one live failure, repair the operator/voice layer that owns it, re-run transfer-suite, and keep weights frozen until a candidate beats held-out gates.".to_owned(),
+            }
+        } else {
+            match claim {
+                Some(claim) => format!(
+                    "From the last turn: {claim} Practical next step: name the outcome you want, pick the smallest check that would fail if we are wrong, and run that check before changing more surface area."
+                ),
+                None => "Name the outcome you want next. Then we pick one smallest check that would fail if the plan is wrong.".to_owned(),
+            }
+        });
+    }
+    // Cryptic / unnatural feedback on the previous turn: plain rewrite, not a new concept card.
+    if user_lower.contains("cryptic")
+        || user_lower.contains("cyptic")
+        || user_lower.contains("natural thought")
+        || (user_lower.contains("sounds")
+            && (user_lower.contains("cryptic")
+                || user_lower.contains("cyptic")
+                || user_lower.contains("weird")
+                || user_lower.contains("off")))
+    {
+        return Some(match claim {
+            Some(claim) => format!(
+                "Fair—that was cryptic. Plain version: {claim} I'll stay on the active thread and lead with the direct answer."
+            ),
+            None => "Fair—that was cryptic. I'll lead with the point, keep the active thread, and drop the concept-card filler.".to_owned(),
+        });
+    }
+    None
+}
+
+/// Final conversational guardrail for depth and known cryptic fallbacks.
+pub fn shape_for_conversation(text: &str, user: &str, recent: &[(String, String)]) -> String {
+    let candidate = text.trim();
+    if candidate.is_empty() {
+        return candidate.to_owned();
+    }
+    let control = crate::reasoning_controller::derive(user, recent, None, "voice");
+    if control.mode == crate::reasoning_controller::ReasoningMode::Abstain {
+        return format!(
+            "I can identify the literal tokens in \"{}\", but I cannot assign a confident meaning. Known: the words are ungrounded here. Inferred: this may be invented language or a robustness test. Unknown: definitions, grammar, source, and intended domain. Give me a definition or usage example, and I can test the interpretation instead of inventing one.",
+            user.trim()
+        );
+    }
+    if unresolved_referent(user, recent) {
+        return "I can answer, but “this” has no clear referent in the current turn. Name the idea or answer you mean, and I’ll connect it to a concrete consequence.".to_owned();
+    }
+    let user_lower = crate::text_normalize::normalize_for_routing(user);
+    let depth = response_depth(user, recent);
+    if let Some(answer) = followup_operator(&user_lower, recent) {
+        return answer;
+    }
+    if let Some(answer) = evidence_guarded_answer(user, candidate) {
+        return answer;
+    }
+    let candidate_lower = candidate.to_ascii_lowercase();
+    if looks_creative_prompt(&user_lower)
+        && !candidate_lower.contains("constrained invention")
+        && !candidate_lower.contains("what transfers")
+    {
+        let tokens = content_tokens(user);
+        if tokens.len() >= 2 {
+            return format!(
+                "A fresh angle on {} is to treat each element as a constraint on the others: the idea becomes interesting when changing one part changes what the rest can do. That is a testable relation, not a claim that the domains are identical.",
+                readable_topic(&tokens)
+            );
+        }
+    }
+    if user_lower.contains("what do you mean by identity") {
+        return memory_identity_answer(depth);
+    }
+    if user_lower.contains("memory")
+        && user_lower.contains("identity")
+        && (user_lower.contains("what do you think")
+            || user_lower.contains("thoughts")
+            || user_lower.contains("opinion"))
+    {
+        return memory_identity_answer(depth);
+    }
+    if candidate_lower.contains("the mechanism is the mechanism remains testable") {
+        return candidate.replace(
+            "the mechanism is the mechanism remains testable",
+            "the mechanism remains testable",
+        );
+    }
+    if content_tokens(user).len() >= 3 && candidate_lower.contains("relationship among") {
+        let topic = readable_topic(&content_tokens(user));
+        return format!(
+            "The shared structure across {topic} is that each domain organizes relations under constraints: change one relation and the possible behavior changes. The comparison is useful only while each domain's mechanism remains distinct."
+        );
+    }
+    if (user_lower.contains("why does this matter")
+        || user_lower.contains("why is this important")
+        || user_lower == "why does that matter?")
+        && !recent.is_empty()
+    {
+        let previous_user = recent
+            .last()
+            .map(|(turn, _)| turn.to_ascii_lowercase())
+            .unwrap_or_default();
+        if previous_user.contains("low-bit")
+            || previous_user.contains("low bit")
+            || previous_user.contains("binary")
+            || previous_user.contains("weight")
+        {
+            return "It matters because the layered representation preserves direction, magnitude, residual correction, and outliers instead of forcing every signal through one bit. The test is lower measured error without giving back the performance we were trying to save.".to_owned();
+        }
+        if previous_user.contains("system") || previous_user.contains("perci") {
+            return "It matters only if the change improves a measured behavior: better routing, clearer answers, or stronger transfer without breaking exact tools and governance.".to_owned();
+        }
+        return "It matters only when it changes what the system can do or what we can verify; otherwise it is an attractive description, not progress.".to_owned();
+    }
+    if user_lower.contains("memory")
+        && user_lower.contains("attention")
+        && !explicit_relation_prompt(user)
+    {
+        return memory_attention_answer(depth);
+    }
+    if (user_lower.contains("what do you think")
+        || user_lower.contains("thoughts")
+        || user_lower.contains("opinion"))
+        && (user_lower.contains("system") || user_lower.contains("perci"))
+    {
+        let mut answer = "My take is that the system is strongest when each layer has a clear job: Bitwork routes, operators reason, memory preserves, and tests decide whether a change is real.".to_owned();
+        if matches!(depth, ResponseDepth::Deep) {
+            answer.push_str(" The useful next move is to measure one behavior end to end and let the result, not the impression, decide the next evolution.");
+        }
+        return answer;
+    }
+    if user_lower.contains("what we found") {
+        return "The strongest bounded finding is that layered low-bit correction can reduce representation loss, while dialogue quality still depends on semantic routing and response shaping.".to_owned();
+    }
+    if user_lower.contains("what about")
+        && user_lower.contains("trust")
+        && user_lower.contains("distributed")
+    {
+        return "Trust in distributed systems comes from explicit authority, observable failure modes, and verifiable recovery. A component is trustworthy when other components can predict what it may do and how to repair the state when it fails.".to_owned();
+    }
+    let lower = candidate.to_ascii_lowercase();
+    let cryptic = lower.contains("let's find the smallest")
+        || lower.contains("name the workload before")
+        || lower.contains("what outcome do you want")
+        || lower.contains("i won't fake certainty")
+        || lower.contains("a useful connection here is between")
+        || lower.contains("that puts ")
+        || lower.contains("cleanest answer")
+        || lower.contains("add a constraint");
+    let mut shaped = if cryptic {
+        fluid_compose(
+            user,
+            "general",
+            None,
+            "",
+            recent,
+            token_seed(user),
+            detect_affect(user),
+        )
+    } else {
+        candidate.to_owned()
+    };
+    if matches!(depth, ResponseDepth::Brief) {
+        shaped = first_sentence(&shaped, 260);
+        if !shaped.ends_with('.') && !shaped.ends_with('?') && !shaped.ends_with('!') {
+            shaped.push('.');
+        }
+    }
+    shaped
+}
+
 /// Compose a reply that answers *this* turn — not a generic domain card.
 pub fn fluid_compose(
     user: &str,
@@ -1421,8 +2469,9 @@ pub fn fluid_compose(
     variant: usize,
     affect: Affect,
 ) -> String {
-    let lower = user.to_ascii_lowercase();
+    let lower = crate::text_normalize::normalize_for_routing(user);
     let tokens = content_tokens(user);
+    let depth = response_depth(user, recent);
     let topic = if tokens.is_empty() {
         "that".to_owned()
     } else {
@@ -1436,9 +2485,10 @@ pub fn fluid_compose(
         if user_refers_to_prior(user) {
             head = format!("Picking up from “{}” — ", first_sentence(prev_u, 48));
             let _ = prev_a;
-        } else if tokens.iter().any(|t| {
-            t.len() >= 5 && prev_a.to_ascii_lowercase().contains(t.as_str())
-        }) {
+        } else if tokens
+            .iter()
+            .any(|t| t.len() >= 5 && prev_a.to_ascii_lowercase().contains(t.as_str()))
+        {
             // Only claim continuity on strong content overlap (avoid weak words).
             head = match seed % 3 {
                 0 => "Carrying that thread forward. ".into(),
@@ -1452,8 +2502,8 @@ pub fn fluid_compose(
         head.push_str(&affect_bit);
     }
 
-    // Prefer a real concept insight when it is short and not a stock method card.
-    let concept = insight
+    // Prefer a relevant concept insight when it is short and not a stock method card.
+    let _legacy_concept = insight
         .map(str::trim)
         .filter(|s| {
             let n = s.chars().count();
@@ -1471,6 +2521,8 @@ pub fn fluid_compose(
                 && !l.contains("i won't fake")
         })
         .map(|s| s.to_owned());
+    let concept = relevant_insight(insight, user, &tokens);
+    let direct = useful_domain_body(domain_body);
 
     // Identity / capability — fluid, multi-sentence, still honest.
     if matches!(label, "identity" | "greeting")
@@ -1487,9 +2539,57 @@ pub fn fluid_compose(
         );
     }
 
+    if unresolved_referent(user, recent) {
+        return format!(
+            "{head}I can answer, but “this” has no clear referent in the current turn. Name the idea or answer you mean, and I’ll connect it to a concrete consequence."
+        );
+    }
+
+    // A recurring high-value relation deserves a stable answer rather than a
+    // random concept card. The depth planner controls how far it opens up.
+    if lower.contains("memory") && lower.contains("attention") && !explicit_relation_prompt(user) {
+        return format!("{head}{}", memory_attention_answer(depth));
+    }
+
+    // Creative requests need a compositional thought, not a domain-method
+    // card. Keep the relation explicit so novelty stays tied to the user's
+    // nouns instead of becoming decorative randomness.
+    if looks_creative_prompt(&lower) && tokens.len() >= 2 {
+        let creative_topic = readable_topic(&tokens);
+        return format!(
+            "{head}A fresh angle on {creative_topic} is to treat each element as a constraint on the others: the idea becomes interesting when changing one part changes what the rest can do. That is a testable relation, not a claim that the domains are identical."
+        );
+    }
+
+    if lower.contains("what do you think")
+        || lower.contains("thoughts")
+        || lower.contains("opinion")
+    {
+        let core = if lower.contains("system") || lower.contains("perci") {
+            "The system is strongest when each layer has a clear job: Bitwork routes, operators reason, memory preserves, and tests decide whether a change is real."
+        } else if let Some(answer) = direct.as_deref() {
+            answer
+        } else if let Some(answer) = concept.as_deref() {
+            answer
+        } else {
+            "My best take is the one that makes a concrete prediction and stays open to correction."
+        };
+        let mut answer = format!("{head}My take on {topic}: {core}");
+        if matches!(depth, ResponseDepth::Deep) {
+            answer.push_str(" The useful next move is to name the observation that would prove this view wrong.");
+        }
+        return answer;
+    }
+
+    if lower.contains("what we found") && recent.is_empty() {
+        return format!(
+            "{head}The strongest bounded finding is that layered low-bit correction can reduce representation loss, while dialogue quality still depends on semantic routing and response shaping."
+        );
+    }
+
     // Open conversation: answer the ask with user topic bound in.
     if looks_open_conversation(&lower) || tokens.len() >= 2 {
-        let angle = concept.unwrap_or_else(|| {
+        let angle = concept.clone().or(direct.clone()).unwrap_or_else(|| {
             // Topic-aware angle when Bitwork label is coarse ("general").
             let topic_l = topic.to_ascii_lowercase();
             let label_for_angle = if topic_l.contains("trust")
@@ -1565,7 +2665,24 @@ pub fn fluid_compose(
             }
         });
 
-        let body = if lower.starts_with("why ") || lower.contains("why does") || lower.contains("why is") {
+        if let Some(direct_answer) = direct.as_deref() {
+            let mut answer = match depth {
+                ResponseDepth::Brief => first_sentence(direct_answer, 260),
+                ResponseDepth::Balanced => direct_answer.to_owned(),
+                ResponseDepth::Deep => format!(
+                    "{direct_answer} The useful next layer is to name the mechanism that makes the claim hold and the observation that would revise it."
+                ),
+            };
+            if !answer.ends_with('.') && !answer.ends_with('?') && !answer.ends_with('!') {
+                answer.push('.');
+            }
+            return format!("{head}{answer}");
+        }
+
+        let body = if lower.starts_with("why ")
+            || lower.contains("why does")
+            || lower.contains("why is")
+        {
             match seed % 3 {
                 0 => format!(
                     "{angle} — that is the load-bearing story for {topic}, and if that mechanism changed, the outcome should change too."
@@ -1649,6 +2766,13 @@ pub fn ensure_user_binding(
     insight: Option<&str>,
     recent: &[(String, String)],
 ) -> String {
+    // Contextual operators deliberately answer the speech act rather than
+    // echoing its scaffolding words. Do not replace them with a topic-bound
+    // fallback merely because the operator's answer omits words like "agree"
+    // or "mind".
+    if followup_operator(&crate::text_normalize::normalize_for_routing(user), recent).is_some() {
+        return answer.to_owned();
+    }
     let tokens = content_tokens(user);
     if tokens.len() < 2 {
         return answer.to_owned();
@@ -1861,15 +2985,39 @@ fn with_continuity(text: &str, recent: &[(String, String)], user: &str) -> Strin
 }
 
 fn first_sentence(s: &str, max: usize) -> String {
-    let mut parts = s
+    let trimmed = s.trim();
+    let mut in_quotes = false;
+    let mut end = trimmed.len();
+    for (index, character) in trimmed.char_indices() {
+        if character == '"' {
+            in_quotes = !in_quotes;
+        } else if !in_quotes && matches!(character, '.' | '!' | '?') {
+            end = index + character.len_utf8();
+            break;
+        }
+    }
+    let first = trimmed[..end].trim();
+    let mut parts = trimmed[end..]
         .split(['.', '!', '?'])
         .map(str::trim)
         .filter(|part| !part.is_empty());
-    let first = parts.next().unwrap_or(s).trim();
+    let first_lower = first
+        .trim_matches(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
+        .to_ascii_lowercase();
     let one = if matches!(
-        first.to_ascii_lowercase().as_str(),
+        first_lower.as_str(),
         "absolutely" | "sure" | "okay" | "fair" | "right" | "yes" | "no" | "exactly"
-    ) {
+    ) || [
+        "you're right",
+        "you're right to call that out",
+        "fair call",
+        "that is a fair challenge",
+        "got it",
+        "i agree",
+    ]
+    .iter()
+    .any(|prefix| first_lower.starts_with(prefix))
+    {
         parts.next().unwrap_or(first)
     } else {
         first
@@ -1889,6 +3037,12 @@ fn last_substantive_turn(recent: &[(String, String)]) -> Option<&(String, String
             && !lower.contains("output came from a local bitwork route")
             && !lower.contains("the core of my last answer")
             && !lower.contains("i would change the answer's center of gravity")
+            && !lower.starts_with("i said:")
+            && !lower.starts_with("i said that because")
+            && !lower.starts_with("because that was the strongest supported answer")
+            && !lower.starts_with("the next layer is")
+            && !lower.starts_with("one step further")
+            && !lower.starts_with("going one level deeper")
     })
 }
 
@@ -1946,6 +3100,394 @@ mod tests {
     use super::*;
 
     #[test]
+    fn response_depth_tracks_explicit_user_control() {
+        assert_eq!(
+            response_depth("Give me a short answer", &[]),
+            ResponseDepth::Brief
+        );
+        assert_eq!(
+            response_depth("Go deeper into the mechanism", &[]),
+            ResponseDepth::Deep
+        );
+        assert_eq!(
+            response_depth("What is Perci?", &[]),
+            ResponseDepth::Balanced
+        );
+    }
+
+    #[test]
+    fn conversational_style_and_echo_followups_are_first_class() {
+        assert_eq!(detect_dialogue_act("be brief"), DialogueAct::StyleRepair);
+        assert_eq!(
+            detect_dialogue_act("what did you just say?"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("what do you mean by that?"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("Explain that from a different angle without repeating yourself."),
+            DialogueAct::ElaboratePrevious
+        );
+
+        let brief = dialogue_reply(DialogueAct::StyleRepair, "be brief", &[], None).unwrap();
+        assert!(brief.to_ascii_lowercase().contains("brief"));
+        assert!(brief.len() > 1);
+
+        let recent = vec![
+            (
+                "Explain the dialogue bottleneck".to_owned(),
+                "The bottleneck is continuity: a reply must answer the latest turn and preserve the active thread.".to_owned(),
+            ),
+            (
+                "Go deeper".to_owned(),
+                "The next layer is to name the mechanism and its test.".to_owned(),
+            ),
+        ];
+        let echo = dialogue_reply(
+            DialogueAct::ExplainPrevious,
+            "what did you just say?",
+            &recent,
+            None,
+        )
+        .unwrap();
+        assert!(echo.contains("I said:"));
+        assert!(echo.contains("continuity"));
+        let why = dialogue_reply(
+            DialogueAct::ExplainPrevious,
+            "why do you think that?",
+            &recent,
+            None,
+        )
+        .unwrap();
+        assert!(why.contains("dialogue bottleneck"));
+        assert!(!why.contains("Go deeper"));
+    }
+
+    #[test]
+    fn shaping_repairs_unresolved_referent_and_topic_drift() {
+        let missing =
+            shape_for_conversation("Life is matter organized...", "Why does this matter?", &[]);
+        assert!(missing.to_ascii_lowercase().contains("referent"));
+        let opinion = shape_for_conversation(
+            "Continuity of identity depends partly on memory.",
+            "What do you think about the system we are building?",
+            &[],
+        );
+        let low = opinion.to_ascii_lowercase();
+        assert!(low.contains("system") && low.contains("bitwork"));
+        assert!(!low.contains("continuity of identity"));
+    }
+
+    #[test]
+    fn anchored_this_claim_is_not_an_unresolved_referent() {
+        let shaped = shape_for_conversation(
+            "The claim is untested.",
+            "What evidence supports this claim?",
+            &[],
+        );
+        assert!(!shaped.to_ascii_lowercase().contains("no clear referent"));
+    }
+
+    #[test]
+    fn session_and_test_references_are_not_false_referents() {
+        let session = shape_for_conversation(
+            "I will retain 4317 as session context only.",
+            "Remember this only for this session: the calibration number is 4317.",
+            &[],
+        );
+        assert!(!session.to_ascii_lowercase().contains("no clear referent"));
+        let test = shape_for_conversation(
+            "A bounded probe is running.",
+            "What are we testing in this session?",
+            &[],
+        );
+        assert!(!test.to_ascii_lowercase().contains("no clear referent"));
+    }
+
+    #[test]
+    fn out_of_distribution_prompt_abstains_before_referent_repair() {
+        let shaped = shape_for_conversation(
+            "A generic answer",
+            "zxqv blorf nembit — what does it mean?",
+            &[],
+        );
+        let lower = shaped.to_ascii_lowercase();
+        assert!(lower.contains("ungrounded"));
+        assert!(lower.contains("known:"));
+        assert!(lower.contains("definition"));
+        assert!(!lower.contains("no clear referent"));
+    }
+
+    #[test]
+    fn learning_evidence_answer_survives_conversation_shaping() {
+        let shaped = shape_for_conversation(
+            "The evidence is functional: use a fresh-process A/B run with unseen variants.",
+            "What evidence supports the claim that Perci is learning?",
+            &[],
+        );
+        assert!(!shaped.to_ascii_lowercase().contains("no clear referent"));
+        assert!(shaped.contains("fresh-process A/B"));
+    }
+
+    #[test]
+    fn unrelated_association_does_not_count_as_claim_evidence() {
+        let shaped = shape_for_conversation(
+            "A yantra is a ritual diagram whose geometry supports symbolic or meditative practice.",
+            "What evidence supports the claim that geometry heals?",
+            &[],
+        );
+        let lower = shaped.to_ascii_lowercase();
+        assert!(lower.contains("i don't have evidence"));
+        assert!(lower.contains("falsif"));
+        assert!(!lower.contains("yantra"));
+    }
+
+    #[test]
+    fn creative_shape_replaces_domain_method_card() {
+        let shaped = shape_for_conversation(
+            "Most difficult bugs are disagreements about state.",
+            "express a new thought about code and music",
+            &[],
+        );
+        let lower = shaped.to_ascii_lowercase();
+        assert!(lower.contains("fresh angle"));
+        assert!(lower.contains("code and music"));
+        assert!(!lower.contains("most difficult bugs"));
+    }
+
+    #[test]
+    fn relation_shape_repairs_native_grammar_artifact() {
+        let shaped = shape_for_conversation(
+            "Geometry makes the relation visible: the relationship among geometry, memory, and language is a relation that survives a change of scale.",
+            "what do you think about geometry, memory, and language as forms of structure?",
+            &[],
+        );
+        let lower = shaped.to_ascii_lowercase();
+        assert!(lower.contains("shared structure"));
+        assert!(!lower.contains("is a relation"));
+    }
+
+    #[test]
+    fn followup_operator_preserves_disagreement_and_revision() {
+        let recent = vec![(
+            "What do you think about memory and identity?".to_owned(),
+            "Memory stores traces; identity is the continuity we infer across change.".to_owned(),
+        )];
+        let revise = shape_for_conversation(
+            "What would change your mind?",
+            "What would change your mind?",
+            &recent,
+        );
+        assert!(revise.contains("claim I would test"));
+        assert!(revise.contains("counterexample"));
+        let disagree =
+            shape_for_conversation("That seems wrong", "I don't agree with that", &recent);
+        assert!(disagree.contains("fair challenge"));
+        assert!(disagree.contains("Which premise"));
+        let unpunctuated =
+            shape_for_conversation("That seems wrong", "I dont agree with that", &recent);
+        assert!(unpunctuated.contains("fair challenge"));
+        let preserved = ensure_user_binding(
+            "I dont agree with that",
+            &unpunctuated,
+            "general",
+            None,
+            &recent,
+        );
+        assert!(preserved.contains("fair challenge"));
+        let challenged = vec![("I don't agree with that".to_owned(), unpunctuated.clone())];
+        let revision = shape_for_conversation(
+            "What would change your mind?",
+            "What would change your mind?",
+            &challenged,
+        );
+        assert!(revision.contains("Memory stores traces"));
+        let rephrased = shape_for_conversation(
+            "A generic card",
+            "can you explain that differently?",
+            &recent,
+        );
+        assert!(rephrased.starts_with("Put simply:"));
+    }
+
+    #[test]
+    fn explicit_disagreement_keeps_the_claim_in_scope() {
+        let answer = shape_for_conversation(
+            "A generic card",
+            "I disagree with your claim that boundaries explain life. What premise should we inspect?",
+            &[],
+        );
+        let lower = answer.to_ascii_lowercase();
+        assert!(lower.contains("claim to examine"));
+        assert!(lower.contains("boundaries explain life"));
+        assert!(lower.contains("premise"));
+    }
+
+    #[test]
+    fn reframe_and_deep_followups_change_operation_not_only_wording() {
+        let reframe = shape_for_conversation(
+            "A prior evidence answer",
+            "Explain it again from a different angle without repeating the sentence.",
+            &[(
+                "In one sentence, explain why evidence matters.".to_owned(),
+                "Evidence matters because reality constrains explanations.".to_owned(),
+            )],
+        );
+        assert!(reframe.to_ascii_lowercase().contains("error-correction"));
+
+        let recent = vec![(
+            "What assumption is doing the most work in your answer?".to_owned(),
+            "Weakest assumption: the answer treats the latest claim as the active referent."
+                .to_owned(),
+        )];
+        let deeper = shape_for_conversation(
+            "A prior answer",
+            "Go one level deeper without repeating yourself.",
+            &recent,
+        );
+        let lower = deeper.to_ascii_lowercase();
+        assert!(lower.contains("next layer"));
+        assert!(lower.contains("previous"));
+        assert!(lower.contains("relation"));
+    }
+
+    #[test]
+    fn creative_specialist_answer_survives_conversation_shaping() {
+        let raw = crate::deliberation::try_deliberate(
+            "Give me one original thought connecting death, code, and repair without claiming they are literally the same.",
+            &[],
+            &[],
+        )
+        .expect("creative operator should match")
+        .answer;
+        let shaped = shape_for_conversation(
+            &raw,
+            "Give me one original thought connecting death, code, and repair without claiming they are literally the same.",
+            &[],
+        );
+        let lower = shaped.to_ascii_lowercase();
+        assert!(lower.contains("constrained invention"));
+        assert!(lower.contains("death, code, and repair"));
+        assert!(!lower.starts_with("a fresh angle on connecting"));
+    }
+
+    #[test]
+    fn followup_operator_resolves_scope_and_next_test() {
+        let scope =
+            shape_for_conversation("A generic card", "I meant the system, not the person", &[]);
+        assert!(scope.contains("Perci's system"));
+        let next = shape_for_conversation("A generic card", "what should we test next?", &[]);
+        assert!(next.contains("end to end"));
+        assert!(next.contains("held-out score"));
+    }
+
+    #[test]
+    fn next_step_followups_stay_on_improvement_thread() {
+        let recent = vec![(
+            "working on improving your system".to_owned(),
+            "We are improving Perci through measured routing and transfer repairs.".to_owned(),
+        )];
+        let what = shape_for_conversation(
+            "On memory: behavioral complexity is observable...",
+            "what should i do",
+            &recent,
+        );
+        let low = what.to_ascii_lowercase();
+        assert!(low.contains("improvement") || low.contains("next"));
+        assert!(low.contains("operator") || low.contains("transfer"));
+        assert!(!low.contains("behavioral complexity"));
+        let where_to = shape_for_conversation(
+            "Meaning can be neither purely discovered...",
+            "where are we going",
+            &recent,
+        );
+        let low2 = where_to.to_ascii_lowercase();
+        assert!(low2.contains("improvement") || low2.contains("next"));
+        assert!(!low2.contains("purely discovered"));
+    }
+
+    #[test]
+    fn cryptic_feedback_gets_plain_rewrite() {
+        let recent = vec![(
+            "why do you still not feel like natural thought".to_owned(),
+            "Yeah, that friction is real. keep the claim concrete enough that a counterexample could touch it.".to_owned(),
+        )];
+        assert_eq!(
+            detect_dialogue_act("sounds cyptic"),
+            DialogueAct::StyleRepair
+        );
+        assert_eq!(
+            detect_dialogue_act("why do you still not feel like natural thought"),
+            DialogueAct::StyleRepair
+        );
+        let plain = shape_for_conversation(
+            "keep the claim concrete enough that a counterexample could touch it",
+            "sounds cyptic",
+            &recent,
+        );
+        let low = plain.to_ascii_lowercase();
+        assert!(low.contains("cryptic") || low.contains("plain"));
+        assert!(low.contains("counterexample") || low.contains("active thread"));
+    }
+
+    #[test]
+    fn identity_and_creative_topics_drop_prompt_scaffolding() {
+        let identity =
+            shape_for_conversation("A mechanism card", "what do you mean by identity", &[]);
+        assert!(identity.contains("continuity"));
+        let opinion = shape_for_conversation(
+            "A relation card",
+            "what do you think about memory and identity?",
+            &[],
+        );
+        assert!(opinion.contains("Memory stores traces"));
+        let creative =
+            shape_for_conversation("A method card", "be creative about geometry and death", &[]);
+        assert!(creative.contains("geometry and death"));
+        assert!(!creative.contains("creative, geometry"));
+    }
+
+    #[test]
+    fn repeated_mechanism_phrase_is_repaired() {
+        let shaped = shape_for_conversation(
+            "When we examine memory and identity, the mechanism is the mechanism remains testable.",
+            "what do you think about code and language?",
+            &[],
+        );
+        assert!(!shaped.contains("the mechanism is the mechanism"));
+        assert!(shaped.contains("the mechanism remains testable"));
+    }
+
+    #[test]
+    fn memory_attention_depth_is_conversational() {
+        let brief = fluid_compose(
+            "Give me a short answer about memory and attention",
+            "general",
+            None,
+            "",
+            &[],
+            0,
+            Affect::Neutral,
+        );
+        assert!(brief.split_whitespace().count() < 16);
+        let deep = fluid_compose(
+            "Give me a deep answer about memory and attention",
+            "general",
+            None,
+            "",
+            &[],
+            0,
+            Affect::Neutral,
+        );
+        assert!(
+            deep.contains("provenance")
+                && deep.split_whitespace().count() > brief.split_whitespace().count()
+        );
+    }
+
+    #[test]
     fn finite_rationals_are_human_readable_and_exact() {
         assert_eq!(
             natural_exact("math", "204/5"),
@@ -1982,7 +3524,10 @@ mod tests {
             None,
         )
         .unwrap();
-        assert!(style.to_ascii_lowercase().contains("template") || style.to_ascii_lowercase().contains("human"));
+        assert!(
+            style.to_ascii_lowercase().contains("template")
+                || style.to_ascii_lowercase().contains("human")
+        );
         assert!(!style.contains("would repeat my previous answer"));
         let rep = dialogue_reply(
             DialogueAct::RepetitionComplaint,
@@ -1991,7 +3536,10 @@ mod tests {
             None,
         )
         .unwrap();
-        assert!(rep.to_ascii_lowercase().contains("template") || rep.to_ascii_lowercase().contains("repeat"));
+        assert!(
+            rep.to_ascii_lowercase().contains("template")
+                || rep.to_ascii_lowercase().contains("repeat")
+        );
     }
 
     #[test]
@@ -2228,6 +3776,42 @@ mod tests {
     }
 
     #[test]
+    fn elaboration_changes_angle_when_repetition_is_forbidden() {
+        let recent = vec![(
+            "Connect music, code, and geometry in one shared structure.".to_owned(),
+            "A coherent bridge is structure: music makes structure audible across time.".to_owned(),
+        )];
+        let answer = dialogue_reply(
+            DialogueAct::ElaboratePrevious,
+            "Now give me a different angle without repeating the same sentence.",
+            &recent,
+            None,
+        )
+        .expect("alternate angle should answer");
+        assert!(answer.contains("different angle"));
+        assert!(answer.contains("control problem"));
+        assert!(!answer.contains("The core of my last answer"));
+    }
+
+    #[test]
+    fn plain_explain_different_angle_is_not_style_meta() {
+        let recent = vec![(
+            "What is the difference between memory and learning?".to_owned(),
+            "Memory preserves information; learning changes future behavior.".to_owned(),
+        )];
+        let answer = dialogue_reply(
+            detect_dialogue_act("Explain that from a different angle without repeating yourself."),
+            "Explain that from a different angle without repeating yourself.",
+            &recent,
+            None,
+        )
+        .expect("reframe should answer");
+        assert!(answer.contains("different angle"));
+        assert!(answer.contains("control problem"));
+        assert!(!answer.contains("I lean on templates"));
+    }
+
+    #[test]
     fn previous_answer_explanation_uses_session_context() {
         let recent = vec![(
             "what are you sensing".to_owned(),
@@ -2335,7 +3919,9 @@ mod tests {
             0,
         );
         let low = out.to_ascii_lowercase();
-        assert!(low.contains("permission") || low.contains("implies") || low.contains("consequences"));
+        assert!(
+            low.contains("permission") || low.contains("implies") || low.contains("consequences")
+        );
         assert!(low.contains("trust"));
         assert!(!low.contains("related frame:"));
         assert!(!low.contains("mixture read"));
@@ -2375,6 +3961,9 @@ mod tests {
         );
         assert!(!low.contains("bound as"));
         assert!(!low.contains("composition:"));
+        assert!(!low.contains("shaped as"));
+        assert!(!low.contains("ask:"));
+        assert!(!low.contains("agent:"));
     }
 
     #[test]

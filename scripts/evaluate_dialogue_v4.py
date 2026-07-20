@@ -192,6 +192,14 @@ def sha256(path: Path) -> str:
     return value.hexdigest()
 
 
+def package_version(root: Path) -> str:
+    """Read the receipt version from the source manifest, not an old fixture."""
+    for line in (root / "Cargo.toml").read_text(encoding="utf-8").splitlines():
+        if line.startswith("version = "):
+            return line.split('"', 2)[1]
+    return "unknown"
+
+
 def request(port: int, op: str, text: str | None = None) -> dict:
     with socket.create_connection(("127.0.0.1", port), timeout=30) as stream:
         payload = {"op": op}
@@ -287,7 +295,7 @@ def main() -> int:
     receipt = {
         "schema": "perci.dialogue-regression.v4",
         "evaluated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "runtime_version": "0.4.12",
+        "runtime_version": package_version(root),
         "runtime_sha256": sha256(binary),
         "model_sha256": sha256(model),
         "case_count": len(rows),

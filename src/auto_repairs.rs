@@ -156,7 +156,10 @@ pub fn append_repair(repair: &AutoRepair) -> std::io::Result<()> {
     let line = serde_json::to_string(repair)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     use std::io::Write;
-    let mut f = fs::OpenOptions::new().create(true).append(true).open(path)?;
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
     writeln!(f, "{line}")?;
     reload();
     Ok(())
@@ -289,7 +292,8 @@ pub fn softcascade_logic_alignment_body(user: &str) -> Option<&'static str> {
     let hit = t.contains("falsif")
         || t.contains("counterexample")
         || t.contains("premise")
-        || (t.contains("logic") && (t.contains("derive") || t.contains("infer") || t.contains("valid")))
+        || (t.contains("logic")
+            && (t.contains("derive") || t.contains("infer") || t.contains("valid")))
         || (t.contains("if every") && t.contains("then"));
     if !hit {
         return None;
@@ -302,14 +306,131 @@ counterexample engine for Perci speech, not prose force.",
     )
 }
 
+/// SoftCascade pack-alignment for session memory vs durable store.
+pub fn softcascade_memory_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = (t.contains("remember") && (t.contains("session") || t.contains("conversation")))
+        || (t.contains("memory")
+            && (t.contains("session")
+                || t.contains("durable")
+                || t.contains("store")
+                || t.contains("teach")
+                || t.contains("vs")))
+        || t.contains("session context")
+        || t.contains("only for this session");
+    if !hit {
+        return None;
+    }
+    Some(
+        "Memory is deliberate evidence, not a hidden diary. Session context can retain a token for the \
+current conversation; durable store and taught candidates are separate gates. Nothing here auto-promotes \
+weights. If the ask is “remember only for this session,” keep it in-session, refuse durable write, and \
+say what would change only after an authorized evaluated update.",
+    )
+}
+
+/// SoftCascade pack-alignment for english / clarity rewrite.
+pub fn softcascade_english_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = t.contains("rewrite")
+        || t.contains("more clearly")
+        || t.contains("plain language")
+        || t.contains("tighten the sentence")
+        || (t.contains("clarify") && t.contains("sentence"))
+        || (t.contains("english") && (t.contains("rewrite") || t.contains("edit")));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Clarity rewrite: name the subject, action, and object; cut filler; keep the original claim \
+strength—do not invent a stronger conclusion. Prefer concrete verbs. Ambiguity is resolved by stating \
+two readings only when the prompt asks for them, then picking the smallest test that separates them.",
+    )
+}
+
+/// SoftCascade pack-alignment for science method / falsification speech.
+pub fn softcascade_science_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = t.contains("falsif")
+        || t.contains("hypothesis")
+        || t.contains("experiment")
+        || t.contains("control group")
+        || (t.contains("science") && (t.contains("method") || t.contains("test")))
+        || (t.contains("predict") && t.contains("scale"));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Scientific method here is risk against observation: a useful hypothesis predicts a result that \
+plausible alternatives do not equally predict. Name outcome, control, and falsifier before claiming \
+support. Scale effects can change dominant behavior while rules remain valid—state that as a prediction, \
+not as proof of a shared substance across domains.",
+    )
+}
+
+/// SoftCascade pack-alignment for constrained creativity.
+pub fn softcascade_creativity_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.to_ascii_lowercase();
+    let hit = (t.contains("original") || t.contains("creative") || t.contains("invent"))
+        && (t.contains("comparison")
+            || t.contains("metaphor")
+            || t.contains("analogy")
+            || t.contains("image")
+            || t.contains("between"));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Creativity under governance is structure transfer: name what is shared, what does not transfer, \
+and one checkable test. Original only helps if someone can understand and build from it. Do not promote \
+a nearby concept card as the creative answer when the user named concrete poles for comparison.",
+    )
+}
+
+/// SoftCascade pack-alignment for greeting / presence.
+pub fn softcascade_greeting_alignment_body(user: &str) -> Option<&'static str> {
+    let t = user.trim().to_ascii_lowercase();
+    let compact: String = t
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || c.is_ascii_whitespace())
+        .collect();
+    let c = compact.trim();
+    let hit = matches!(
+        c,
+        "hi" | "hello"
+            | "hey"
+            | "hi there"
+            | "hello there"
+            | "hey there"
+            | "hi there hello"
+            | "hello hi"
+    ) || (c.len() <= 24
+        && (c.starts_with("hi ") || c.starts_with("hello ") || c.starts_with("hey "))
+        && !c.contains("workspace")
+        && !c.contains("memory")
+        && !c.contains("system"));
+    if !hit {
+        return None;
+    }
+    Some(
+        "Hey — I'm here. What are we working on? I can help with exact math, routing checks, plans, \
+memory notes, or a failing case to harden. Keep it concrete and I'll stay on the thread.",
+    )
+}
+
 /// Prefer the first matching SoftCascade alignment body (specialized → structural).
 pub fn softcascade_pack_alignment_body(user: &str) -> Option<&'static str> {
-    softcascade_trust_alignment_body(user)
+    softcascade_greeting_alignment_body(user)
+        .or_else(|| softcascade_trust_alignment_body(user))
         .or_else(|| softcascade_governance_alignment_body(user))
         .or_else(|| softcascade_identity_alignment_body(user))
         .or_else(|| softcascade_geometry_alignment_body(user))
         .or_else(|| softcascade_planning_alignment_body(user))
         .or_else(|| softcascade_logic_alignment_body(user))
+        .or_else(|| softcascade_memory_alignment_body(user))
+        .or_else(|| softcascade_english_alignment_body(user))
+        .or_else(|| softcascade_science_alignment_body(user))
+        .or_else(|| softcascade_creativity_alignment_body(user))
 }
 
 #[cfg(test)]
@@ -364,5 +485,26 @@ mod tests {
         );
         assert!(b.is_some());
         assert!(b.unwrap().to_ascii_lowercase().contains("measure"));
+    }
+
+    #[test]
+    fn softcascade_open_frame_bodies_hit() {
+        assert!(softcascade_memory_alignment_body(
+            "Remember this only for this session: the calibration number is 3199."
+        )
+        .is_some());
+        assert!(softcascade_english_alignment_body(
+            "Rewrite this sentence more clearly: The system which was built by them is not working."
+        )
+        .is_some());
+        assert!(softcascade_science_alignment_body(
+            "What is a falsifiable hypothesis in experimental method?"
+        )
+        .is_some());
+        assert!(softcascade_creativity_alignment_body(
+            "Give an original comparison between entropy and limits"
+        )
+        .is_some());
+        assert!(softcascade_greeting_alignment_body("hi there").is_some());
     }
 }

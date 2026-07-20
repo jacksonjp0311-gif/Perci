@@ -1,0 +1,59 @@
+{
+  "questions_requested": 12,
+  "responses_parsed": 12,
+  "unique_responses": 12,
+  "duplicate_responses": 0,
+  "topic_binding_rate": 0.1667,
+  "slot_pair_binding_rate": null,
+  "punctuated_response_rate": 0.9167,
+  "mean_chars": 318.75,
+  "median_chars": 277.0,
+  "min_chars": 88,
+  "max_chars": 604,
+  "families": 7,
+  "topics": 12,
+  "family_metrics": {
+    "followup_ambiguity": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_depth": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_ood": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_promotion": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_transfer": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "followup_why": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "seed": {
+      "responses": 6,
+      "unique_responses": 6,
+      "topic_binding_rate": 0.3333,
+      "slot_pair_binding_rate": null
+    }
+  }
+}

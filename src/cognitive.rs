@@ -114,10 +114,10 @@ impl CognitiveMatch {
                 return;
             }
             let low = t.to_ascii_lowercase();
-            if out
-                .iter()
-                .any(|e| e.to_ascii_lowercase() == low || e.to_ascii_lowercase().contains(&low[..low.len().min(40)]))
-            {
+            if out.iter().any(|e| {
+                e.to_ascii_lowercase() == low
+                    || e.to_ascii_lowercase().contains(&low[..low.len().min(40)])
+            }) {
                 return;
             }
             out.push(t.to_owned());
@@ -393,16 +393,17 @@ impl CognitiveWeights {
     ) -> io::Result<CognitiveMatch> {
         const MIXTURE_MAX: usize = 6;
         const RESIDUAL_MIN_BITS: u32 = 6;
+        let routed_text = crate::text_normalize::normalize_for_routing(text);
         // Scan budget: multi-frame + open-fluency asks need more experts;
         // locked short prompts stay narrow for latency.
-        let multi_domain_ask = looks_multi_domain_ask(text);
-        let open_fluency = looks_open_fluency_ask(text);
+        let multi_domain_ask = looks_multi_domain_ask(&routed_text);
+        let open_fluency = looks_open_fluency_ask(&routed_text);
         let wide_search = multi_domain_ask || open_fluency;
         let per_domain_top: usize = if wide_search { 4 } else { 3 };
 
-        let (activation, composition_frame) = encode_with_composition_ctx(text, context);
+        let (activation, composition_frame) = encode_with_composition_ctx(&routed_text, context);
         let query_popcount: u32 = activation.iter().map(|word| word.count_ones()).sum();
-        let priors = lexical_priors(text);
+        let priors = lexical_priors(&routed_text);
         let mut candidates: Vec<(i32, u32, u32, usize)> = self
             .labels
             .iter()
@@ -554,7 +555,7 @@ impl CognitiveWeights {
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
             let (cid, insight) = select_concept(
-                text,
+                &routed_text,
                 &activation,
                 &matched.label,
                 &self.concepts[*label_index],
@@ -617,9 +618,7 @@ impl CognitiveWeights {
                 continue;
             }
             if m.insight.is_some() || m.label != best.label {
-                if m.label != best.label
-                    && !mixture.iter().any(|s| s.label == m.label)
-                {
+                if m.label != best.label && !mixture.iter().any(|s| s.label == m.label) {
                     distinct_labels += 1;
                 }
                 mixture.push(MixtureSupport {
@@ -990,10 +989,7 @@ fn encode_bag_only(text: &str) -> [u64; WORDS] {
 }
 
 /// Bag + A4 structure + A2 VSA + optional session CTX binds (KV-cache analog).
-fn encode_with_composition_ctx(
-    text: &str,
-    context: &[&str],
-) -> ([u64; WORDS], Vec<String>) {
+fn encode_with_composition_ctx(text: &str, context: &[&str]) -> ([u64; WORDS], Vec<String>) {
     let normalized = normalize(text);
     let words: Vec<&str> = normalized.split_whitespace().collect();
     let mut bits = [0u64; WORDS];
@@ -1060,11 +1056,7 @@ fn encode_session_context(bits: &mut [u64; WORDS], context: &[&str], frame: &mut
 ///
 /// Overlay is OR'd into the bag activation so pack NN still works (query denser,
 /// prototypes bag-encoded until authorized rebuild).
-fn encode_vsa_composition(
-    bits: &mut [u64; WORDS],
-    raw: &str,
-    words: &[&str],
-) -> Vec<String> {
+fn encode_vsa_composition(bits: &mut [u64; WORDS], raw: &str, words: &[&str]) -> Vec<String> {
     let pairs = extract_role_fillers(raw, words);
     if pairs.is_empty() {
         return Vec::new();
@@ -1129,8 +1121,10 @@ fn extract_role_fillers(raw: &str, words: &[&str]) -> Vec<(String, String)> {
         .collect();
 
     for (i, w) in words.iter().enumerate() {
-        if matches!(*w, "does" | "did" | "is" | "are" | "was" | "were" | "makes" | "make")
-        {
+        if matches!(
+            *w,
+            "does" | "did" | "is" | "are" | "was" | "were" | "makes" | "make"
+        ) {
             if let Some(next) = words
                 .iter()
                 .skip(i + 1)
@@ -1139,7 +1133,10 @@ fn extract_role_fillers(raw: &str, words: &[&str]) -> Vec<(String, String)> {
                 push(&mut pairs, "agent", next);
             }
         }
-        if matches!(*w, "in" | "for" | "about" | "on" | "under" | "via" | "within") {
+        if matches!(
+            *w,
+            "in" | "for" | "about" | "on" | "under" | "via" | "within"
+        ) {
             if let Some(next) = words
                 .iter()
                 .skip(i + 1)
@@ -1200,7 +1197,9 @@ fn atom_hv(symbol: &str) -> [u64; WORDS] {
     for _ in 0..8 {
         let position = (hash & (BITS as u64 - 1)) as usize;
         bits[position >> 6] |= 1u64 << (position & 63);
-        hash = hash.wrapping_mul(0x9e3779b97f4a7c15).wrapping_add(0x85eb_ca6b);
+        hash = hash
+            .wrapping_mul(0x9e3779b97f4a7c15)
+            .wrapping_add(0x85eb_ca6b);
     }
     bits
 }
@@ -1320,8 +1319,10 @@ fn encode_structure_features(bits: &mut [u64; WORDS], raw: &str, words: &[&str])
 
     // agent / subject after does|is|are|makes
     for (i, w) in words.iter().enumerate() {
-        if matches!(*w, "does" | "did" | "is" | "are" | "was" | "were" | "makes" | "make")
-        {
+        if matches!(
+            *w,
+            "does" | "did" | "is" | "are" | "was" | "were" | "makes" | "make"
+        ) {
             if let Some(next) = words
                 .iter()
                 .skip(i + 1)
@@ -1406,24 +1407,109 @@ fn looks_ask_what(lower: &str) -> bool {
 fn is_negation_cue(w: &str) -> bool {
     matches!(
         w,
-        "not" | "no" | "never" | "without" | "isnt" | "isn" | "dont" | "don" | "doesnt"
-            | "doesn" | "cant" | "won" | "wont" | "neither" | "nor"
+        "not"
+            | "no"
+            | "never"
+            | "without"
+            | "isnt"
+            | "isn"
+            | "dont"
+            | "don"
+            | "doesnt"
+            | "doesn"
+            | "cant"
+            | "won"
+            | "wont"
+            | "neither"
+            | "nor"
     )
 }
 
 fn is_structure_stop(w: &str) -> bool {
     matches!(
         w,
-        "the" | "a" | "an" | "and" | "or" | "but" | "if" | "then" | "than" | "that"
-            | "this" | "these" | "those" | "with" | "from" | "into" | "onto" | "about"
-            | "what" | "when" | "where" | "which" | "who" | "whom" | "why" | "how"
-            | "can" | "could" | "would" | "should" | "will" | "just" | "really" | "very"
-            | "your" | "you" | "me" | "my" | "our" | "we" | "i" | "is" | "are" | "was"
-            | "were" | "be" | "been" | "being" | "do" | "does" | "did" | "to" | "of"
-            | "in" | "on" | "for" | "it" | "its" | "as" | "at" | "by" | "not" | "no"
-            | "please" | "tell" | "give" | "make" | "more" | "some" | "any" | "all"
-            | "also" | "like" | "have" | "has" | "had" | "get" | "got" | "let" | "vs"
-            | "versus" | "between"
+        "the"
+            | "a"
+            | "an"
+            | "and"
+            | "or"
+            | "but"
+            | "if"
+            | "then"
+            | "than"
+            | "that"
+            | "this"
+            | "these"
+            | "those"
+            | "with"
+            | "from"
+            | "into"
+            | "onto"
+            | "about"
+            | "what"
+            | "when"
+            | "where"
+            | "which"
+            | "who"
+            | "whom"
+            | "why"
+            | "how"
+            | "can"
+            | "could"
+            | "would"
+            | "should"
+            | "will"
+            | "just"
+            | "really"
+            | "very"
+            | "your"
+            | "you"
+            | "me"
+            | "my"
+            | "our"
+            | "we"
+            | "i"
+            | "is"
+            | "are"
+            | "was"
+            | "were"
+            | "be"
+            | "been"
+            | "being"
+            | "do"
+            | "does"
+            | "did"
+            | "to"
+            | "of"
+            | "in"
+            | "on"
+            | "for"
+            | "it"
+            | "its"
+            | "as"
+            | "at"
+            | "by"
+            | "not"
+            | "no"
+            | "please"
+            | "tell"
+            | "give"
+            | "make"
+            | "more"
+            | "some"
+            | "any"
+            | "all"
+            | "also"
+            | "like"
+            | "have"
+            | "has"
+            | "had"
+            | "get"
+            | "got"
+            | "let"
+            | "vs"
+            | "versus"
+            | "between"
     )
 }
 
@@ -2392,18 +2478,21 @@ mod tests {
 
     #[test]
     fn vsa_composition_frame_extracts_roles() {
-        let (_, frame) =
-            encode_with_composition("why does trust fail in distributed systems?");
+        let (_, frame) = encode_with_composition("why does trust fail in distributed systems?");
         assert!(
             frame.iter().any(|f| f.starts_with("ask:")),
             "expected ask role, got {frame:?}"
         );
         assert!(
-            frame.iter().any(|f| f.contains("trust") || f.starts_with("agent:")),
+            frame
+                .iter()
+                .any(|f| f.contains("trust") || f.starts_with("agent:")),
             "expected agent/topic trust, got {frame:?}"
         );
         assert!(
-            frame.iter().any(|f| f.starts_with("domain:") || f.contains("distributed")),
+            frame
+                .iter()
+                .any(|f| f.starts_with("domain:") || f.contains("distributed")),
             "expected domain, got {frame:?}"
         );
     }
@@ -2488,7 +2577,9 @@ mod tests {
         // concept_skeleton excludes residual (voice frames it separately).
         let sk = m.concept_skeleton(3);
         assert!(sk.iter().all(|s| !s.contains("ANDNOT")));
-        assert!(sk.iter().any(|s| s.contains("primary") || s.contains("geometry")));
+        assert!(sk
+            .iter()
+            .any(|s| s.contains("primary") || s.contains("geometry")));
     }
 
     #[test]

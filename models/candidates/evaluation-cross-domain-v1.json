@@ -1,0 +1,238 @@
+{
+  "schema": "perci.cross-domain-evaluation.v1",
+  "evaluated_at_utc": "2026-07-19T11:29:21.079975+00:00",
+  "runtime_sha256": "f70096edfdec52342b8802aa9bff34a9bf96bed05f884ac2fa9e713f7394d80f",
+  "questions_sha256": "e613145f5c31f596f33c45a66f69a0f17759fb3e9cd4394d4ccb3e966d6ce5d6",
+  "case_count": 12,
+  "passed": 12,
+  "status": "PASS",
+  "automatic_promotion": false,
+  "topology": "single_node_warm_session",
+  "families": {
+    "seed": {
+      "passed": 3,
+      "total": 3
+    },
+    "evidence_followup": {
+      "passed": 2,
+      "total": 2
+    },
+    "boundary_followup": {
+      "passed": 1,
+      "total": 1
+    },
+    "natural_analysis": {
+      "passed": 1,
+      "total": 1
+    },
+    "unknown_coverage": {
+      "passed": 1,
+      "total": 1
+    },
+    "mechanism_boundary": {
+      "passed": 1,
+      "total": 1
+    },
+    "knowledge": {
+      "passed": 1,
+      "total": 1
+    },
+    "transfer": {
+      "passed": 1,
+      "total": 1
+    },
+    "selection": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "cases": [
+    {
+      "id": "cdx-h1-seed",
+      "family": "seed",
+      "prompt": "Connect geometry, biology, and code through one shared structure.",
+      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; life actively maintains a boundary between organism and environment; code turns relations into executable structure. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause. Mechanisms remain domain-specific—not one shared substance.\n\nSource-bearing context:\n- (intelligence_pack) 4. Identify domain and boundary conditions.\n- (intelligence_pack) 2. Test zero, one, maximum, empty, missing, duplicated, and malformed inputs.\n- (intelligence_pack) inputs -> state -> transformations -> outputs -> validation -> recovery\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.83] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md\n- [intelligence_pack · auth=0.81] 2. Test zero, one, maximum, empty, missing, duplicated, and malformed inputs. — knowledge/packs/perci-core-intelligence-v1/05-counterexamples-and-boundaries.md\n- [intelligence_pack · auth=0.81] inputs -> state -> transformations -> outputs -> validation -> recovery — knowledge/packs/perci-core-intelligence-v1/02-decomposition-and-representation.md",
+      "required": [],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 343.21,
+      "pass": true
+    },
+    {
+      "id": "cdx-h1",
+      "family": "evidence_followup",
+      "prompt": "What evidence supports that?",
+      "answer": "Evidence has to be earned separately in each domain. geometry: measure whether a geometric prediction survives a controlled spatial perturbation life: perturb regulation or a membrane and measure repair, error, or loss of organization code: perturb an input or invariant and measure the resulting state transition The shared axis is boundary, but that is still a structural hypothesis: support requires a predeclared outcome in every domain, a relevant control, and a result that beats a plausible alternative.\n\nSource-bearing context:\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n- (intelligence_pack) 2. What did I assume that was not stated?\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "required": [
+        "evidence",
+        "geometry",
+        "life",
+        "predeclared"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 297.217,
+      "pass": true
+    },
+    {
+      "id": "cdx-h2-seed",
+      "family": "seed",
+      "prompt": "Connect music, memory, and clocks through one shared principle.",
+      "answer": "A coherent bridge is time: music makes structure audible across time; memory carries selected past state into present behavior; clocks measure change by counting repeatable cycles. Together they show time as measured sequence, irreversible transformation, lived development, and future commitment—not one shared physical mechanism. Mechanisms remain domain-specific—not one shared substance.\n\nSource-bearing context:\n- (intelligence_pack) > connect related memories\n- (intelligence_pack) win/evidence → candidate → human confirm → optional Perci stage → rebuild offline → remeasure (flow eval / evolve score)\n- (intelligence_pack) A memory may be accurate historically and wrong currently. Store timestamps,\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] > connect related memories — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md\n- [intelligence_pack · auth=0.93] win/evidence → candidate → human confirm → optional Perci stage → rebuild offline → remeasure (flow eval / evolve score) — knowledge/packs/perci-deep-intelligence-v2/09-learning-and-memory.md\n- [intelligence_pack · auth=0.87] A memory may be accurate historically and wrong currently. Store timestamps, — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md",
+      "required": [],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 325.061,
+      "pass": true
+    },
+    {
+      "id": "cdx-h2",
+      "family": "boundary_followup",
+      "prompt": "Where does the analogy stop transferring?",
+      "answer": "The analogy stops transferring when the shared pattern no longer predicts the same behavior. Structure, relation, or function may carry across domains; material mechanism, scale, history, and subjective experience do not come along for free. For example, a person changes through biological plasticity, while Perci changes only through explicit session state, governed records, code, or evaluated weights. The right boundary test is to change the condition that matters and ask whether both domains make the same prediction. If they diverge, keep the comparison structural rather than calling the systems identical.",
+      "required": [
+        "shared pattern",
+        "mechanism",
+        "prediction"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 269.031,
+      "pass": true
+    },
+    {
+      "id": "cdx-h3",
+      "family": "natural_analysis",
+      "prompt": "Analyze memory, identity, and prediction across domains.",
+      "answer": "A bounded cross-domain read is information: memory: memory carries selected past state into present behavior; identity: identity carries a pattern of continuity across changing states; prediction: prediction turns a model of the present into a claim about what comes next. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: memory — compare future performance with and without the retained trace identity — change one continuity signal and measure which judgments of identity remain stable prediction — record the forecast before the outcome and score it against a declared baseline.\n\nSource-bearing context:\n- (intelligence_pack) > lexical and semantic search\n- (intelligence_pack) win/evidence → candidate → human confirm → optional Perci stage → rebuild offline → remeasure (flow eval / evolve score)\n- (intelligence_pack) > attach provenance\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] > lexical and semantic search — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md\n- [intelligence_pack · auth=0.93] win/evidence → candidate → human confirm → optional Perci stage → rebuild offline → remeasure (flow eval / evolve score) — knowledge/packs/perci-deep-intelligence-v2/09-learning-and-memory.md\n- [intelligence_pack · auth=0.83] > attach provenance — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md",
+      "required": [
+        "memory",
+        "identity",
+        "prediction",
+        "domain tests"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 310.706,
+      "pass": true
+    },
+    {
+      "id": "cdx-h4-seed",
+      "family": "seed",
+      "prompt": "Bridge trust, corrosion, and architecture through change.",
+      "answer": "Read them as different expressions of change. trust converts repeated behavior into an expectation about the future; corrosion turns exposure into gradual material change; architecture distributes constraints across a designed system. The connection is a relation under constraint, not a shared substance: Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause.\n\nSource-bearing context:\n- (intelligence_pack) A coherent architecture minimizes overlapping authority and hidden state.\n- (intelligence_pack) urgency and acceptable risk;\n- (intelligence_pack) 2. Identify the process and file that produced it.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] A coherent architecture minimizes overlapping authority and hidden state. — knowledge/packs/perci-core-intelligence-v1/08-architecture-and-planning.md\n- [intelligence_pack · auth=0.77] urgency and acceptable risk; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md\n- [intelligence_pack · auth=0.77] 2. Identify the process and file that produced it. — knowledge/packs/perci-core-intelligence-v1/07-debugging-and-engineering.md",
+      "required": [],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 307.0,
+      "pass": true
+    },
+    {
+      "id": "cdx-h4",
+      "family": "evidence_followup",
+      "prompt": "What evidence supports that?",
+      "answer": "Evidence has to be earned separately in each domain. trust: compare cooperation after matched histories with different reliability corrosion: measure mass, strength, or composition under controlled exposure architecture: perturb an interface and measure system-level effects The shared axis is change, but that is still a structural hypothesis: support requires a predeclared outcome in every domain, a relevant control, and a result that beats a plausible alternative.\n\nSource-bearing context:\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n- (intelligence_pack) 2. What did I assume that was not stated?\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "required": [
+        "evidence",
+        "trust",
+        "corrosion",
+        "predeclared"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 291.899,
+      "pass": true
+    },
+    {
+      "id": "cdx-h5",
+      "family": "unknown_coverage",
+      "prompt": "Bridge geometry with quaal mechanics and say what you actually know.",
+      "answer": "Think of them as different crafts of keeping a relation intact: geometry formalizes boundaries and relations in space; quaal mechanics absorbs shocks without losing the relation it is trying to keep. The shared idea is maintained structure under stress, not one shared substance. No specialist frame is available for quaal mechanics; that line is an honest placeholder. If you teach a mechanism-level claim or provide a source, I can replace the placeholder and retest.\n\nSource-bearing context:\n- (intelligence_pack) 4. Identify domain and boundary conditions.\n- (intelligence_pack) Can the user identify what is known, what is inferred, what action to take, and\n- (intelligence_pack) urgency and acceptable risk;\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.87] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md\n- [intelligence_pack · auth=0.85] Can the user identify what is known, what is inferred, what action to take, and — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.85] urgency and acceptable risk; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md",
+      "required": [
+        "geometry",
+        "no specialist frame",
+        "quaal"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 282.362,
+      "pass": true
+    },
+    {
+      "id": "cdx-h6",
+      "family": "mechanism_boundary",
+      "prompt": "Separate the shared relation from the domain mechanisms in geometry, life, and code.",
+      "answer": "A bounded cross-domain read is boundary: geometry: geometry formalizes boundaries and relations in space; life: life actively maintains a boundary between organism and environment; code: code turns relations into executable structure. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: geometry — measure whether a geometric prediction survives a controlled spatial perturbation life — perturb regulation or a membrane and measure repair, error, or loss of organization code — perturb an input or invariant and measure the resulting state transition.\n\nSource-bearing context:\n- (intelligence_pack) 4. Identify domain and boundary conditions.\n- (intelligence_pack) 4. Combine it with a mechanism from another domain.\n- (intelligence_pack) 2. Identify the process and file that produced it.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md\n- [intelligence_pack · auth=0.93] 4. Combine it with a mechanism from another domain. — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.89] 4. current source code; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
+      "required": [
+        "geometry",
+        "life",
+        "code",
+        "mechanisms"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 322.721,
+      "pass": true
+    },
+    {
+      "id": "cdx-h7",
+      "family": "knowledge",
+      "prompt": "Use the available local knowledge when comparing culture and code.",
+      "answer": "The useful bridge here is boundary: code: code turns relations into executable structure; culture: culture carries shared meanings across people and generations; knowledge: knowledge connects information to scope, justification, and use. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: code — perturb an input or invariant and measure the resulting state transition culture — compare how a practice changes when its context, participants, or transmission path changes knowledge — apply the claim to an unseen case and record whether the prediction survives.\n\nSource-bearing context:\n- (intelligence_pack) 7. Use exact arithmetic when practical.\n- (intelligence_pack) 3. Provide exact commands or artifacts when action is required.\n- (intelligence_pack) whether the user wants information, analysis, creation, modification,\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 7. Use exact arithmetic when practical. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md\n- [intelligence_pack · auth=0.93] 3. Provide exact commands or artifacts when action is required. — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.89] whether the user wants information, analysis, creation, modification, — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md",
+      "required": [
+        "culture",
+        "code",
+        "local",
+        "evidence"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 317.578,
+      "pass": true
+    },
+    {
+      "id": "cdx-h8",
+      "family": "transfer",
+      "prompt": "Apply the same relation to a new domain without copying the old nouns.",
+      "answer": "Keeping use available local knowledge in view, transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. Predeclare the prediction, then run a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
+      "required": [
+        "abstract relation",
+        "prediction",
+        "transfer"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 269.364,
+      "pass": true
+    },
+    {
+      "id": "cdx-h9",
+      "family": "selection",
+      "prompt": "Compare markets, ecosystems, and immune systems without collapsing them into one process.",
+      "answer": "The useful bridge here is selection: markets: markets coordinate exchange through price and competition signals; ecosystems: ecosystems are interdependent living networks under resource constraints; immune systems: immune systems detect and respond to threats while limiting self-damage. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: markets — change a cost, constraint, or information asymmetry and measure reallocation ecosystems — perturb one population or resource and measure cascading abundance and recovery immune systems — introduce a controlled antigen or pathogen and measure detection, clearance, and autoimmunity risk.\n\nSource-bearing context:\n- (intelligence_pack) Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob.\n- (intelligence_pack) Compare systems by capability, correctness, latency, memory, adaptability,\n- (intelligence_pack) 2. Identify the process and file that produced it.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob. — knowledge/packs/perci-deep-intelligence-v2/08-systems-and-governance.md\n- [intelligence_pack · auth=0.85] 2. Identify the process and file that produced it. — knowledge/packs/perci-core-intelligence-v1/07-debugging-and-engineering.md\n- [intelligence_pack · auth=0.85] inputs -> state -> transformations -> outputs -> validation -> recovery — knowledge/packs/perci-core-intelligence-v1/02-decomposition-and-representation.md",
+      "required": [
+        "markets",
+        "ecosystems",
+        "immune",
+        "mechanisms"
+      ],
+      "forbidden": [],
+      "required_pass": true,
+      "forbidden_pass": true,
+      "latency_ms": 313.4,
+      "pass": true
+    }
+  ],
+  "receipt_sha256": "9deb45230a72b8ada166667e86e96de3e379fa683ddcf50fbe37f6849436d714"
+}

@@ -194,7 +194,12 @@ impl ChatEngine {
         self.last_deliberation = None;
         // Flags only request deeper **backend** storage for /think — never chat prefixes.
         let (flag_verbose, clean) = crate::bridge::strip_cognition_flags(input);
-        let input = clean.as_str();
+        // Route a bounded repaired view so a dropped character or one
+        // transposition cannot change the cognitive operator selected for the
+        // turn. The repaired spelling is also what the answer can refer back
+        // to, avoiding a second mismatch between routing and voice.
+        let repaired = crate::text_normalize::repair_typos(clean.as_str());
+        let input = repaired.as_str();
         crate::bridge::set_turn_verbose(flag_verbose || self.verbose_cognition);
         self.sync_style_to_bridge();
         let _flag_verbose = flag_verbose; // reserved: richer plan retention
@@ -276,7 +281,11 @@ impl ChatEngine {
         if let Some(mut result) =
             deliberation::try_deliberate(input, &self.recent, &teaching_claims)
         {
-            crate::operator_program::annotate_deliberation(input, &mut result);
+            result = crate::operator_program::apply_dialogue_workspace_runtime(
+                input,
+                &self.recent,
+                result,
+            );
             let raw = result.answer.clone();
             // Operators answer, but Bitwork still probes geometry for the cognition trace
             // (α, residual hops, mixture domains) — otherwise traces stay α=0 forever.
@@ -285,8 +294,23 @@ impl ChatEngine {
             if let Some(ref m) = bitwork {
                 crate::emergence::record_match(input, m, result.operator);
             }
+            let control = crate::reasoning_controller::derive(
+                input,
+                &self.recent,
+                bitwork.as_ref(),
+                result.operator,
+            );
+            result
+                .observations
+                .push(format!("reasoning_controller={}", control.hint()));
+            result.inferences.push(format!(
+                "controller_steps={} · binary_state={:016x}",
+                control.steps.join("→"),
+                control.state_fingerprint
+            ));
             // Capability Fabric: knowledge + native language under critic (governor retains control).
             let enriched = crate::orchestrate::enrich_answer(input, result.operator, &raw);
+            let enriched = voice::shape_for_conversation(&enriched, input, &self.recent);
             let text = crate::bridge::envelope_with_bitwork(
                 input,
                 crate::bridge::CognitionPath::Operator,
@@ -350,6 +374,16 @@ impl ChatEngine {
             &self.recent,
             self.learning.as_ref().map(|learner| learner.profile()),
         ) {
+            let mut deliberation = Deliberation::new("dialogue-act", text.clone())
+                .observed(format!("dialogue_act={dialogue_act:?}"))
+                .inferred("recent dialogue constrained the response")
+                .confidence(0.90);
+            deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+                input,
+                &self.recent,
+                deliberation,
+            );
+            let text = deliberation.answer.clone();
             self.backend.set_dialogue_history(&self.recent);
             let bitwork = self.backend.probe_cognition(input);
             let text = crate::bridge::envelope_with_bitwork(
@@ -361,12 +395,8 @@ impl ChatEngine {
                 false,
                 bitwork.as_ref(),
             );
-            self.last_deliberation = Some(
-                Deliberation::new("dialogue-act", text.clone())
-                    .observed(format!("dialogue_act={dialogue_act:?}"))
-                    .inferred("recent dialogue constrained the response")
-                    .confidence(0.90),
-            );
+            deliberation.answer = text.clone();
+            self.last_deliberation = Some(deliberation);
             self.push_turn(input, &text);
             crate::bridge::set_turn_verbose(false);
             return Ok(ChatResponse {
@@ -387,17 +417,16 @@ impl ChatEngine {
                     || (lower.contains("authority") && lower.contains("different"))
                 {
                     text.push_str(
-                        " That number is exact-tool authority (checked arithmetic), not a metaphor or associative prototype vote — definitions and rules decide the value; Bitwork only routes.",
+                        " That number is exact-tool authority (checked rational arithmetic), not a metaphor or associative prototype vote — definitions and rules decide the value; Bitwork only routes.",
                     );
                 }
                 let mut deliberation = Deliberation::new("exact-arithmetic", text.clone())
                     .observed(format!("checked rational result={value}"))
                     .inferred(
-                        "deterministic parser and checked arithmetic established the value",
+                        "deterministic parser and checked rational arithmetic established the value",
                     )
                     .confidence(1.0);
-                deliberation =
-                    crate::operator_program::apply_program_runtime(input, deliberation);
+                deliberation = crate::operator_program::apply_program_runtime(input, deliberation);
                 let raw = deliberation.answer.clone();
                 text = crate::bridge::envelope_light(
                     input,
@@ -456,8 +485,7 @@ impl ChatEngine {
                     .observed(format!("symbolic geometry result={value}"))
                     .inferred("deterministic geometry rules established the value")
                     .confidence(1.0);
-                deliberation =
-                    crate::operator_program::apply_program_runtime(input, deliberation);
+                deliberation = crate::operator_program::apply_program_runtime(input, deliberation);
                 let raw = deliberation.answer.clone();
                 text = crate::bridge::envelope_light(
                     input,
@@ -525,6 +553,9 @@ impl ChatEngine {
             }
         }
 
+        // Derive a small, inspectable turn record once so context collection and
+        // response generation agree on the active act, referent, and depth.
+        let workspace = crate::dialogue_workspace::DialogueWorkspace::derive(input, &self.recent);
         let context = if should_load_context(input) {
             self.collect_context(input, 4, context_budget(input))?
         } else {
@@ -532,6 +563,10 @@ impl ChatEngine {
         };
 
         let mut ctx = context;
+        ctx.insert(
+            0,
+            format!("[Perci dialogue workspace: {}]", workspace.hint()),
+        );
         if !self.recent.is_empty() {
             let hist = self
                 .recent
@@ -546,28 +581,59 @@ impl ChatEngine {
         }
 
         self.backend.set_dialogue_history(&self.recent);
-        let text = self
+        let control =
+            crate::reasoning_controller::derive(input, &self.recent, None, "fluid-associative");
+        let generated = self
             .backend
             .generate(&self.personality.prompt, &ctx, input)?;
+        let empty_generation = generated.trim().is_empty();
+        let generated = if empty_generation {
+            workspace.safe_fallback(input)
+        } else {
+            generated
+        };
+        let shaped = voice::shape_for_conversation(&generated, input, &self.recent);
+        let shaped_empty = shaped.trim().is_empty();
+        let generated = if shaped_empty {
+            workspace.safe_fallback(input)
+        } else {
+            shaped
+        };
         // Style + anti-generic: fluid binding survives learned compression.
         let text = if let Some(learner) = &self.learning {
             let styled = voice::apply_learned_style(
-                &text,
+                &generated,
                 learner.profile().prefer_concise,
                 learner.profile().avoid_structured_chat,
             );
             let aligned = voice::apply_profile_alignment(&styled, input, learner.profile());
             voice::ensure_user_binding(input, &aligned, "general", None, &self.recent)
         } else {
-            voice::ensure_user_binding(input, &text, "general", None, &self.recent)
+            voice::ensure_user_binding(input, &generated, "general", None, &self.recent)
         };
 
         let mut deliberation = Deliberation::new("fluid-associative", text.clone())
             .observed(format!("context_items={}", ctx.len()))
+            .observed(format!("reasoning_controller={}", control.hint()))
             .inferred("fluid composition bound reply to user content under Bitwork routing")
+            .inferred(format!(
+                "controller_steps={} · binary_state={:016x}",
+                control.steps.join("→"),
+                control.state_fingerprint
+            ))
             .uncertain("associative prose is not exact-tool evidence")
             .confidence(0.78);
-        deliberation = crate::operator_program::apply_program_runtime(input, deliberation);
+        if empty_generation || shaped_empty {
+            deliberation.observations.push(
+                "response stage returned empty text; workspace fallback supplied text".into(),
+            );
+            deliberation.confidence = 0.45;
+        }
+        deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+            input,
+            &self.recent,
+            deliberation,
+        );
         let text = deliberation.answer.clone();
         crate::decision_trace::append(input, &deliberation);
         self.last_deliberation = Some(deliberation);

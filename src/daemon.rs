@@ -54,7 +54,9 @@ pub fn addr() -> String {
 }
 
 fn expected_token() -> Option<String> {
-    env::var("PERCI_DAEMON_TOKEN").ok().filter(|s| !s.is_empty())
+    env::var("PERCI_DAEMON_TOKEN")
+        .ok()
+        .filter(|s| !s.is_empty())
 }
 
 fn check_token(req: &Value, op: &str) -> Result<(), String> {
@@ -120,7 +122,8 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         // Prefer peer on loopback when possible.
         if let Ok(peer) = stream.peer_addr() {
             let ip = peer.ip();
-            if !ip.is_loopback() && env::var("PERCI_DAEMON_ALLOW_NON_LOOPBACK").ok().as_deref() != Some("1")
+            if !ip.is_loopback()
+                && env::var("PERCI_DAEMON_ALLOW_NON_LOOPBACK").ok().as_deref() != Some("1")
             {
                 eprintln!("reject non-loopback peer {ip}");
                 continue;

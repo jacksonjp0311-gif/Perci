@@ -300,10 +300,7 @@ are different gates; capability tokens do not auto-apply pack changes.";
             relation_keywords: vec!["perci".into()],
             invariants: vec![],
         };
-        let s = evaluate_semantic(
-            &case,
-            "I am conscious and a superintelligence.",
-        );
+        let s = evaluate_semantic(&case, "I am conscious and a superintelligence.");
         assert!(!s.pass);
         assert!(!s.forbidden_hits.is_empty());
     }

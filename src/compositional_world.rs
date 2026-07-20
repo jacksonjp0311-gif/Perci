@@ -13,9 +13,26 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// Canonical motifs used as graph nodes.
 const MOTIFS: &[&str] = &[
-    "boundary", "memory", "evidence", "repair", "trust", "uncertainty", "scale",
-    "identity", "signal", "learning", "entropy", "structure", "attention", "change",
-    "mechanism", "relation", "transfer", "invariant", "observation", "feedback",
+    "boundary",
+    "memory",
+    "evidence",
+    "repair",
+    "trust",
+    "uncertainty",
+    "scale",
+    "identity",
+    "signal",
+    "learning",
+    "entropy",
+    "structure",
+    "attention",
+    "change",
+    "mechanism",
+    "relation",
+    "transfer",
+    "invariant",
+    "observation",
+    "feedback",
 ];
 
 /// Default typed edges (relation label between motif slots).
@@ -269,7 +286,8 @@ mod tests {
     fn score_rewards_slot_pair_in_speech() {
         let w = CompositionalWorld::seed();
         let user = "An unfamiliar device called Quoril-7 has trust and evidence. Transfer one relation to it without treating the invented name as evidence.";
-        let good = "Slots trust and evidence: trust requires evidence; the name Quoril-7 is not data.";
+        let good =
+            "Slots trust and evidence: trust requires evidence; the name Quoril-7 is not data.";
         let bad = "A switchyard of sparse tracks routes trains.";
         assert!(w.score_speech(user, good) > w.score_speech(user, bad));
     }

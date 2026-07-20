@@ -1,0 +1,17 @@
+{
+  "schema": "perci.lowbit.report.v1",
+  "rows": 2,
+  "cols": 4,
+  "candidate_path": ".\\models\\candidates\\perci-lowbit-example.blw",
+  "manifest_path": ".\\models\\candidates\\perci-lowbit-example.json",
+  "candidate_bytes": 280,
+  "candidate_checksum_fnv1a64": "4ab809dc4acdd70a",
+  "baseline_weight_mse": 0.00090606674,
+  "candidate_weight_mse": 0.0,
+  "heldout_probes": 2,
+  "baseline_heldout_mse": 0.0024127217,
+  "candidate_heldout_mse": 8.881784e-16,
+  "candidate_beats_baseline": true,
+  "promote_recommended": false,
+  "claim_boundary": "representation and matrix-vector evidence only; not language-model pretraining or AGI"
+}

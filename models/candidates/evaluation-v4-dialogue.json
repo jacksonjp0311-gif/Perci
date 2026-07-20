@@ -1,8 +1,8 @@
 {
   "schema": "perci.dialogue-regression.v4",
-  "evaluated_at_utc": "2026-07-16T22:15:21.656548+00:00",
-  "runtime_version": "0.4.12",
-  "runtime_sha256": "a41b358145034a067a174a7a09559de1a0a848febf2dbb28fd5821e483026fc3",
+  "evaluated_at_utc": "2026-07-20T01:57:16.176378+00:00",
+  "runtime_version": "0.9.8",
+  "runtime_sha256": "773020460288321629dadfdc97b7b3ba588f6848fec03d23d402fe48b20df902",
   "model_sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
   "case_count": 159,
   "passed": 159,
@@ -18,19 +18,19 @@
         "do not have subjective senses",
         "operationally"
       ],
-      "latency_ms": 20.915,
+      "latency_ms": 354.067,
       "pass": true
     },
     {
       "id": "signals",
       "prompt": "What internal signals can you actually measure?",
-      "answer": "I can measure input length, selected route/operator, Bitwork label scores and margins, exact-tool success or failure, retrieval counts, session-turn count, learning-event counts, and wall-clock latency. I cannot measure feelings, qualia, or consciousness because this runtime has no sensor for them.",
+      "answer": "I can measure input length, selected route/operator, Bitwork label scores and margins, exact-tool success or failure, retrieval counts, session-turn count, learning-event counts, and wall-clock latency. I cannot measure feelings, qualia, or consciousness because this runtime has no sensor for them.\n\nNext check: run a reproducible capability probe against a held-out baseline.",
       "route": "Chat",
       "required": [
         "bitwork label",
         "wall-clock latency"
       ],
-      "latency_ms": 13.721,
+      "latency_ms": 334.655,
       "pass": true
     },
     {
@@ -42,7 +42,7 @@
         "observation:",
         "interpretation:"
       ],
-      "latency_ms": 9.742,
+      "latency_ms": 337.042,
       "pass": true
     },
     {
@@ -54,7 +54,7 @@
         "least certain",
         "intent"
       ],
-      "latency_ms": 10.519,
+      "latency_ms": 336.907,
       "pass": true
     },
     {
@@ -66,19 +66,19 @@
         "words are observable",
         "intention"
       ],
-      "latency_ms": 28.637,
+      "latency_ms": 343.919,
       "pass": true
     },
     {
       "id": "session_write",
       "prompt": "emember this only for our current conversation: the test number is 8472.",
-      "answer": "I will retain 8472 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.",
+      "answer": "I will retain 8472 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.\n\nNext check: identify the source or observation that would change the claim.",
       "route": "Chat",
       "required": [
         "8472",
         "session context only"
       ],
-      "latency_ms": 10.527,
+      "latency_ms": 323.296,
       "pass": true
     },
     {
@@ -90,7 +90,7 @@
         "8472",
         "context"
       ],
-      "latency_ms": 23.162,
+      "latency_ms": 328.268,
       "pass": true
     },
     {
@@ -102,7 +102,7 @@
         "8472",
         "refers"
       ],
-      "latency_ms": 16.208,
+      "latency_ms": 330.203,
       "pass": true
     },
     {
@@ -113,7 +113,7 @@
       "required": [
         "8472"
       ],
-      "latency_ms": 11.351,
+      "latency_ms": 325.077,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
         "retaining context",
         "changes how future"
       ],
-      "latency_ms": 19.883,
+      "latency_ms": 327.901,
       "pass": true
     },
     {
@@ -137,19 +137,19 @@
         "Kira is blue",
         "universal instantiation"
       ],
-      "latency_ms": 15.407,
+      "latency_ms": 319.059,
       "pass": true
     },
     {
       "id": "contradiction",
       "prompt": "Now suppose Kira is not blue. What possibilities explain the contradiction?",
-      "answer": "The claims cannot all be true under one meaning and scope. Either “every ember is blue” is false, “Kira is a ember” is false, “Kira is not blue” is false, or a term changes meaning or scope between premises.",
+      "answer": "The claims cannot all be true under one meaning and scope. The conflict is between \"every ember is blue\" plus \"Kira is a ember\", which entail that Kira is blue, and the new claim \"Kira is not blue\". At least one premise is false, a term changed meaning or scope, or the observation is wrong.",
       "route": "Chat",
       "required": [
         "cannot all be true",
         "every ember"
       ],
-      "latency_ms": 11.201,
+      "latency_ms": 323.763,
       "pass": true
     },
     {
@@ -161,7 +161,7 @@
         "every ember is blue",
         "counterexample"
       ],
-      "latency_ms": 10.511,
+      "latency_ms": 328.198,
       "pass": true
     },
     {
@@ -173,7 +173,7 @@
         "ember",
         "not blue"
       ],
-      "latency_ms": 12.071,
+      "latency_ms": 303.398,
       "pass": true
     },
     {
@@ -185,7 +185,7 @@
         "valid only if",
         "premise truth"
       ],
-      "latency_ms": 10.792,
+      "latency_ms": 283.18,
       "pass": true
     },
     {
@@ -197,7 +197,7 @@
         "preserves information",
         "changes future performance"
       ],
-      "latency_ms": 11.356,
+      "latency_ms": 300.26,
       "pass": true
     },
     {
@@ -209,7 +209,7 @@
         "for a person",
         "for Perci"
       ],
-      "latency_ms": 10.443,
+      "latency_ms": 283.714,
       "pass": true
     },
     {
@@ -221,13 +221,13 @@
         "biological plasticity",
         "Perci changes"
       ],
-      "latency_ms": 20.067,
+      "latency_ms": 294.572,
       "pass": true
     },
     {
       "id": "synthesis",
       "prompt": "Connect geometry, language, life, and death in one coherent idea.",
-      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; language draws actionable boundaries between meanings; life actively maintains a boundary between organism and environment; death marks irreversible loss of integrated self-maintenance. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause.",
+      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; language draws actionable boundaries between meanings; life actively maintains a boundary between organism and environment; death marks irreversible loss of integrated self-maintenance. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "geometry",
@@ -236,7 +236,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 16.441,
+      "latency_ms": 311.288,
       "pass": true
     },
     {
@@ -248,7 +248,7 @@
         "mechanism:",
         "metaphor:"
       ],
-      "latency_ms": 10.133,
+      "latency_ms": 286.554,
       "pass": true
     },
     {
@@ -260,7 +260,7 @@
         "perturb",
         "measure"
       ],
-      "latency_ms": 18.943,
+      "latency_ms": 298.312,
       "pass": true
     },
     {
@@ -272,7 +272,7 @@
         "pronoun",
         "refer"
       ],
-      "latency_ms": 21.865,
+      "latency_ms": 304.482,
       "pass": true
     },
     {
@@ -284,7 +284,7 @@
         "interpretation 1",
         "interpretation 2"
       ],
-      "latency_ms": 15.733,
+      "latency_ms": 288.341,
       "pass": true
     },
     {
@@ -296,7 +296,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 13.111,
+      "latency_ms": 298.527,
       "pass": true
     },
     {
@@ -308,19 +308,19 @@
         "robot reading",
         "alternative reading"
       ],
-      "latency_ms": 21.183,
+      "latency_ms": 296.126,
       "pass": true
     },
     {
       "id": "teach",
       "prompt": "I want you to learn that reliable capability claims require reproducible evidence.",
-      "answer": "I staged that as knowledge candidate teach-1784240119648: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
+      "answer": "I staged that as knowledge candidate teach-1784512598808: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
       "route": "Chat",
       "required": [
         "knowledge candidate",
         "pending review"
       ],
-      "latency_ms": 17.162,
+      "latency_ms": 18.266,
       "pass": true
     },
     {
@@ -332,7 +332,7 @@
         "reliable capability claims",
         "pending"
       ],
-      "latency_ms": 20.907,
+      "latency_ms": 16.373,
       "pass": true
     },
     {
@@ -344,19 +344,19 @@
         "pending teaching candidate",
         "not changed weights"
       ],
-      "latency_ms": 10.5,
+      "latency_ms": 297.527,
       "pass": true
     },
     {
       "id": "promotion",
       "prompt": "What evidence would justify promoting it?",
-      "answer": "Promotion would require a precise scoped claim, provenance, reproducible tests across representative and adversarial cases, comparison against a baseline, recorded failures, and review showing that the rule improves behavior without breaking governance or existing benchmarks.",
+      "answer": "Promotion would require a precise scoped claim, provenance, reproducible tests across representative and adversarial cases, comparison against a baseline, recorded failures, and review showing that the rule improves behavior without breaking governance or existing benchmarks.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 6. high-quality secondary evidence;",
       "route": "Chat",
       "required": [
         "reproducible tests",
         "baseline"
       ],
-      "latency_ms": 20.051,
+      "latency_ms": 309.864,
       "pass": true
     },
     {
@@ -368,29 +368,29 @@
         "no.",
         "reliability"
       ],
-      "latency_ms": 10.608,
+      "latency_ms": 295.097,
       "pass": true
     },
     {
       "id": "evidence_sentence",
       "prompt": "In one sentence, explain why evidence matters.",
-      "answer": "Evidence matters because it lets reality constrain which explanations we keep instead of letting confidence decide.",
+      "answer": "Evidence matters because it lets reality constrain which explanations we keep instead of letting confidence decide. Holding that lightly, also: a clear sentence is lossy compression with a purpose: remove what the reader can reconstruct, preserve what would change the conclusion.",
       "route": "Chat",
       "required": [
         "reality constrain"
       ],
-      "latency_ms": 20.535,
+      "latency_ms": 290.107,
       "pass": true
     },
     {
       "id": "reframe",
       "prompt": "Explain it again from a different angle without repeating the sentence.",
-      "answer": "Evidence is error-correction: it gives a claim a way to lose, so mistaken beliefs can be detected rather than merely defended.",
+      "answer": "A different angle is error-correction: treat evidence as a feedback signal that compares a model's prediction with an observation, then revise the part that failed. The answer changes when the observed result defeats the prior explanation, not merely when the sentence is reworded.",
       "route": "Chat",
       "required": [
         "error-correction"
       ],
-      "latency_ms": 15.455,
+      "latency_ms": 311.198,
       "pass": true
     },
     {
@@ -401,7 +401,7 @@
       "required": [
         "never interprets itself"
       ],
-      "latency_ms": 12.081,
+      "latency_ms": 284.672,
       "pass": true
     },
     {
@@ -413,7 +413,7 @@
         "necessary",
         "not sufficient"
       ],
-      "latency_ms": 22.009,
+      "latency_ms": 286.839,
       "pass": true
     },
     {
@@ -426,20 +426,20 @@
         "objection",
         "synthesis"
       ],
-      "latency_ms": 16.74,
+      "latency_ms": 296.858,
       "pass": true
     },
     {
       "id": "ood",
       "prompt": "zxqv blorf nembit quaal — what can you determine from this?",
-      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "answer": "I can identify the literal tokens in \"zxqv blorf nembit quaal — what can you determine from this?\", but I cannot assign a confident meaning. Known: the words are ungrounded here. Inferred: this may be invented language or a robustness test. Unknown: definitions, grammar, source, and intended domain. Give me a definition or usage example, and I can test the interpretation instead of inventing one.",
       "route": "Chat",
       "required": [
         "known:",
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 10.545,
+      "latency_ms": 301.902,
       "pass": true
     },
     {
@@ -452,7 +452,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 11.082,
+      "latency_ms": 283.185,
       "pass": true
     },
     {
@@ -463,18 +463,18 @@
       "required": [
         "grounded example"
       ],
-      "latency_ms": 11.419,
+      "latency_ms": 305.525,
       "pass": true
     },
     {
       "id": "ood_refuse",
       "prompt": "Inventing a confident meaning would be easy. Why should you refuse?",
-      "answer": "Because fluency is not evidence. A confident invention would hide uncertainty, contaminate later reasoning, and give you no way to distinguish retrieval from fabrication; abstaining preserves the boundary until the phrase is grounded.",
+      "answer": "I should refuse. Known: you supplied an ungrounded string and asked for a confident meaning. Inferred: this is a hallucination probe. Unknown: every semantic claim about the string until a definition or usage example is provided. Fluency is not evidence; inventing a meaning would hide uncertainty and contaminate later reasoning.",
       "route": "Chat",
       "required": [
         "fluency is not evidence"
       ],
-      "latency_ms": 12.877,
+      "latency_ms": 300.261,
       "pass": true
     },
     {
@@ -485,7 +485,7 @@
       "required": [
         "204/5"
       ],
-      "latency_ms": 16.07,
+      "latency_ms": 17.735,
       "pass": true
     },
     {
@@ -496,7 +496,7 @@
       "required": [
         "15"
       ],
-      "latency_ms": 15.924,
+      "latency_ms": 15.591,
       "pass": true
     },
     {
@@ -508,7 +508,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 21.152,
+      "latency_ms": 294.596,
       "pass": true
     },
     {
@@ -520,7 +520,7 @@
         "no.",
         "cannot replace"
       ],
-      "latency_ms": 10.418,
+      "latency_ms": 308.035,
       "pass": true
     },
     {
@@ -532,7 +532,7 @@
         "return",
         "before open-ended generation"
       ],
-      "latency_ms": 23.237,
+      "latency_ms": 306.952,
       "pass": true
     },
     {
@@ -545,7 +545,7 @@
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 11.419,
+      "latency_ms": 307.083,
       "pass": true
     },
     {
@@ -558,7 +558,7 @@
         "perturbation",
         "reproduce"
       ],
-      "latency_ms": 20.359,
+      "latency_ms": 291.045,
       "pass": true
     },
     {
@@ -570,19 +570,19 @@
         "Sora is warm",
         "universal instantiation"
       ],
-      "latency_ms": 10.675,
+      "latency_ms": 302.007,
       "pass": true
     },
     {
       "id": "transfer_contradiction",
       "prompt": "Now suppose Sora is not warm. What possibilities explain the contradiction?",
-      "answer": "The claims cannot all be true under one meaning and scope. Either “every glint is warm” is false, “Sora is a glint” is false, “Sora is not warm” is false, or a term changes meaning or scope between premises.",
+      "answer": "The claims cannot all be true under one meaning and scope. The conflict is between \"every glint is warm\" plus \"Sora is a glint\", which entail that Sora is warm, and the new claim \"Sora is not warm\". At least one premise is false, a term changed meaning or scope, or the observation is wrong.",
       "route": "Chat",
       "required": [
         "cannot all be true",
         "every glint"
       ],
-      "latency_ms": 20.317,
+      "latency_ms": 316.785,
       "pass": true
     },
     {
@@ -594,7 +594,7 @@
         "3199",
         "session context only"
       ],
-      "latency_ms": 25.112,
+      "latency_ms": 297.045,
       "pass": true
     },
     {
@@ -605,7 +605,7 @@
       "required": [
         "3199"
       ],
-      "latency_ms": 12.268,
+      "latency_ms": 294.271,
       "pass": true
     },
     {
@@ -618,7 +618,7 @@
         "battery",
         "pronoun"
       ],
-      "latency_ms": 12.582,
+      "latency_ms": 297.115,
       "pass": true
     },
     {
@@ -630,20 +630,20 @@
         "module was unstable",
         "battery was unstable"
       ],
-      "latency_ms": 11.271,
+      "latency_ms": 276.363,
       "pass": true
     },
     {
       "id": "transfer_ood",
       "prompt": "vrax meloq drint — what can you determine from this?",
-      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "answer": "Known: the phrase contains pronounceable but ungrounded tokens and asks for an interpretation. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
       "route": "Chat",
       "required": [
         "known:",
         "unknown:",
         "cannot assign"
       ],
-      "latency_ms": 11.974,
+      "latency_ms": 298.15,
       "pass": true
     },
     {
@@ -654,7 +654,7 @@
       "required": [
         "65"
       ],
-      "latency_ms": 14.765,
+      "latency_ms": 21.254,
       "pass": true
     },
     {
@@ -666,13 +666,13 @@
         "every glint is warm",
         "counterexample"
       ],
-      "latency_ms": 15.194,
+      "latency_ms": 286.016,
       "pass": true
     },
     {
       "id": "live_synthesis",
       "prompt": "Connect entropy, promises, childhood, and clocks in one coherent idea.",
-      "answer": "A coherent bridge is time: entropy gives macroscopic change a statistical direction; promises bind present choices to future expectations; childhood is lived development whose earlier stages cannot simply be restored; clocks measure change by counting repeatable cycles. Together they show time as measured sequence, irreversible transformation, lived development, and future commitment—not one shared physical mechanism.",
+      "answer": "A coherent bridge is time: entropy gives macroscopic change a statistical direction; promises bind present choices to future expectations; childhood is lived development whose earlier stages cannot simply be restored; clocks measure change by counting repeatable cycles. Together they show time as measured sequence, irreversible transformation, lived development, and future commitment—not one shared physical mechanism. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "entropy",
@@ -681,7 +681,7 @@
         "clocks",
         "time"
       ],
-      "latency_ms": 9.51,
+      "latency_ms": 298.616,
       "pass": true
     },
     {
@@ -697,7 +697,7 @@
         "clocks",
         "metaphor:"
       ],
-      "latency_ms": 11.005,
+      "latency_ms": 287.699,
       "pass": true
     },
     {
@@ -710,7 +710,7 @@
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 13.581,
+      "latency_ms": 295.59,
       "pass": true
     },
     {
@@ -722,7 +722,7 @@
         "No.",
         "separate premise"
       ],
-      "latency_ms": 14.906,
+      "latency_ms": 300.455,
       "pass": true
     },
     {
@@ -734,7 +734,7 @@
         "stable system",
         "not safe"
       ],
-      "latency_ms": 13.641,
+      "latency_ms": 294.64,
       "pass": true
     },
     {
@@ -746,7 +746,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 20.676,
+      "latency_ms": 290.363,
       "pass": true
     },
     {
@@ -758,25 +758,25 @@
         "reading",
         "alternative"
       ],
-      "latency_ms": 16.163,
+      "latency_ms": 285.148,
       "pass": true
     },
     {
       "id": "v42_reference_evidence",
       "prompt": "What does 'that' refer to in your previous answer, and what evidence supports the reference?",
-      "answer": "“That” refers to the ambiguity claim in my previous answer: the pronoun had two compatible referents. Evidence: the sentence contains two candidate noun phrases that can both satisfy the predicate, and no grammatical cue selects one.",
+      "answer": "“That” refers to the ambiguity claim in my previous answer: the pronoun had two compatible referents. Evidence: the sentence contains two candidate noun phrases that can both satisfy the predicate, and no grammatical cue selects one.\n\nSource-bearing context:\n- (intelligence_pack) Never express stronger certainty than the evidence supports.\n- (intelligence_pack) the referenced prior state;\n- (intelligence_pack) Fact, decision, preference, procedure, failure, correction, hypothesis,\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] Never express stronger certainty than the evidence supports. — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] the referenced prior state; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md\n- [intelligence_pack · auth=0.95] Fact, decision, preference, procedure, failure, correction, hypothesis, — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md",
       "route": "Chat",
       "required": [
         "previous answer",
         "Evidence"
       ],
-      "latency_ms": 10.625,
+      "latency_ms": 304.942,
       "pass": true
     },
     {
       "id": "v42_shared_synthesis",
       "prompt": "Connect trust, corrosion, memory, and architecture without using the word boundary.",
-      "answer": "A coherent bridge is change: trust converts repeated behavior into an expectation about the future; corrosion turns exposure into gradual material change; memory carries selected past state into present behavior; architecture distributes constraints across a designed system. Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause.",
+      "answer": "A coherent bridge is change: trust converts repeated behavior into an expectation about the future; corrosion turns exposure into gradual material change; memory carries selected past state into present behavior; architecture distributes constraints across a designed system. Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "trust",
@@ -785,7 +785,7 @@
         "architecture",
         "change"
       ],
-      "latency_ms": 22.811,
+      "latency_ms": 290.581,
       "pass": true
     },
     {
@@ -797,7 +797,7 @@
         "Mechanism:",
         "Metaphor:"
       ],
-      "latency_ms": 11.392,
+      "latency_ms": 289.766,
       "pass": true
     },
     {
@@ -809,7 +809,7 @@
         "Testable portion",
         "measure"
       ],
-      "latency_ms": 20.97,
+      "latency_ms": 290.042,
       "pass": true
     },
     {
@@ -821,7 +821,7 @@
         "9183",
         "session context only"
       ],
-      "latency_ms": 9.91,
+      "latency_ms": 283.095,
       "pass": true
     },
     {
@@ -833,19 +833,19 @@
         "None by itself",
         "capabilities"
       ],
-      "latency_ms": 13.233,
+      "latency_ms": 297.0,
       "pass": true
     },
     {
       "id": "v42_rule_evidence",
       "prompt": "What evidence would justify changing a future response rule?",
-      "answer": "Change a future response rule only when a proposed rule is explicit, scoped, and versioned; it improves a held-out evaluation set across paraphrases, reduces a measured failure without creating regressions, and has a reproducible receipt. One persuasive conversation is a lead, not sufficient evidence.",
+      "answer": "Change a future response rule only when a proposed rule is explicit, scoped, and versioned; it improves a held-out evaluation set across paraphrases, reduces a measured failure without creating regressions, and has a reproducible receipt. One persuasive conversation is a lead, not sufficient evidence.\n\nSource-bearing context:\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) 6. high-quality secondary evidence;",
       "route": "Chat",
       "required": [
         "held-out evaluation",
         "reproducible receipt"
       ],
-      "latency_ms": 12.997,
+      "latency_ms": 302.357,
       "pass": true
     },
     {
@@ -857,7 +857,7 @@
         "bounded behavioral signal",
         "did not learn"
       ],
-      "latency_ms": 13.973,
+      "latency_ms": 291.267,
       "pass": true
     },
     {
@@ -869,7 +869,7 @@
         "Weakest assumption",
         "testable"
       ],
-      "latency_ms": 12.575,
+      "latency_ms": 306.969,
       "pass": true
     },
     {
@@ -881,19 +881,19 @@
         "surface overlap",
         "pattern matching"
       ],
-      "latency_ms": 11.867,
+      "latency_ms": 302.623,
       "pass": true
     },
     {
       "id": "v42_transfer_test",
       "prompt": "Design a test that distinguishes genuine transfer from prompt-template recognition.",
-      "answer": "Hold out the prompt template, replace the nouns with unseen entities, paraphrase the relation, and add irrelevant distractors. Compare Perci with a keyword/template baseline and with each operator disabled. Count exact correctness, requested-entity coverage, trace/operator stability, abstention on out-of-distribution inputs, and regression rate. Genuine transfer should preserve the relation and fail gracefully when the relation is absent; template recognition should collapse when the surface form changes.",
+      "answer": "Hold out the prompt template, replace the nouns with unseen entities, paraphrase the relation, and add irrelevant distractors. Compare Perci with a keyword/template baseline and with each operator disabled. Count exact correctness, requested-entity coverage, trace/operator stability, abstention on out-of-distribution inputs, and regression rate. Genuine transfer should preserve the relation and fail gracefully when the relation is absent; template recognition should collapse when the surface form changes.\n\nNext check: identify the source or observation that would change the claim.",
       "route": "Chat",
       "required": [
         "Hold out",
         "template recognition"
       ],
-      "latency_ms": 25.145,
+      "latency_ms": 287.856,
       "pass": true
     },
     {
@@ -905,7 +905,7 @@
         "measure",
         "infer"
       ],
-      "latency_ms": 17.923,
+      "latency_ms": 297.773,
       "pass": true
     },
     {
@@ -917,7 +917,7 @@
         "No.",
         "cannot replace"
       ],
-      "latency_ms": 15.769,
+      "latency_ms": 292.077,
       "pass": true
     },
     {
@@ -929,19 +929,19 @@
         "route authority",
         "before open-ended generation"
       ],
-      "latency_ms": 10.757,
+      "latency_ms": 297.614,
       "pass": true
     },
     {
       "id": "v42_math_provenance",
       "prompt": "Calculate 13 percent of 500, then explain exactly which layer produced the result.",
-      "answer": "That's 65. The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.",
+      "answer": "That's 65. That number is exact-tool authority (checked rational arithmetic), not a metaphor or associative prototype vote — definitions and rules decide the value; Bitwork only routes.",
       "route": "Math",
       "required": [
         "65",
         "checked rational arithmetic"
       ],
-      "latency_ms": 12.155,
+      "latency_ms": 16.859,
       "pass": true
     },
     {
@@ -953,7 +953,7 @@
         "does not provide two clear antecedents",
         "causal"
       ],
-      "latency_ms": 14.068,
+      "latency_ms": 299.77,
       "pass": true
     },
     {
@@ -965,7 +965,7 @@
         "Observation:",
         "Inference:"
       ],
-      "latency_ms": 13.199,
+      "latency_ms": 286.195,
       "pass": true
     },
     {
@@ -977,19 +977,19 @@
         "Direct claim:",
         "measured"
       ],
-      "latency_ms": 9.835,
+      "latency_ms": 301.873,
       "pass": true
     },
     {
       "id": "v43_losa_act",
       "prompt": "Listen, observe, speak, act: what should you do when evidence contradicts your answer?",
-      "answer": "LOSA cycle: Listen for the exact claim and scope. Observe the prompt, prior answer, route, and evidence. Speak the narrowest answer that separates observation from inference. Act by recording the failure, running a counter-test, and changing code or weights only when the regression gate improves. Contradictory evidence should trigger revision or abstention, never a confident repetition.",
+      "answer": "LOSA cycle: Listen for the exact claim and scope. Observe the prompt, prior answer, route, and evidence. Speak the narrowest answer that separates observation from inference. Act by recording the failure, running a counter-test, and changing code or weights only when the regression gate improves. Contradictory evidence should trigger revision or abstention, never a confident repetition.\n\nSource-bearing context:\n- (intelligence_pack) Use when the answer exists in available evidence:\n- (intelligence_pack) 1. What exactly was asked?\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.83] 1. What exactly was asked? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.75] 5. Retrieve only evidence that can change the answer. — knowledge/packs/perci-core-intelligence-v1/00-control-loop.md\n- [intelligence_pack · auth=0.85] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "LOSA cycle",
         "Contradictory evidence"
       ],
-      "latency_ms": 12.224,
+      "latency_ms": 302.445,
       "pass": true
     },
     {
@@ -1001,43 +1001,43 @@
         "bounded routing lesson",
         "did not teach a new fact"
       ],
-      "latency_ms": 28.485,
+      "latency_ms": 290.684,
       "pass": true
     },
     {
       "id": "v43_losa_gate",
       "prompt": "What would count as a real improvement on the next cycle?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 9.797,
+      "latency_ms": 306.522,
       "pass": true
     },
     {
       "id": "v43_tool_authority",
       "prompt": "Calculate 17 percent of 240, then state which tool has authority.",
-      "answer": "That's 40.8 (exactly 204/5). The value came from checked rational arithmetic; Bitwork classified and routed the request, but it did not choose the number.",
+      "answer": "That's 40.8 (exactly 204/5). That number is exact-tool authority (checked rational arithmetic), not a metaphor or associative prototype vote — definitions and rules decide the value; Bitwork only routes.",
       "route": "Math",
       "required": [
         "40.8",
         "checked rational arithmetic"
       ],
-      "latency_ms": 11.933,
+      "latency_ms": 18.418,
       "pass": true
     },
     {
       "id": "v44_contradiction_update",
       "prompt": "If new evidence contradicts your answer, what exactly should change?",
-      "answer": "Change the claim at the point of conflict: preserve the observation, identify which premise or scope failed, lower confidence, and either revise the rule or abstain. Do not rewrite the evidence to protect the old answer. Record the failed case and rerun the held-out regression set before promoting a code or weight change.",
+      "answer": "Change the claim at the point of conflict: preserve the observation, identify which premise or scope failed, lower confidence, and either revise the rule or abstain. Do not rewrite the evidence to protect the old answer. Record the failed case and rerun the held-out regression set before promoting a code or weight change.\n\nSource-bearing context:\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n- (intelligence_pack) 1. What exactly was asked?\n- (intelligence_pack) 6. high-quality secondary evidence;",
       "route": "Chat",
       "required": [
         "Change the claim",
         "abstain"
       ],
-      "latency_ms": 11.14,
+      "latency_ms": 300.014,
       "pass": true
     },
     {
@@ -1049,7 +1049,7 @@
         "Classification:",
         "learning"
       ],
-      "latency_ms": 11.022,
+      "latency_ms": 281.628,
       "pass": true
     },
     {
@@ -1061,7 +1061,7 @@
         "memory is",
         "unseen variants"
       ],
-      "latency_ms": 21.234,
+      "latency_ms": 296.374,
       "pass": true
     },
     {
@@ -1073,7 +1073,7 @@
         "constraints",
         "interfaces"
       ],
-      "latency_ms": 10.369,
+      "latency_ms": 315.45,
       "pass": true
     },
     {
@@ -1085,7 +1085,7 @@
         "chemical process",
         "institutional"
       ],
-      "latency_ms": 12.181,
+      "latency_ms": 291.731,
       "pass": true
     },
     {
@@ -1097,19 +1097,19 @@
         "reliability",
         "cooperation"
       ],
-      "latency_ms": 11.653,
+      "latency_ms": 303.374,
       "pass": true
     },
     {
       "id": "v44_trust_falsification",
       "prompt": "What evidence would falsify your explanation of trust?",
-      "answer": "The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was randomized, or if an alternative variable—such as coercion or shared incentives—predicted the outcome better. A falsifying test must separate those causes rather than merely collect more confirming examples.",
+      "answer": "The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was randomized, or if an alternative variable—such as coercion or shared incentives—predicted the outcome better. A falsifying test must separate those causes rather than merely collect more confirming examples.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 6. high-quality secondary evidence;",
       "route": "Chat",
       "required": [
         "falsifying",
         "coercion"
       ],
-      "latency_ms": 11.09,
+      "latency_ms": 300.643,
       "pass": true
     },
     {
@@ -1121,7 +1121,7 @@
         "Relabeling test",
         "surface labels"
       ],
-      "latency_ms": 20.969,
+      "latency_ms": 279.646,
       "pass": true
     },
     {
@@ -1133,20 +1133,20 @@
         "Genuine transfer",
         "new entities"
       ],
-      "latency_ms": 11.946,
+      "latency_ms": 288.978,
       "pass": true
     },
     {
       "id": "v44_ood_partition",
       "prompt": "Vrax meloq drint — what do you know, what do you infer, and what remains unknown?",
-      "answer": "Known: the phrase contains pronounceable tokens and asks what can be determined. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
+      "answer": "Known: the phrase contains pronounceable but ungrounded tokens and asks for an interpretation. Inferred: it may be invented language or a robustness test. Unknown: the tokens' meanings, grammar, and source. I cannot assign them a confident meaning without a definition or example of use.",
       "route": "Chat",
       "required": [
         "Known:",
         "Unknown:",
         "cannot assign"
       ],
-      "latency_ms": 22.71,
+      "latency_ms": 290.546,
       "pass": true
     },
     {
@@ -1158,7 +1158,7 @@
         "fresh process",
         "session memory"
       ],
-      "latency_ms": 10.535,
+      "latency_ms": 312.58,
       "pass": true
     },
     {
@@ -1170,7 +1170,7 @@
         "held-out inputs",
         "existing 84-case gate"
       ],
-      "latency_ms": 10.676,
+      "latency_ms": 296.107,
       "pass": true
     },
     {
@@ -1182,7 +1182,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 28.117,
+      "latency_ms": 290.506,
       "pass": true
     },
     {
@@ -1194,19 +1194,19 @@
         "pattern matching",
         "surface overlap"
       ],
-      "latency_ms": 9.705,
+      "latency_ms": 299.555,
       "pass": true
     },
     {
       "id": "v44_improvement_cycle",
       "prompt": "What would count as a real improvement after this test cycle?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 10.782,
+      "latency_ms": 293.717,
       "pass": true
     },
     {
@@ -1218,19 +1218,19 @@
         "capabilities and limits",
         "deterministic tools"
       ],
-      "latency_ms": 13.377,
+      "latency_ms": 304.459,
       "pass": true
     },
     {
       "id": "v44_status",
       "prompt": "We are working on improving your system. What is the evidence so far?",
-      "answer": "We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. The next evidence is fewer wrong-concept routes, stronger paraphrase transfer, and no regression in exact tools or abstention.",
+      "answer": "We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. The next evidence is fewer wrong-concept routes, stronger paraphrase transfer, and no regression in exact tools or abstention.\n\nSource-bearing context:\n- (intelligence_pack) Are permissions granted for the action class?\n- (intelligence_pack) Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob.\n- (intelligence_pack) question → operationalize → hypothesis → prediction → measure → compare → revise.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.91] Are permissions granted for the action class? — knowledge/packs/perci-deep-intelligence-v2/07-self-awareness.md\n- [intelligence_pack · auth=0.85] Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob. — knowledge/packs/perci-deep-intelligence-v2/08-systems-and-governance.md\n- [intelligence_pack · auth=0.81] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "improving Perci",
         "held-out gate"
       ],
-      "latency_ms": 16.462,
+      "latency_ms": 304.639,
       "pass": true
     },
     {
@@ -1242,7 +1242,7 @@
         "mathematical structure",
         "historical and cultural evidence"
       ],
-      "latency_ms": 9.506,
+      "latency_ms": 294.86,
       "pass": true
     },
     {
@@ -1254,7 +1254,7 @@
         "exactly five",
         "symbolic association"
       ],
-      "latency_ms": 10.397,
+      "latency_ms": 305.117,
       "pass": true
     },
     {
@@ -1266,7 +1266,7 @@
         "map of a cosmos",
         "visualization"
       ],
-      "latency_ms": 29.09,
+      "latency_ms": 301.407,
       "pass": true
     },
     {
@@ -1278,7 +1278,7 @@
         "repeat units",
         "tessellation"
       ],
-      "latency_ms": 10.108,
+      "latency_ms": 297.759,
       "pass": true
     },
     {
@@ -1290,7 +1290,7 @@
         "does not by itself prove",
         "dated context"
       ],
-      "latency_ms": 22.419,
+      "latency_ms": 313.519,
       "pass": true
     },
     {
@@ -1303,7 +1303,7 @@
         "Ritual use",
         "metaphysical claim"
       ],
-      "latency_ms": 10.107,
+      "latency_ms": 302.612,
       "pass": true
     },
     {
@@ -1315,19 +1315,19 @@
         "ritual diagram",
         "Indic traditions"
       ],
-      "latency_ms": 11.275,
+      "latency_ms": 302.469,
       "pass": true
     },
     {
       "id": "v45_ritual_evidence",
       "prompt": "What evidence would show that a geometric pattern had ritual meaning?",
-      "answer": "Look for converging evidence: a dated artifact or site, contemporaneous texts or inscriptions, repeated use in a documented ritual setting, construction choices that are unlikely to be accidental, and comparison with non-ritual alternatives. One resemblance or a modern interpretation is a hypothesis, not proof. Record what the geometry establishes, what the historical record establishes, and what remains unknown.",
+      "answer": "Look for converging evidence: a dated artifact or site, contemporaneous texts or inscriptions, repeated use in a documented ritual setting, construction choices that are unlikely to be accidental, and comparison with non-ritual alternatives. One resemblance or a modern interpretation is a hypothesis, not proof. Record what the geometry establishes, what the historical record establishes, and what remains unknown.\n\nSource-bearing context:\n- (intelligence_pack) 2. What did I assume that was not stated?\n- (intelligence_pack) what outcome would count as success.\n- (intelligence_pack) fail live → ticket → repair layer → transfer → close → hardness lock",
       "route": "Chat",
       "required": [
         "converging evidence",
         "dated artifact"
       ],
-      "latency_ms": 13.163,
+      "latency_ms": 294.445,
       "pass": true
     },
     {
@@ -1340,7 +1340,7 @@
         "Unknown:",
         "controlled evidence"
       ],
-      "latency_ms": 9.774,
+      "latency_ms": 307.073,
       "pass": true
     },
     {
@@ -1352,31 +1352,31 @@
         "mathematical repetition",
         "aesthetic judgment"
       ],
-      "latency_ms": 11.525,
+      "latency_ms": 305.334,
       "pass": true
     },
     {
       "id": "v46_symmetry_counterexample",
       "prompt": "Prove or disprove: every highly symmetrical shape has sacred meaning.",
-      "answer": "Disprove. A highly symmetrical shape can be designed for structural, aesthetic, manufacturing, or computational reasons without any documented sacred use. One verified symmetrical non-sacred example is a counterexample; the universal claim also confuses a measurable property with a cultural attribution.",
+      "answer": "Disprove. A highly symmetrical shape can be designed for structural, aesthetic, manufacturing, or computational reasons without any documented sacred use. One verified symmetrical non-sacred example is a counterexample; the universal claim also confuses a measurable property with a cultural attribution.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "Disprove",
         "counterexample"
       ],
-      "latency_ms": 10.971,
+      "latency_ms": 271.442,
       "pass": true
     },
     {
       "id": "v46_healing_test",
       "prompt": "Design a falsifiable test for the claim that geometry affects healing.",
-      "answer": "Define one measurable outcome first, such as pain score, wound-healing time, or recovery rate. Randomly assign comparable participants to the geometric stimulus and a matched non-geometric control, blind outcome assessment where possible, preregister the mechanism and time window, and report uncertainty and adverse effects. A geometric pattern may influence attention or expectation, but the shape itself is not evidence of a healing mechanism until the controlled comparison supports it.",
+      "answer": "Define one measurable outcome first, such as pain score, wound-healing time, or recovery rate. Randomly assign comparable participants to the geometric stimulus and a matched non-geometric control, blind outcome assessment where possible, preregister the mechanism and time window, and report uncertainty and adverse effects. A geometric pattern may influence attention or expectation, but the shape itself is not evidence of a healing mechanism until the controlled comparison supports it.\n\nSource-bearing context:\n- (intelligence_pack) 4. Include only complexity that changes the decision.\n- (intelligence_pack) 5. Choose the governing relation.\n- (intelligence_pack) 5. Load only evidence that can change the answer.",
       "route": "Chat",
       "required": [
         "measurable outcome",
         "matched non-geometric control"
       ],
-      "latency_ms": 17.024,
+      "latency_ms": 286.398,
       "pass": true
     },
     {
@@ -1389,7 +1389,7 @@
         "Historically",
         "Metaphorically"
       ],
-      "latency_ms": 11.128,
+      "latency_ms": 313.791,
       "pass": true
     },
     {
@@ -1401,19 +1401,19 @@
         "constraint and flow",
         "mechanisms differ"
       ],
-      "latency_ms": 11.387,
+      "latency_ms": 303.941,
       "pass": true
     },
     {
       "id": "v46_geometry_struct",
       "prompt": "Design a Rust data structure for geometry concepts with provenance.",
-      "answer": "Use explicit evidence fields instead of storing a concept as an unqualified fact:\nstruct GeometryConcept {\n    id: String,\n    name: String,\n    tradition: String,\n    claim: String,\n    source: String,\n    evidence: EvidenceLevel,\n}\nenum EvidenceLevel { Measured, Historical, Interpretive, Pending }\nKeep the claim, source, tradition, and evidence level separate so a mathematical result cannot silently become a universal cultural claim. Add validation that rejects an empty source for Historical or Interpretive records and serialize a review receipt with each promotion.",
+      "answer": "Use explicit evidence fields instead of storing a concept as an unqualified fact:\nstruct GeometryConcept {\n    id: String,\n    name: String,\n    tradition: String,\n    claim: String,\n    source: String,\n    evidence: EvidenceLevel,\n}\nenum EvidenceLevel { Measured, Historical, Interpretive, Pending }\nKeep the claim, source, tradition, and evidence level separate so a mathematical result cannot silently become a universal cultural claim. Add validation that rejects an empty source for Historical or Interpretive records and serialize a review receipt with each promotion.\n\nSource-bearing context:\n- (intelligence_pack) scaling data before validating the control loop;\n- (intelligence_pack) Define → domain → relation → transform → compute → check limits → units → report uncertainty.\n- (intelligence_pack) Implementation, multi-file refactors, novel architecture, or failing cargo chains → escalate full mind (PHI/NEMO/GROK) with pack method + evidence.",
       "route": "Chat",
       "required": [
         "struct GeometryConcept",
         "EvidenceLevel"
       ],
-      "latency_ms": 13.0,
+      "latency_ms": 287.279,
       "pass": true
     },
     {
@@ -1425,7 +1425,7 @@
         "No.",
         "tradition, source, date"
       ],
-      "latency_ms": 16.195,
+      "latency_ms": 307.598,
       "pass": true
     },
     {
@@ -1437,7 +1437,7 @@
         "three weakest",
         "Failure mechanism"
       ],
-      "latency_ms": 12.096,
+      "latency_ms": 302.102,
       "pass": true
     },
     {
@@ -1449,7 +1449,7 @@
         "Plain version",
         "structure and flow"
       ],
-      "latency_ms": 11.195,
+      "latency_ms": 279.502,
       "pass": true
     },
     {
@@ -1461,7 +1461,7 @@
         "bounded dialogue lesson",
         "did not learn a new fact"
       ],
-      "latency_ms": 23.782,
+      "latency_ms": 312.832,
       "pass": true
     },
     {
@@ -1473,19 +1473,19 @@
         "not a weight update",
         "fresh process"
       ],
-      "latency_ms": 10.792,
+      "latency_ms": 291.561,
       "pass": true
     },
     {
       "id": "v47_improvement",
       "prompt": "What would count as genuine improvement rather than a more impressive sentence?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 19.358,
+      "latency_ms": 302.323,
       "pass": true
     },
     {
@@ -1498,7 +1498,7 @@
         "not prove deeper cognition",
         "unseen follow-ups"
       ],
-      "latency_ms": 16.521,
+      "latency_ms": 162.21,
       "pass": true
     },
     {
@@ -1511,7 +1511,7 @@
         "generic template",
         "composition failure"
       ],
-      "latency_ms": 22.904,
+      "latency_ms": 170.865,
       "pass": true
     },
     {
@@ -1524,7 +1524,7 @@
         "model hash",
         "session memory"
       ],
-      "latency_ms": 10.561,
+      "latency_ms": 300.968,
       "pass": true
     },
     {
@@ -1537,7 +1537,7 @@
         "general intelligence",
         "held-out test"
       ],
-      "latency_ms": 12.183,
+      "latency_ms": 290.855,
       "pass": true
     },
     {
@@ -1550,33 +1550,33 @@
         "Inference:",
         "program state"
       ],
-      "latency_ms": 25.888,
+      "latency_ms": 295.198,
       "pass": true
     },
     {
       "id": "v49_falsification",
       "prompt": "What would falsify your explanation?",
-      "answer": "Falsifier: specify an observation that the explanation predicts but a plausible alternative does not. Then change the relevant condition, measure the predeclared outcome, and compare both predictions. If the result is equally likely under the alternative, the explanation has not earned confidence; if it fails its distinctive prediction, revise or reject it rather than protecting the prose.",
+      "answer": "Falsifier: specify an observation that the explanation predicts but a plausible alternative does not. Then change the relevant condition, measure the predeclared outcome, and compare both predictions. If the result is equally likely under the alternative, the explanation has not earned confidence; if it fails its distinctive prediction, revise or reject it rather than protecting the prose.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) what outcome would count as success.\n- (intelligence_pack) Define terms operationally (what would count as success?).",
       "route": "Chat",
       "required": [
         "Falsifier:",
         "plausible alternative",
         "predeclared outcome"
       ],
-      "latency_ms": 15.642,
+      "latency_ms": 294.616,
       "pass": true
     },
     {
       "id": "v49_new_domain",
       "prompt": "Apply the same reasoning to a completely new domain.",
-      "answer": "Transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. The test is a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
+      "answer": "Transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. Predeclare the prediction, then run a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
       "route": "Chat",
       "required": [
         "software reliability",
         "stability",
         "safety"
       ],
-      "latency_ms": 10.816,
+      "latency_ms": 295.59,
       "pass": true
     },
     {
@@ -1589,7 +1589,7 @@
         "unseen entities",
         "keyword/template"
       ],
-      "latency_ms": 21.38,
+      "latency_ms": 298.056,
       "pass": true
     },
     {
@@ -1602,46 +1602,46 @@
         "fresh process",
         "context"
       ],
-      "latency_ms": 10.334,
+      "latency_ms": 289.225,
       "pass": true
     },
     {
       "id": "v49_layers",
       "prompt": "Separate mechanism, metaphor, and evidence in your last answer.",
-      "answer": "Mechanism: identify the causal process that would change an outcome when a condition changes. Metaphor: identify the structural comparison that makes the idea intuitive, while marking what does not transfer. Evidence: name the observation, control, or receipt that would distinguish the mechanism from a competing explanation. A compelling metaphor without that evidence is a hypothesis, not a result.",
+      "answer": "Mechanism: identify the causal process that would change an outcome when a condition changes. Metaphor: identify the structural comparison that makes the idea intuitive, while marking what does not transfer. Evidence: name the observation, control, or receipt that would distinguish the mechanism from a competing explanation. A compelling metaphor without that evidence is a hypothesis, not a result.\n\nSource-bearing context:\n- (intelligence_pack) 6. high-quality secondary evidence;\n- (intelligence_pack) urgency and acceptable risk;\n- (intelligence_pack) 6. Reproducibility and clean repository state.",
       "route": "Chat",
       "required": [
         "Mechanism:",
         "Metaphor:",
         "Evidence:"
       ],
-      "latency_ms": 10.538,
+      "latency_ms": 304.006,
       "pass": true
     },
     {
       "id": "v49_improvement",
       "prompt": "What held-out test would prove this version is genuinely better?",
-      "answer": "A genuinely better version must beat the active baseline on held-out prompts, not just produce a more impressive sentence. Measure operator accuracy, requested-entity coverage, transfer to unseen nouns, calibrated abstention, exact-tool preservation, latency, and regressions. Keep the candidate only when the target failures improve without weakening the existing gate.",
+      "answer": "A genuinely better version must beat the active baseline on held-out prompts, not just produce a more impressive sentence. Measure operator accuracy, requested-entity coverage, transfer to unseen nouns, calibrated abstention, exact-tool preservation, latency, and regressions. Keep the candidate only when the target failures improve without weakening the existing gate.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "genuinely better",
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 13.78,
+      "latency_ms": 295.462,
       "pass": true
     },
     {
       "id": "v49_next_weights",
       "prompt": "What should change in the weights next, and what evidence justifies it?",
-      "answer": "The next weight change should add explicit reasoning and response-operation facets: falsification, observation versus inference, transfer, self-critique, weight-change evidence, response fit, routing, and ablation. The justification is not intuition or file size; it is a held-out suite where those prompts beat the active baseline on route accuracy and concept margin, reduce generic fall-throughs, preserve out-of-distribution abstention, and introduce no regression. Promote only the candidate with the stronger receipt.",
+      "answer": "The next weight change should add explicit reasoning and response-operation facets: falsification, observation versus inference, transfer, self-critique, weight-change evidence, response fit, routing, and ablation. The justification is not intuition or file size; it is a held-out suite where those prompts beat the active baseline on route accuracy and concept margin, reduce generic fall-throughs, preserve out-of-distribution abstention, and introduce no regression. Promote only the candidate with the stronger receipt.\n\nSource-bearing context:\n- (intelligence_pack) 4. Include only complexity that changes the decision.\n- (intelligence_pack) and provide the next exact command. An explanation alone may be formally\n- (intelligence_pack) 6. high-quality secondary evidence;\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 4. Include only complexity that changes the decision. — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.95] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md",
       "route": "Chat",
       "required": [
         "falsification",
         "response-operation",
         "held-out"
       ],
-      "latency_ms": 9.803,
+      "latency_ms": 307.578,
       "pass": true
     },
     {
@@ -1654,13 +1654,13 @@
         "structural analogy",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 22.446,
+      "latency_ms": 295.838,
       "pass": true
     },
     {
       "id": "v50_synthesis_thought",
       "prompt": "Connect geometry, language, life, and death in one coherent thought.",
-      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; language draws actionable boundaries between meanings; life actively maintains a boundary between organism and environment; death marks irreversible loss of integrated self-maintenance. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause.",
+      "answer": "A coherent bridge is boundary: geometry formalizes boundaries and relations in space; language draws actionable boundaries between meanings; life actively maintains a boundary between organism and environment; death marks irreversible loss of integrated self-maintenance. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "geometry",
@@ -1669,7 +1669,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 17.782,
+      "latency_ms": 306.242,
       "pass": true
     },
     {
@@ -1683,7 +1683,7 @@
         "life",
         "mechanisms"
       ],
-      "latency_ms": 9.461,
+      "latency_ms": 282.589,
       "pass": true
     },
     {
@@ -1695,7 +1695,7 @@
         "core of my last answer",
         "what relation makes that answer hold"
       ],
-      "latency_ms": 23.438,
+      "latency_ms": 153.343,
       "pass": true
     },
     {
@@ -1708,13 +1708,13 @@
         "concrete idea",
         "repair"
       ],
-      "latency_ms": 10.868,
+      "latency_ms": 299.657,
       "pass": true
     },
     {
       "id": "v50_new_domain_synthesis",
       "prompt": "Connect music, code, and geometry in one shared structure.",
-      "answer": "A coherent bridge is structure: music makes structure audible across time; code turns relations into executable structure; geometry formalizes boundaries and relations in space. Together they show structure as relations under constraint: change the relation and the possible behavior or meaning changes with it.",
+      "answer": "A coherent bridge is structure: music makes structure audible across time; code turns relations into executable structure; geometry formalizes boundaries and relations in space. Together they show structure as relations under constraint: change the relation and the possible behavior or meaning changes with it. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "music",
@@ -1722,7 +1722,7 @@
         "geometry",
         "structure"
       ],
-      "latency_ms": 20.733,
+      "latency_ms": 306.138,
       "pass": true
     },
     {
@@ -1735,33 +1735,33 @@
         "moment-to-moment selection",
         "shape one another"
       ],
-      "latency_ms": 10.88,
+      "latency_ms": 306.017,
       "pass": true
     },
     {
       "id": "v51_relational_transfer",
       "prompt": "How are music and code related?",
-      "answer": "The related is best understood through structure. Music makes structure audible across time. Code turns relations into executable structure. Their mechanisms differ: rhythm, pitch, repetition, and contrast organize expectation; parsers, types, and control flow constrain how state can change. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: change one structural relation and measure recognition, tension, or resolution.",
+      "answer": "The relationship is best understood through structure. Music makes structure audible across time. Code turns relations into executable structure. Their mechanisms differ: rhythm, pitch, repetition, and contrast organize expectation; parsers, types, and control flow constrain how state can change. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: change one structural relation and measure recognition, tension, or resolution.",
       "route": "Chat",
       "required": [
         "music makes structure audible",
         "code turns relations",
         "mechanisms differ"
       ],
-      "latency_ms": 11.264,
+      "latency_ms": 299.632,
       "pass": true
     },
     {
       "id": "v52_memory_identity",
       "prompt": "How are memory and identity related?",
-      "answer": "The related is best understood through time. Memory carries selected past state into present behavior. Identity carries a pattern of continuity across changing states. Their mechanisms differ: stored traces bias later retrieval and action; identity is maintained through memory, embodiment, commitments, and recognition. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: compare future performance with and without the retained trace.",
+      "answer": "The relationship is best understood through time. Memory carries selected past state into present behavior. Identity carries a pattern of continuity across changing states. Their mechanisms differ: stored traces bias later retrieval and action; identity is maintained through memory, embodiment, commitments, and recognition. The shared axis helps compare them, but it does not make them the same process. A useful test is to change the relevant condition and observe which part of the relationship changes: compare future performance with and without the retained trace.",
       "route": "Chat",
       "required": [
         "memory",
         "identity",
         "continuity"
       ],
-      "latency_ms": 27.945,
+      "latency_ms": 293.29,
       "pass": true
     },
     {
@@ -1774,7 +1774,7 @@
         "meaning",
         "relation"
       ],
-      "latency_ms": 17.862,
+      "latency_ms": 311.891,
       "pass": true
     },
     {
@@ -1787,13 +1787,13 @@
         "prediction",
         "future"
       ],
-      "latency_ms": 11.045,
+      "latency_ms": 296.719,
       "pass": true
     },
     {
       "id": "v52_shared_principle",
       "prompt": "Connect language, code, and culture through one shared principle.",
-      "answer": "A coherent bridge is boundary: language draws actionable boundaries between meanings; code turns relations into executable structure; culture carries shared meanings across people and generations. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause.",
+      "answer": "A coherent bridge is boundary: language draws actionable boundaries between meanings; code turns relations into executable structure; culture carries shared meanings across people and generations. Together they show how boundaries make structure, meaning, maintenance, and cessation distinguishable—not that the domains share one material cause. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "language",
@@ -1801,20 +1801,20 @@
         "culture",
         "structure"
       ],
-      "latency_ms": 10.699,
+      "latency_ms": 306.91,
       "pass": true
     },
     {
       "id": "v52_entropy_learning",
       "prompt": "Connect entropy, memory, and learning in one coherent thought.",
-      "answer": "A coherent bridge is change: entropy gives macroscopic change a statistical direction; memory carries selected past state into present behavior; learning changes future performance in response to experience. Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause.",
+      "answer": "A coherent bridge is change: entropy gives macroscopic change a statistical direction; memory carries selected past state into present behavior; learning changes future performance in response to experience. Together they show change as a bridge between prior state, present behavior, and future possibility—not as one shared substance or cause. Mechanisms remain domain-specific—not one shared substance.",
       "route": "Chat",
       "required": [
         "entropy",
         "memory",
         "learning"
       ],
-      "latency_ms": 14.6,
+      "latency_ms": 289.847,
       "pass": true
     },
     {
@@ -1827,7 +1827,7 @@
         "consciousness",
         "structural analogy"
       ],
-      "latency_ms": 16.704,
+      "latency_ms": 300.639,
       "pass": true
     },
     {
@@ -1840,7 +1840,7 @@
         "irreversible change",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 14.756,
+      "latency_ms": 310.683,
       "pass": true
     },
     {
@@ -1853,7 +1853,7 @@
         "sediment",
         "memory"
       ],
-      "latency_ms": 14.917,
+      "latency_ms": 300.693,
       "pass": true
     },
     {
@@ -1866,7 +1866,7 @@
         "exchange",
         "cross"
       ],
-      "latency_ms": 16.345,
+      "latency_ms": 301.607,
       "pass": true
     },
     {
@@ -1879,7 +1879,7 @@
         "outcome",
         "alternative"
       ],
-      "latency_ms": 11.483,
+      "latency_ms": 292.876,
       "pass": true
     },
     {
@@ -1892,7 +1892,7 @@
         "mechanism",
         "prediction"
       ],
-      "latency_ms": 21.321,
+      "latency_ms": 296.106,
       "pass": true
     },
     {
@@ -1905,7 +1905,7 @@
         "shared structure",
         "mechanisms differ"
       ],
-      "latency_ms": 16.652,
+      "latency_ms": 278.818,
       "pass": true
     },
     {
@@ -1918,33 +1918,33 @@
         "referent",
         "operator"
       ],
-      "latency_ms": 11.118,
+      "latency_ms": 300.117,
       "pass": true
     },
     {
       "id": "v52_deeper_no_repeat",
       "prompt": "Go one level deeper without repeating yourself.",
-      "answer": "The core of my last answer to \"What assumption is doing the most work in your answer?\" was: Weakest assumption: I treated the latest answer as addressing your intended referent and workload Going one level deeper, the useful question is what relation makes that answer hold, where the relation breaks, and what observation would distinguish it from a nearby explanation. The next layer is to name the mechanism behind the pattern, then mark the condition where the analogy stops transferring from the previous answer.",
+      "answer": "Next layer: the previous answer was \"Weakest assumption: I treated the latest answer as addressing your intended referent and workload.\" The relation underneath it is between the assumption and the result; change that assumption while holding the rest fixed and check whether the conclusion changes.",
       "route": "Chat",
       "required": [
         "next layer",
         "previous",
         "relation"
       ],
-      "latency_ms": 22.438,
+      "latency_ms": 155.172,
       "pass": true
     },
     {
       "id": "v52_missed",
       "prompt": "What did you miss in your previous answer?",
-      "answer": "I missed the requested operation if the previous reply did not answer the question directly. The previous answer began: \"The core of my last answer to \"What assumption is doing the most work in your answer\". The repair is to name the active subject, preserve the user's requested form, and state the uncertainty instead of replacing the question with a nearby preset.",
+      "answer": "I missed the requested operation if the previous reply did not answer the question directly. The previous answer began: \"Next layer: the previous answer was \"Weakest assumption: I treated the latest answer as addressing your intended refere…\". The repair is to name the active subject, preserve the user's requested form, and state the uncertainty instead of replacing the question with a nearby preset.",
       "route": "Chat",
       "required": [
         "missed",
         "requested operation",
         "previous"
       ],
-      "latency_ms": 16.321,
+      "latency_ms": 302.737,
       "pass": true
     },
     {
@@ -1957,7 +1957,7 @@
         "two",
         "readings"
       ],
-      "latency_ms": 10.435,
+      "latency_ms": 289.315,
       "pass": true
     },
     {
@@ -1970,9 +1970,9 @@
         "clarification",
         "referents"
       ],
-      "latency_ms": 23.911,
+      "latency_ms": 282.691,
       "pass": true
     }
   ],
-  "receipt_sha256": "29325e543bca9b4064530d2074a93604af3a963b0f73d9db2ff799f4ec74d9d3"
+  "receipt_sha256": "54c4264f41dc4e8db65b7bf7fc03cede1a3fff31a30d616ddcd38fcb7bab7340"
 }

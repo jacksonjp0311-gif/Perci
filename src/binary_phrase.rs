@@ -186,58 +186,93 @@ impl BinaryPhraseModel {
     }
 
     /// Generate a topic-bound response from learned word transitions.
-    pub fn generate_reply(
+    pub fn generate_reply(&self, user: &str, domain: &str, max_chars: usize, state: u64) -> String {
+        self.generate_reply_with_context(user, domain, max_chars, state, None)
+    }
+
+    /// Generate a continuation while binding a bounded prior-turn context.
+    /// The context is injected into hidden transition history and never
+    /// rendered, so paired-turn candidates can distinguish a follow-up from a
+    /// fresh question without leaking the prompt into the answer.
+    pub fn generate_reply_with_context(
         &self,
         user: &str,
         domain: &str,
         max_chars: usize,
         mut state: u64,
+        context: Option<&str>,
     ) -> String {
-        let topic = salient_topic(user);
+        let topic = humanize_topic(&salient_topic(user));
+        let intent = salient_intent(user);
         state ^= stable_hash(user.as_bytes());
         if state == 0 {
             state = 1;
         }
         let primers: &[&str] = match domain {
             "geometry" => &[
-                "geometry makes the relation visible: <topic> is",
-                "a geometric reading of <topic> begins with the boundary that",
+                "<intent> geometry makes the relation visible: <topic> is",
+                "<intent> a geometric reading of <topic> begins with the boundary that",
             ],
             "science" => &[
-                "the mechanism to examine is <topic>: it",
-                "a scientific question about <topic> asks which observation would",
+                "<intent> the mechanism to examine is <topic>: it",
+                "<intent> a scientific question about <topic> asks which observation would",
             ],
             "logic" => &[
-                "the key distinction is <topic>: it",
-                "to reason about <topic>, first state the premise that",
+                "<intent> the key distinction is <topic>: it",
+                "<intent> to reason about <topic>, first state the premise that",
             ],
             "code" => &[
-                "start with the smallest reproducible case for <topic>: it",
-                "a reliable implementation of <topic> begins by isolating the state that",
+                "<intent> start with the smallest reproducible case for <topic>: it",
+                "<intent> a reliable implementation of <topic> begins by isolating the state that",
             ],
             "identity" => &[
-                "i am perci, a local binary system. my boundary is",
-                "i can describe <topic> operationally: the evidence I have is",
+                "<intent> i am perci, a local binary system. my boundary is",
+                "<intent> i can describe <topic> operationally: the evidence I have is",
             ],
             "greeting" => &[
-                "hello, i am here locally and attentively. a useful question is",
-                "hello, i am online. we can examine <topic> by asking",
+                "<intent> hello, i am here locally and attentively. a useful question is",
+                "<intent> hello, i am online. we can examine <topic> by asking",
             ],
             _ => &[
-                "a useful way to think about <topic> is",
-                "one useful distinction for <topic> is",
-                "a practical way to approach <topic> is",
-                "when we examine <topic>, the mechanism is",
-                "a deeper connection in <topic> is",
+                "<intent> a useful way to think about <topic> is",
+                "<intent> one useful distinction for <topic> is",
+                "<intent> a practical way to approach <topic> is",
+                "<intent> when we examine <topic>, the mechanism is",
+                "<intent> a deeper connection in <topic> is",
             ],
         };
         let primer = primers[(state as usize) % primers.len()];
         let mut history = vec![self.id_for("<unk>"); self.order];
         let mut output = Vec::new();
         for token in tokenize(primer) {
-            let id = self.id_for(&token);
-            history_shift(&mut history, id);
-            output.push(token);
+            if token == "<topic>" {
+                // `<topic>` is a rendering marker, but the learned transition
+                // field must see the actual salient words or every prompt
+                // collapses onto one global continuation distribution.
+                for topic_token in tokenize(&topic) {
+                    history_shift(&mut history, self.id_for(&topic_token));
+                }
+                output.push(token);
+            } else if token == "<intent>" {
+                for intent_token in tokenize(intent) {
+                    history_shift(&mut history, self.id_for(&intent_token));
+                }
+                output.push(token);
+            } else {
+                let id = self.id_for(&token);
+                history_shift(&mut history, id);
+                output.push(token);
+            }
+        }
+        if let Some(context) = context {
+            // Keep only the tail: it is the most likely place for the current
+            // turn and the immediately preceding referent, and it prevents a
+            // long session from crowding out the active primer.
+            let context_tokens = tokenize(context);
+            let start = context_tokens.len().saturating_sub(24);
+            for token in &context_tokens[start..] {
+                history_shift(&mut history, self.id_for(token));
+            }
         }
         let target = max_chars.clamp(120, 1200);
         let mut generated_tokens = 0usize;
@@ -761,6 +796,9 @@ fn history_shift(history: &mut [u16], value: u16) {
 fn render_tokens(tokens: &[String], topic: &str) -> String {
     let mut out = String::new();
     for token in tokens {
+        if token == "<intent>" {
+            continue;
+        }
         if token == "<topic>" {
             if !out.is_empty() && !out.ends_with(' ') {
                 out.push(' ');
@@ -780,6 +818,60 @@ fn render_tokens(tokens: &[String], topic: &str) -> String {
         result.replace_range(0..first.len_utf8(), &upper);
     }
     result
+}
+
+/// Small, inspectable intent vocabulary used to condition native continuation.
+/// It is deliberately narrower than the dialogue operator catalog: the voice
+/// layer remains authoritative for final response shape.
+fn salient_intent(user: &str) -> &'static str {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    if lower.contains("dont agree")
+        || lower.contains("don't agree")
+        || lower.contains("disagree")
+        || lower.contains("seems wrong")
+    {
+        "disagreement"
+    } else if lower.contains("change your mind")
+        || lower.contains("revise")
+        || lower.contains("counterexample")
+    {
+        "revision"
+    } else if lower.contains("what do you mean")
+        || lower.contains("explain") && lower.contains("differently")
+        || lower.contains("clarif")
+    {
+        "clarification"
+    } else if lower.contains("creative")
+        || lower.contains("original thought")
+        || lower.contains("fresh angle")
+        || lower.contains("new idea")
+    {
+        "creative"
+    } else if lower.contains("one sentence")
+        || lower.contains("short answer")
+        || lower.contains("brief answer")
+    {
+        "brief"
+    } else if lower.contains("go deeper")
+        || lower.contains("one level deeper")
+        || lower.contains("step by step")
+    {
+        "depth"
+    } else if lower.contains("what should we test")
+        || lower.contains("next test")
+        || lower.contains("what do we test")
+    {
+        "test"
+    } else if lower.contains("learn") || lower.contains("teach") || lower.contains("remember") {
+        "learning"
+    } else if lower.contains("evidence")
+        || lower.contains("proof")
+        || lower.contains("reproducible")
+    {
+        "evidence"
+    } else {
+        "general"
+    }
 }
 
 fn salient_topic(user: &str) -> String {
@@ -813,6 +905,16 @@ fn salient_topic(user: &str) -> String {
         "imagine",
         "original",
         "thought",
+        "express",
+        "new",
+        "say",
+        "differently",
+        "more",
+        "next",
+        "evolution",
+        "beautiful",
+        "way",
+        "understand",
         "human",
         "then",
         "mark",
@@ -846,14 +948,55 @@ fn salient_topic(user: &str) -> String {
         "useful",
         "practical",
         "deeper",
+        "hard",
+        "easy",
+        "important",
+        "matter",
+        "mean",
+        "like",
+        "difference",
+        "between",
+        "agree",
+        "disagree",
+        "wrong",
+        "mind",
+        "revise",
+        "clarify",
+        "creative",
+        "original",
+        "fresh",
+        "angle",
+        "preserve",
+        "support",
+        "think",
+        "describe",
+        "forms",
+        "changes",
+        "time",
+        "lived",
     ];
-    user.split_whitespace()
+    crate::text_normalize::repair_typos(user)
+        .split_whitespace()
         .map(|word| word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()))
         .filter(|word| word.len() >= 3 && !stop.contains(&word.to_ascii_lowercase().as_str()))
-        .take(4)
+        .take(3)
         .collect::<Vec<_>>()
         .join(" ")
         .if_empty("the question")
+}
+
+/// Turn a compact topic list into a readable coordination for a primer. This
+/// is presentation only; the binary route still scores the individual words.
+fn humanize_topic(topic: &str) -> String {
+    let words = topic.split_whitespace().collect::<Vec<_>>();
+    match words.as_slice() {
+        [] => "the question".to_owned(),
+        [one] => (*one).to_owned(),
+        [one, two] => format!("the relationship between {one} and {two}"),
+        [rest @ .., last] => {
+            format!("the relationship among {}, and {last}", rest.join(", "))
+        }
+    }
 }
 
 fn stable_hash(bytes: &[u8]) -> u64 {
@@ -957,6 +1100,30 @@ mod tests {
     }
 
     #[test]
+    fn contextual_generation_keeps_prior_turn_hidden() {
+        let mut trainer = BinaryPhraseTrainer::new(4);
+        trainer.train_text(PRIMER_CORPUS);
+        let path = env::temp_dir().join(format!(
+            "perci-binary-phrase-context-{}-{}.bphr",
+            std::process::id(),
+            now_millis()
+        ));
+        trainer.write(&path).unwrap();
+        let model = BinaryPhraseModel::load(&path).unwrap();
+        let out = model.generate_reply_with_context(
+            "why does that matter",
+            "general",
+            280,
+            11,
+            Some("memory carries state across time; why does that matter"),
+        );
+        assert!(out.len() > 12);
+        assert!(!out.contains("memory carries state across time"));
+        assert!(!out.contains("<intent>"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
     fn jsonl_training_keeps_human_facing_strings() {
         let mut trainer = BinaryPhraseTrainer::new(3);
         train_json_value(
@@ -969,6 +1136,22 @@ mod tests {
         );
         assert!(trainer.source_bytes > 0);
         assert_eq!(trainer.documents.len(), 2);
+    }
+
+    #[test]
+    fn topic_extraction_discards_prompt_scaffolding() {
+        assert_eq!(
+            salient_topic("express a new thought about code and music"),
+            "code music"
+        );
+        assert_eq!(
+            salient_topic("say it differently: why does memory matter"),
+            "memory"
+        );
+        assert_eq!(
+            humanize_topic("geometry memory language"),
+            "the relationship among geometry, memory, and language"
+        );
     }
 
     fn now_millis() -> u128 {

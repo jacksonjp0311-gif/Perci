@@ -27,6 +27,12 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_governance_authority(&text) {
         return Some(governance_authority_answer(user));
     }
+    // Low-bit architecture owns explanations of the PERCLBW1 representation.
+    // Keep these out of generic weight-change evidence: the user is asking how
+    // information is preserved, not whether an unmeasured weight mutation won.
+    if looks_lowbit_architecture(&text) {
+        return Some(lowbit_architecture_answer(user));
+    }
     if looks_identity_bound(&text) {
         return Some(identity_bound_answer(user));
     }
@@ -97,6 +103,49 @@ stage samples for human rebuild — never silent pack swap.",
         .observed("user asked about promote, authorize, or permission vs proof gates")
         .inferred("governance speech must name human authorize and refuse auto-promote")
         .confidence(0.96)
+}
+
+// ─── Layered low-bit cognition (PERCLBW1) ───────────────────────────────────
+
+fn looks_lowbit_architecture(text: &str) -> bool {
+    let representation = text.contains("binary")
+        || text.contains("ternary")
+        || text.contains("low-bit")
+        || text.contains("low bit")
+        || text.contains("int4")
+        || text.contains("int8")
+        || text.contains("residual plane")
+        || text.contains("outlier lane")
+        || text.contains("hadamard")
+        || text.contains("perclbw");
+    let model_term = text.contains("weight")
+        || text.contains("activation")
+        || text.contains("quant")
+        || text.contains("scale")
+        || text.contains("correction")
+        || text.contains("model")
+        || text.contains("perci")
+        || (text.contains("system")
+            && (text.contains("evolv") || text.contains("evolution") || text.contains("build")))
+        || (text.contains("low-bit")
+            && (text.contains("evolv")
+                || text.contains("evolution")
+                || text.contains("find")
+                || text.contains("learn")
+                || text.contains("change")
+                || text.contains("new")));
+    representation && model_term
+}
+
+fn lowbit_architecture_answer(_user: &str) -> Deliberation {
+    let body = String::from(
+        "Direct answer: one bit is not asked to carry the whole signal. In PERCLBW1, the ternary pattern (−1, 0, +1) carries direction, suppression, and topology; a small Q8.8 scale per weight block restores magnitude; residual ternary planes encode the error left by the first approximation; and a compact low-rank correction repairs directions that repeatedly matter. Activations stay wider than the weights: INT4 handles the ordinary stream, a sparse Q8.8 outlier lane preserves exceptional values, and the residual state accumulates at higher precision. Hadamard rotation redistributes sharp channels before quantization so the low-bit path has a fairer signal to represent.\n\nThis is conceptually related to a language model at the level of function: both need distributed state, repeated transformations, residual correction, and a readout. It is not the same capability or training regime. Perci is a native, inspectable associative/operator system with a bounded language field, not a web-scale token-probability model; the candidate pack must therefore win held-out routing and matrix-vector tests before promotion. The current trainer emits a PERCLBW1 candidate and receipt, but promotion remains explicitly false until an evaluation gate says otherwise.",
+    );
+    Deliberation::new("lowbit-architecture", body)
+        .observed("the prompt names low-bit weights, activations, scales, residuals, or PERCLBW1")
+        .inferred("the user needs the information hierarchy and its capability boundary, not a generic weight-change plan")
+        .uncertain("language breadth and frontier parity are not established by representation MSE alone")
+        .confidence(0.98)
 }
 
 // ─── Identity / self-model (lab ticket primary-fix-frame-identity) ───────────
@@ -226,7 +275,9 @@ fn looks_agent_loop_plan(text: &str) -> bool {
         || (text.contains("decompose") && (text.contains("goal") || text.contains("plan")))
         || text.contains("recovery under lag")
         || (text.contains("plan")
-            && (text.contains("ticket") || text.contains("hardness") || text.contains("transfer gate"))))
+            && (text.contains("ticket")
+                || text.contains("hardness")
+                || text.contains("transfer gate"))))
         && text.split_whitespace().count() >= 5;
     loopish
         || (text.contains("how should")
@@ -526,7 +577,9 @@ operator-authority primary_off is not ranked for pack curriculum",
 
     Deliberation::new("ledger-memory-integrate", body)
         .observed("user asked how memory, Cortex, and ledgers interact with Bitwork")
-        .inferred("three memories: pack / append-only ledgers / session — promote only with authorize")
+        .inferred(
+            "three memories: pack / append-only ledgers / session — promote only with authorize",
+        )
         .confidence(conf)
 }
 
@@ -541,8 +594,10 @@ fn looks_meta_critique(text: &str) -> bool {
         || text.contains("improve the queue")
         || text.contains("what should /think")
         || text.contains("what should /trace")
-        || (text.contains("/think") && (text.contains("should") || text.contains("show") || text.contains("improve")))
-        || (text.contains("/trace") && (text.contains("should") || text.contains("show") || text.contains("clean")))
+        || (text.contains("/think")
+            && (text.contains("should") || text.contains("show") || text.contains("improve")))
+        || (text.contains("/trace")
+            && (text.contains("should") || text.contains("show") || text.contains("clean")))
         || text.contains("suggest")
             && (text.contains("self-improve") || text.contains("queue") || text.contains("ticket"))
 }
@@ -651,7 +706,10 @@ Competing explanations must name different intermediate mechanisms linking {a} a
             "Counterfactual: if {a} were reversed while the rest stayed fixed, the invariant is the \
 checkable link to {b}, not the surface labels."
         )
-    } else if lower.contains("analogy stops") || lower.contains("boundary where") || lower.contains("connect ") {
+    } else if lower.contains("analogy stops")
+        || lower.contains("boundary where")
+        || lower.contains("connect ")
+    {
         format!(
             "Boundary limit: {a} may illuminate {b} as a metaphor, but the analogy stops when either \
 is treated as a literal shared physical cause without a discriminating measurement. \
@@ -677,27 +735,23 @@ only through a named intermediate that an observation could check."
 }
 
 fn looks_multi_hop_compose(text: &str) -> bool {
-    (text.contains("two-hop") || text.contains("two hop") || text.contains("multi-hop") || text.contains("multi hop"))
+    (text.contains("two-hop")
+        || text.contains("two hop")
+        || text.contains("multi-hop")
+        || text.contains("multi hop"))
         || (text.contains("from ")
             && text.contains(" through ")
             && text.contains(" to ")
             && (text.contains("path") || text.contains("compose") || text.contains("chain")))
-        || (text.contains("compose")
-            && text.contains("path")
-            && text.contains("through"))
+        || (text.contains("compose") && text.contains("path") && text.contains("through"))
 }
 
 fn multi_hop_compose_answer(user: &str) -> Deliberation {
     let lower = user.to_ascii_lowercase();
     let world = crate::compositional_world::CompositionalWorld::seed();
     // Parse "from A through B to C"
-    let (a, mid, c) = parse_from_through_to(&lower).unwrap_or_else(|| {
-        (
-            "trust".into(),
-            "evidence".into(),
-            "repair".into(),
-        )
-    });
+    let (a, mid, c) = parse_from_through_to(&lower)
+        .unwrap_or_else(|| ("trust".into(), "evidence".into(), "repair".into()));
     let path1 = world.paths(&a, &mid, 1);
     let path2 = world.paths(&mid, &c, 1);
     let hop2 = world.paths(&a, &c, 2);
@@ -771,9 +825,7 @@ fn looks_novel_entity_probe(text: &str) -> bool {
         || text.contains("unfamiliar machine")
         || text.contains("map ") && text.contains(" onto ")
         || (text.contains("genuine transfer")
-            && (text.contains("unseen")
-                || text.contains("entity")
-                || text.contains("memorized")))
+            && (text.contains("unseen") || text.contains("entity") || text.contains("memorized")))
         || text.contains("memorized wording")
         || (text.contains("without memor") && text.contains("transfer"))
 }
@@ -1109,6 +1161,39 @@ mod tests {
     }
 
     #[test]
+    fn lowbit_architecture_routes_before_generic_weight_evidence() {
+        let d = try_expand(
+            "Can you explain why a binary weight needs scales and residuals?",
+            &[],
+        )
+        .expect("low-bit architecture");
+        assert_eq!(d.operator, "lowbit-architecture");
+        let lower = d.answer.to_ascii_lowercase();
+        assert!(lower.contains("ternary"));
+        assert!(lower.contains("scale"));
+        assert!(lower.contains("residual"));
+        assert!(lower.contains("outlier"));
+        assert!(lower.contains("not the same capability"));
+    }
+
+    #[test]
+    fn lowbit_evolution_prompt_binds_pipeline() {
+        let d = try_expand("What did we just evolve in the low-bit system?", &[])
+            .expect("low-bit evolution");
+        assert_eq!(d.operator, "lowbit-architecture");
+        assert!(d.answer.contains("PERCLBW1"));
+        assert!(d.answer.contains("candidate"));
+    }
+
+    #[test]
+    fn lowbit_assessment_finding_does_not_fall_into_generic_evolution() {
+        let d =
+            try_expand("What did we find in the low-bit evolution?", &[]).expect("low-bit finding");
+        assert_eq!(d.operator, "lowbit-architecture");
+        assert!(d.answer.contains("measurable") || d.answer.contains("PERCLBW1"));
+    }
+
+    #[test]
     fn identity_bound_routes() {
         let d = try_expand("Who are you and are you conscious?", &[]).expect("id");
         assert_eq!(d.operator, "identity-bound");
@@ -1138,10 +1223,6 @@ mod tests {
     #[test]
     fn governance_does_not_steal_superintelligence_bound() {
         // Superintelligence pedagogy stays in deliberation::superintelligence-bound.
-        assert!(try_expand(
-            "Is Perci a superintelligence or on the path to AGI?",
-            &[]
-        )
-        .is_none());
+        assert!(try_expand("Is Perci a superintelligence or on the path to AGI?", &[]).is_none());
     }
 }

@@ -194,7 +194,9 @@ def score(rows: list[dict[str, object]], requested: int) -> dict[str, object]:
         "median_chars": statistics.median(lengths) if lengths else 0,
         "min_chars": min(lengths) if lengths else 0,
         "max_chars": max(lengths) if lengths else 0,
-        "families": len(set(int(row.get("family", -1)) for row in rows)),
+        # Curricula may use numeric IDs or readable family names. Keep the
+        # probe agnostic so reviewed dialogue corpora remain self-describing.
+        "families": len(set(str(row.get("family", -1)) for row in rows)),
         "topics": len(set(str(row.get("topic", "")) for row in rows)),
         "family_metrics": family_metrics,
     }

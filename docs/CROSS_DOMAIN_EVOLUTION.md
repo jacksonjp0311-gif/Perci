@@ -1,5 +1,22 @@
 # Cross-domain evolution assessment (post v0.5.1)
 
+## v0.9 implementation result
+
+The earlier assessment identified multi-domain composition and specialist-frame
+coverage as the high-leverage gap. Perci v0.9 now exposes a bounded
+`cross_domain_summary`: requested domains are canonicalized, a shared axis is
+selected from the local frame lattice, and each known frame contributes a
+mechanism plus a test. The Capability Fabric then probes each domain and the
+mixed query against local intelligence packs; missing coverage remains an
+explicit uncertainty rather than a generated fact.
+
+The warm held-out receipt
+`models/candidates/evaluation-cross-domain-v1.json` reports `12/12 PASS`, and
+the existing dialogue regression remains `159/159`. This closes the routing and
+evidence-map slice without claiming frontier language parity or promoting new
+weights. The next research surface is larger entity-swapped multi-domain
+holdouts, not more templates.
+
 **Date:** 2026-07-16  
 **Baseline:** Perci v0.5.1 · hardness **43/43** · lib tests **90/90** · T1–T3 landed  
 **Method:** internal state (roadmap, scorecard, live probes) + external literature across neuro-symbolic AI, HD/VSA, classical cognitive architectures, self-improving coding agents, and context-graph memory.

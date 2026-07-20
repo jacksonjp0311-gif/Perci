@@ -1,0 +1,12 @@
+{"id":"cdx-h1-seed","split":"heldout","family":"seed","prompt":"Connect geometry, biology, and code through one shared structure.","required":[]}
+{"id":"cdx-h1","split":"heldout","family":"evidence_followup","prompt":"What evidence supports that?","required":["evidence","geometry","life","predeclared"]}
+{"id":"cdx-h2-seed","split":"heldout","family":"seed","prompt":"Connect music, memory, and clocks through one shared principle.","required":[]}
+{"id":"cdx-h2","split":"heldout","family":"boundary_followup","prompt":"Where does the analogy stop transferring?","required":["shared pattern","mechanism","prediction"]}
+{"id":"cdx-h3","split":"heldout","family":"natural_analysis","prompt":"Analyze memory, identity, and prediction across domains.","required":["memory","identity","prediction","domain tests"]}
+{"id":"cdx-h4-seed","split":"heldout","family":"seed","prompt":"Bridge trust, corrosion, and architecture through change.","required":[]}
+{"id":"cdx-h4","split":"heldout","family":"evidence_followup","prompt":"What evidence supports that?","required":["evidence","trust","corrosion","predeclared"]}
+{"id":"cdx-h5","split":"heldout","family":"unknown_coverage","prompt":"Bridge geometry with quaal mechanics and say what you actually know.","required":["geometry","no specialist frame","quaal"]}
+{"id":"cdx-h6","split":"heldout","family":"mechanism_boundary","prompt":"Separate the shared relation from the domain mechanisms in geometry, life, and code.","required":["geometry","life","code","mechanisms"]}
+{"id":"cdx-h7","split":"heldout","family":"knowledge","prompt":"Use the available local knowledge when comparing culture and code.","required":["culture","code","local","evidence"]}
+{"id":"cdx-h8","split":"heldout","family":"transfer","prompt":"Apply the same relation to a new domain without copying the old nouns.","required":["abstract relation","prediction","transfer"]}
+{"id":"cdx-h9","split":"heldout","family":"selection","prompt":"Compare markets, ecosystems, and immune systems without collapsing them into one process.","required":["markets","ecosystems","immune","mechanisms"]}

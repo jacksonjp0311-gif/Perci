@@ -117,6 +117,16 @@ def main() -> int:
         "automatic_promotion": False,
         "previous_ledger_receipt_sha256": last_receipt_hash(args.ledger),
         "backup": str(backup) if backup else None,
+        # EIC/HLMF alignment: this local promotion is a single-node,
+        # human-authorized change. Do not let a local receipt masquerade as
+        # distributed consensus or as proof that the promoted behavior is true.
+        "governance": {
+            "topology": "single_node",
+            "distributed_consensus_claimed": False,
+            "weight_policy": "explicit_human_authorization",
+            "proof": "sha256_candidate_and_receipt_chain",
+            "coherence_is_not_truth": True,
+        },
     }
     receipt["receipt_sha256"] = hashlib.sha256(canonical(receipt).encode()).hexdigest()
     args.ledger.parent.mkdir(parents=True, exist_ok=True)

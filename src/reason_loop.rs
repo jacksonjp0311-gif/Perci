@@ -73,11 +73,13 @@ pub fn run_loop(user: &str) -> ReasonReceipt {
             vec![f.slot_a, f.slot_b]
         } else {
             let lower = user.to_ascii_lowercase();
-            ["trust", "evidence", "boundary", "identity", "repair", "memory"]
-                .iter()
-                .filter(|m| lower.contains(**m))
-                .map(|m| (*m).to_owned())
-                .collect()
+            [
+                "trust", "evidence", "boundary", "identity", "repair", "memory",
+            ]
+            .iter()
+            .filter(|m| lower.contains(**m))
+            .map(|m| (*m).to_owned())
+            .collect()
         }
     };
     if motifs.len() >= 2 {
@@ -94,16 +96,13 @@ pub fn run_loop(user: &str) -> ReasonReceipt {
 
     // Verify: pick best score
     candidates.sort_by(|a, b| b.2.cmp(&a.2));
-    let (name, answer, best) = candidates
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| {
-            (
-                "empty".into(),
-                "Unresolved: no candidate produced checkable structure.".into(),
-                0,
-            )
-        });
+    let (name, answer, best) = candidates.into_iter().next().unwrap_or_else(|| {
+        (
+            "empty".into(),
+            "Unresolved: no candidate produced checkable structure.".into(),
+            0,
+        )
+    });
 
     steps.push(ReasonStep {
         name: "verify.select".into(),
@@ -149,10 +148,7 @@ pub fn run_loop(user: &str) -> ReasonReceipt {
 }
 
 pub fn format_receipt(r: &ReasonReceipt) -> String {
-    let mut out = format!(
-        "[Reason loop · {:?} · score={}]\n",
-        r.status, r.best_score
-    );
+    let mut out = format!("[Reason loop · {:?} · score={}]\n", r.status, r.best_score);
     for s in &r.steps {
         out.push_str(&format!(
             "  {} {} score={} · {}\n",
