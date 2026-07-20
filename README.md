@@ -241,23 +241,24 @@ Useful scripts:
 | `scripts/interact_evolve_loop.py` | Surgical ask → analyze → teach → re-ask |
 | `scripts/brpc_perci_receipt.py` | Multiplicative control factors \(P,M,B,R,K,U,D\) |
 | `scripts/adversarial_probe_brpc.py` | Limit-push probe (geometry / promote / band) |
-| `scripts/hydra_perci_bridge.py` | **HYDRA Injector** bridge: anchor→plan→seal codeweave + BRPC residual field |
+| `src/hydra_inject.rs` | **Governed inject** (Rust): marker codeweave + residual field seal |
 | `scripts/release_gates.py` | Release checklist runner |
 
-**BRPC (candidate control theory)** maps gate receipts to a product-form coherence score. It is **telemetry for adaptation**, not a mind equation and not a promote button. Details: theory notes + receipt JSON under `models/candidates/brpc-perci-receipt-latest.json`.
+**BRPC (candidate control theory)** maps gate receipts to a product-form coherence score. It is **telemetry for adaptation**, not a mind equation and not a promote button. Details: `models/candidates/brpc-perci-receipt-latest.json`.
 
-**HYDRA Injector** ([jacksonjp0311-gif/HYDRA-Injector](https://github.com/jacksonjp0311-gif/HYDRA-Injector)) is the governed **inject** layer we were missing: reviewable diffs, rollback, no silent apply. Install `hydra-inject` on PATH, then:
+**HYDRA inject (in-repo, pure Rust)** — essentials from [HYDRA-Injector](https://github.com/jacksonjp0311-gif/HYDRA-Injector) extracted into Perci: anchor→inject→retract→seal, marker-bound diffs, residual Ω telemetry. No external install.
 
 ```powershell
-python scripts/hydra_perci_bridge.py status
-python scripts/hydra_perci_bridge.py field          # BRPC factors → residual seal
-python scripts/hydra_perci_bridge.py plan            # fail/soft factors → codeweave diffs
-python scripts/hydra_perci_bridge.py evolve          # dry-run apply (default)
+cargo run --release -- hydra status
+cargo run --release -- hydra markers --slots-only
+cargo run --release -- hydra field                 # BRPC factors → residual seal
+cargo run --release -- hydra plan path\to\spec.json
+cargo run --release -- hydra apply path\to\spec.json          # dry-run (default)
 # after human review only:
-# python scripts/hydra_perci_bridge.py evolve --no-dry-run --test "cargo test --lib"
+# cargo run --release -- hydra apply path\to\spec.json --write
 ```
 
-Still never auto-promotes `.pwgt`. Real operator patches should land in Rust under markers or normal PRs; bridge slots prove the pipeline.
+Still never auto-promotes `.pwgt`.
 
 ---
 

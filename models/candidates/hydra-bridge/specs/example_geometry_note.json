@@ -1,0 +1,11 @@
+{
+  "root": ".",
+  "target_file": "src/hydra_inject.rs",
+  "marker": "// HYDRA-INJECT:slot name=geometry_note profile=library",
+  "name": "geometry_note",
+  "profile": "library",
+  "mode": "after",
+  "code": "// hydra-evolve: factor=M layer=manifold — candidate note only; not a weight promote\n",
+  "max_bytes": 16000,
+  "rationale": "Example codeweave plan for geometry/manifold soft factor. Review before --write."
+}

@@ -148,6 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
         }
+        "hydra" | "inject" => run_hydra_command(&mut args)?,
         "fabric" => {
             let sub = args.next().unwrap_or_else(|| "status".into());
             match sub.as_str() {
@@ -732,6 +733,147 @@ fn run_intelligence_probe() -> io::Result<()> {
         "claim ceiling",
         "diagnostic probe only · sealed evaluation remains authoritative",
     );
+    Ok(())
+}
+
+fn run_hydra_command<I>(args: &mut I) -> Result<(), Box<dyn std::error::Error>>
+where
+    I: Iterator<Item = String>,
+{
+    use perci::hydra_inject::{
+        apply_code_injection, brpc_stress_field, discover_markers, load_brpc_factor_values,
+        plan_code_injection, residual_field, write_json_pretty, CodeInjectSpec, FieldConfig,
+    };
+
+    let sub = args.next().unwrap_or_else(|| "status".into());
+    let root = std::env::current_dir()?;
+    let out_dir = root.join("models/candidates/hydra-bridge");
+    std::fs::create_dir_all(&out_dir)?;
+
+    match sub.as_str() {
+        "help" | "--help" | "-h" => {
+            println!(
+                "perci hydra — governed inject (pure Rust; no external HYDRA install)\n\
+                 \n\
+                 Law: anchor → inject → retract → seal · never auto-promote .pwgt\n\
+                 \n\
+                 perci hydra status\n\
+                 perci hydra markers [--slots-only]\n\
+                 perci hydra field              # BRPC factors → residual seal (if receipt present)\n\
+                 perci hydra plan <spec.json>   # plan codeweave diff\n\
+                 perci hydra apply <spec.json> [--write]  # default dry-run\n\
+                 \n\
+                 Spec JSON fields: target_file, marker, code, name?, mode?, root?, max_bytes?, rationale?, profile?"
+            );
+        }
+        "status" => {
+            let markers = discover_markers(&root)?;
+            let slots = markers.iter().filter(|m| m.is_slot).count();
+            let brpc = root.join("models/candidates/brpc-perci-receipt-latest.json");
+            println!("Perci HYDRA inject (native Rust)");
+            println!("  root: {}", root.display());
+            println!("  markers: {} (slots: {slots})", markers.len());
+            println!(
+                "  BRPC receipt: {}",
+                if brpc.is_file() { "present" } else { "missing" }
+            );
+            println!("  claim: never auto-promote .pwgt; apply defaults to dry-run");
+        }
+        "markers" => {
+            let slots_only = args.any(|a| a == "--slots-only");
+            let markers = discover_markers(&root)?;
+            let list: Vec<_> = markers
+                .into_iter()
+                .filter(|m| !slots_only || m.is_slot)
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&list)?);
+        }
+        "field" => {
+            let brpc_path = root.join("models/candidates/brpc-perci-receipt-latest.json");
+            let values = load_brpc_factor_values(&brpc_path).unwrap_or_else(|| {
+                println!("note: no BRPC receipt; using neutral 0.5 factors");
+                vec![0.5; 7]
+            });
+            let (mask, field) = brpc_stress_field(&values);
+            let result = residual_field(&mask, &field, &FieldConfig::default())?;
+            let path = out_dir.join("field-run-native.json");
+            write_json_pretty(&path, &result)?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
+            println!("receipt: {}", path.display());
+            if !result.admissible {
+                std::process::exit(1);
+            }
+        }
+        "plan" => {
+            let spec_path = args
+                .next()
+                .ok_or("usage: perci hydra plan <spec.json>")?;
+            let raw = std::fs::read_to_string(&spec_path)?;
+            let mut spec: CodeInjectSpec = serde_json::from_str(&raw)?;
+            if spec.root == "." {
+                spec.root = root.display().to_string();
+            }
+            let result = plan_code_injection(&spec);
+            let path = out_dir.join("plan-latest.json");
+            write_json_pretty(&path, &result)?;
+            println!("admissible: {}", result.admissible);
+            println!("risk: {:.3}", result.risk_score);
+            for w in &result.warnings {
+                println!("warning: {w}");
+            }
+            if !result.diff.is_empty() {
+                println!("{}", result.diff);
+            }
+            println!("receipt: {}", path.display());
+            if !result.admissible {
+                std::process::exit(1);
+            }
+        }
+        "apply" => {
+            let mut write = false;
+            let mut spec_path: Option<String> = None;
+            for a in args {
+                if a == "--write" {
+                    write = true;
+                } else if !a.starts_with('-') {
+                    spec_path = Some(a);
+                }
+            }
+            let spec_path = spec_path.ok_or("usage: perci hydra apply <spec.json> [--write]")?;
+            let raw = std::fs::read_to_string(&spec_path)?;
+            let mut spec: CodeInjectSpec = serde_json::from_str(&raw)?;
+            if spec.root == "." {
+                spec.root = root.display().to_string();
+            }
+            let dry = !write;
+            if write {
+                eprintln!("WRITE mode: applying injection (review first). Never promotes .pwgt.");
+            }
+            let result = apply_code_injection(&spec, dry);
+            let path = out_dir.join("apply-latest.json");
+            write_json_pretty(&path, &result)?;
+            println!(
+                "admissible={} applied={} dry_run={}",
+                result.admissible, result.applied, result.dry_run
+            );
+            for w in &result.warnings {
+                println!("warning: {w}");
+            }
+            if !result.diff.is_empty() {
+                println!("{}", result.diff);
+            }
+            println!("receipt: {}", path.display());
+            if !result.admissible {
+                std::process::exit(1);
+            }
+        }
+        other => {
+            return Err(format!(
+                "unknown hydra subcommand: {other} (try: perci hydra help)"
+            )
+            .into());
+        }
+    }
     Ok(())
 }
 

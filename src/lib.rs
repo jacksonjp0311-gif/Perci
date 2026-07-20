@@ -35,6 +35,7 @@ pub mod emergence;
 pub mod entity_slot;
 pub mod fabric;
 pub mod governed_will;
+pub mod hydra_inject;
 pub mod intel_packs;
 pub mod knowledge_fabric;
 pub mod language_sidecar;
