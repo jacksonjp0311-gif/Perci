@@ -491,48 +491,63 @@ pub fn unified_diff(before: &str, after: &str, name: &str) -> String {
     let a: Vec<&str> = after.lines().collect();
     let mut out = String::new();
     out.push_str(&format!("--- {name}:before\n+++ {name}:after\n"));
-    // Simple line-oriented diff (Myers-lite: emit full hunk for small files).
-    let max = b.len().max(a.len());
+    // Two-pointer line diff (handles pure insertions cleanly).
     let mut i = 0usize;
-    while i < max {
-        let bl = b.get(i).copied();
-        let al = a.get(i).copied();
-        if bl == al {
+    let mut j = 0usize;
+    while i < b.len() || j < a.len() {
+        if i < b.len() && j < a.len() && b[i] == a[j] {
             i += 1;
+            j += 1;
             continue;
         }
-        // collect changed run
-        let start = i;
-        while i < max && b.get(i) != a.get(i) {
-            i += 1;
+        // Find next common line
+        let mut bi = i;
+        let mut aj = j;
+        let mut found = false;
+        let mut best = (b.len(), a.len());
+        let limit = 40.min(b.len().saturating_sub(i)).max(1);
+        for di in 0..=limit {
+            if i + di >= b.len() {
+                break;
+            }
+            for dj in 0..=limit {
+                if j + dj >= a.len() {
+                    break;
+                }
+                if b[i + di] == a[j + dj] {
+                    best = (i + di, j + dj);
+                    found = true;
+                    break;
+                }
+            }
+            if found {
+                break;
+            }
         }
-        let end = i;
+        if found {
+            bi = best.0;
+            aj = best.1;
+        } else {
+            bi = b.len();
+            aj = a.len();
+        }
+        let del_n = bi.saturating_sub(i);
+        let add_n = aj.saturating_sub(j);
         out.push_str(&format!(
             "@@ -{},{} +{},{} @@\n",
-            start + 1,
-            end.saturating_sub(start).max(1),
-            start + 1,
-            end.saturating_sub(start).max(1)
+            i + 1,
+            del_n.max(if add_n > 0 && del_n == 0 { 0 } else { 1 }),
+            j + 1,
+            add_n.max(if del_n > 0 && add_n == 0 { 0 } else { 1 })
         ));
-        for j in start..end {
-            if let Some(line) = b.get(j) {
-                out.push_str(&format!("-{line}\n"));
-            }
-            if let Some(line) = a.get(j) {
-                out.push_str(&format!("+{line}\n"));
-            }
+        for k in i..bi {
+            out.push_str(&format!("-{}\n", b[k]));
         }
-    }
-    // Fallback if alignment-only: dump all removals then adds when lengths differ wildly
-    if out.lines().count() <= 2 {
-        out.clear();
-        out.push_str(&format!("--- {name}:before\n+++ {name}:after\n@@\n"));
-        for line in &b {
-            out.push_str(&format!("-{line}\n"));
+        for k in j..aj {
+            out.push_str(&format!("+{}\n", a[k]));
         }
-        for line in &a {
-            out.push_str(&format!("+{line}\n"));
-        }
+        i = bi;
+        j = aj;
     }
     out
 }
