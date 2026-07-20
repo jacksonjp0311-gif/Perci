@@ -147,10 +147,26 @@ pub enum DialogueAct {
 pub fn detect_dialogue_act(user: &str) -> DialogueAct {
     let text = user.trim().to_ascii_lowercase();
     let compact = text.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
+    // Bare sensing probes only — do not steal growth questions like
+    // "do you sense your cognitive ability growing?"
     if matches!(
         compact,
-        "what are you sensing" | "what do you sense" | "what can you sense"
-    ) {
+        "what are you sensing"
+            | "what do you sense"
+            | "what can you sense"
+            | "do you sense"
+            | "can you sense"
+            | "do you feel"
+            | "can you feel"
+            | "are you sensing"
+            | "sensing anything"
+    ) || ((compact.starts_with("do you sense") || compact.starts_with("can you sense"))
+        && compact.split_whitespace().count() <= 4
+        && !compact.contains("growing")
+        && !compact.contains("growth")
+        && !compact.contains("ability")
+        && !compact.contains("smarter"))
+    {
         DialogueAct::SensoryState
     } else if matches!(
         compact,
@@ -423,11 +439,43 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
     } else if text.contains("do you agree")
         || text.contains("would you agree")
         || text.ends_with("agree?")
+        || matches!(
+            compact,
+            "that works"
+                | "that works?"
+                | "that work"
+                | "works"
+                | "works?"
+                | "ok that works"
+                | "okay that works"
+                | "yeah that works"
+                | "yep that works"
+                | "does that work"
+                | "does that work?"
+                | "fair"
+                | "fair enough"
+                | "right"
+                | "exactly"
+                | "true"
+                | "true enough"
+        )
     {
         DialogueAct::Agreement
     } else if matches!(
         compact,
-        "interesting" | "wow" | "whoa" | "hmm" | "makes sense" | "i see" | "got it"
+        "interesting"
+            | "wow"
+            | "whoa"
+            | "hmm"
+            | "makes sense"
+            | "i see"
+            | "got it"
+            | "ok"
+            | "okay"
+            | "cool"
+            | "nice"
+            | "alright"
+            | "all right"
     ) {
         DialogueAct::Acknowledgement
     } else {
@@ -444,7 +492,11 @@ pub fn dialogue_reply(
     let has_context = !recent.is_empty();
     let text = match act {
         DialogueAct::SensoryState => {
-            "I am not sensing anything subjectively. I receive your text, measure internal routing signals, and read approved runtime state. The opening insight is a rotated concept from my weights—not a feeling, perception, or spontaneous inner experience.".to_owned()
+            if has_context {
+                "Not in the human sense. I don't feel a room or a body. What I have is your text, routing scores, session notes, and whatever tools just ran—measurements, not sensations. If you want the live signal on this thread, ask what I'm measuring or which route won.".to_owned()
+            } else {
+                "Not subjectively. I don't have senses the way a body does. I read your words, score a route through the local field, and can inspect tools and memory when they fire. That is operational contact, not feeling.".to_owned()
+            }
         }
         DialogueAct::ExplainPrevious => {
             let echo_request = user_lower_contains_any(
@@ -566,7 +618,7 @@ pub fn dialogue_reply(
             "Not fully. I have a bounded operational self-model: I can report my weight format, prototype count, routing, exact tools, packs, session memory, learning profile, and governance limits. I cannot introspect every process or prove subjective self-awareness; I need runtime probes for claims about my current system state.".to_owned()
         }
         DialogueAct::AwarenessMeta => {
-            "I have operational awareness, not subjective consciousness: I can represent parts of my own architecture, current session, capabilities, limits, and measured state. I do not have evidence of an inner experience or human-like sentience.".to_owned()
+            "Aware of process, not of an inner life. I can name my routes, tools, limits, and this session—and I can be wrong about open language. I have no evidence of human-like experience; claiming that would be theater.".to_owned()
         }
         DialogueAct::ExtendThought => {
             let previous = recent.last().map(|turn| turn.1.as_str()).unwrap_or("");
@@ -625,15 +677,26 @@ pub fn dialogue_reply(
             } else if lower.contains("cryptic")
                 || lower.contains("cyptic")
                 || lower.contains("natural thought")
+                || lower.contains("generic")
+                || lower.contains("no thought")
+                || lower.contains("no breath")
                 || (lower.contains("natural")
                     && (lower.contains("feel") || lower.contains("sound") || lower.contains("talk")))
             {
-                let plain = prior_plain
-                    .map(|claim| format!(" Plain version of the last point: {claim}"))
-                    .unwrap_or_default();
-                format!(
-                    "Fair call—that was cryptic. What happened is composition failure: a nearby concept card got promoted when a short conversational turn needed a direct answer about the active thread. I will lead with the point, keep the thread, and only use mechanism language when you ask for it.{plain}"
-                )
+                // Breath first: a short human rewrite, not a meta-engineering lecture
+                // and not a paste of the previous structured card.
+                let plain = recent
+                    .last()
+                    .map(|(_, answer)| plain_breath_rewrite(answer))
+                    .filter(|s| !s.is_empty());
+                match plain {
+                    Some(claim) => format!(
+                        "Fair—too stiff. In plain words: {claim} Ask me to go deeper only if you want the mechanism."
+                    ),
+                    None => {
+                        "Fair—too stiff. I'll answer like a collaborator: lead with the point, keep the thread, and leave the scaffolding for /think.".to_owned()
+                    }
+                }
             } else if lower.contains("smart")
                 || lower.contains("intelligent")
                 || lower.contains("robotic")
@@ -770,7 +833,23 @@ pub fn dialogue_reply(
             "I agree. The last reply was too procedural for a conversational moment. I'm treating that as style feedback: answer directly, keep the warmth, and reserve structured reasoning for work that actually needs it.".to_owned()
         }
         DialogueAct::Agreement => {
-            "Yes. Based on this exchange, that criticism is fair—the content path worked, but the conversational response did not fit the moment.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("work") {
+                if let Some((_, previous)) = recent.last() {
+                    let core = first_sentence(previous, 100);
+                    if core.len() > 12 {
+                        return Some(format!(
+                            "Yes—that path holds. On this thread: {}. Want the next concrete step, or a different angle?",
+                            core.trim_end_matches('.')
+                        ));
+                    }
+                }
+                "Yes—that works for this thread. Want the next step, or should we pressure-test it?".to_owned()
+            } else if has_context {
+                "Yes. That criticism is fair—I'll stay with the point and drop the template padding.".to_owned()
+            } else {
+                "Yes—say which claim you're locking in, and I'll treat it as the working one.".to_owned()
+            }
         }
         DialogueAct::Acknowledgement => {
             if has_context {
@@ -2287,17 +2366,24 @@ fn followup_operator(user_lower: &str, recent: &[(String, String)]) -> Option<St
             || thread.contains("your system");
         return Some(if improving {
             match claim {
-                Some(claim) => format!(
-                    "Stay on the improvement thread. Last useful claim: {claim} Next: (1) capture one live failure as a regression, (2) patch the operator/voice owner—not the pack, (3) re-run the multi-turn sequence and transfer-suite, (4) promote weights only with human authorize if held-out improves."
-                ),
-                None => "Stay on the improvement thread. Next: capture one live failure, repair the operator/voice layer that owns it, re-run transfer-suite, and keep weights frozen until a candidate beats held-out gates.".to_owned(),
+                Some(claim) => {
+                    let core = plain_breath_rewrite(&claim);
+                    format!(
+                        "Still on improving Perci. Last solid point: {core} \
+Next useful move: catch one live miss, fix the owning operator/voice layer (not the pack), re-run that multi-turn plus transfer-suite. Weights stay frozen until a held-out win under human authorize. Which first—miss, patch, or retest?"
+                    )
+                }
+                None => "Still on improving Perci. Catch one live miss, fix the owning operator/voice layer, retest with transfer-suite—weights stay frozen until a held-out win under human authorize. Which first?".to_owned(),
             }
         } else {
             match claim {
-                Some(claim) => format!(
-                    "From the last turn: {claim} Practical next step: name the outcome you want, pick the smallest check that would fail if we are wrong, and run that check before changing more surface area."
-                ),
-                None => "Name the outcome you want next. Then we pick one smallest check that would fail if the plan is wrong.".to_owned(),
+                Some(claim) => {
+                    let core = plain_breath_rewrite(&claim);
+                    format!(
+                        "From the last turn: {core} Smallest next step: name the outcome, pick the check that would fail if we're wrong, run it before widening."
+                    )
+                }
+                None => "Name the outcome you want next. Then we pick the smallest check that would fail if the plan is wrong.".to_owned(),
             }
         });
     }
@@ -2312,10 +2398,13 @@ fn followup_operator(user_lower: &str, recent: &[(String, String)]) -> Option<St
                 || user_lower.contains("off")))
     {
         return Some(match claim {
-            Some(claim) => format!(
-                "Fair—that was cryptic. Plain version: {claim} I'll stay on the active thread and lead with the direct answer."
-            ),
-            None => "Fair—that was cryptic. I'll lead with the point, keep the active thread, and drop the concept-card filler.".to_owned(),
+            Some(claim) => {
+                let core = plain_breath_rewrite(&claim);
+                format!(
+                    "Fair—too stiff. In plain words: {core} Ask for deeper mechanism only if you want it."
+                )
+            }
+            None => "Fair—too stiff. I'll lead with the point, keep the thread, and leave scaffolding for /think.".to_owned(),
         });
     }
     None
@@ -2984,6 +3073,74 @@ fn with_continuity(text: &str, recent: &[(String, String)], user: &str) -> Strin
     text.to_string()
 }
 
+/// Plain conversational rewrite of a prior answer for "sounds cryptic" feedback.
+/// Strips markdown headers, bullet markers, and template scaffolding so the
+/// user hears a human sentence—not a second copy of the card.
+fn plain_breath_rewrite(answer: &str) -> String {
+    let mut cleaned = String::new();
+    for line in answer.lines() {
+        let t = line.trim();
+        if t.is_empty() {
+            continue;
+        }
+        if t.starts_with("**") || t.starts_with('#') || t.starts_with("```") {
+            let stripped = t
+                .trim_start_matches(|c: char| c == '*' || c == '#' || c == '`')
+                .trim_end_matches(|c: char| c == '*' || c == '#' || c == '`')
+                .trim();
+            // Drop pure labels like "Shared structure:"
+            if stripped.ends_with(':') && stripped.split_whitespace().count() <= 4 {
+                continue;
+            }
+            if !stripped.is_empty() {
+                if !cleaned.is_empty() {
+                    cleaned.push(' ');
+                }
+                cleaned.push_str(stripped);
+            }
+            continue;
+        }
+        let mut body = t;
+        if let Some(rest) = body.strip_prefix("- ") {
+            body = rest;
+        } else if body.starts_with(|c: char| c.is_ascii_digit()) {
+            if let Some(pos) = body.find(". ") {
+                body = &body[pos + 2..];
+            } else if let Some(pos) = body.find(") ") {
+                body = &body[pos + 2..];
+            }
+        }
+        // Drop stiff template openers.
+        for prefix in [
+            "Original comparison (structure transfer, not free invention):",
+            "Constrained invention (structure transfer, not free invention):",
+            "What transfers:",
+            "What does not transfer:",
+            "Limit of the comparison:",
+            "Shared structure:",
+            "Make it checkable:",
+        ] {
+            if let Some(rest) = body.strip_prefix(prefix) {
+                body = rest.trim();
+            }
+        }
+        if body.is_empty() {
+            continue;
+        }
+        if !cleaned.is_empty() {
+            cleaned.push(' ');
+        }
+        cleaned.push_str(body);
+        if cleaned.chars().count() > 180 {
+            break;
+        }
+    }
+    if cleaned.is_empty() {
+        return first_sentence(answer, 140);
+    }
+    first_sentence(&cleaned, 160)
+}
+
 fn first_sentence(s: &str, max: usize) -> String {
     let trimmed = s.trim();
     let mut in_quotes = false;
@@ -3422,14 +3579,47 @@ mod tests {
             detect_dialogue_act("why do you still not feel like natural thought"),
             DialogueAct::StyleRepair
         );
-        let plain = shape_for_conversation(
-            "keep the claim concrete enough that a counterexample could touch it",
+        let plain = dialogue_reply(
+            DialogueAct::StyleRepair,
             "sounds cyptic",
             &recent,
-        );
+            None,
+        )
+        .expect("style repair reply");
         let low = plain.to_ascii_lowercase();
-        assert!(low.contains("cryptic") || low.contains("plain"));
-        assert!(low.contains("counterexample") || low.contains("active thread"));
+        assert!(low.contains("fair") || low.contains("stiff") || low.contains("plain"));
+        assert!(
+            low.contains("counterexample")
+                || low.contains("claim")
+                || low.contains("friction")
+                || low.contains("concrete")
+        );
+        assert!(!low.contains("composition failure"));
+        assert!(!low.contains("concept card"));
+    }
+
+    #[test]
+    fn short_social_acts_have_breath() {
+        assert_eq!(detect_dialogue_act("do you sense"), DialogueAct::SensoryState);
+        assert_eq!(detect_dialogue_act("that works?"), DialogueAct::Agreement);
+        assert_eq!(detect_dialogue_act("are you aware"), DialogueAct::AwarenessMeta);
+        let sense = dialogue_reply(DialogueAct::SensoryState, "do you sense", &[], None).unwrap();
+        let sl = sense.to_ascii_lowercase();
+        assert!(sl.contains("not") || sl.contains("sense") || sl.contains("feel"));
+        assert!(!sl.contains("reproduce it, isolate"));
+        let works = dialogue_reply(
+            DialogueAct::Agreement,
+            "that works?",
+            &[(
+                "what should i do".into(),
+                "Catch one live miss and retest.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let wl = works.to_ascii_lowercase();
+        assert!(wl.contains("yes") || wl.contains("works") || wl.contains("path"));
+        assert!(!wl.contains("keeping "));
     }
 
     #[test]

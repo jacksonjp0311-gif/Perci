@@ -627,10 +627,16 @@ impl ThoughtArc {
             && style_depth() != 1
             && !looks_capability_user(user)
             && !topic_is_identity(topic)
+            // Short or social turns must not get the multipartite filler sentence.
+            && user.split_whitespace().count() >= 8
+            && (user.to_ascii_lowercase().contains("connect")
+                || user.to_ascii_lowercase().contains("across")
+                || user.to_ascii_lowercase().contains("compare")
+                || user.to_ascii_lowercase().contains("relation"))
         {
-            // Contested multipartite honesty — not on self-description answers.
+            // Contested multipartite honesty — only when the user asked multi-facet work.
             out.push_str(
-                " I'm holding more than one working frame; these are the pieces that still cohere.",
+                " More than one frame fits; I'm naming the ones that still cohere under a check.",
             );
         }
 

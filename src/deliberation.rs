@@ -3559,7 +3559,10 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
                 .map(|s| format!("Last useful claim: {s}. "))
                 .unwrap_or_default();
             format!(
-                "{anchor}We're on: {thread}. Do this next—concrete, not cryptic: (1) capture one live failure from this chat as a regression case (for example short follow-ups dumping concept cards); (2) repair the operator/voice layer that should own the turn—do not densify Bitwork to fake fluency; (3) re-run the same multi-turn sequence plus transfer-suite; (4) only then consider a human-authorized weight promote if a candidate actually beats held-out gates. Pick one of those four and we can execute it."
+                "{anchor}We're still on {thread}. \
+The next useful move is small and checkable: catch one live miss from this chat, fix the layer that owns it (operator or voice—not the pack), then re-run the same multi-turn and transfer-suite. \
+Weights stay frozen until a candidate beats held-out under human authorize. \
+Which of those do you want first—the failing case, the patch, or the retest?"
             )
         } else {
             format!(
@@ -3677,10 +3680,10 @@ fn original_comparison_answer(user: &str) -> Deliberation {
         ("the first subject".to_owned(), "the second subject".to_owned())
     });
     let body = format!(
-        "Original comparison (structure transfer, not free invention):\n\n\
-**Shared structure:** {left} and {right} both organize possibility under constraint—each marks what can change without losing identity of the process.\n\n\
-**What transfers:** (1) scarcity of degrees of freedom; (2) a boundary between recoverable and irreversible change; (3) a test that asks what observation would force a rewrite.\n\n\
-**Limit of the comparison:** the mechanisms stay domain-specific. {left} is not literally {right}, and the analogy fails if you treat the shared pattern as a shared substance or causal identity. Prefer one checkable prediction over a prettier metaphor."
+        "Think of {left} and {right} as two ways a process runs out of free moves. \
+Both draw a line between change that still leaves the process itself, and change that ends the game. \
+What carries across is scarcity, irreversibility, and a question you can actually check: if I free one constraint, does the predicted behavior return? \
+The limit is honesty about mechanism—{left} is not literally {right}. The comparison helps while it predicts; it fails the moment you treat a shared pattern as a shared substance."
     );
     Deliberation::new("original-comparison", body)
         .observed(format!("comparison pair: {left} · {right}"))
@@ -6500,6 +6503,8 @@ mod tests {
         let cl = creative.answer.to_ascii_lowercase();
         assert!(cl.contains("entropy") && cl.contains("limit"));
         assert!(!cl.contains("life maintains local organization"));
+        assert!(!cl.contains("**shared structure**"));
+        assert!(!cl.contains("structure transfer, not free invention"));
 
         let dual = run(
             "Suppose state changes while relation remains stable in a biological membrane. Give two explanations and the smallest test that separates them. Keep mechanism separate from metaphor.",

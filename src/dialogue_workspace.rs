@@ -304,11 +304,20 @@ impl DialogueWorkspace {
         let Some(referent) = self.referent.as_deref() else {
             return answer.to_owned();
         };
-        // Keep the answer's own sentence casing.  The repair prefix already
-        // supplies the grammatical boundary; lowercasing an opening "I" or a
-        // proper noun made an otherwise sound reply look machine-spliced.
+        // Prefer a light continuity cue over the old "Keeping X in view," splice,
+        // which made short conversational turns sound machine-generated.
         let repaired = answer.trim().to_owned();
-        format!("Keeping {referent} in view, {repaired}")
+        if repaired.split_whitespace().count() <= 12 {
+            return repaired;
+        }
+        if repaired.to_ascii_lowercase().starts_with("yes")
+            || repaired.to_ascii_lowercase().starts_with("yeah")
+            || repaired.to_ascii_lowercase().starts_with("fair")
+            || repaired.to_ascii_lowercase().starts_with("hey")
+        {
+            return repaired;
+        }
+        format!("On {referent}: {repaired}")
     }
 
     /// Non-empty last resort when a backend returns no text. This names the
@@ -715,7 +724,11 @@ mod tests {
             "It matters only when a change is measurable and reviewable.",
             &critique,
         );
-        assert!(repaired.starts_with("Keeping memory identity in view"));
+        assert!(
+            repaired.starts_with("On memory identity:")
+                || repaired.contains("measurable and reviewable")
+        );
+        assert!(!repaired.starts_with("Keeping "));
     }
 
     #[test]
