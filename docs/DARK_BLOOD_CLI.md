@@ -3,6 +3,12 @@
 The interactive CLI is a presentation layer over the governed Perci runtime. It
 does not hide uncertainty or convert visual confidence into capability claims.
 
+While the launcher synchronizes the optimized runtime, it plays a **red DNA**
+double-helix animation (dark-blood theme) instead of dumping raw cargo progress
+into the chat surface. Cargo still builds in the background to
+`target\live\release\perci.exe`; on failure the full cargo log is shown and
+saved under the temp path printed in the error.
+
 After the runtime synchronizes, the launcher **clears the console** so PowerShell
 copyright, cargo build lines, and prior noise fade out and the Dark-Blood banner
 **snaps to the top** of the window. Chat also clears once on entry. Asset paths
