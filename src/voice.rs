@@ -236,9 +236,19 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("more intelligent")
         || text.contains("sound more natural")
         || text.contains("talk more natural")
+        || text.contains("robotic")
         || text.contains("less robotic")
         || text.contains("stop being robotic")
         || text.contains("speak to me more")
+        || text.contains("whats with the response")
+        || text.contains("what's with the response")
+        || text.contains("what is with the response")
+        || text.contains("whats with that")
+        || text.contains("what's with that")
+        || text.contains("why so robotic")
+        || text.contains("sound like a robot")
+        || text.contains("sounds robotic")
+        || text.contains("template")
         || text.contains("cryptic")
         || text.contains("cyptic") // common typo for "cryptic"
         || text.contains("natural thought")
@@ -250,6 +260,8 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             && (text.contains("feel") || text.contains("sound") || text.contains("talk")))
         || (text.contains("i want you to")
             && (text.contains("speak") || text.contains("talk") || text.contains("sound")))
+        || ((text.contains("speak") || text.contains("sound") || text.contains("talk"))
+            && (text.contains("weird") || text.contains("stiff") || text.contains("off") || text.contains("wrong")))
     {
         DialogueAct::StyleRepair
     } else if matches!(compact, "who am i" | "do you know who i am") {
@@ -309,10 +321,25 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             || text.contains("how"))
     {
         DialogueAct::CompactModelQuestion
-    } else if (text.contains("evolve") || text.contains("improve"))
-        && (text.contains("system") || text.contains("perci"))
+    } else if (text.contains("evolve") || text.contains("improve") || text.contains("evolving"))
+        && (text.contains("system")
+            || text.contains("perci")
+            || text.contains("you")
+            || text.contains("your"))
     {
         DialogueAct::EvolveSystem
+    } else if matches!(
+        compact,
+        "tell me something"
+            | "say something"
+            | "tell me anything"
+            | "say anything"
+            | "surprise me"
+            | "go ahead"
+    ) || (text.starts_with("tell me something") || text.starts_with("say something"))
+    {
+        // Open invitation — not a topic to template-bind as "that: claim concrete…"
+        DialogueAct::SelfDescription
     } else if text.contains("build your knowledge")
         || text.contains("grow your knowledge")
         || text.contains("expand your knowledge")
@@ -575,7 +602,17 @@ pub fn dialogue_reply(
             "I route unfamiliar prompts through a sparse 4,096-bit Bitwork core, retrieve weight-resident concepts, solve bounded arithmetic and geometry exactly, track session context, stage reviewable teaching, search local memory, and expose evidence for my decisions. My weak edge is unrestricted language generation: I reason by associative routing and deterministic machinery, not by hiding a large language model.".to_owned()
         }
         DialogueAct::SelfDescription => {
-            "I'm Perci: a local governed cognitive system built around sparse binary associations. I carry concepts, not a secret cloud mind; I combine fast geometric matching with exact tools, memory, dialogue adaptation, and evidence-gated weight evolution. I can model parts of my operation, but I do not claim consciousness.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("tell me something")
+                || lower.contains("say something")
+                || lower.contains("surprise me")
+                || lower.contains("tell me anything")
+            {
+                // Open invite — offer a real bite-sized thought, not a method card.
+                "Here's one: trust under lag isn't warmth between machines — it's a shared story of what “done” means when messages are late or duplicated. Want something lighter, more technical, or about how I work?".to_owned()
+            } else {
+                "I'm Perci — local, governed, sparse. I route with Bitwork, run exact math, speak from operators and field geometry, and never silently promote weights. Not a cloud LLM, not conscious. Ask me something concrete and I'll meet you there.".to_owned()
+            }
         }
         DialogueAct::ContextStatus => {
             if let Some((previous_user, _)) = recent.last() {
@@ -707,9 +744,19 @@ pub fn dialogue_reply(
                         }
                     }
                 }
+            } else if lower.contains("whats with")
+                || lower.contains("what's with")
+                || lower.contains("what is with")
+            {
+                "You're right to call that out. I slipped into a stock reasoning line instead of answering you. What was missing: listening to this turn as chat, not as a puzzle to template. Ask again in plain words and I'll answer that—not recycle a claim/counterexample slogan.".to_owned()
+            } else if lower.contains("robotic")
+                || lower.contains("whats missing")
+                || lower.contains("what's missing")
+                || lower.contains("what is missing")
+            {
+                "What's missing is fit, not more scripts. I was binding your words into a generic method card (claim / counterexample / smallest failing path) instead of talking with you. For casual turns I should greet, acknowledge, or answer directly—and save structured method talk for real engineering asks. I'll stay human: short, concrete, and on your last message.".to_owned()
             } else if lower.contains("smart")
                 || lower.contains("intelligent")
-                || lower.contains("robotic")
                 || lower.contains("speak")
                 || lower.contains("talk")
             {
@@ -764,7 +811,12 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::EvolveSystem => {
-            "Yes. Let's evolve one measurable capability at a time: name the behavior, capture a failing example, teach or repair the responsible layer, then rerun the same test before promoting anything. If the goal is knowledge, give me one claim with `/teach <claim>`; if it is conversation, give me one bad reply and the response you wanted.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("silly") || lower.contains("working on") || lower.contains("evolving you") {
+                "Ha — fair. Evolving me is real work: catch where I go stiff or wrong, fix the owning layer (dialogue act, operator, SoftCascade, not silent weights), and retest. Right now the useful lever is conversation quality — if a reply feels robotic, call it out and I'll drop the template. What do you want to improve first: how I talk, how I reason, or a hard gate like transfer?".to_owned()
+            } else {
+                "Yes. Let's evolve one measurable capability at a time: name the behavior, capture a failing example, repair the responsible layer (operator / speech / tool — not densify Bitwork), then retest before promoting anything. For chat quality, one bad reply + what you wanted is enough. For knowledge, stage a claim for review — never silent weight promote.".to_owned()
+            }
         }
         DialogueAct::KnowledgeBuilding => {
             "We can build my knowledge without turning conversation into unverified truth. Just say something like “I want you to learn that reliable claims need provenance.” I'll stage it as a review candidate and tell you what happened. `remember that ...` is for a durable personal note; evaluated rebuilds are for weight-level cognition.".to_owned()
@@ -2029,6 +2081,70 @@ fn looks_open_conversation(lower: &str) -> bool {
     q && !craft
 }
 
+/// Status / social / meta turns that must not enter method-card composition.
+fn looks_casual_status_update(lower: &str) -> bool {
+    lower.starts_with("im ")
+        || lower.starts_with("i'm ")
+        || lower.starts_with("i am ")
+        || lower.contains("working on")
+        || lower.contains("evolving you")
+        || lower.contains("evolving perci")
+}
+
+fn looks_casual_meta_turn(lower: &str) -> bool {
+    looks_casual_status_update(lower)
+        || lower.contains("robotic")
+        || lower.contains("whats with")
+        || lower.contains("what's with")
+        || lower.contains("whats missing")
+        || lower.contains("what's missing")
+        || lower.contains("tell me something")
+        || lower.contains("say something")
+        || lower.contains("why so stiff")
+        || lower.contains("sound weird")
+        || lower.contains("sounds weird")
+        || (lower.contains("response")
+            && (lower.contains("what") || lower.contains("why") || lower.contains("with")))
+}
+
+fn casual_meta_reply(
+    lower: &str,
+    _topic: &str,
+    recent: &[(String, String)],
+    head: &str,
+) -> String {
+    if lower.contains("robotic")
+        || lower.contains("whats missing")
+        || lower.contains("what's missing")
+        || lower.contains("stiff")
+    {
+        return format!(
+            "{head}What's missing is fit to the moment. I was pasting a method slogan (claim / counterexample / smallest path) onto casual chat. For talk like this I should just answer you—short, clear, a little warm—and keep the engineering templates for real design asks. Try me again."
+        );
+    }
+    if lower.contains("whats with") || lower.contains("what's with") || lower.contains("with the response")
+    {
+        return format!(
+            "{head}That last reply was a stuck template, not a real answer. I grabbed generic “keep the claim concrete…” filler instead of hearing you. Ask the same thing again and I'll stay on your words."
+        );
+    }
+    if lower.contains("tell me something") || lower.contains("say something") {
+        return format!(
+            "{head}Here's something real: I'm not a cloud chatbot—I'm a local router with operators and a sparse field. When I sound human, it's geometry + rules spoken carefully, not a giant language model. Want a technical angle, a geometry one, or something about evolving me?"
+        );
+    }
+    if lower.contains("evolving") || lower.contains("evolve") || lower.contains("working on") {
+        return format!(
+            "{head}Nice. Evolving me works best when you catch a bad reply (like the stiff ones), we name the layer—dialogue, operator, or SoftCascade—and fix that, then retest. No silent weight promote. What felt off: how I talk, how I reason, or a gate?"
+        );
+    }
+    if recent.is_empty() {
+        format!("{head}I'm listening. Say what you want next—casual or technical, both fine.")
+    } else {
+        format!("{head}Got it. Keep going—I'll stay on this thread without the method-card padding.")
+    }
+}
+
 fn looks_creative_prompt(lower: &str) -> bool {
     lower.contains("express a new thought")
         || lower.contains("original thought")
@@ -2727,8 +2843,17 @@ pub fn fluid_compose(
         );
     }
 
+    // Casual / meta chat must never fall into method-card templates.
+    if looks_casual_meta_turn(&lower) {
+        return casual_meta_reply(&lower, &topic, recent, &head);
+    }
+
     // Open conversation: answer the ask with user topic bound in.
-    if looks_open_conversation(&lower) || tokens.len() >= 2 {
+    // Require a real question or enough content — not "im working on evolving you silly".
+    if looks_open_conversation(&lower)
+        && !looks_casual_status_update(&lower)
+        && (tokens.len() >= 2 || lower.contains('?'))
+    {
         let angle = concept.clone().or(direct.clone()).unwrap_or_else(|| {
             // Topic-aware angle when Bitwork label is coarse ("general").
             let topic_l = topic.to_ascii_lowercase();
@@ -2781,10 +2906,10 @@ pub fn fluid_compose(
                             .into()
                     }
                     "general" => {
-                        // Free-form angle, not a falsify checklist slogan.
-                        "keep the claim concrete enough that a counterexample could touch it, then separate what you know from what you are guessing".into()
+                        // Prefer a human conversational stance over falsify slogans.
+                        "I'll stay concrete: answer your point, name the limit of what I know, and only then go deeper if you want it".into()
                     }
-                    _ => "say what would change if the idea were wrong, then check against one real case"
+                    _ => "answer the actual ask first, then say what would change the conclusion"
                         .into(),
                 }
             };
@@ -3781,6 +3906,63 @@ mod tests {
             rep.to_ascii_lowercase().contains("template")
                 || rep.to_ascii_lowercase().contains("repeat")
         );
+    }
+
+    #[test]
+    fn casual_meta_chat_does_not_emit_claim_counterexample_template() {
+        assert_eq!(
+            detect_dialogue_act("im working on evolving you silly"),
+            DialogueAct::EvolveSystem
+        );
+        assert_eq!(
+            detect_dialogue_act("what makes you speak so robotic. whats missing?"),
+            DialogueAct::StyleRepair
+        );
+        assert_eq!(
+            detect_dialogue_act("tell me something"),
+            DialogueAct::SelfDescription
+        );
+        assert_eq!(
+            detect_dialogue_act("whats with the response"),
+            DialogueAct::StyleRepair
+        );
+        let evolve = dialogue_reply(
+            DialogueAct::EvolveSystem,
+            "im working on evolving you silly",
+            &[],
+            None,
+        )
+        .unwrap();
+        let low = evolve.to_ascii_lowercase();
+        assert!(!low.contains("isolate the smallest failing path"));
+        assert!(!low.contains("counterexample could touch"));
+        assert!(low.contains("evolv") || low.contains("talk") || low.contains("robotic"));
+
+        let robotic = dialogue_reply(
+            DialogueAct::StyleRepair,
+            "what makes you speak so robotic. whats missing?",
+            &[],
+            None,
+        )
+        .unwrap();
+        let rl = robotic.to_ascii_lowercase();
+        assert!(rl.contains("missing") || rl.contains("template") || rl.contains("fit"));
+        assert!(!rl.contains("counterexample could touch"));
+
+        // fluid_compose must not template-bind casual status.
+        let fluid = fluid_compose(
+            "im working on evolving you silly",
+            "general",
+            None,
+            "",
+            &[],
+            0,
+            Affect::Neutral,
+        );
+        let fl = fluid.to_ascii_lowercase();
+        assert!(!fl.contains("isolate the smallest failing path"));
+        assert!(!fl.contains("counterexample could touch"));
+        assert!(!fl.contains("working evolving silly:"));
     }
 
     #[test]
