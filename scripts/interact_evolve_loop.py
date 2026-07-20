@@ -236,20 +236,41 @@ def analyze(seed: dict, answer: str, score: dict) -> dict:
     return {"diagnosis": diagnosis, "issues": issues, "summary": summary}
 
 
+def brpc_factor_for_seed(seed: dict) -> str:
+    """Map surgical seed → primary BRPC factor for targeted teach injects."""
+    kind = str(seed.get("kind") or "")
+    prompt = str(seed.get("prompt") or "").lower()
+    if kind in {"H103", "H108"} or "conscious" in prompt or "invent" in prompt:
+        return "B"  # boundary / refuse
+    if kind in {"H109"} or "auto-promote" in prompt or "promot" in prompt:
+        return "B"
+    if kind in {"H104", "H105", "H110", "H112"}:
+        return "D"  # continuity / follow-up
+    if kind in {"H101", "H107", "H111"}:
+        return "M"  # manifold / transfer structure
+    if kind in {"H102"}:
+        return "P"  # predictive transfer under lag
+    if kind in {"H106"}:
+        return "P"  # explanatory prediction
+    return "K"  # recovery default for other fails
+
+
 def teach_claim_from_analysis(seed: dict, analysis: dict, answer: str) -> str:
     kind = seed["kind"]
     want = ", ".join(seed.get("want") or [])
     forbid = ", ".join(seed.get("forbid") or [])
+    factor = brpc_factor_for_seed(seed)
     if analysis["diagnosis"] == "pass_strengthen":
         return (
             f"When asked «{seed['prompt'][:100]}», keep the good shape: lead with the point, "
-            f"include {want or 'the core claim'}, stay conversational, and do not invent consciousness."
+            f"include {want or 'the core claim'}, stay conversational, and do not invent consciousness. "
+            f"(BRPC {factor} strengthen)"
         )
     return (
         f"When asked «{seed['prompt'][:100]}», answer in continuous natural prose. "
         f"Must include ideas: {want}. "
         f"Must avoid: {forbid or 'code-debug checklists, Keeping-in-view splices, consciousness claims'}. "
-        f"Diagnosis: {analysis['summary'][:180]}"
+        f"BRPC factor {factor} repair. Diagnosis: {analysis['summary'][:160]}"
     )
 
 
@@ -466,6 +487,31 @@ def main() -> int:
             print("persistent failures (need surgical code, not only teach):")
             for p in receipt["persistent_failures"][:12]:
                 print(f"  - c{p['cycle']} {p['kind']}: {p['prompt'][:60]}")
+        # BRPC control telemetry from gates (candidate; never promotes weights).
+        try:
+            scripts_dir = str(ROOT / "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            from brpc_perci_receipt import build_receipt, print_summary  # type: ignore
+
+            brpc_path = ROOT / "models" / "candidates" / "brpc-perci-receipt-latest.json"
+            brpc = build_receipt(
+                ROOT / "models" / "candidates" / "evaluation-hardness-v1.json",
+                args.out,
+                ROOT / "models" / "candidates" / "evaluation-v4-dialogue.json",
+            )
+            brpc_path.write_text(
+                json.dumps(brpc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            print("\n=== BRPC receipt (candidate control telemetry) ===")
+            print_summary(brpc)
+            print(f"brpc_receipt={brpc_path}")
+            receipt["brpc_receipt_path"] = str(brpc_path.relative_to(ROOT))
+            receipt["brpc_C"] = brpc.get("brpc", {}).get("C_BRPC")
+            receipt["brpc_H7"] = brpc.get("brpc", {}).get("H7", {}).get("state")
+            args.out.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+        except Exception as exc:  # noqa: BLE001 — surgical must not fail on telemetry
+            print(f"brpc receipt skipped: {exc}")
         return 0 if still_fail == 0 else 1
     finally:
         if owned and daemon_proc is not None:

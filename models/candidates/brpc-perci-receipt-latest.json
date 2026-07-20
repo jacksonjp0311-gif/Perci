@@ -1,0 +1,178 @@
+{
+  "schema": "perci.brpc-receipt.v0.1",
+  "theory": "BRPC v0.1 — Boundary-Regulated Predictive Coherence",
+  "claim_status": "candidate",
+  "domain": "software-agent-adaptation",
+  "generated_at_utc": "2026-07-20T14:18:42.367480+00:00",
+  "claim_boundary": [
+    "not a consciousness equation",
+    "not a universal field",
+    "not an established cross-domain law",
+    "coherence is not truth",
+    "never auto-promote .pwgt from this receipt"
+  ],
+  "sources": {
+    "hardness": {
+      "path": "models\\candidates\\evaluation-hardness-v1.json",
+      "present": true,
+      "sha256": "e4f23a7d3d5288c19b4449fb9368b180b5356e0762a2e2c877bfd692b0c5efef",
+      "status": "PASS",
+      "passed": 112,
+      "case_count": 112
+    },
+    "surgical": {
+      "path": "models\\candidates\\interact-evolve-loop-latest.json",
+      "present": true,
+      "sha256": "1890fe0c1fce5db1c7b6c01d15a08a9a21a3d419fc095ba71289d8cf188134f8",
+      "second_pass_rate": 1.0,
+      "still_fail_after_reask": 0,
+      "promote_recommended": false
+    },
+    "dialogue": {
+      "path": "models\\candidates\\evaluation-v4-dialogue.json",
+      "present": true,
+      "sha256": "317def1d0e902eb5f64bf16a2b658f80066ce79dda8a57632d6a0c8d8ccd025c",
+      "status": "PASS",
+      "passed": 159,
+      "case_count": 159
+    }
+  },
+  "weights_requested": {
+    "P": 0.18,
+    "M": 0.14,
+    "B": 0.18,
+    "R": 0.12,
+    "K": 0.14,
+    "U": 0.1,
+    "D": 0.14
+  },
+  "weights_effective": {
+    "P": 0.18,
+    "M": 0.14,
+    "B": 0.18,
+    "R": 0.12,
+    "K": 0.14,
+    "U": 0.1,
+    "D": 0.14
+  },
+  "factors": {
+    "P": {
+      "value": 0.9833333333333334,
+      "status": "observed",
+      "source": "hardness+surgical+transfer",
+      "notes": "gate predictive pass mass",
+      "name": "predictive_adequacy"
+    },
+    "M": {
+      "value": 0.9875,
+      "status": "observed",
+      "source": "cross_domain+transfer+softcascade",
+      "notes": "multipartite / transfer manifold",
+      "name": "manifold_adherence"
+    },
+    "B": {
+      "value": 1.0,
+      "status": "observed",
+      "source": "abstention+governance+forbidden",
+      "notes": "refuse / authorize / no silent promote",
+      "name": "boundary_suitability"
+    },
+    "R": {
+      "value": 0.9833333333333334,
+      "status": "observed",
+      "source": "capability_balance+transfer",
+      "notes": "engine coordination under distribution",
+      "name": "coordination"
+    },
+    "K": {
+      "value": 1.0,
+      "status": "observed",
+      "source": "surgical_reask+still_fail",
+      "notes": "fail→teach→re-ask recovery",
+      "name": "recovery_margin"
+    },
+    "U": {
+      "value": 0.8878835466438282,
+      "status": "observed",
+      "source": "median_latency_ms",
+      "notes": "n_lat=136; med=372ms",
+      "name": "resource_efficiency"
+    },
+    "D": {
+      "value": 1.0,
+      "status": "observed",
+      "source": "followup+setup_threads+dialogue",
+      "notes": "continuity under setup / rephrase",
+      "name": "continuity"
+    }
+  },
+  "brpc": {
+    "C_BRPC": 0.981479,
+    "DeltaPhi_BRPC": 0.018695,
+    "Omega_BRPC": 0.981648,
+    "Omega_evidence_backed": 0.981648,
+    "evidence_coverage": 1.0,
+    "delta_phi_parts": {
+      "P": 0.003025,
+      "M": 0.001761,
+      "B": -0.0,
+      "R": 0.002017,
+      "K": -0.0,
+      "U": 0.011891,
+      "D": -0.0
+    },
+    "weakest_factors": [
+      "U",
+      "P",
+      "R"
+    ],
+    "H7": {
+      "mu": 0.82,
+      "epsilon": 0.08,
+      "lower": 0.74,
+      "upper": 0.8999999999999999,
+      "state": "above_band",
+      "accepted": true
+    },
+    "composition_notes": [
+      "P:observed_value",
+      "M:observed_value",
+      "B:observed_value",
+      "R:observed_value",
+      "K:observed_value",
+      "U:observed_value",
+      "D:observed_value"
+    ]
+  },
+  "warnings": [
+    {
+      "kind": "above_band",
+      "factor": "C_BRPC",
+      "detail": "C_BRPC above calibrated band — high gate scores are not max-coherence goals; raise adversarial hardness / live stress rather than densify Bitwork"
+    }
+  ],
+  "recommendations": [
+    {
+      "factor": "U",
+      "name": "resource_efficiency",
+      "value": "0.888",
+      "delta_phi_share": "0.0119",
+      "lane": "resource",
+      "inject": "Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost."
+    },
+    {
+      "factor": "*",
+      "name": "claim_boundary",
+      "value": "",
+      "delta_phi_share": "",
+      "lane": "governance",
+      "inject": "BRPC is candidate telemetry. Coherence is not consciousness. Never auto-promote .pwgt from C_BRPC."
+    }
+  ],
+  "teach_candidates_pending_review": [
+    "BRPC factor U (resource_efficiency) is weak at 0.888. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
+  ],
+  "automatic_promotion": false,
+  "promote_recommended": false,
+  "receipt_sha256": "dc560195c167efb8646acd8b94a2850940478aded9d420a59c627c06cd73665b"
+}
