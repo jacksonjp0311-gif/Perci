@@ -1,0 +1,17 @@
+{
+  "target_file": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\src/hydra_inject.rs",
+  "admissible": true,
+  "applied": false,
+  "dry_run": true,
+  "diff": "--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,0 +980,1 @@\n+// hydra-evolve: factor=M layer=manifold — candidate note only; not a weight promote\n",
+  "rollback_diff": "--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,1 +980,0 @@\n-// hydra-evolve: factor=M layer=manifold — candidate note only; not a weight promote\n",
+  "warnings": [],
+  "metrics": {
+    "original_bytes": 30486,
+    "injected_bytes": 87,
+    "diff_lines": 4
+  },
+  "session_id": "perci-hydra-659468749f676e61",
+  "rationale": "Example codeweave plan for geometry/manifold soft factor. Review before --write.",
+  "risk_score": 0.351903125
+}
