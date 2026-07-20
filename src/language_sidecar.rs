@@ -313,27 +313,35 @@ fn stitch_chunks_as_prose(chunks: &[String]) -> String {
         return String::new();
     }
     if chunks.len() == 1 {
-        return ensure_sentence_end(&chunks[0]);
+        return ensure_sentence_end(&capitalize_sentence(&chunks[0]));
     }
     let mut parts: Vec<String> = Vec::new();
-    for (i, chunk) in chunks.iter().enumerate() {
-        let mut c = chunk.trim().to_owned();
-        // Light de-list tone.
-        if c.starts_with("The ") && i > 0 {
-            // keep
+    for chunk in chunks.iter() {
+        let c = ensure_sentence_end(&capitalize_sentence(chunk.trim()));
+        if c.is_empty() {
+            continue;
         }
-        c = ensure_sentence_end(&c);
         parts.push(c);
         if parts.len() >= 5 {
             break; // keep chat airy; depth belongs in /deep or /think
         }
     }
-    // Join with space; already sentence-terminated.
-    let mut prose = parts.join(" ");
-    // Soft connectors between sentences when abrupt.
-    prose = prose.replace(". Durable ", ". And durable ");
-    prose = prose.replace(". Permission ", ". Permission ");
-    prose
+    parts.join(" ")
+}
+
+fn capitalize_sentence(s: &str) -> String {
+    let t = s.trim();
+    if t.is_empty() {
+        return String::new();
+    }
+    let mut chars = t.chars();
+    let Some(first) = chars.next() else {
+        return String::new();
+    };
+    let mut out = String::new();
+    out.extend(first.to_uppercase());
+    out.push_str(chars.as_str());
+    out
 }
 
 fn ensure_sentence_end(s: &str) -> String {
