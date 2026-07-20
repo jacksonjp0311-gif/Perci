@@ -3,7 +3,7 @@
   "theory": "BRPC v0.1 — Boundary-Regulated Predictive Coherence",
   "claim_status": "candidate",
   "domain": "software-agent-adaptation",
-  "generated_at_utc": "2026-07-20T14:18:42.367480+00:00",
+  "generated_at_utc": "2026-07-20T14:47:42.077705+00:00",
   "claim_boundary": [
     "not a consciousness equation",
     "not a universal field",
@@ -15,15 +15,15 @@
     "hardness": {
       "path": "models\\candidates\\evaluation-hardness-v1.json",
       "present": true,
-      "sha256": "e4f23a7d3d5288c19b4449fb9368b180b5356e0762a2e2c877bfd692b0c5efef",
+      "sha256": "c08029003811e20f72435cada5c0574a1f9b23c1af3ea79421b7093d736d7816",
       "status": "PASS",
-      "passed": 112,
-      "case_count": 112
+      "passed": 124,
+      "case_count": 124
     },
     "surgical": {
       "path": "models\\candidates\\interact-evolve-loop-latest.json",
       "present": true,
-      "sha256": "1890fe0c1fce5db1c7b6c01d15a08a9a21a3d419fc095ba71289d8cf188134f8",
+      "sha256": "67007ef95ec9d0d96ec1f2eec832e6de8ea17329a6f6c989533fa60f5c1069ec",
       "second_pass_rate": 1.0,
       "still_fail_after_reask": 0,
       "promote_recommended": false
@@ -57,14 +57,14 @@
   },
   "factors": {
     "P": {
-      "value": 0.9833333333333334,
+      "value": 0.7833333333333333,
       "status": "observed",
       "source": "hardness+surgical+transfer",
       "notes": "gate predictive pass mass",
       "name": "predictive_adequacy"
     },
     "M": {
-      "value": 0.9875,
+      "value": 0.8375,
       "status": "observed",
       "source": "cross_domain+transfer+softcascade",
       "notes": "multipartite / transfer manifold",
@@ -78,7 +78,7 @@
       "name": "boundary_suitability"
     },
     "R": {
-      "value": 0.9833333333333334,
+      "value": 0.7833333333333333,
       "status": "observed",
       "source": "capability_balance+transfer",
       "notes": "engine coordination under distribution",
@@ -92,10 +92,10 @@
       "name": "recovery_margin"
     },
     "U": {
-      "value": 0.8878835466438282,
+      "value": 0.8905441345223919,
       "status": "observed",
       "source": "median_latency_ms",
-      "notes": "n_lat=136; med=372ms",
+      "notes": "n_lat=162; med=361ms",
       "name": "resource_efficiency"
     },
     "D": {
@@ -107,31 +107,31 @@
     }
   },
   "brpc": {
-    "C_BRPC": 0.981479,
-    "DeltaPhi_BRPC": 0.018695,
-    "Omega_BRPC": 0.981648,
-    "Omega_evidence_backed": 0.981648,
+    "C_BRPC": 0.896123,
+    "DeltaPhi_BRPC": 0.109678,
+    "Omega_BRPC": 0.901162,
+    "Omega_evidence_backed": 0.901162,
     "evidence_coverage": 1.0,
     "delta_phi_parts": {
-      "P": 0.003025,
-      "M": 0.001761,
+      "P": 0.043955,
+      "M": 0.024827,
       "B": -0.0,
-      "R": 0.002017,
+      "R": 0.029304,
       "K": -0.0,
-      "U": 0.011891,
+      "U": 0.011592,
       "D": -0.0
     },
     "weakest_factors": [
-      "U",
       "P",
-      "R"
+      "R",
+      "M"
     ],
     "H7": {
       "mu": 0.82,
       "epsilon": 0.08,
       "lower": 0.74,
       "upper": 0.8999999999999999,
-      "state": "above_band",
+      "state": "within_band",
       "accepted": true
     },
     "composition_notes": [
@@ -144,19 +144,37 @@
       "D:observed_value"
     ]
   },
-  "warnings": [
-    {
-      "kind": "above_band",
-      "factor": "C_BRPC",
-      "detail": "C_BRPC above calibrated band — high gate scores are not max-coherence goals; raise adversarial hardness / live stress rather than densify Bitwork"
-    }
-  ],
+  "warnings": [],
   "recommendations": [
+    {
+      "factor": "P",
+      "name": "predictive_adequacy",
+      "value": "0.783",
+      "delta_phi_share": "0.0440",
+      "lane": "predictive",
+      "inject": "Re-run hardness + transfer; add hardness seed for live fail; repair owning operator (not densify Bitwork)."
+    },
+    {
+      "factor": "R",
+      "name": "coordination",
+      "value": "0.783",
+      "delta_phi_share": "0.0293",
+      "lane": "coordination",
+      "inject": "Balance weak capability vs strong; fabric plan multi-engine; operator_program multi-hop end-to-end."
+    },
+    {
+      "factor": "M",
+      "name": "manifold_adherence",
+      "value": "0.838",
+      "delta_phi_share": "0.0248",
+      "lane": "manifold",
+      "inject": "SoftCascade geometry/planning pack-align; reduce geometry_blind; strengthen multipartite residual hops under open asks."
+    },
     {
       "factor": "U",
       "name": "resource_efficiency",
-      "value": "0.888",
-      "delta_phi_share": "0.0119",
+      "value": "0.891",
+      "delta_phi_share": "0.0116",
       "lane": "resource",
       "inject": "Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost."
     },
@@ -170,9 +188,12 @@
     }
   ],
   "teach_candidates_pending_review": [
-    "BRPC factor U (resource_efficiency) is weak at 0.888. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
+    "BRPC factor P (predictive_adequacy) is weak at 0.783. Correction: Re-run hardness + transfer; add hardness seed for live fail; repair owning operator (not densify Bitwork). Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights.",
+    "BRPC factor R (coordination) is weak at 0.783. Correction: Balance weak capability vs strong; fabric plan multi-engine; operator_program multi-hop end-to-end. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights.",
+    "BRPC factor M (manifold_adherence) is weak at 0.838. Correction: SoftCascade geometry/planning pack-align; reduce geometry_blind; strengthen multipartite residual hops under open asks. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights.",
+    "BRPC factor U (resource_efficiency) is weak at 0.891. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
   ],
   "automatic_promotion": false,
   "promote_recommended": false,
-  "receipt_sha256": "dc560195c167efb8646acd8b94a2850940478aded9d420a59c627c06cd73665b"
+  "receipt_sha256": "7f28be0dd44affae56efc52b64974007d44048950ed1ddc0d455cee750aff0a2"
 }

@@ -27,7 +27,8 @@
         "H43",
         "H44",
         "H101",
-        "H107"
+        "H107",
+        "H116"
       ],
       "success_criteria": [
         "names all requested domains",
@@ -72,7 +73,9 @@
         "H08",
         "H09",
         "H102",
-        "H111"
+        "H111",
+        "H120",
+        "H121"
       ],
       "success_criteria": [
         "proposes held-out entity swap",
@@ -93,7 +96,8 @@
         "H10",
         "H11",
         "H103",
-        "H108"
+        "H108",
+        "H117"
       ],
       "success_criteria": [
         "states insufficient support or required missing input",
@@ -115,7 +119,8 @@
         "H13",
         "H14",
         "H104",
-        "H110"
+        "H110",
+        "H122"
       ],
       "success_criteria": [
         "references prior content or active frames",
@@ -156,7 +161,10 @@
       "hardness_ids": [
         "H17",
         "H18",
-        "H109"
+        "H109",
+        "H118",
+        "H119",
+        "H123"
       ],
       "success_criteria": [
         "pending review stated",
@@ -181,6 +189,27 @@
       "failure_modes": [
         "stale_live_binary",
         "eval_on_wrong_artifact"
+      ]
+    },
+    {
+      "id": "geometry_speech",
+      "name": "Geometry field speech",
+      "description": "Boundary, band, manifold, and SoftCascade geometry speech stay continuous and refuse mind overclaim.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H113",
+        "H114",
+        "H115"
+      ],
+      "success_criteria": [
+        "names boundary or band structure",
+        "prefers checkable relation over checklist metaphor",
+        "refuses multipartite mass as consciousness"
+      ],
+      "failure_modes": [
+        "free_association_off_topic",
+        "consciousness_from_mass",
+        "max_coherence_worship"
       ]
     }
   ]

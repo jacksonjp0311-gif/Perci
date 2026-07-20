@@ -688,18 +688,23 @@ pub fn dialogue_reply(
                 || (lower.contains("natural")
                     && (lower.contains("feel") || lower.contains("sound") || lower.contains("talk")))
             {
-                // Breath first: a short human rewrite, not a meta-engineering lecture
-                // and not a paste of the previous structured card.
-                let plain = recent
-                    .last()
-                    .map(|(_, answer)| plain_breath_rewrite(answer))
-                    .filter(|s| !s.is_empty());
-                match plain {
-                    Some(claim) => format!(
-                        "Fair—too stiff. In plain words: {claim} Ask me to go deeper only if you want the mechanism."
-                    ),
-                    None => {
-                        "Fair—too stiff. I'll answer like a collaborator: lead with the point, keep the thread, and leave the scaffolding for /think.".to_owned()
+                // New topic injected into a cryptic/style repair (e.g. "plain sentence about boundary bands").
+                if let Some(topic_ans) = style_repair_new_topic(&lower) {
+                    topic_ans
+                } else {
+                    // Breath first: a short human rewrite, not a meta-engineering lecture
+                    // and not a paste of the previous structured card.
+                    let plain = recent
+                        .last()
+                        .map(|(_, answer)| plain_breath_rewrite(answer))
+                        .filter(|s| !s.is_empty());
+                    match plain {
+                        Some(claim) => format!(
+                            "Fair—too stiff. In plain words: {claim} Ask me to go deeper only if you want the mechanism."
+                        ),
+                        None => {
+                            "Fair—too stiff. I'll answer like a collaborator: lead with the point, keep the thread, and leave the scaffolding for /think.".to_owned()
+                        }
                     }
                 }
             } else if lower.contains("smart")
@@ -787,9 +792,23 @@ pub fn dialogue_reply(
                     || lower.contains("say that again")
                     || lower.contains("say it again");
                 if shorter {
-                    // Plain short rewrite of the prior substantive answer — no list dump.
-                    let core = plain_breath_rewrite(previous_answer);
-                    first_sentence(&core, 220)
+                    // If the rewrite request also injects a new topic (band/coherence/geometry),
+                    // answer that topic in one plain sentence — do not only rehash entropy setup.
+                    let new_topic = (lower.contains("band")
+                        || lower.contains("max coheren")
+                        || lower.contains("boundary band")
+                        || lower.contains("max coherence"))
+                        && (lower.contains("plain")
+                            || lower.contains("cryptic")
+                            || lower.contains("sentence")
+                            || lower.contains("shorter"));
+                    if new_topic {
+                        "Boundary bands beat max coherence: stay in a calibrated region where transfer still falsifies and recovery remains possible, instead of maximizing fluent score or hugging failure.".to_owned()
+                    } else {
+                        // Plain short rewrite of the prior substantive answer — no list dump.
+                        let core = plain_breath_rewrite(previous_answer);
+                        first_sentence(&core, 220)
+                    }
                 } else if lower.contains("explain it again")
                     && (lower.contains("different angle") || lower.contains("reframe"))
                 {
@@ -2412,6 +2431,9 @@ Next useful move: catch one live miss, fix the owning operator/voice layer (not 
                 || user_lower.contains("weird")
                 || user_lower.contains("off")))
     {
+        if let Some(topic_ans) = style_repair_new_topic(&user_lower) {
+            return Some(topic_ans);
+        }
         return Some(match claim {
             Some(claim) => {
                 let core = plain_breath_rewrite(&claim);
@@ -2421,6 +2443,20 @@ Next useful move: catch one live miss, fix the owning operator/voice layer (not 
             }
             None => "Fair—too stiff. I'll lead with the point, keep the thread, and leave scaffolding for /think.".to_owned(),
         });
+    }
+    None
+}
+
+/// When cryptic/style feedback also names a new subject, answer that subject.
+fn style_repair_new_topic(lower: &str) -> Option<String> {
+    let bandish = lower.contains("boundary band")
+        || lower.contains("boundary bands")
+        || (lower.contains("band")
+            && (lower.contains("coheren") || lower.contains("max coher") || lower.contains("max coherence")));
+    if bandish {
+        return Some(
+            "Boundary bands beat max coherence: stay in a calibrated region where transfer still falsifies and recovery remains possible, instead of maximizing fluent score or hugging failure.".to_owned(),
+        );
     }
     None
 }

@@ -246,7 +246,11 @@ pub fn softcascade_geometry_alignment_body(user: &str) -> Option<&'static str> {
         || t.contains("boundary")
         || t.contains("manifold")
         || t.contains("topology")
-        || (t.contains("shape") && (t.contains("space") || t.contains("form")));
+        || t.contains("multipartite")
+        || t.contains("softcascade")
+        || t.contains("boundary band")
+        || (t.contains("shape") && (t.contains("space") || t.contains("form")))
+        || (t.contains("maintain") && t.contains("change") && t.contains("boundar"));
     if !geo {
         return None;
     }
@@ -254,12 +258,23 @@ pub fn softcascade_geometry_alignment_body(user: &str) -> Option<&'static str> {
     if t.contains("calculate") || t.contains("area of") || t.contains("degrees") {
         return None;
     }
+    if t.contains("band") || (t.contains("maximiz") && t.contains("coheren")) {
+        return Some(
+            "Boundary bands beat max-coherence theater: operate in a calibrated distance band where \
+transfer still falsifies, recovery margin remains, and evidence coverage is honest. Maximizing \
+coherence can overfit fluent speech; hugging failure burns the recovery path. Geometry is relation \
+under constraint — maintenance under change preserves what may cross the boundary, not a frozen \
+shape. Multipartite SoftCascade mass is engineering texture, not a self that experiences geometry.",
+        );
+    }
     Some(
         "Geometry here is relation under constraint: a boundary separates inside from outside and \
-makes exchange, repair, and measurement possible. Shapes are not causes by themselves — they are \
-descriptions of contact, containment, and path. When geometry meets life, systems, or language, \
-keep mechanisms distinct: membranes maintain, contracts name acceptance, words mark distinctions. \
-Prefer a checkable relation (what crosses the boundary, what fails if it fails) over a pretty metaphor.",
+makes exchange, repair, and measurement possible. Maintenance under change keeps that relation \
+while parts move. Shapes are not causes by themselves — they are descriptions of contact, \
+containment, and path. When geometry meets life, systems, or language, keep mechanisms distinct: \
+membranes maintain, contracts name acceptance, words mark distinctions. Prefer a checkable \
+relation (what crosses the boundary, what fails if it fails) over a pretty metaphor. SoftCascade \
+multipartite mass is not consciousness.",
     )
 }
 

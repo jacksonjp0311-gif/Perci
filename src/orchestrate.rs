@@ -83,6 +83,9 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
             | "dialogue-workspace"
             // Keep human/authorize/refuse tokens; checklist strip used to drop them.
             | "governance-authority"
+            | "geometry-field"
+            | "hardness-recovery"
+            | "entity-slot-transfer"
     );
     let want_fluency = !operator_owns_structure
         && (plan.language.is_some()

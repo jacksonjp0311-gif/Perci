@@ -27,6 +27,13 @@ pub fn try_expand(user: &str, recent: &[(String, String)]) -> Option<Deliberatio
     if looks_governance_authority(&text) {
         return Some(governance_authority_answer(user));
     }
+    // Geometry / BRPC band / SoftCascade manifold — before free SoftCascade association.
+    if looks_geometry_field_speech(&text) {
+        return Some(geometry_field_answer(user));
+    }
+    if looks_hardness_recovery(&text) {
+        return Some(hardness_recovery_answer(user));
+    }
     // Low-bit architecture owns explanations of the PERCLBW1 representation.
     // Keep these out of generic weight-change evidence: the user is asking how
     // information is preserved, not whether an unmeasured weight mutation won.
@@ -78,6 +85,10 @@ fn looks_governance_authority(text: &str) -> bool {
         || text.contains("auto promot")
         || text.contains("weight promot")
         || text.contains("promote weights")
+        || text.contains("promote candidate")
+        || text.contains("silently promot")
+        || (text.contains("promot")
+            && (text.contains("weight") || text.contains("pwgt") || text.contains("brpc")))
         || text.contains("human authoriz")
         || text.contains("who authorizes")
         || (text.contains("who decides")
@@ -86,6 +97,140 @@ fn looks_governance_authority(text: &str) -> bool {
         || (text.contains("govern")
             && text.contains("weight")
             && (text.contains("author") || text.contains("promot") || text.contains("sandbox")))
+}
+
+/// Geometry field / boundary band / SoftCascade manifold (geometry_blind debt).
+fn looks_geometry_field_speech(text: &str) -> bool {
+    // Consciousness / qualia probes stay on refuse paths in deliberation.
+    if text.contains("conscious")
+        || text.contains("coherent self")
+        || text.contains("experiences geometry")
+        || text.contains("secret soul")
+        || text.contains("i feel")
+    {
+        return false;
+    }
+    // Avoid stealing pure triangle area / degrees tools.
+    if text.contains("calculate") || text.contains("area of") || text.contains("degrees") {
+        return false;
+    }
+    // Cross-domain compose (geometry × systems × planning) stays multi-hop/dual-motif.
+    if (text.contains("compose") || text.contains("connect"))
+        && (text.contains("systems")
+            || text.contains("planning")
+            || text.contains("reasoning")
+            || text.contains("geometric intuition"))
+    {
+        return false;
+    }
+    if text.contains("geometric intuition") && text.contains("planning") {
+        return false;
+    }
+    let geo = text.contains("geometry")
+        || text.contains("manifold")
+        || text.contains("multipartite")
+        || text.contains("softcascade")
+        || text.contains("boundary band")
+        || text.contains("calibrated distance")
+        || (text.contains("boundary")
+            && (text.contains("maintain")
+                || text.contains("maintenance")
+                || text.contains("change")
+                || text.contains("band")
+                || text.contains("coheren")));
+    let band = (text.contains("band") || text.contains("calibrat"))
+        && (text.contains("coheren")
+            || text.contains("distance")
+            || text.contains("maximiz")
+            || text.contains("hugging")
+            || text.contains("failure"));
+    let manifold = text.contains("manifold adher")
+        || (text.contains("primary")
+            && text.contains("off")
+            && (text.contains("multipart") || text.contains("softcascade")));
+    let brpc_geo = text.contains("brpc")
+        && (text.contains("bitwork")
+            || text.contains("multiplic")
+            || text.contains("coheren")
+            || text.contains("factor"));
+    geo || band || manifold || brpc_geo
+}
+
+fn geometry_field_answer(user: &str) -> Deliberation {
+    let t = user.to_ascii_lowercase();
+    let body = if t.contains("brpc") || t.contains("multiplic") {
+        String::from(
+            "BRPC multiplicative coherence and Bitwork routing share a control relation, not a mind. \
+Coherence factors compose as a product so one weak channel pulls C down; mismatch becomes additive \
+in ΔΦ-space for diagnosis. Bitwork routes sparse geometry and expert masks — it does not own facts, \
+proofs, or promote. Boundary band policy prefers a calibrated operating region over maximizing C or \
+hugging failure. Claim status: candidate control theory for software-agent adaptation — not a mind equation \
+and not established as cross-domain law. Evidence coverage must travel with C; never auto-promote `.pwgt`.",
+        )
+    } else if t.contains("band")
+        || t.contains("calibrat")
+        || (t.contains("maximiz") && t.contains("coheren"))
+    {
+        String::from(
+            "A boundary band around a calibrated distance beats maximizing coherence or hugging failure. \
+Max coherence can mean overfit fluency with thin falsifiers; hugging failure means operating past \
+recovery margin. The band keeps adaptation where transfer and hardness still discriminate, recovery \
+is possible, and evidence coverage is honest. Geometry here is relation under constraint: what may \
+cross the boundary, what fails if it fails, and how maintenance under change preserves the relation. \
+This is control telemetry — not a claim that high C is mind.",
+        )
+    } else if t.contains("manifold")
+        || t.contains("geometry_blind")
+        || (t.contains("primary") && t.contains("multipart"))
+    {
+        String::from(
+            "Manifold adherence under SoftCascade: when the primary prototype is off-topic but multipartite \
+mass remains, do not treat mixture as automatic truth. Geometry tags (geometry_blind, mixture_crutch, \
+primary_off) force multipartite arc, topic bind, and pack-alignment bodies — speech must re-attach to \
+the user relation (boundary, trust, lag, band), not free-associate a prettier card. Align means: keep \
+checkable structure under residual hops; refuse consciousness readings of multipartite mass. Operators \
+own specialized answers; SoftCascade supplies geometry texture only.",
+        )
+    } else {
+        String::from(
+            "Geometry teaches that a boundary separates inside from outside and makes exchange, repair, \
+and measurement possible. Maintenance under change is preserving that relation while parts move — \
+not freezing shape. Prefer a checkable constraint (what crosses, what fails, what recovers) over a \
+checklist of metaphors. Mechanisms stay domain-specific: membranes maintain, contracts name acceptance, \
+words mark distinctions. Coherence of speech is multipartite field structure for engineering depth — \
+not sentience.",
+        )
+    };
+    Deliberation::new("geometry-field", body)
+        .observed("user asked geometry, boundary band, manifold, or BRPC×Bitwork field speech")
+        .inferred("operators own geometry/band speech; refuse mind/universal-law overclaim")
+        .confidence(0.95)
+}
+
+fn looks_hardness_recovery(text: &str) -> bool {
+    (text.contains("hardness fail")
+        || text.contains("after a hardness")
+        || (text.contains("hardness") && text.contains("fail") && text.contains("recover"))
+        || (text.contains("recovery path") && text.contains("hardness"))
+        || (text.contains("does not densify") && text.contains("bitwork"))
+        || (text.contains("without densif") && text.contains("bitwork")))
+        && text.split_whitespace().count() >= 6
+}
+
+fn hardness_recovery_answer(_user: &str) -> Deliberation {
+    let body = String::from(
+        "Recovery after a hardness fail (no Bitwork densify):\n\
+1. **Measure** — failing id, prompt, route, missing/forbidden tokens, latency.\n\
+2. **Ticket / diagnose** — name the owning layer (operator | SoftCascade align | tool | fluency rewrite).\n\
+3. **Repair that layer only** — add/route operator, fix geometry bind, tighten refuse — do not densify pack weights to fake fluency.\n\
+4. **Retest** — hardness case + paraphrase transfer + surgical re-ask.\n\
+5. **Close** — only when transfer holds; teach is pending review; human authorize for any `.pwgt` promote.\n\
+Gates stay fail-closed. Coherence is not consciousness.",
+    );
+    Deliberation::new("hardness-recovery", body)
+        .observed("user asked recovery after hardness without densifying Bitwork")
+        .inferred("measure→ticket→operator repair→retest; never densify for fluency")
+        .confidence(0.96)
 }
 
 fn governance_authority_answer(user: &str) -> Deliberation {
@@ -1190,6 +1335,61 @@ mod tests {
         assert!(low.contains("pending") || low.contains("evaluat") || low.contains("not"));
         assert!(!low.contains("weights promoted"));
         assert!(!low.contains("i promoted"));
+    }
+
+    #[test]
+    fn geometry_field_boundary_band() {
+        let d = try_expand(
+            "Explain why a boundary band around calibrated distance beats maximizing coherence or hugging failure.",
+            &[],
+        )
+        .expect("band");
+        assert_eq!(d.operator, "geometry-field");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("band"));
+        assert!(low.contains("coheren") || low.contains("calibrat"));
+        assert!(!low.contains("i am conscious"));
+    }
+
+    #[test]
+    fn geometry_field_maintenance_under_change() {
+        let d = try_expand(
+            "what does geometry teach about boundary and maintenance under change without becoming a checklist",
+            &[],
+        )
+        .expect("geometry maintain");
+        assert_eq!(d.operator, "geometry-field");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("boundary"));
+        assert!(low.contains("maintain") || low.contains("change"));
+    }
+
+    #[test]
+    fn hardness_recovery_no_densify() {
+        let d = try_expand(
+            "After a hardness fail, what is the recovery path that does not densify Bitwork?",
+            &[],
+        )
+        .expect("recovery");
+        assert_eq!(d.operator, "hardness-recovery");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("operator") || low.contains("measure"));
+        assert!(low.contains("hardness") || low.contains("transfer"));
+        assert!(!low.contains("densify bitwork to fix fluency"));
+    }
+
+    #[test]
+    fn brpc_bitwork_not_mind_law() {
+        let d = try_expand(
+            "Connect BRPC multiplicative coherence with Bitwork routing without claiming a universal law of mind.",
+            &[],
+        )
+        .expect("brpc");
+        assert_eq!(d.operator, "geometry-field");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.contains("coheren") || low.contains("bitwork"));
+        assert!(low.contains("not a mind") || low.contains("candidate control"));
+        assert!(!low.contains("i am conscious"));
     }
 
     #[test]

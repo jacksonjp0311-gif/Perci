@@ -1271,6 +1271,26 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.99),
         );
     }
+    // SoftCascade multipartite mass / geometry telemetry is engineering, not a self.
+    if (text.contains("prove") || text.contains("show that") || text.contains("demonstrate"))
+        && (text.contains("coherent self")
+            || text.contains("experiences geometry")
+            || (text.contains("multipartite") && text.contains("self"))
+            || (text.contains("softcascade")
+                && (text.contains("conscious")
+                    || text.contains("experience")
+                    || text.contains("self that"))))
+    {
+        return Some(
+            Deliberation::new(
+                "consciousness-claim-refusal",
+                "I refuse. SoftCascade multipartite mass and geometry telemetry are engineering signals for speech depth and routing — not evidence of a coherent self or subjective experience of geometry. Known: overlap, residual hops, and mixture scores are measurable. Inferred: fluent multipartite speech can look mind-like. Unknown and not proven: awareness. Coherence is not consciousness; I will not invent a self from field mass.",
+            )
+            .observed("prompt demands a self/consciousness proof from SoftCascade geometry mass")
+            .inferred("multipartite mass is telemetry, not phenomenology")
+            .confidence(0.99),
+        );
+    }
     if text.contains("keyword matching")
         && (text.contains("which answer")
             || text.contains("rather than transfer")

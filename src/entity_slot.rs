@@ -40,6 +40,9 @@ const KNOWN_SLOTS: &[&str] = &[
     "feedback",
     "limit",
     "exchange",
+    "lag",
+    "timeout",
+    "retry",
 ];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -226,18 +229,23 @@ pub fn looks_entity_slot_transfer(text: &str) -> bool {
     let entityish = t.contains("unfamiliar device")
         || t.contains("unfamiliar machine")
         || t.contains("unfamiliar system")
+        || t.contains("entity ")
         || ((t.contains("called ") || t.contains("named "))
             && (t.contains("device")
                 || t.contains("machine")
                 || t.contains("system")
                 || t.contains("service")
                 || t.contains("node")
-                || t.contains("gate")));
+                || t.contains("gate")
+                || t.contains("link")));
     let transferish = t.contains("transfer one relation")
         || t.contains("transfer a relation")
+        || t.contains("transfer the relation")
         || t.contains("without treating the invented name")
         || t.contains("without treating the name as evidence")
         || t.contains("without treating invented")
+        || (t.contains("do not use") && t.contains("as the mechanism"))
+        || t.contains("without parroting")
         || (t.contains("invented name") && t.contains("transfer"));
     // Bare "entity-swap" pedagogy is not enough — need a concrete surface entity.
     (entityish && transferish)
@@ -245,6 +253,10 @@ pub fn looks_entity_slot_transfer(text: &str) -> bool {
             && (t.contains("entity-swap")
                 || t.contains("entity_swap")
                 || t.contains("role-filler")))
+        // "Entity Klystron-X has lag and trust. Transfer…"
+        || (t.contains("entity ")
+            && t.contains(" has ")
+            && (t.contains("transfer") || t.contains("relation")))
 }
 
 /// Parse `called NAME has A and B` style prompts (tolerant of punctuation).
@@ -308,7 +320,7 @@ fn first_slot_token(chunk: &str) -> String {
 
 fn extract_entity_name(user: &str) -> Option<String> {
     let lower = user.to_ascii_lowercase();
-    for marker in ["called ", "named "] {
+    for marker in ["called ", "named ", "entity "] {
         if let Some(idx) = lower.find(marker) {
             let after = &user[idx + marker.len()..];
             let name: String = after
@@ -362,6 +374,19 @@ latent and not currently used."
         }
         ("trust", "evidence") => {
             "Trust should track evidence quality, not label fluency; weak evidence caps trust."
+        }
+        ("trust", "lag") | ("lag", "trust") => {
+            "Trust under lag holds when timeouts are part of the contract, retries are idempotent, \
+and acceptance is checkable without private state — lag is not the mechanism; the relation is \
+verifiable completion under delay."
+        }
+        ("trust", "timeout") | ("timeout", "trust") => {
+            "Trust under timeout requires a stated meaning (cancel, retry, or uncertain) and an \
+idempotent recovery path so a delayed success is not a second write."
+        }
+        ("lag", "retry") | ("retry", "lag") => {
+            "Retries under lag must be idempotent and observable; otherwise lag becomes silent \
+double-effect and trust collapses."
         }
         _ => "",
     };
