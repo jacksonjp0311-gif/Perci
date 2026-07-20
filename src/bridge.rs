@@ -328,12 +328,21 @@ pub fn compose_soft_cascade(
         None
     };
     let used_mix = mix_thesis.is_some() || align_thesis.is_some();
+    // When field mass coheres, deepen the arc so speech carries multipartite
+    // structure (geometry-led "LLM-like" flow without a transformer).
+    let coh_pre = field_coherence_score(matched, user);
+    let depth = if coh_pre >= 0.55 {
+        2u8
+    } else {
+        style_depth()
+    };
+    let force_multi = geo.force_multipartite_arc || coh_pre >= 0.48;
     let mut arc = ThoughtArc::from_packet(
         &packet,
         aligned_domain,
         matched.margin,
-        style_depth(),
-        geo.force_multipartite_arc,
+        depth,
+        force_multi,
     );
     if let Some(ref thesis) = mix_thesis {
         arc.thesis = thesis.trim().trim_end_matches('.').trim().to_owned();
@@ -375,11 +384,20 @@ pub fn compose_soft_cascade(
             ));
         } else if force_bind && hit < 2 && !tokens.is_empty() {
             out.push(' ');
+            // Geometry bind without ticket-speak.
             out.push_str(&format!(
-                "On {}: hold the claim against the live constraints.",
+                "Held against {}: change the constraint and watch what breaks.",
                 tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
             ));
         }
+    }
+
+    // Geometry-coherent fluency: when multipartite mass is real, rewrite into
+    // continuous mind-like prose from the field alone — no transformer.
+    // Coherence ≠ consciousness; this is presentation of sparse geometry.
+    let coh = field_coherence_score(matched, user);
+    if coh >= 0.42 && out.split_whitespace().count() >= 12 {
+        out = crate::language_sidecar::fluent_rewrite(user, &out);
     }
 
     while out.contains("  ") {
@@ -545,47 +563,53 @@ impl ThoughtArc {
             || lower.contains("from there");
 
         // Soft session continuity — only when continuing, not on cold opens.
+        // Never use "Keeping … in view" (machine-splice texture).
         if follow {
             if let Some(p) = prior_premise {
                 if p.chars().count() >= 24 && p.chars().count() <= 160 {
                     let p0 = decapitalize_if_mid(p.trim_end_matches('.'));
-                    match variant % 3 {
+                    match variant % 2 {
                         0 => out.push_str(&format!("Building on that — {p0}. ")),
-                        1 => out.push_str(&format!("Keeping the last thread in view: {p0}. ")),
                         _ => out.push_str(&format!("From where we left off: {p0}. ")),
                     }
                 }
             }
         }
 
+        // Geometry-stream speech: one continuous thought arc.
+        // thesis → warrant → boundary → check, spoken as a mind-like flow of math,
+        // not section labels. Coherence is multipartite field structure, not sentience.
         let t = self.thesis.trim_end_matches('.').to_owned();
         let t0 = decapitalize_if_mid(&t);
 
-        // Thesis — answer first, human natural.
-        match (ask, variant % 4) {
-            (AskShape::Why, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::Why, 1) => out.push_str(&format!("For {topic}, {t0}.")),
+        // Lead with the thesis as a direct answer — continuous prose, not a card title.
+        match (ask, variant % 5) {
+            (AskShape::Why, 0) | (AskShape::Why, 3) => out.push_str(&format!("{t}.")),
             (AskShape::Why, _) => out.push_str(&format!("It comes down to this: {t0}.")),
-            (AskShape::How, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::How, 1) => out.push_str(&format!("In practice, {t0}.")),
-            (AskShape::How, _) => out.push_str(&format!("The workable path is when {t0}.")),
-            (AskShape::What, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::What, _) => out.push_str(&format!("The cleanest read of {topic}: {t0}.")),
-            (AskShape::Connect, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::Connect, _) => out.push_str(&format!("A bridge for {topic}: {t0}.")),
-            (AskShape::Open, 0) => out.push_str(&format!("{t}.")),
-            (AskShape::Open, _) => out.push_str(&format!("On {topic}: {t0}.")),
+            (AskShape::How, 0) | (AskShape::How, 2) => out.push_str(&format!("{t}.")),
+            (AskShape::How, _) => out.push_str(&format!("In practice, {t0}.")),
+            (AskShape::What, 0) | (AskShape::What, 4) => out.push_str(&format!("{t}.")),
+            (AskShape::What, _) => out.push_str(&format!("The cleanest read: {t0}.")),
+            (AskShape::Connect, 0) | (AskShape::Connect, 1) => out.push_str(&format!("{t}.")),
+            (AskShape::Connect, _) => {
+                out.push_str(&format!("A bridge across {topic} is this: {t0}."));
+            }
+            (AskShape::Open, 0) | (AskShape::Open, 2) | (AskShape::Open, 4) => {
+                out.push_str(&format!("{t}."));
+            }
+            (AskShape::Open, _) => out.push_str(&format!("Here's the thread: {t0}.")),
         }
 
-        // Warrant — why the thesis holds (mechanism, not slogan).
+        // Warrant — mechanism woven mid-stream (same paragraph feel).
         if let Some(ref w) = self.warrant {
             let w0 = decapitalize_if_mid(w.trim_end_matches('.'));
-            let bridge = match variant % 5 {
+            let bridge = match variant % 6 {
                 0 => " That holds because ",
                 1 => " The reason it lands is that ",
                 2 => " Underneath that, ",
                 3 => " You can see it when ",
-                _ => " What makes it real is that ",
+                4 => " What makes it load-bearing is that ",
+                _ => " And the geometry of it is that ",
             };
             out.push_str(bridge);
             out.push_str(&w0);
@@ -594,14 +618,15 @@ impl ThoughtArc {
             }
         }
 
-        // Boundary — when it fails / what it is not (honest thought).
+        // Boundary — honest edge without breaking conversational flow.
         if let Some(ref b) = self.boundary {
             let b0 = decapitalize_if_mid(b.trim_end_matches('.'));
-            let bridge = match variant % 4 {
+            let bridge = match variant % 5 {
                 0 => " It frays when ",
                 1 => " The edge case is that ",
                 2 => " Still, that only stays true if ",
-                _ => " Where this gets fragile: ",
+                3 => " Where this gets fragile: ",
+                _ => " The analogy stops when ",
             };
             out.push_str(bridge);
             out.push_str(&b0);
@@ -610,33 +635,37 @@ impl ThoughtArc {
             }
         }
 
-        // Check — discriminating test / next thought under contest.
+        // Check — discriminating test as the next thought, not a footer label.
         if let Some(ref c) = self.check {
             let c0 = decapitalize_if_mid(c.trim_end_matches('.'));
-            let bridge = match variant % 3 {
+            let bridge = match variant % 4 {
                 0 => " A useful check is whether ",
                 1 => " You can pressure-test it by asking if ",
-                _ => " If that shifted, you'd also see that ",
+                2 => " If that shifted, you'd also see that ",
+                _ => " The field asks: does ",
             };
             out.push_str(bridge);
             out.push_str(&c0);
-            if !out.ends_with('.') {
-                out.push('.');
+            if !out.ends_with(['.', '?', '!']) {
+                if bridge.contains("does ") && !c0.contains('?') {
+                    out.push('?');
+                } else {
+                    out.push('.');
+                }
             }
         } else if self.contested
             && style_depth() != 1
             && !looks_capability_user(user)
             && !topic_is_identity(topic)
-            // Short or social turns must not get the multipartite filler sentence.
             && user.split_whitespace().count() >= 8
             && (user.to_ascii_lowercase().contains("connect")
                 || user.to_ascii_lowercase().contains("across")
                 || user.to_ascii_lowercase().contains("compare")
                 || user.to_ascii_lowercase().contains("relation"))
         {
-            // Contested multipartite honesty — only when the user asked multi-facet work.
+            // Multipartite honesty: cohere the competing frames without claiming a mind.
             out.push_str(
-                " More than one frame fits; I'm naming the ones that still cohere under a check.",
+                " Several frames cohere at once here; I'm speaking the ones that still survive a check.",
             );
         }
 
@@ -1490,6 +1519,9 @@ fn decapitalize_if_mid(s: &str) -> String {
 }
 
 /// Prefer SoftCascade when Bitwork evidence can support free-form multi-facet speech.
+///
+/// Design law: talk like continuous thought from the field geometry — not a
+/// transformer, not a checklist. When multipartite mass coheres, cascade.
 pub fn should_use_cascade(matched: &CognitiveMatch, user: &str) -> bool {
     let words = user.split_whitespace().count();
     if words < 3 {
@@ -1514,12 +1546,59 @@ pub fn should_use_cascade(matched: &CognitiveMatch, user: &str) -> bool {
     }
     let packet = assemble(matched, user);
     let open = looks_open_fluency_user(&social);
+    let coh = field_coherence_score(matched, user);
     packet.rich
         || matched.margin < 24
         || matched.mixture.len() >= 1
         || matched.composition.len() >= 2
         || (open && matched.insight.is_some())
-        || (open && words >= 6 && matched.overlap >= 40)
+        || (open && words >= 5 && matched.overlap >= 36)
+        || coh >= 0.38
+}
+
+/// Measurable multipartite field coherence in [0, 1].
+///
+/// High score means the sparse geometry has enough mass to speak continuously.
+/// This is an engineering metric for speech depth — not proof of mind, will,
+/// or consciousness.
+pub fn field_coherence_score(matched: &CognitiveMatch, user: &str) -> f64 {
+    let mut score = 0.0;
+    // Overlap z: multipartite structure above chance.
+    if matched.overlap_z.is_finite() {
+        score += (matched.overlap_z / 30.0).clamp(0.0, 0.28);
+    }
+    // Soft-α mass / mixture supports.
+    if !matched.mixture.is_empty() {
+        score += 0.12 + 0.04 * matched.mixture.len().min(4) as f64;
+    }
+    // Residual hops = second-angle geometry.
+    let residual_n = matched.mixture.iter().filter(|m| m.residual).count();
+    if residual_n > 0 {
+        score += 0.10 + 0.04 * residual_n.min(2) as f64;
+    }
+    // VSA composition frames.
+    if matched.composition.len() >= 2 {
+        score += 0.10;
+    }
+    if matched.insight.is_some() {
+        score += 0.10;
+    }
+    // Contested margin can still cohere multipartite speech.
+    if matched.margin >= 0 && matched.margin < 18 {
+        score += 0.08;
+    } else if matched.margin >= 18 {
+        score += 0.05;
+    }
+    // User tokens hit the thesis/insight (binding).
+    let tokens = content_tokens_bridge(user);
+    if let Some(ins) = matched.insight.as_ref() {
+        let il = ins.to_ascii_lowercase();
+        let hits = tokens.iter().filter(|t| il.contains(t.as_str())).count();
+        if hits > 0 {
+            score += 0.08 * hits.min(3) as f64;
+        }
+    }
+    score.clamp(0.0, 1.0)
 }
 
 fn looks_open_fluency_user(lower: &str) -> bool {
@@ -1533,6 +1612,13 @@ fn looks_open_fluency_user(lower: &str) -> bool {
         || lower.contains("what about")
         || lower.contains("connect ")
         || lower.contains("tell me about")
+        || lower.contains("think")
+        || lower.contains("cohere")
+        || lower.contains("geometry")
+        || lower.contains("between ")
+        || lower.contains("compare")
+        || lower.contains("mind")
+        || lower.contains("sense")
 }
 
 fn content_tokens_bridge(user: &str) -> Vec<String> {
@@ -2030,5 +2116,24 @@ mod tests {
             "why does trust fail in distributed systems?"
         ));
         assert!(!should_use_cascade(&m, "hi"));
+    }
+
+    #[test]
+    fn field_coherence_rises_with_multipartite_mass() {
+        let mut m = sample_match();
+        m.overlap_z = 18.0;
+        m.margin = 4;
+        m.insight = Some(
+            "Trust under lag is checkable acceptance, not hope the network is fast.".into(),
+        );
+        let c = field_coherence_score(&m, "how should interfaces earn trust under lag?");
+        assert!(
+            c >= 0.35,
+            "multipartite field should cohere enough to speak continuously, got {c}"
+        );
+        assert!(
+            should_use_cascade(&m, "how should interfaces earn trust under lag and retry?"),
+            "coherent field should open SoftCascade prose"
+        );
     }
 }
