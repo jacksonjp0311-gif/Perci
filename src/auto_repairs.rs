@@ -182,11 +182,11 @@ pub fn softcascade_trust_alignment_body(user: &str) -> Option<&'static str> {
     }
     Some(
         "Interfaces and services earn trust under lag when acceptance is checkable without private state. \
-Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract \
-with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success \
-is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; \
-(5) recovery paths are the same story both sides can audit. Trust is not hope that the network is fast \
-— it is the ability to verify acceptance, rejection, and pending under delay.",
+Every call should name authority and required proof; timeouts belong in the contract with a stated meaning \
+(cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; \
+health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be the \
+same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify \
+acceptance, rejection, and pending under delay.",
     )
 }
 

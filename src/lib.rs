@@ -34,6 +34,7 @@ pub mod dialogue_workspace;
 pub mod emergence;
 pub mod entity_slot;
 pub mod fabric;
+pub mod frontier_speech;
 pub mod governed_will;
 pub mod hydra_inject;
 pub mod intel_packs;

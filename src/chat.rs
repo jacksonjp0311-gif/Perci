@@ -583,6 +583,27 @@ impl ChatEngine {
         self.backend.set_dialogue_history(&self.recent);
         let control =
             crate::reasoning_controller::derive(input, &self.recent, None, "fluid-associative");
+        // Power move: deep controller modes + multipartite reason candidates first.
+        // Emergent behavior we mine: contested SoftCascade mass + residual hops are
+        // more useful when scored as reason-loop candidates, then spoken as frontier arc.
+        // Reason-loop only when controller asks for multi-cycle verify AND the
+        // loop actually verifies — never glue weak reason text onto a good SoftCascade answer.
+        let reason_seed = if control.should_run_reason_loop() {
+            let receipt = crate::reason_loop::run_loop(input);
+            if !receipt.answer.trim().is_empty()
+                && matches!(
+                    receipt.status,
+                    crate::reason_loop::ReasonStatus::Verified
+                )
+                && receipt.best_score >= 16
+            {
+                Some(receipt.answer)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         let generated = self
             .backend
             .generate(&self.personality.prompt, &ctx, input)?;
@@ -592,6 +613,13 @@ impl ChatEngine {
         } else {
             generated
         };
+        // Prefer verified reason-loop only when it clearly outscores thin SoftCascade.
+        let generated = match reason_seed {
+            Some(ref r) if r.split_whitespace().count() > generated.split_whitespace().count() + 12 => {
+                r.clone()
+            }
+            _ => generated,
+        };
         let shaped = voice::shape_for_conversation(&generated, input, &self.recent);
         let shaped_empty = shaped.trim().is_empty();
         let generated = if shaped_empty {
@@ -599,9 +627,9 @@ impl ChatEngine {
         } else {
             shaped
         };
-        // Fluency pass: rewrite SoftCascade/checklist texture into chat prose.
+        // Fluency / Frontier Arc: multipartite claim→mechanism→boundary continuous prose.
         // Seed-bound; does not invent. External LM can replace this when opted in.
-        let generated = if generated.split_whitespace().count() >= 10 {
+        let generated = if generated.split_whitespace().count() >= 8 {
             crate::language_sidecar::fluent_rewrite(input, &generated)
         } else {
             generated
@@ -619,7 +647,14 @@ impl ChatEngine {
             voice::ensure_user_binding(input, &generated, "general", None, &self.recent)
         };
 
-        let mut deliberation = Deliberation::new("fluid-associative", text.clone())
+        let mut deliberation = Deliberation::new(
+            if crate::frontier_speech::looks_frontier_turn(input) {
+                "frontier-arc"
+            } else {
+                "fluid-associative"
+            },
+            text.clone(),
+        )
             .observed(format!("context_items={}", ctx.len()))
             .observed(format!("reasoning_controller={}", control.hint()))
             .inferred("fluid composition bound reply to user content under Bitwork routing")
@@ -628,8 +663,18 @@ impl ChatEngine {
                 control.steps.join("→"),
                 control.state_fingerprint
             ))
+            .inferred(if crate::frontier_speech::looks_frontier_turn(input) {
+                "frontier arc: multipartite claim→mechanism→boundary continuous speech (not consciousness)"
+                    .to_string()
+            } else {
+                "standard fluency pass".to_string()
+            })
             .uncertain("associative prose is not exact-tool evidence")
-            .confidence(0.78);
+            .confidence(if crate::frontier_speech::looks_frontier_turn(input) {
+                0.84
+            } else {
+                0.78
+            });
         if empty_generation || shaped_empty {
             deliberation.observations.push(
                 "response stage returned empty text; workspace fallback supplied text".into(),

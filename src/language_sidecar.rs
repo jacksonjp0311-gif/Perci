@@ -160,7 +160,17 @@ fn invoke_external(
 
 /// Public fluency pass for any seed (operators, fluid SoftCascade, dialogue).
 /// Seed-bound: restructures and softens wording; does not invent new facts.
+///
+/// **Frontier path:** open reasoning turns use multipartite claim→mechanism→boundary
+/// continuous prose (see `frontier_speech`) so chat feels collaborator-grade without
+/// a transformer or densifying Bitwork.
 pub fn fluent_rewrite(user: &str, seed_body: &str) -> String {
+    if crate::frontier_speech::looks_frontier_turn(user) {
+        let arc = crate::frontier_speech::frontier_arc_rewrite(user, seed_body);
+        if arc.split_whitespace().count() >= 10 {
+            return arc;
+        }
+    }
     let req = request_from(user, "fluency", Vec::new());
     let resp = local_synthesize(&req, seed_body);
     if resp.ok && !resp.text.trim().is_empty() {

@@ -297,7 +297,13 @@ pub fn compose_soft_cascade(
     let ask = ask_shape(user);
 
     if !packet.rich {
-        let body = domain_body.to_owned();
+        let mut body = domain_body.to_owned();
+        // Still frontier-rewrite open reasoning turns (trust/lag, synthesis) so
+        // thin SoftCascade mass does not strand users with checklist texture.
+        if crate::frontier_speech::looks_frontier_turn(user) && body.split_whitespace().count() >= 8
+        {
+            body = crate::language_sidecar::fluent_rewrite(user, &body);
+        }
         remember_premise(&body);
         return body;
     }
@@ -392,11 +398,14 @@ pub fn compose_soft_cascade(
         }
     }
 
-    // Geometry-coherent fluency: when multipartite mass is real, rewrite into
-    // continuous mind-like prose from the field alone — no transformer.
-    // Coherence ≠ consciousness; this is presentation of sparse geometry.
+    // Geometry-coherent fluency / Frontier Arc: multipartite mass OR open reasoning turns
+    // rewrite into continuous collaborator prose — no transformer, no densify.
+    // Coherence ≠ consciousness; this is presentation of sparse geometry + residual hops.
     let coh = field_coherence_score(matched, user);
-    if coh >= 0.42 && out.split_whitespace().count() >= 12 {
+    let frontier = crate::frontier_speech::looks_frontier_turn(user);
+    if (frontier || coh >= 0.38 || geo.force_multipartite_arc || geo.geometry_blind)
+        && out.split_whitespace().count() >= 8
+    {
         out = crate::language_sidecar::fluent_rewrite(user, &out);
     }
 

@@ -132,6 +132,7 @@ One chart — detail lives in git commits and `docs/`, not repeated essays.
 | **0.9.6–0.9.7** | Adaptive Q-loop | Question loop, contradiction / OOD boundary | Turn ownership |
 | **0.9.8** | Ownership + fluency | Operator ownership, fluency rewrite, geometry speech | Core of current chat feel |
 | **→ now (still 0.9.8)** | **BRPC + hardness raise** | H101–H124, surgical evolve loop, `geometry-field`, BRPC receipt, limit-push | Hardness **124**, BRPC **within band** |
+| **→ now** | **Frontier Arc speech** | Mine multipartite SoftCascade + operators → continuous claim→mechanism→boundary prose (`src/frontier_speech.rs`); trust bodies de-checklistized | Gates hold; speech denser without densifying Bitwork |
 
 When you cut a real crate bump (e.g. 0.9.9 / 0.10.0): edit `Cargo.toml`, rebuild (badge stamps), update **this chart + Measured status**, re-run release gates.
 

@@ -3223,11 +3223,20 @@ fn trust_systems_answer(text: &str) -> Deliberation {
             && (text.contains("trust") || text.contains("caller"));
     let how_fail = text.contains("how") && (text.contains("fail") || text.contains("break"));
     let body = if design {
-        "Interfaces earn trust under lag and retry when “done” is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) recovery paths are the same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify acceptance, rejection, and pending under delay."
+        "Interfaces earn trust under lag and retry when “done” is checkable without private state. \
+Every call should name authority and required proof; timeouts belong in the contract with a stated meaning \
+(cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; \
+health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be the \
+same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify \
+acceptance, rejection, and pending under delay."
     } else if timeout_transfer {
         "Callers stop trusting each other after timeouts because a timeout is a one-sided story: the caller saw silence, not proof of the callee’s outcome. Without idempotent requests, versioned replies, and a shared “done” predicate, a retry can look like betrayal (double charge, double write) or the callee can look dead while still working. Distance multiplies that uncertainty: lag, drops, and reordering make local clocks and local success flags disagree. The repair is contracts that stay checkable under lag — not more hope that the next RTT will be honest."
     } else if how_fail {
-        "Trust fails in distributed systems when authority and evidence drift out of sync across nodes. Practically: (1) interfaces stop naming who may act and under which proof; (2) failure modes stay implicit so partial outages look like betrayal; (3) recovery paths are local while callers assume global consistency; (4) clocks, retries, and caches create histories that disagree without a reconciliation rule. How it fails is usually gradual — timeouts, silent drops, stale reads — not a single dramatic breach. The repair is explicit contracts: authz at the boundary, observable health, idempotent recovery, and a shared story of what “done” means under partition."
+        "Trust fails in distributed systems when authority and evidence drift out of sync across nodes. \
+Interfaces stop naming who may act and under which proof; failure modes stay implicit so partial outages look like betrayal; \
+recovery paths stay local while callers assume global consistency; and clocks, retries, and caches create histories that disagree \
+without a reconciliation rule. How it fails is usually gradual — timeouts, silent drops, stale reads — not a single dramatic breach. \
+The repair is explicit contracts: authz at the boundary, observable health, idempotent recovery, and a shared story of what “done” means under partition."
     } else {
         "Trust fails in distributed systems when interfaces, failure modes, and recovery stay implicit. Distance multiplies uncertainty: a caller cannot see another service’s internal state, only messages that may be delayed, duplicated, or lost. Without named authority, proof, and recovery, “I trust you” becomes an untested assumption — and assumptions break under load, partition, and version skew. Why it fails is structural: trust is not a feeling between processes; it is earned when contracts stay checkable when something goes wrong."
     };
@@ -3272,7 +3281,7 @@ fn partition_recovery_answer(text: &str, recent: &[(String, String)]) -> Deliber
         ""
     };
     let body = format!(
-        "{bridge}Recovery under partition is the hard part of distributed trust. While the network is split, each side has a partial history; “recovery” means reconciling those histories without inventing a false shared past. Practically: (1) prefer idempotent writes and versioned state so replay is safe; (2) make “done” a checkable predicate, not a local success flag; (3) choose explicit consistency (quorum, primary, CRDT merge, or human gate) before healing; (4) surface lag and conflict to callers so silence is not mistaken for agreement. Trust returns when both sides can prove what was accepted under the split and what was rejected or deferred—not when messages simply start flowing again."
+        "{bridge}Recovery under partition is the hard part of distributed trust. While the network is split, each side has a partial history; “recovery” means reconciling those histories without inventing a false shared past. Prefer idempotent writes and versioned state so replay is safe; make “done” a checkable predicate, not a local success flag; choose explicit consistency (quorum, primary, CRDT merge, or human gate) before healing; and surface lag and conflict to callers so silence is not mistaken for agreement. Trust returns when both sides can prove what was accepted under the split and what was rejected or deferred—not when messages simply start flowing again."
     );
     let _ = text;
     Deliberation::new("partition-recovery", body)
