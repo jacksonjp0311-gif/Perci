@@ -66,10 +66,16 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
     // A specialized operator owns its answer shape. The language sidecar may
     // polish open-ended prose, but it must not replace a measured separation
     // (especially learning/evidence) with a generic continuation.
+    // Prefer fluency rewrite for operator speech so chat sounds collaborative,
+    // not like a checklist dump. Exact learning-evidence answers keep ownership.
     let operator_owns_evidence_answer = matches!(operator, "learning-evidence");
-    if !operator_owns_evidence_answer
-        && (plan.language.is_some() || language_sidecar::should_invoke_language(user))
-    {
+    let want_fluency = !operator_owns_evidence_answer
+        && (plan.language.is_some()
+            || language_sidecar::should_invoke_language(user)
+            || body.len() > 60
+            || body.contains("**")
+            || body.contains('\n'));
+    if want_fluency {
         let wants_provenance = [
             "evidence",
             "source",
@@ -88,6 +94,9 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
         let resp = language_sidecar::generate(&req, &body);
         if resp.ok {
             body = resp.text;
+        } else {
+            // Even if critic rejects expansion, still demote checklist formatting.
+            body = language_sidecar::fluent_rewrite(user, &body);
         }
     }
 

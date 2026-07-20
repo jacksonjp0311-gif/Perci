@@ -599,6 +599,13 @@ impl ChatEngine {
         } else {
             shaped
         };
+        // Fluency pass: rewrite SoftCascade/checklist texture into chat prose.
+        // Seed-bound; does not invent. External LM can replace this when opted in.
+        let generated = if generated.split_whitespace().count() >= 10 {
+            crate::language_sidecar::fluent_rewrite(input, &generated)
+        } else {
+            generated
+        };
         // Style + anti-generic: fluid binding survives learned compression.
         let text = if let Some(learner) = &self.learning {
             let styled = voice::apply_learned_style(
