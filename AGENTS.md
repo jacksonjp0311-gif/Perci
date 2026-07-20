@@ -84,6 +84,7 @@ human         → durable weight promote and high-risk merge
 | Native decoder | `src/native_decoder.rs` · `perci fabric decode` |
 | Reason/search/verify | `src/reason_loop.rs` · `perci fabric reason` |
 | Replay baselines | `src/replay_learn.rs` · `perci fabric replay` (never auto-promote) |
+| HYDRA inject bridge | `scripts/hydra_perci_bridge.py` · [HYDRA-Injector](https://github.com/jacksonjp0311-gif/HYDRA-Injector) (anchor→plan→seal; dry-run default) |
 
 ### Interconnection commands
 

@@ -1,0 +1,12 @@
+{
+  "schema": "perci.hydra-bridge.field.v1",
+  "generated_at_utc": "2026-07-20T15:01:43.998913+00:00",
+  "spec": "models\\candidates\\hydra-bridge\\specs\\brpc_field_spec.json",
+  "run_ok": true,
+  "claim_boundary": [
+    "HYDRA bridge is governance for injection, not consciousness",
+    "never auto-promote .pwgt from HYDRA seal",
+    "code-apply only after review + tests",
+    "residual field metrics are engineering telemetry, not physics claims"
+  ]
+}

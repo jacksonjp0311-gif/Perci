@@ -1,0 +1,28 @@
+{
+  "schema": "perci.hydra-bridge.evolve.v1",
+  "generated_at_utc": "2026-07-20T15:01:22.331299+00:00",
+  "dry_run": true,
+  "plan_rc": 0,
+  "apply": [
+    {
+      "spec": "models\\candidates\\hydra-bridge\\specs\\codeweave_P_1.json",
+      "dry_run": true,
+      "ok": true,
+      "tail": "=repair_owning_engine_not_densify_bitwork\\n-# claim_boundary=no_auto_promote_pwgt\\n # HYDRA-INJECT:slot name=geometry_note profile=library\\n # HYDRA-INJECT:slot name=boundary_lock profile=library\\n # HYDRA-INJECT:slot name=coord_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-df4136a8f74b52b6\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n"
+    },
+    {
+      "spec": "models\\candidates\\hydra-bridge\\specs\\codeweave_R_2.json",
+      "dry_run": true,
+      "ok": true,
+      "tail": "air_owning_engine_not_densify_bitwork\\n-# claim_boundary=no_auto_promote_pwgt\\n # HYDRA-INJECT:slot name=recovery_note profile=library\\n # HYDRA-INJECT:slot name=latency_note profile=library\\n # HYDRA-INJECT:slot name=continuity_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-aacd3e20ba1e8241\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n"
+    }
+  ],
+  "regate": null,
+  "claim_boundary": [
+    "HYDRA bridge is governance for injection, not consciousness",
+    "never auto-promote .pwgt from HYDRA seal",
+    "code-apply only after review + tests",
+    "residual field metrics are engineering telemetry, not physics claims"
+  ],
+  "automatic_promotion": false
+}

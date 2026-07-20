@@ -1,0 +1,65 @@
+{
+  "mask": [
+    [
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1
+    ]
+  ],
+  "field": [
+    [
+      0.21666666666666667,
+      0.16249999999999998,
+      0.02
+    ],
+    [
+      0.21666666666666667,
+      0.02,
+      0.1094558654776081
+    ],
+    [
+      0.02,
+      0.10932702840156307,
+      0.10932702840156307
+    ]
+  ],
+  "config": {
+    "target_volume": 1.0,
+    "retract_fraction": 0.2,
+    "pin_strength": 0.35,
+    "boundary_band": 1,
+    "seal_steps": 8,
+    "seal_alpha": 0.35
+  },
+  "robustness": true,
+  "meta": {
+    "source": "perci.brpc-receipt.v0.1",
+    "factor_order": [
+      "P",
+      "M",
+      "B",
+      "R",
+      "K",
+      "U",
+      "D",
+      "pad",
+      "pad"
+    ],
+    "claim_boundary": [
+      "HYDRA bridge is governance for injection, not consciousness",
+      "never auto-promote .pwgt from HYDRA seal",
+      "code-apply only after review + tests",
+      "residual field metrics are engineering telemetry, not physics claims"
+    ]
+  }
+}

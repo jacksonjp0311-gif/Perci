@@ -1,0 +1,58 @@
+{
+  "schema": "perci.hydra-bridge.plan.v1",
+  "generated_at_utc": "2026-07-20T15:01:45.478543+00:00",
+  "mode": "plan_only",
+  "failures_seen": 0,
+  "soft_brpc": [
+    [
+      "P",
+      0.7833333333333333
+    ],
+    [
+      "R",
+      0.7833333333333333
+    ],
+    [
+      "M",
+      0.8375
+    ],
+    [
+      "U",
+      0.8905441345223919
+    ]
+  ],
+  "planned": [
+    {
+      "factor": "P",
+      "spec": "models\\candidates\\hydra-bridge\\specs\\codeweave_P_1.json",
+      "verify_ok": true,
+      "plan_ok": true,
+      "verify_tail": "lot name=geometry_note profile=library\\n # HYDRA-INJECT:slot name=boundary_lock profile=library\\n # HYDRA-INJECT:slot name=coord_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-d95241e74c7a3a29\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n",
+      "plan_tail": "\\n-# hydra-evolve: factor=P layer=hardness / predictive\\n-# status=candidate_patch_anchor\\n-# action=repair_owning_engine_not_densify_bitwork\\n-# claim_boundary=no_auto_promote_pwgt\\n # HYDRA-INJECT:slot name=geometry_note profile=library\\n # HYDRA-INJECT:slot name=boundary_lock profile=library\\n # HYDRA-INJECT:slot name=coord_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-6bcf4d69c8af842e\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n",
+      "fail": null,
+      "value": 0.7833333333333333
+    },
+    {
+      "factor": "R",
+      "spec": "models\\candidates\\hydra-bridge\\specs\\codeweave_R_2.json",
+      "verify_ok": true,
+      "plan_ok": true,
+      "verify_tail": "name=recovery_note profile=library\\n # HYDRA-INJECT:slot name=latency_note profile=library\\n # HYDRA-INJECT:slot name=continuity_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-6ae44b18e2703d66\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n",
+      "plan_tail": "ra-evolve: factor=R layer=multi-engine coordination\\n-# status=candidate_patch_anchor\\n-# action=repair_owning_engine_not_densify_bitwork\\n-# claim_boundary=no_auto_promote_pwgt\\n # HYDRA-INJECT:slot name=recovery_note profile=library\\n # HYDRA-INJECT:slot name=latency_note profile=library\\n # HYDRA-INJECT:slot name=continuity_note profile=library\\n\",\n  \"rolled_back\": false,\n  \"session_id\": \"hydra-f5b86f290f1ffca6\",\n  \"target_file\": \"C:\\\\Users\\\\jacks\\\\OneDrive\\\\Desktop\\\\perci\\\\scripts\\\\hydra_perci_bridge.py\",\n  \"test_command\": \"\",\n  \"test_output\": \"\",\n  \"test_passed\": null,\n  \"warnings\": []\n}\n",
+      "fail": null,
+      "value": 0.7833333333333333
+    }
+  ],
+  "claim_boundary": [
+    "HYDRA bridge is governance for injection, not consciousness",
+    "never auto-promote .pwgt from HYDRA seal",
+    "code-apply only after review + tests",
+    "residual field metrics are engineering telemetry, not physics claims"
+  ],
+  "automatic_promotion": false,
+  "next": [
+    "Review diffs under models/candidates/hydra-bridge/",
+    "hydra-inject code-apply <spec> --dry-run",
+    "Only after review: code-apply + cargo test / hardness (never weight promote)"
+  ]
+}

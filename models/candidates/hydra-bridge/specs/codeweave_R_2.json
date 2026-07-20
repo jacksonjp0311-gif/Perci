@@ -1,0 +1,27 @@
+{
+  "root": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci",
+  "target_file": "scripts/hydra_perci_bridge.py",
+  "marker": "# HYDRA-INJECT:slot name=coord_note profile=library",
+  "name": "coord_note",
+  "profile": "library",
+  "mode": "after",
+  "code": "\n# hydra-evolve: factor=R layer=multi-engine coordination\n# status=candidate_patch_anchor\n# action=repair_owning_engine_not_densify_bitwork\n# claim_boundary=no_auto_promote_pwgt\n",
+  "allow_extensions": [
+    ".py",
+    ".md",
+    ".json",
+    ".toml",
+    ".yml",
+    ".yaml",
+    ".txt",
+    ".rs"
+  ],
+  "max_bytes": 16000,
+  "rationale": "BRPC factor R (multi-engine coordination) needs governed injection. HYDRA: anchor\u2192inject\u2192retract\u2192seal. Never auto-promote .pwgt. Observed factor value=0.783.",
+  "non_claims": [
+    "HYDRA bridge is governance for injection, not consciousness",
+    "never auto-promote .pwgt from HYDRA seal",
+    "code-apply only after review + tests",
+    "residual field metrics are engineering telemetry, not physics claims"
+  ]
+}
