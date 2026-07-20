@@ -100,6 +100,11 @@ fn looks_governance_authority(text: &str) -> bool {
 }
 
 /// Geometry field / boundary band / SoftCascade manifold (geometry_blind debt).
+///
+/// Intentionally **narrow**: only explicit field-control / band / manifold /
+/// BRPC×Bitwork / "what does geometry teach about boundary…" asks. Broader
+/// geometry×life, sacred geometry, compose/planning, and dual-motif paraphrases
+/// stay on their specialist operators in deliberation / multi-hop paths.
 fn looks_geometry_field_speech(text: &str) -> bool {
     // Consciousness / qualia probes stay on refuse paths in deliberation.
     if text.contains("conscious")
@@ -114,46 +119,55 @@ fn looks_geometry_field_speech(text: &str) -> bool {
     if text.contains("calculate") || text.contains("area of") || text.contains("degrees") {
         return false;
     }
-    // Cross-domain compose (geometry × systems × planning) stays multi-hop/dual-motif.
-    if (text.contains("compose") || text.contains("connect"))
-        && (text.contains("systems")
-            || text.contains("planning")
-            || text.contains("reasoning")
-            || text.contains("geometric intuition"))
-    {
-        return false;
-    }
-    if text.contains("geometric intuition") && text.contains("planning") {
-        return false;
-    }
-    let geo = text.contains("geometry")
-        || text.contains("manifold")
-        || text.contains("multipartite")
-        || text.contains("softcascade")
-        || text.contains("boundary band")
-        || text.contains("calibrated distance")
-        || (text.contains("boundary")
-            && (text.contains("maintain")
-                || text.contains("maintenance")
-                || text.contains("change")
-                || text.contains("band")
-                || text.contains("coheren")));
-    let band = (text.contains("band") || text.contains("calibrat"))
-        && (text.contains("coheren")
-            || text.contains("distance")
-            || text.contains("maximiz")
-            || text.contains("hugging")
-            || text.contains("failure"));
-    let manifold = text.contains("manifold adher")
-        || (text.contains("primary")
-            && text.contains("off")
-            && (text.contains("multipart") || text.contains("softcascade")));
+
+    // BRPC × Bitwork control speech (even if phrased "Connect BRPC…").
     let brpc_geo = text.contains("brpc")
         && (text.contains("bitwork")
             || text.contains("multiplic")
             || text.contains("coheren")
             || text.contains("factor"));
-    geo || band || manifold || brpc_geo
+    if brpc_geo {
+        return true;
+    }
+
+    // Never steal cross-domain compose / sacred / healing / provenance designs.
+    if text.contains("compose ")
+        || text.contains("connect ")
+        || text.contains("bridge ")
+        || text.contains("sacred")
+        || text.contains("healing")
+        || text.contains("provenance")
+        || text.contains("geometric intuition")
+        || text.contains("same testable relation")
+    {
+        return false;
+    }
+
+    let band = text.contains("boundary band")
+        || text.contains("boundary bands")
+        || ((text.contains("band") || text.contains("calibrat"))
+            && (text.contains("coheren")
+                || text.contains("distance")
+                || text.contains("maximiz")
+                || text.contains("hugging")
+                || text.contains("failure")));
+    let manifold = text.contains("manifold adher")
+        || (text.contains("manifold")
+            && text.contains("softcascade")
+            && (text.contains("primary") || text.contains("multipart")));
+    let geometry_teach = (text.contains("geometry teach")
+        || text.contains("geometry teaches")
+        || text.contains("what does geometry"))
+        && (text.contains("boundary")
+            || text.contains("maintain")
+            || text.contains("maintenance")
+            || text.contains("change"));
+    let maintenance = text.contains("geometry")
+        && text.contains("boundary")
+        && (text.contains("maintain") || text.contains("maintenance"))
+        && text.contains("change");
+
+    band || manifold || geometry_teach || maintenance
 }
 
 fn geometry_field_answer(user: &str) -> Deliberation {
