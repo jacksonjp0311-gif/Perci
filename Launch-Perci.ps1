@@ -128,6 +128,55 @@ function Show-RedDnaBanner {
     Write-Host ''
 }
 
+function Stop-StalePerciProcesses {
+    <#
+    .SYNOPSIS
+      Kill leftover perci.exe (warm daemons / orphaned chats) so Launch always
+      talks to the binary we just built — never a silent old process.
+    #>
+    param([string]$KeepPath = '')
+    $killed = 0
+    Get-Process -Name 'perci' -ErrorAction SilentlyContinue | ForEach-Object {
+        try {
+            $path = $_.Path
+            if ($KeepPath -and $path -and ($path -ieq $KeepPath)) {
+                return
+            }
+            Stop-Process -Id $_.Id -Force -ErrorAction Stop
+            $killed++
+        } catch {}
+    }
+    if ($killed -gt 0) {
+        Write-BloodLine ("  *  cleared {0} stale perci process(es)" -f $killed) DarkRed
+        Start-Sleep -Milliseconds 200
+    }
+}
+
+function Write-RuntimeStamp {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExePath,
+        [Parameter(Mandatory = $true)][string]$Root
+    )
+    $stampDir = Join-Path $Root '.perci'
+    $null = New-Item -ItemType Directory -Force -Path $stampDir -ErrorAction SilentlyContinue
+    $git = ''
+    try {
+        $git = (& git -C $Root rev-parse --short=8 HEAD 2>$null | Out-String).Trim()
+    } catch {}
+    $item = Get-Item -LiteralPath $ExePath -ErrorAction SilentlyContinue
+    $obj = [ordered]@{
+        schema      = 'perci.runtime-stamp.v1'
+        exe         = $ExePath
+        exe_mtime   = if ($item) { $item.LastWriteTimeUtc.ToString('o') } else { $null }
+        exe_bytes   = if ($item) { $item.Length } else { 0 }
+        git_rev     = $git
+        stamped_utc = (Get-Date).ToUniversalTime().ToString('o')
+        policy      = 'Launch-Perci always cargo-builds live target and kills stale perci processes'
+    }
+    $json = $obj | ConvertTo-Json -Compress
+    Set-Content -LiteralPath (Join-Path $stampDir 'runtime-stamp.json') -Value $json -Encoding utf8
+}
+
 function Repair-PerciDesktopShortcut {
     <#
     .SYNOPSIS
@@ -427,9 +476,25 @@ try {
     $env:CARGO_TARGET_DIR = $LiveTarget
     $Exe = Join-Path $LiveTarget 'release\perci.exe'
 
+    # Never talk to a warm daemon or orphaned perci.exe from a prior session.
+    Stop-StalePerciProcesses
+
     # Dark-blood red DNA sync: helix animates while cargo builds in background.
     # Cleared before chat so the banner still snaps to the top.
     Sync-PerciRuntimeWithRedDna -CargoArgs @('build', '--release')
+
+    if (-not (Test-Path -LiteralPath $Exe)) {
+        throw "Live binary missing after build: $Exe"
+    }
+
+    # Mirror into default target/release so ad-hoc `perci` / scripts match live.
+    $DefaultRelease = Join-Path $Root 'target\release\perci.exe'
+    try {
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path $DefaultRelease) -ErrorAction SilentlyContinue
+        Copy-Item -LiteralPath $Exe -Destination $DefaultRelease -Force -ErrorAction SilentlyContinue
+    } catch {}
+
+    Write-RuntimeStamp -ExePath $Exe -Root $Root
 
     if ($Mode -eq 'status') {
         Clear-Host
@@ -451,14 +516,23 @@ try {
     # Fade out preamble: wipe PS copyright + cargo lines so Perci snaps to top.
     $ver = 'Perci'
     try {
-        $toml = Get-Content (Join-Path $Root 'Cargo.toml') -Raw
-        if ($toml -match 'version\s*=\s*"([^"]+)"') { $ver = "Perci v$($Matches[1])" }
+        $out = & $Exe --version 2>$null
+        if ($out) { $ver = ($out | Select-Object -First 1).ToString().Trim() }
     } catch {}
-    $Host.UI.RawUI.WindowTitle = "$ver // dark-blood"
+    if ($ver -eq 'Perci') {
+        try {
+            $toml = Get-Content (Join-Path $Root 'Cargo.toml') -Raw
+            if ($toml -match 'version\s*=\s*"([^"]+)"') { $ver = "Perci v$($Matches[1])" }
+            $git = (& git -C $Root rev-parse --short=8 HEAD 2>$null | Out-String).Trim()
+            if ($git) { $ver = "$ver+$git" }
+        } catch {}
+    }
+    $Host.UI.RawUI.WindowTitle = "$ver // dark-blood // auto-sync"
     $env:PERCI_COLOR = if ($env:PERCI_COLOR) { $env:PERCI_COLOR } else { 'always' }
     Clear-Host
     # Soft beat so clear is perceived as a transition, then chat paints the banner.
     Start-Sleep -Milliseconds 80
+    # Chat uses the just-built live binary only — never PATH or a stale daemon.
     & $Exe chat
     exit $LASTEXITCODE
 }

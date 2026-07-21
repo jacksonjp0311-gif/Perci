@@ -1,11 +1,13 @@
-﻿{
-    "name":  "Perci",
-    "theme":  "dark-blood",
-    "version":  "0.9.8",
-    "mark":  "assets/icons/perci-darkblood-mark.svg",
-    "badge":  "assets/generated/perci-darkblood-badge.svg",
-    "mark_raster":  "assets/icons/perci-darkblood-mark.jpg",
-    "source_of_truth":  "Cargo.toml package.version",
-    "policy":  "Never hand-edit generated badge version; rebuild after bumping Cargo.toml.",
-    "mark_ico":  "assets/icons/perci-darkblood.ico"
+{
+  "name": "Perci",
+  "theme": "dark-blood",
+  "version": "0.9.8",
+  "build_id": "0.9.8+9086af83-dirty",
+  "git_rev": "9086af83",
+  "mark": "assets/icons/perci-darkblood-mark.svg",
+  "badge": "assets/generated/perci-darkblood-badge.svg",
+  "mark_raster": "assets/icons/perci-darkblood-mark.jpg",
+  "mark_ico": "assets/icons/perci-darkblood.ico",
+  "source_of_truth": "Cargo.toml package.version + git HEAD",
+  "policy": "Never hand-edit generated badge version; rebuild after bumping Cargo.toml. Launch-Perci always cargo-builds live target and kills stale daemons."
 }

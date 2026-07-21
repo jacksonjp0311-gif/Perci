@@ -14,9 +14,24 @@ fn main() {
     let gen_dir = manifest_dir.join("assets").join("generated");
     let _ = fs::create_dir_all(&gen_dir);
 
-    // Always rewrite VERSION stamp.
+    // Git short rev (best-effort) so banners prove which source the binary was built from.
+    // Rerun when HEAD moves so Launch-Perci rebuilds pick up the new identity automatically.
+    let git_head = manifest_dir.join(".git").join("HEAD");
+    println!("cargo:rerun-if-changed={}", git_head.display());
+    let rev = git_short_rev(&manifest_dir);
+    let dirty = git_dirty(&manifest_dir);
+    let build_id = if rev.is_empty() {
+        version.clone()
+    } else if dirty {
+        format!("{version}+{rev}-dirty")
+    } else {
+        format!("{version}+{rev}")
+    };
+
+    // Always rewrite VERSION stamp (semver + optional +rev).
     let version_path = gen_dir.join("VERSION");
-    fs::write(&version_path, format!("{version}\n")).expect("write VERSION");
+    fs::write(&version_path, format!("{build_id}\n")).expect("write VERSION");
+    fs::write(gen_dir.join("BUILD_ID"), format!("{build_id}\n")).expect("write BUILD_ID");
 
     // Versioned badge SVG (exact text via code — never hand-edited).
     let badge = render_badge_svg(&version);
@@ -25,6 +40,7 @@ fn main() {
     // Mirror into OUT_DIR for include_str! stability if workspace is cleaned.
     fs::write(out_dir.join("PERCI_BRAND_VERSION"), format!("{version}\n"))
         .expect("write OUT version");
+    fs::write(out_dir.join("PERCI_BUILD_ID"), format!("{build_id}\n")).expect("write OUT build id");
     fs::write(
         out_dir.join("perci-darkblood-badge.svg"),
         render_badge_svg(&version),
@@ -32,8 +48,13 @@ fn main() {
     .expect("write OUT badge");
 
     // Human-readable brand manifest.
+    let rev_json = if rev.is_empty() {
+        "null".to_owned()
+    } else {
+        format!("\"{rev}\"")
+    };
     let manifest = format!(
-        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"mark_ico\": \"assets/icons/perci-darkblood.ico\",\n  \"source_of_truth\": \"Cargo.toml package.version\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml.\"\n}}\n"
+        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"build_id\": \"{build_id}\",\n  \"git_rev\": {rev_json},\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"mark_ico\": \"assets/icons/perci-darkblood.ico\",\n  \"source_of_truth\": \"Cargo.toml package.version + git HEAD\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml. Launch-Perci always cargo-builds live target and kills stale daemons.\"\n}}\n"
     );
     fs::write(gen_dir.join("brand-manifest.json"), &manifest).expect("write brand manifest");
 
@@ -41,6 +62,29 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/icons/perci-darkblood-mark.svg");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rustc-env=PERCI_BRAND_VERSION={version}");
+    println!("cargo:rustc-env=PERCI_BUILD_ID={build_id}");
+}
+
+fn git_short_rev(repo: &std::path::Path) -> String {
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--short=8", "HEAD"])
+        .current_dir(repo)
+        .output();
+    match output {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_owned(),
+        _ => String::new(),
+    }
+}
+
+fn git_dirty(repo: &std::path::Path) -> bool {
+    let output = std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(repo)
+        .output();
+    match output {
+        Ok(o) if o.status.success() => !String::from_utf8_lossy(&o.stdout).trim().is_empty(),
+        _ => false,
+    }
 }
 
 fn render_badge_svg(version: &str) -> String {

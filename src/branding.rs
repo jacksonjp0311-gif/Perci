@@ -14,9 +14,17 @@ pub fn branded_version() -> &'static str {
     env!("PERCI_BRAND_VERSION")
 }
 
-/// Human label: `Perci v0.5.2 · dark-blood`
+/// Build identity: `0.9.8+9086af8` (semver + git short rev). Empty-rev → semver only.
+///
+/// Baked at compile time so the banner proves which source this binary was built from.
+/// Launch-Perci always rebuilds before chat so this stays current without manual checks.
+pub fn build_id() -> &'static str {
+    option_env!("PERCI_BUILD_ID").unwrap_or(env!("CARGO_PKG_VERSION"))
+}
+
+/// Human label: `Perci v0.9.8+9086af8 · dark-blood`
 pub fn version_label() -> String {
-    format!("Perci v{} · dark-blood", version())
+    format!("Perci v{} · dark-blood", build_id())
 }
 
 /// Relative path to the version-agnostic mark (diamond/blood sigil).
@@ -63,10 +71,11 @@ mod tests {
     #[test]
     fn generated_version_file_matches_when_present() {
         if let Some(file_v) = generated_version_file() {
-            assert_eq!(
-                file_v,
-                version(),
-                "assets/generated/VERSION must match crate version after build"
+            // VERSION is build_id (semver or semver+gitrev); must start with crate version.
+            assert!(
+                file_v == version() || file_v.starts_with(&format!("{}+", version())),
+                "assets/generated/VERSION={file_v} must start with crate version {}",
+                version()
             );
         }
     }
@@ -76,6 +85,16 @@ mod tests {
         let label = version_label();
         assert!(label.contains(version()));
         assert!(label.contains("dark-blood"));
+        assert!(label.contains(build_id()) || build_id() == version());
+    }
+
+    #[test]
+    fn build_id_starts_with_crate_version() {
+        let id = build_id();
+        assert!(
+            id == version() || id.starts_with(&format!("{}+", version())),
+            "build_id={id}"
+        );
     }
 
     #[test]

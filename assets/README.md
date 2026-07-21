@@ -34,6 +34,19 @@ python scripts/build_icon_ico.py --desktop
 .\Launch-Perci.ps1 -Mode status
 ```
 
+## Always-current binary (never ask "am I on this version?")
+
+`Launch-Perci.ps1` **always**:
+
+1. Kills leftover `perci.exe` processes (stale daemons)
+2. `cargo build --release` into `target/live`
+3. Mirrors the live binary to `target/release/perci.exe`
+4. Writes `.perci/runtime-stamp.json`
+5. Starts **that** binary for chat
+
+Banner / `perci version` show `v0.9.8+<gitrev>` (from `PERCI_BUILD_ID`).  
+`perci ask` refuses a warm daemon whose `build_id` does not match this binary.
+
 ## Guarantees
 
 - UI banner, `/status`, and `perci::branding::version_label()` use `env!("CARGO_PKG_VERSION")`.

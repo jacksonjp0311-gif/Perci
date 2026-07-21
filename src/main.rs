@@ -16,6 +16,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
     let command = args.next().unwrap_or_else(|| "chat".into());
 
+    // Identity only — no pack load. Launch-Perci and scripts use this to prove build.
+    if matches!(
+        command.as_str(),
+        "--version" | "-V" | "version" | "build-id" | "build_id"
+    ) {
+        println!("Perci {}", perci::branding::build_id());
+        return Ok(());
+    }
+
     // Daemon has its own warm engine — start before other setup
     if matches!(command.as_str(), "daemon" | "serve") {
         return perci::daemon::run_server().map_err(|e| e);
@@ -57,8 +66,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if input.trim().is_empty() {
                 return Err("usage: perci ask <message>".into());
             }
-            // Prefer warm daemon when live (skip process cold-start)
-            if perci::daemon::ping() {
+            // Prefer warm daemon only when its build_id matches this binary.
+            // Stale daemons after source fixes silently broke chat — never again.
+            if perci::daemon::ping_current() {
                 match perci::daemon::ask_daemon(&input) {
                     Ok(text) => {
                         println!("{text}");
@@ -66,6 +76,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Err(e) => eprintln!("daemon ask fallback: {e}"),
                 }
+            } else if perci::daemon::ping() {
+                eprintln!(
+                    "daemon stale (build_id mismatch) — using local binary {}",
+                    perci::branding::build_id()
+                );
             }
             println!("{}", engine.respond(&input)?.text);
         }

@@ -192,6 +192,7 @@ fn handle_client(
                         "ok": true,
                         "service": "perci-daemon",
                         "version": env!("CARGO_PKG_VERSION"),
+                        "build_id": crate::branding::build_id(),
                         "fabric": "v0.7.0"
                     })
                 )?;
@@ -386,6 +387,22 @@ pub fn ping() -> bool {
         .ok()
         .and_then(|v| v.get("ok").and_then(|x| x.as_bool()))
         .unwrap_or(false)
+}
+
+/// True when a daemon is live **and** its baked build_id matches this binary.
+/// Prevents `perci ask` from silently using a stale warm process after code changes.
+pub fn ping_current() -> bool {
+    match request("ping", None) {
+        Ok(v) if v.get("ok").and_then(|x| x.as_bool()) == Some(true) => {
+            let remote = v
+                .get("build_id")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            // Older daemons without build_id are treated as stale.
+            !remote.is_empty() && remote == crate::branding::build_id()
+        }
+        _ => false,
+    }
 }
 
 pub fn ask_daemon(text: &str) -> Result<String, String> {

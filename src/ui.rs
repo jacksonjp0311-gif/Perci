@@ -56,8 +56,9 @@ impl BloodUi {
     }
 
     pub fn banner(&self, backend: &str, cortex: &str) {
-        // Version always from Cargo.toml via branding — never a hard-coded string.
+        // Semver + git build id — never a hard-coded string. Proves which binary is live.
         let ver = perci::branding::version();
+        let build = perci::branding::build_id();
         // Fixed monospaced diamond (centered under the title row).
         // Only " dark-blood" is purple; spacing matches a single string:
         // "          ◆" / "         ╱ ╲" / "        ◆   ◆   PERCI dark-blood"
@@ -95,11 +96,17 @@ impl BloodUi {
             self.paint(BLOOD, "│"),
             self.paint(BRIGHT_BLOOD, "          ◆")
         );
+        // Show full build_id when it carries a git rev (v0.9.8+abc12345).
+        let shown = if build != ver {
+            format!("v{build}")
+        } else {
+            format!("v{ver}")
+        };
         println!(
             "{} {} {} {}",
             self.paint(BLOOD, "│"),
             self.paint(BRIGHT_BLOOD, "◆  P E R C I"),
-            self.paint(BRIGHT_BLOOD, format!("v{ver}")),
+            self.paint(BRIGHT_BLOOD, shown),
             self.paint(IRON, "// governed sparse cognition")
         );
         println!(
@@ -115,11 +122,11 @@ impl BloodUi {
             self.paint(BONE, backend)
         );
         println!("  {} {}", self.paint(ASH, "MEM "), self.paint(IRON, cortex));
-        // "Perci vX.Y.Z · " iron/red family; "dark-blood" purple only.
+        // "Perci vX.Y.Z+rev · " iron/red family; "dark-blood" purple only.
         println!(
             "  {} {} {}",
             self.paint(ASH, "BRAND"),
-            self.paint(IRON, format!("Perci v{ver} · ")),
+            self.paint(IRON, format!("Perci v{build} · ")),
             self.paint(GRAVE_PURPLE, "dark-blood"),
         );
         println!(
