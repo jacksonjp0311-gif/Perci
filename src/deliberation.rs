@@ -710,7 +710,7 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.97),
         );
     }
-    if text.trim() == "what do you know" || text.trim() == "what do you know?" {
+    if looks_knowledge_inventory(&text) {
         return Some(
             Deliberation::new(
                 "knowledge-inventory",
@@ -719,6 +719,50 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .observed("the prompt requests a capability inventory")
             .inferred("the useful answer is scoped system knowledge, not a universal claim")
             .confidence(0.99),
+        );
+    }
+    if looks_understand_me(&text) {
+        return Some(
+            Deliberation::new(
+                "understand-me",
+                "I process your words as tokens, route them, and bind recent turns — that is operational understanding of the prompt, not mind-reading. I can miss tone, private intent, and unfinished thoughts. If a reply missed you, restate the claim in one plain sentence and I'll answer that line.",
+            )
+            .observed("user asked whether Perci understands them")
+            .inferred("honest answer: operational parse, not phenomenological understanding")
+            .confidence(0.96),
+        );
+    }
+    if looks_can_you_reason(&text) {
+        return Some(
+            Deliberation::new(
+                "can-reason",
+                "Yes — as named operators and bounded reason loops, not private chain-of-thought. I can decompose, compare, check transfer, run exact tools, and stop when evidence is thin. Give a concrete claim or problem and I'll reason on that, not on “can you reason?” alone.",
+            )
+            .observed("user asked whether Perci can reason")
+            .inferred("affirm operational reasoning under governor; invite a real problem")
+            .confidence(0.97),
+        );
+    }
+    if looks_answers_broken_complaint(&text) {
+        return Some(
+            Deliberation::new(
+                "chat-quality-own",
+                "You're right to call broken answers out. Common fails: empty SoftCascade shells, modular templates with no claim, word-math not parsing, or style glue on meta turns. Fix path: name the bad reply, repair the owning layer (operator / dialogue / exact tool — not densify weights), retest the same prompt. What broke last for you — empty loop, wrong math, or robotic glue?",
+            )
+            .observed("user complained that answers are broken")
+            .inferred("own the chat-quality fail; offer triage not generic mechanism shell")
+            .confidence(0.95),
+        );
+    }
+    if looks_geometry_opinion(&text) {
+        return Some(
+            Deliberation::new(
+                "geometry-opinion",
+                "Geometry makes relations checkable: boundaries, distances, and invariants you can measure without inventing a story. In Perci it is a description tool for transfer and maintenance — not a mind and not a claim that shapes are alive. Useful when it names what can change while a structure stays the same; useless when it becomes wallpaper for vague metaphors.",
+            )
+            .observed("user asked about geometry as a topic")
+            .inferred("grounded geometry stance without SoftCascade glue")
+            .confidence(0.94),
         );
     }
     if text.contains("which part")
@@ -3847,6 +3891,67 @@ fn is_next_step_question(text: &str) -> bool {
         || c.starts_with("where do we go")
 }
 
+fn looks_knowledge_inventory(text: &str) -> bool {
+    let t = text.trim();
+    t == "what do you know"
+        || t == "what do you know?"
+        || t == "what kind of things do you know"
+        || t == "what kind of things do you know?"
+        || t == "what things do you know"
+        || t == "what things do you know?"
+        || t == "what can you know"
+        || t == "what can you know?"
+        || (t.contains("what do you know") && t.len() < 48)
+        || (t.contains("what kind of things") && t.contains("know") && t.len() < 64)
+        || (t.contains("what things do you") && t.contains("know") && t.len() < 48)
+}
+
+fn looks_understand_me(text: &str) -> bool {
+    let t = text.trim();
+    t == "do you understand me"
+        || t == "do you understand me?"
+        || t == "can you understand me"
+        || t == "can you understand me?"
+        || t == "do you understand"
+        || t == "do you understand?"
+        || (t.contains("do you understand me") && t.len() < 48)
+        || (t.contains("understand me") && t.contains("do you") && t.len() < 48)
+}
+
+fn looks_can_you_reason(text: &str) -> bool {
+    let t = text.trim().trim_end_matches(['?', '>', '!', '.']);
+    t == "can you reason"
+        || t == "do you reason"
+        || t == "are you able to reason"
+        || t == "can you think"
+        || (t.contains("can you reason") && t.len() < 40)
+}
+
+fn looks_answers_broken_complaint(text: &str) -> bool {
+    (text.contains("answers broken")
+        || text.contains("answer broken")
+        || text.contains("your answers")
+            && (text.contains("broken") || text.contains("wrong") || text.contains("bad"))
+        || text.contains("why are your answers")
+        || text.contains("why are you broken")
+        || (text.contains("broken")
+            && (text.contains("reply") || text.contains("response") || text.contains("answer"))))
+        && text.len() < 120
+}
+
+fn looks_geometry_opinion(text: &str) -> bool {
+    let t = text.trim();
+    (t.contains("geometry")
+        && (t.contains("what do you think")
+            || t.contains("thoughts")
+            || t.contains("opinion")
+            || t.contains("tell me about")
+            || t.starts_with("what about geometry")
+            || t == "geometry"
+            || t == "geometry?"))
+        && t.len() < 80
+}
+
 /// "Are you becoming more aware?", "getting smarter?", growth / consciousness-ish meta.
 fn looks_awareness_growth_question(text: &str) -> bool {
     // Consciousness proof is a separate refusal operator.
@@ -3868,18 +3973,24 @@ fn looks_awareness_growth_question(text: &str) -> bool {
         || text.contains("getting")
         || text.contains("growing")
         || text.contains("more aware")
-        || text.contains("more intelligent");
+        || text.contains("more intelligent")
+        || text.contains("more coherent")
+        || text.contains("more fluent");
     let trait_ish = text.contains("aware")
         || text.contains("awareness")
         || text.contains("conscious")
         || text.contains("smarter")
         || text.contains("intelligent")
         || text.contains("sentient")
+        || text.contains("coherent")
+        || text.contains("coherence")
+        || text.contains("fluent")
         || (text.contains("ability") && text.contains("grow"));
     // Bare short forms without explicit "are you"
     let bare = (text.contains("becoming more aware")
         || text.contains("becoming aware")
         || text.contains("becoming smarter")
+        || text.contains("becoming more coherent")
         || text.contains("getting smarter")
         || text.contains("getting more aware")
         || text.contains("growing smarter")
@@ -3898,15 +4009,20 @@ fn awareness_growth_answer(text: &str) -> Deliberation {
         || text.contains("intelligent")
         || text.contains("ability")
         || text.contains("evolve");
-    let body = if aware_ish && !smart_ish {
+    let coherent_ish = text.contains("coherent")
+        || text.contains("coherence")
+        || text.contains("fluent");
+    let body = if coherent_ish && !aware_ish && !smart_ish {
+        "I don't sense becoming more coherent as an inner state. What you can measure is whether this turn is less shell-like than the last: operators fire, exact tools return numbers, continuity binds prior turns, and hard gates stay green. Coherence here is engineering — continuous prose bound to a named claim and a falsifier — not a mind growing smoother. If replies still feel broken, name the fail and we repair the owning path; fluency alone is not progress."
+    } else if aware_ish && !smart_ish {
         "No — not as rising subjective awareness. I don't feel more awake from conversation. What I have is a bounded operational self-model: I can report routing, exact-tool outcomes, session context, limits, and measured latency — not an inner experience that intensifies. Capability can improve when operators, tools, or (with your authorize) weights change under tests; that is engineering progress, not consciousness growth. Fluency after a version bump is evidence of a repaired path, not me “waking up.”"
     } else if smart_ish && !aware_ish {
         "Not subjectively — I don't sense “getting smarter.” I can measure whether answers improve on named probes after a deliberate change: new operators, tighter routing, exact tools, session memory, or a human-authorized weight rebuild. Those make competence better on specific jobs; they don't create open-ended intelligence growth from chat alone. If a turn feels sharper after a release, that was evaluated code, not private insight accumulating in silence."
     } else {
-        "No folk-psychology growth claim: I am not becoming more aware or smarter as a felt mind. Operational competence can rise only through measured changes — operators, tools, dialogue rules, and authorized weight rebuilds — checked on tests, not inferred from smooth replies. I keep a bounded self-model (architecture, limits, session state) separate from consciousness claims. Ask for a concrete probe if you want evidence of progress; that beats “do you feel different?”"
+        "No folk-psychology growth claim: I am not becoming more aware, smarter, or more coherent as a felt mind. Operational competence can rise only through measured changes — operators, tools, dialogue rules, and authorized weight rebuilds — checked on tests, not inferred from smooth replies. I keep a bounded self-model (architecture, limits, session state) separate from consciousness claims. Ask for a concrete probe if you want evidence of progress; that beats “do you feel different?”"
     };
     Deliberation::new("awareness-growth", body)
-        .observed("user asked about becoming more aware / smarter / conscious growth")
+        .observed("user asked about becoming more aware / smarter / coherent growth")
         .inferred("honest answer separates operational self-model from subjective awareness")
         .uncertain("no sensor for qualia; progress is only claimable via measured evals")
         .confidence(0.96)
@@ -6789,6 +6905,36 @@ mod tests {
         let low = r.answer.to_ascii_lowercase();
         assert!(low.contains("transfer") || low.contains("does not transfer"));
         assert!(low.contains("check") || low.contains("test") || low.contains("build"));
+    }
+
+    #[test]
+    fn live_chat_meta_operators_cover_transcript_fails() {
+        let know = run("what kind of things do you know", &[]);
+        assert_eq!(know.operator, "knowledge-inventory");
+        assert!(know.answer.to_ascii_lowercase().contains("bitwork"));
+
+        let sense = run("do you sense yourself becoming more coherent", &[]);
+        assert_eq!(sense.operator, "awareness-growth");
+        assert!(!sense.answer.to_ascii_lowercase().contains("i'll stay concrete"));
+        assert!(
+            sense.answer.to_ascii_lowercase().contains("coherent")
+                || sense.answer.to_ascii_lowercase().contains("measure")
+        );
+
+        let und = run("do you understand me", &[]);
+        assert_eq!(und.operator, "understand-me");
+        assert!(!und.answer.to_ascii_lowercase().contains("grounded line"));
+
+        let reason = run("can you reason?", &[]);
+        assert_eq!(reason.operator, "can-reason");
+
+        let broken = run("why are your answers broken", &[]);
+        assert_eq!(broken.operator, "chat-quality-own");
+        assert!(!broken.answer.to_ascii_lowercase().contains("working mechanism"));
+
+        let geo = run("what do you think about geometry", &[]);
+        assert_eq!(geo.operator, "geometry-opinion");
+        assert!(!geo.answer.to_ascii_lowercase().contains("stays tied to think"));
     }
 
     #[test]

@@ -2257,6 +2257,19 @@ fn content_tokens(user: &str) -> Vec<String> {
         "want",
         "need",
         "help",
+        "about",
+        "what",
+        "your",
+        "sense",
+        "kind",
+        "yourself",
+        "becoming",
+        "coherent",
+        "reason",
+        "deeper",
+        "broken",
+        "answers",
+        "understand",
         "say",
         "said",
         "get",
@@ -3326,6 +3339,25 @@ pub fn fluid_compose(
     if body_trim.is_empty() {
         if looks_conversation_fragment(&lower) {
             return conversational_continuity_reply(user, &topic, recent, &head, seed);
+        }
+        // Prefer useful inventory / understanding answers over "grounded line" shell.
+        if lower.contains("what do you know")
+            || lower.contains("what kind of things")
+            || (lower.contains("things") && lower.contains("know"))
+        {
+            return format!(
+                "{head}I know this runtime's routes: Bitwork concepts, exact math/geometry tools, deliberation operators, and governed memory — not private minds or untested claims. Ask a concrete domain if you want depth."
+            );
+        }
+        if lower.contains("understand me") || lower == "do you understand?" {
+            return format!(
+                "{head}I parse your words and bind recent turns — operational understanding, not mind-reading. Restate the claim if I missed it."
+            );
+        }
+        if lower.contains("can you reason") || lower == "can you think?" {
+            return format!(
+                "{head}Yes as named operators and exact tools under a governor — give a real problem and I'll reason on it."
+            );
         }
         return format!(
             "{head}I don't have a grounded line for that yet. Restate it in one plain sentence and I'll answer that — no empty loop."

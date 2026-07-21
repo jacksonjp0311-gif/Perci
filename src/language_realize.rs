@@ -141,10 +141,17 @@ pub fn modular_quality_ok(r: &RealizeResult) -> bool {
         return false;
     }
     // Thin template shells from under-specified frames.
-    if t.contains("structure under constraint for") && words < 45 {
+    if t.contains("structure under constraint for") {
         return false;
     }
-    if t.starts_with("working claim:") {
+    if t.starts_with("working claim:")
+        || t.starts_with("working mechanism:")
+        || t.contains("working mechanism: your")
+        || t.contains("your stays coherent")
+        || t.contains("stays coherent under stated condition")
+        || t.contains("yields a checkable outcome when constraints")
+        || t.contains("under condition yields a checkable")
+    {
         return false;
     }
     if t.contains("mechanism candidate for") {
@@ -153,13 +160,29 @@ pub fn modular_quality_ok(r: &RealizeResult) -> bool {
     if t.contains("working relation for") {
         return false;
     }
+    // Reject frames that bound stopwords as subject (your/what/do).
+    if t.contains("for your under")
+        || t.contains("subject=your")
+        || (t.contains(" your ") && t.contains("stated condition") && t.contains("checkable"))
+    {
+        return false;
+    }
     // Forbidden slogans always fail the gate.
     if !r.forbidden_hits.is_empty() {
         return false;
     }
-    // Prefer constraint-ok; allow strong domain prose even if a soft term is missing.
+    // Prefer constraint-ok only when domain content is real — not bare template prose.
     if r.constraints_ok {
-        return true;
+        let domain_ok = (t.contains("trust") && (t.contains("checkable") || t.contains("timeout")))
+            || (t.contains("boundary") && (t.contains("repair") || t.contains("exchange")))
+            || (t.contains("life") && t.contains("order"))
+            || (t.contains("idempot") || t.contains("done") && t.contains("checkable"))
+            || (t.contains("geometry") && (t.contains("boundar") || t.contains("relation")));
+        if domain_ok {
+            return true;
+        }
+        // constraints_ok alone is not enough for vague user complaints.
+        return false;
     }
     let domain = (t.contains("trust") && (t.contains("checkable") || t.contains("timeout")))
         || (t.contains("boundary") && (t.contains("repair") || t.contains("exchange")))

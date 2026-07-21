@@ -169,8 +169,38 @@ pub fn frontier_arc_rewrite(user: &str, seed: &str) -> String {
     }
 
     // Topic bind: if user named concrete nouns and speech dropped them, fold one back.
+    // Never glue stopwords ("think", "about", "what") — that produces "That stays tied to think."
     let bound = bind_missing_user_tokens(user, &parts.join(" "));
-    if !bound.is_empty() {
+    let bound_ok = !bound.is_empty()
+        && bound.len() >= 4
+        && !matches!(
+            bound.to_ascii_lowercase().as_str(),
+            "think"
+                | "about"
+                | "what"
+                | "your"
+                | "know"
+                | "things"
+                | "kind"
+                | "sense"
+                | "more"
+                | "than"
+                | "with"
+                | "from"
+                | "this"
+                | "that"
+                | "have"
+                | "does"
+                | "will"
+                | "would"
+                | "could"
+                | "should"
+                | "reason"
+                | "deeper"
+                | "broken"
+                | "answers"
+        );
+    if bound_ok {
         // Prefer replacing last sentence add rather than dumping.
         if let Some(last) = parts.last_mut() {
             if !last.to_ascii_lowercase().contains(&bound.to_ascii_lowercase())
@@ -374,6 +404,8 @@ fn bind_missing_user_tokens(user: &str, speech: &str) -> String {
         "for", "it", "its", "as", "at", "by", "not", "no", "please", "tell", "about", "with",
         "from", "under", "into", "without", "between", "across", "does", "teach", "explain",
         "give", "make", "want", "need", "like", "more", "most", "some", "any", "only", "also",
+        "think", "thought", "thoughts", "know", "things", "kind", "sense", "reason", "deeper",
+        "broken", "answers", "yourself", "becoming", "coherent", "understand", "have", "been",
     ];
     let low_speech = speech.to_ascii_lowercase();
     let mut hits = Vec::new();

@@ -301,7 +301,10 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
         return Ok(Some(format!("lcm = {lcm}")));
     }
 
-    let normalized = lower
+    // Expand small English number words so "ten minus 5" is exact-tool, not InvalidNumber.
+    let with_words = expand_number_words(&lower);
+
+    let normalized = with_words
         .replace("multiplied by", "*")
         .replace("divided by", "/")
         .replace("times", "*")
@@ -475,14 +478,69 @@ fn split_binary_expression(expression: &str) -> Option<(&str, char, &str)> {
 }
 
 fn parse_i128(text: &str) -> Result<i128, ReasoningError> {
+    let raw = text.trim().to_ascii_lowercase();
+    if let Some(n) = word_number(&raw) {
+        return Ok(n);
+    }
     // Strip trailing punctuation from "3?" / "12." so "17 times 3?" works.
-    let cleaned: String = text
-        .trim()
+    let cleaned: String = raw
         .trim_matches(|c: char| !c.is_ascii_digit() && c != '-' && c != '+')
         .to_owned();
     cleaned
         .parse()
         .map_err(|_| ReasoningError::InvalidNumber(text.trim().to_owned()))
+}
+
+/// English number words for small exact-tool forms (zero..=twenty + a few tens).
+fn word_number(token: &str) -> Option<i128> {
+    match token {
+        "zero" | "oh" => Some(0),
+        "one" => Some(1),
+        "two" => Some(2),
+        "three" => Some(3),
+        "four" => Some(4),
+        "five" => Some(5),
+        "six" => Some(6),
+        "seven" => Some(7),
+        "eight" => Some(8),
+        "nine" => Some(9),
+        "ten" => Some(10),
+        "eleven" => Some(11),
+        "twelve" => Some(12),
+        "thirteen" => Some(13),
+        "fourteen" => Some(14),
+        "fifteen" => Some(15),
+        "sixteen" => Some(16),
+        "seventeen" => Some(17),
+        "eighteen" => Some(18),
+        "nineteen" => Some(19),
+        "twenty" => Some(20),
+        "thirty" => Some(30),
+        "forty" => Some(40),
+        "fifty" => Some(50),
+        "sixty" => Some(60),
+        "seventy" => Some(70),
+        "eighty" => Some(80),
+        "ninety" => Some(90),
+        "hundred" => Some(100),
+        _ => None,
+    }
+}
+
+/// Replace whole-word English numbers with digits so binary expression parsing works.
+fn expand_number_words(text: &str) -> String {
+    text.split_whitespace()
+        .map(|tok| {
+            let clean = tok.trim_matches(|c: char| !c.is_ascii_alphanumeric());
+            if let Some(n) = word_number(&clean.to_ascii_lowercase()) {
+                // Preserve surrounding punctuation loosely by digit-only token.
+                n.to_string()
+            } else {
+                tok.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn gcd_i128(mut a: i128, mut b: i128) -> i128 {
@@ -495,10 +553,28 @@ fn gcd_i128(mut a: i128, mut b: i128) -> i128 {
 }
 
 fn extract_numbers(text: &str) -> Vec<i128> {
-    text.split(|character: char| !character.is_ascii_digit() && character != '-')
-        .filter(|value| !value.is_empty() && *value != "-")
-        .filter_map(|value| value.parse().ok())
-        .collect()
+    let expanded = expand_number_words(text);
+    let mut out = Vec::new();
+    for value in expanded.split(|character: char| !character.is_ascii_digit() && character != '-') {
+        if value.is_empty() || value == "-" {
+            continue;
+        }
+        if let Ok(n) = value.parse::<i128>() {
+            out.push(n);
+        }
+    }
+    // Also pick bare word numbers not expanded in odd tokenizations.
+    for tok in text.split_whitespace() {
+        let clean = tok
+            .trim_matches(|c: char| !c.is_ascii_alphanumeric())
+            .to_ascii_lowercase();
+        if let Some(n) = word_number(&clean) {
+            if !out.contains(&n) {
+                out.push(n);
+            }
+        }
+    }
+    out
 }
 
 fn integer_sqrt_exact(value: i128) -> Option<i128> {
@@ -555,6 +631,18 @@ mod tests {
         assert_eq!(
             try_solve_arithmetic("calculate 20 percent of 80").unwrap(),
             Some("16".to_owned())
+        );
+    }
+
+    #[test]
+    fn word_number_minus_digit() {
+        assert_eq!(
+            try_solve_arithmetic("ten minus 5").unwrap(),
+            Some("5".to_owned())
+        );
+        assert_eq!(
+            try_solve_arithmetic("twelve plus three").unwrap(),
+            Some("15".to_owned())
         );
     }
 
