@@ -120,7 +120,13 @@
         "H14",
         "H104",
         "H110",
-        "H122"
+        "H122",
+        "H125",
+        "H126",
+        "H127",
+        "H128",
+        "H130",
+        "H132"
       ],
       "success_criteria": [
         "references prior content or active frames",
@@ -142,7 +148,8 @@
         "H16",
         "H41",
         "H42",
-        "H106"
+        "H106",
+        "H129"
       ],
       "success_criteria": [
         "correct numeric result",

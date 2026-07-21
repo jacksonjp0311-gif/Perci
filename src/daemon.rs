@@ -106,7 +106,7 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     listener.set_nonblocking(false)?;
     eprintln!("perci daemon listening on {bind}");
     eprintln!(
-        "ops: ping | ask | classify | shutdown · token_required={}",
+        "ops: ping | ask | classify | session_reset | shutdown · token_required={}",
         expected_token().is_some()
     );
     eprintln!("security: loopback-default · max_line={MAX_LINE_BYTES} · read_timeout=60s");
@@ -251,6 +251,21 @@ fn handle_client(
                     }
                     Err(e) => {
                         writeln!(writer, "{}", json!({"ok": false, "error": e}))?;
+                    }
+                }
+            }
+            "session_reset" | "session_clear" => {
+                // Probe / surgical isolation: clear dialogue history only.
+                match engine.clear_dialogue_history() {
+                    Ok(()) => {
+                        writeln!(
+                            writer,
+                            "{}",
+                            json!({"ok": true, "session_reset": true})
+                        )?;
+                    }
+                    Err(e) => {
+                        writeln!(writer, "{}", json!({"ok": false, "error": e.to_string()}))?;
                     }
                 }
             }

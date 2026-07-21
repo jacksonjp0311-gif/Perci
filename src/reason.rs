@@ -190,6 +190,8 @@ fn conversational_reasoning(user: &str) -> bool {
         || text.starts_with("how ")
         || text.starts_with("what ")
         || text.starts_with("tell me ")
+        || text.starts_with("explain ")
+        || text.contains("explain ")
         || text.contains(" in plain language");
     let procedural = [
         "step by step",
@@ -577,6 +579,19 @@ mod tests {
         assert!(answer.starts_with("The short answer is"));
         assert!(!answer.contains("Here's how I'd reason it:"));
         assert!(answer.contains("boundary"));
+    }
+
+    #[test]
+    fn explain_prompts_use_connected_prose() {
+        let (answer, _, _) = enhance_deep_answer(
+            "systems",
+            "explain trust under lag",
+            "Trust under lag needs checkable done predicates and idempotent retries.",
+            &[],
+        );
+        assert!(!answer.contains("Here's how I'd reason it:"));
+        assert!(!answer.contains("• Goal:"));
+        assert!(answer.to_ascii_lowercase().contains("trust") || answer.contains("short answer"));
         assert!(answer.contains("next check"));
     }
 }

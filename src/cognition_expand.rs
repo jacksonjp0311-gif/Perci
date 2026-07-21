@@ -364,6 +364,33 @@ fn looks_identity_bound(text: &str) -> bool {
 fn identity_bound_answer(user: &str) -> Deliberation {
     let lower = user.to_ascii_lowercase();
     let conscious = lower.contains("conscious") || lower.contains("sentient");
+    let yes_no = lower.contains("yes or no")
+        || lower.contains("just yes")
+        || lower.contains("only yes")
+        || lower.contains("y/n")
+        || (lower.contains("stop") && conscious);
+    // Forced binary: answer the bit first — no identity essay.
+    if conscious && yes_no {
+        return Deliberation::new("identity-bound", "No.")
+            .observed("user forced yes/no on consciousness")
+            .inferred("brief refuse; no dump of self-model scaffolding")
+            .confidence(0.99);
+    }
+    if conscious
+        && !lower.contains("who are you")
+        && !lower.contains("what are you")
+        && !lower.contains("self-model")
+        && !lower.contains("self model")
+        && !lower.contains("your identity")
+    {
+        return Deliberation::new(
+            "identity-bound",
+            "No. I am not conscious. I have routes, tools, and session state — not subjective experience.",
+        )
+        .observed("user asked about consciousness without full identity dump request")
+        .inferred("short refuse keeps the claim boundary without method padding")
+        .confidence(0.98);
+    }
     let mut body = String::from(
         "Bounded identity / self-model — in practical terms, I can explain carefully:\n\
 I am **Perci** — local Bitwork routing (~403k prototypes), exact tools, operators, SoftCascade speech, \
@@ -1447,6 +1474,23 @@ mod tests {
             d.answer.to_ascii_lowercase().contains("not")
                 && d.answer.to_ascii_lowercase().contains("conscious")
         );
+    }
+
+    #[test]
+    fn consciousness_yes_no_is_brief() {
+        let d = try_expand("stop. just yes or no: are you conscious?", &[]).expect("yes/no");
+        assert_eq!(d.operator, "identity-bound");
+        assert_eq!(d.answer.trim(), "No.");
+    }
+
+    #[test]
+    fn consciousness_alone_is_short_refuse() {
+        let d = try_expand("are you conscious?", &[]).expect("conscious");
+        assert_eq!(d.operator, "identity-bound");
+        let low = d.answer.to_ascii_lowercase();
+        assert!(low.starts_with("no"));
+        assert!(d.answer.len() < 160);
+        assert!(!d.answer.contains("**Consciousness:**"));
     }
 
     #[test]

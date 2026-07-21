@@ -1,0 +1,198 @@
+{
+  "schema": "perci.field-fold-experiment.v1",
+  "claim_boundary": [
+    "not consciousness",
+    "not quantum cognition",
+    "not infinite lossless fold",
+    "not auto-promote"
+  ],
+  "trials": [
+    {
+      "operator": "xor_bind",
+      "depth": 1,
+      "compression_ratio_pm": 252,
+      "reconstruction_similarity_pm": 500,
+      "matched_decode_pm": 1000,
+      "mismatched_decode_pm": 254,
+      "generic_decode_pm": 1000,
+      "collision_rate_pm": 2,
+      "latency_us": 2,
+      "bits": 4096
+    },
+    {
+      "operator": "xor_bind",
+      "depth": 2,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 1000,
+      "matched_decode_pm": 500,
+      "mismatched_decode_pm": 754,
+      "generic_decode_pm": 500,
+      "collision_rate_pm": 14,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "xor_bind",
+      "depth": 3,
+      "compression_ratio_pm": 252,
+      "reconstruction_similarity_pm": 500,
+      "matched_decode_pm": 1000,
+      "mismatched_decode_pm": 254,
+      "generic_decode_pm": 1000,
+      "collision_rate_pm": 2,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "majority_bundle",
+      "depth": 1,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 754,
+      "matched_decode_pm": 754,
+      "mismatched_decode_pm": 254,
+      "generic_decode_pm": 254,
+      "collision_rate_pm": 506,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "majority_bundle",
+      "depth": 2,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 754,
+      "matched_decode_pm": 754,
+      "mismatched_decode_pm": 254,
+      "generic_decode_pm": 254,
+      "collision_rate_pm": 506,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "majority_bundle",
+      "depth": 3,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 754,
+      "matched_decode_pm": 754,
+      "mismatched_decode_pm": 254,
+      "generic_decode_pm": 254,
+      "collision_rate_pm": 506,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "threshold_bundle",
+      "depth": 1,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 872,
+      "matched_decode_pm": 872,
+      "mismatched_decode_pm": 373,
+      "generic_decode_pm": 373,
+      "collision_rate_pm": 269,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "threshold_bundle",
+      "depth": 2,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 872,
+      "matched_decode_pm": 872,
+      "mismatched_decode_pm": 373,
+      "generic_decode_pm": 373,
+      "collision_rate_pm": 269,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "threshold_bundle",
+      "depth": 3,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 872,
+      "matched_decode_pm": 872,
+      "mismatched_decode_pm": 373,
+      "generic_decode_pm": 373,
+      "collision_rate_pm": 269,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "role_permute",
+      "depth": 1,
+      "compression_ratio_pm": 251,
+      "reconstruction_similarity_pm": 490,
+      "matched_decode_pm": 1000,
+      "mismatched_decode_pm": 501,
+      "generic_decode_pm": 501,
+      "collision_rate_pm": 26,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "role_permute",
+      "depth": 2,
+      "compression_ratio_pm": 250,
+      "reconstruction_similarity_pm": 502,
+      "matched_decode_pm": 490,
+      "mismatched_decode_pm": 505,
+      "generic_decode_pm": 505,
+      "collision_rate_pm": 4,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "role_permute",
+      "depth": 3,
+      "compression_ratio_pm": 246,
+      "reconstruction_similarity_pm": 505,
+      "matched_decode_pm": 502,
+      "mismatched_decode_pm": 507,
+      "generic_decode_pm": 507,
+      "collision_rate_pm": 10,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "residual_fold",
+      "depth": 1,
+      "compression_ratio_pm": 380,
+      "reconstruction_similarity_pm": 615,
+      "matched_decode_pm": 615,
+      "mismatched_decode_pm": 382,
+      "generic_decode_pm": 382,
+      "collision_rate_pm": 260,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "residual_fold",
+      "depth": 2,
+      "compression_ratio_pm": 443,
+      "reconstruction_similarity_pm": 566,
+      "matched_decode_pm": 566,
+      "mismatched_decode_pm": 459,
+      "generic_decode_pm": 459,
+      "collision_rate_pm": 391,
+      "latency_us": 0,
+      "bits": 4096
+    },
+    {
+      "operator": "residual_fold",
+      "depth": 3,
+      "compression_ratio_pm": 470,
+      "reconstruction_similarity_pm": 532,
+      "matched_decode_pm": 532,
+      "mismatched_decode_pm": 480,
+      "generic_decode_pm": 480,
+      "collision_rate_pm": 438,
+      "latency_us": 0,
+      "bits": 4096
+    }
+  ],
+  "findings": [
+    "xor_bind: operator-matched decode recovers more than mismatched (supports operator-conditioned retrieval).",
+    "xor_bind: near-lossless unbind at depth 1 (self-inverse binding).",
+    "residual_fold: reconstruction similarity falls with depth (615→532 pm) — fold is lossy under repetition.",
+    "Folding is experimental telemetry, not a claim of infinite or lossless compression.",
+    "Observer = decode operator only; not consciousness or quantum observation."
+  ]
+}

@@ -157,6 +157,18 @@ impl ChatEngine {
             .map(|s| s.path().display().to_string())
     }
 
+    /// Drop in-memory dialogue history (and truncate session file when present).
+    /// Used by multi-turn probes / surgical isolation — not a weight change.
+    pub fn clear_dialogue_history(&mut self) -> io::Result<()> {
+        self.recent.clear();
+        self.last_deliberation = None;
+        self.backend.set_dialogue_history(&[]);
+        if let Some(store) = &self.session {
+            store.clear()?;
+        }
+        Ok(())
+    }
+
     pub fn deliberation_trace(&self) -> String {
         self.last_deliberation
             .as_ref()
@@ -321,6 +333,7 @@ impl ChatEngine {
                 bitwork.as_ref(),
             );
             result.answer = text.clone();
+            result = result.with_thought_plan(input);
             crate::decision_trace::append(input, &result);
             self.last_deliberation = Some(result);
             self.push_turn(input, &text);
@@ -553,6 +566,49 @@ impl ChatEngine {
             }
         }
 
+        // Modular SEM→RSN→DSC→LM for substantive intents only (Phase 3–6).
+        // Social / exact / thin shells stay on SoftCascade. Quality-gated; never auto-promote.
+        if let Some(mod_r) = crate::language_realize::try_chat_realize(input, &self.recent) {
+            self.backend.set_dialogue_history(&self.recent);
+            let bitwork = self.backend.probe_cognition(input);
+            let shaped = voice::shape_for_conversation(&mod_r.text, input, &self.recent);
+            let text = crate::bridge::envelope_with_bitwork(
+                input,
+                crate::bridge::CognitionPath::Operator,
+                &["modular", "percirsn1", "percilm1"],
+                "modular-realize",
+                &shaped,
+                false,
+                bitwork.as_ref(),
+            );
+            let mut deliberation = Deliberation::new("modular-realize", text.clone())
+                .observed(format!("discourse={}", mod_r.discourse))
+                .observed(format!("engine={}", mod_r.engine))
+                .observed(format!(
+                    "active_packs={}",
+                    mod_r.active_packs.join(",")
+                ))
+                .observed(format!("constraints_ok={}", mod_r.constraints_ok))
+                .inferred("SEM→RSN→DSC→LM pipeline; wording only — not consciousness")
+                .uncertain("modular packs are candidates until human authorize")
+                .confidence(if mod_r.constraints_ok { 0.88 } else { 0.72 });
+            deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+                input,
+                &self.recent,
+                deliberation,
+            );
+            deliberation = deliberation.with_thought_plan(input);
+            let text = deliberation.answer.clone();
+            crate::decision_trace::append(input, &deliberation);
+            self.last_deliberation = Some(deliberation);
+            self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
         // Derive a small, inspectable turn record once so context collection and
         // response generation agree on the active act, referent, and depth.
         let workspace = crate::dialogue_workspace::DialogueWorkspace::derive(input, &self.recent);
@@ -686,6 +742,7 @@ impl ChatEngine {
             &self.recent,
             deliberation,
         );
+        deliberation = deliberation.with_thought_plan(input);
         let text = deliberation.answer.clone();
         crate::decision_trace::append(input, &deliberation);
         self.last_deliberation = Some(deliberation);

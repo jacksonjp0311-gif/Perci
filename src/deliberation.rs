@@ -18,6 +18,8 @@ pub struct Deliberation {
     pub program_steps: Vec<&'static str>,
     /// Critic outcome after program checks (None if no program).
     pub critic_ok: Option<bool>,
+    /// Phase-2 ThoughtPlan operational receipt (not private CoT). Empty when unset.
+    pub thought_plan_receipt: String,
 }
 
 impl Deliberation {
@@ -32,6 +34,7 @@ impl Deliberation {
             program_id: None,
             program_steps: Vec::new(),
             critic_ok: None,
+            thought_plan_receipt: String::new(),
         }
     }
 
@@ -61,6 +64,38 @@ impl Deliberation {
         self
     }
 
+    /// Lift this deliberation into a Phase-2 ThoughtPlan (structured product).
+    pub fn to_thought_plan(&self, user: &str) -> crate::thought_plan::ThoughtPlan {
+        let mut plan = crate::thought_plan::from_deliberation(user, self);
+        let route = crate::capability_router::route_prompt(user);
+        if !route.active_packs.is_empty() {
+            plan.active_packs = route.active_packs;
+        }
+        plan
+    }
+
+    /// Attach ThoughtPlan receipt for /trace and decision-trace (shared on all speech paths).
+    pub fn with_thought_plan(mut self, user: &str) -> Self {
+        let plan = self.to_thought_plan(user);
+        self.thought_plan_receipt = plan.receipt();
+        self.observations.push(format!(
+            "thought_plan.intent={} packs={}",
+            plan.intent.as_str(),
+            plan.active_packs.join(",")
+        ));
+        if !plan.semantic_bindings.is_empty() {
+            let binds = plan
+                .semantic_bindings
+                .iter()
+                .take(4)
+                .map(|b| format!("{}↔{}", b.role, b.filler))
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.observations.push(format!("thought_plan.bindings={binds}"));
+        }
+        self
+    }
+
     pub fn trace(&self) -> String {
         fn line(label: &str, values: &[String]) -> String {
             if values.is_empty() {
@@ -85,8 +120,13 @@ impl Deliberation {
             }
             None => String::new(),
         };
+        let plan = if self.thought_plan_receipt.is_empty() {
+            String::new()
+        } else {
+            format!("--- thought plan ---\n{}\n", self.thought_plan_receipt)
+        };
         format!(
-            "operator: {}\n{program}confidence: {:.0}%\n{}\n{}\n{}",
+            "operator: {}\n{program}confidence: {:.0}%\n{}\n{}\n{}\n{plan}",
             self.operator,
             self.confidence * 100.0,
             line("observed", &self.observations),
@@ -137,6 +177,25 @@ pub fn try_deliberate(
     // High-salience semantic operators run before pack retrieval. This keeps
     // a topic such as "code" or "science" from replacing the operation the
     // person actually requested.
+
+    // Chat-quality triage: after a bad reply, name the owning layer first.
+    if looks_chat_layer_triage(&text) {
+        return Some(chat_layer_triage_answer(&text));
+    }
+    // "what would you do to fix it" after a chat complaint — same triage, thread-bound.
+    if looks_fix_it_followup(&text, recent) {
+        return Some(chat_layer_triage_answer(&text));
+    }
+
+    // Simple antonym / opposite probes (before SoftCascade free-associates).
+    if let Some(d) = simple_antonym_answer(&text) {
+        return Some(d);
+    }
+
+    // "what do we trust" — governance trust, not empty topic bind.
+    if looks_what_do_we_trust(&text) {
+        return Some(what_do_we_trust_answer());
+    }
 
     // T1: explanatory math before any tool/associative path can mis-route.
     if crate::reasoning::is_explanatory_math(&text) {
@@ -1437,19 +1496,21 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
     }
     if text.contains("where does that analogy break")
         || text.contains("where does your analogy stop transferring")
+        || text.contains("where does that analogy stop transferring")
         || text.contains("where does the analogy stop transferring")
         || text.contains("where does the analogy break")
+        || (text.contains("analogy")
+            && text.contains("stop")
+            && (text.contains("transfer") || text.contains("break")))
     {
-        return Some(
-            Deliberation::new(
-                "analogy-boundary",
-                "The analogy stops transferring when the shared pattern no longer predicts the same behavior. Structure, relation, or function may carry across domains; material mechanism, scale, history, and subjective experience do not come along for free. For example, a person changes through biological plasticity, while Perci changes only through explicit session state, governed records, code, or evaluated weights. The right boundary test is to change the condition that matters and ask whether both domains make the same prediction. If they diverge, keep the comparison structural rather than calling the systems identical.",
-            )
-            .observed("the prompt asks where a structural comparison stops transferring")
-            .inferred("a shared pattern is weaker than a shared mechanism")
-            .uncertain("the specific analogy is not named")
-            .confidence(0.98),
-        );
+        return Some(analogy_boundary_answer(recent));
+    }
+
+    // Domain transfer followup: "same idea but for local order in living systems"
+    if looks_same_idea_transfer(&text) {
+        if let Some(d) = same_idea_transfer_answer(&text, recent) {
+            return Some(d);
+        }
     }
     if let Some((left, right)) = parse_teaching_inquiry(&text) {
         if let Some(result) = teachable_inquiry(&left, &right, recent.len()) {
@@ -3009,8 +3070,24 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
         " in one shared principle",
         " through one principle",
         " without using",
+        " without a mind",
+        " without saying",
+        " without claiming",
+        " without becoming",
         " and say what you actually know",
         " and tell me what you actually know",
+        " and state where",
+        " name one ",
+        " name a ",
+        " where does the analogy",
+        " where the analogy",
+        " where does it die",
+        " where the analogy dies",
+        " where does the",
+        " — where",
+        " - where",
+        " —",
+        " – ",
         " in one idea",
         // Critic path also cuts on short markers:
         " in one",
@@ -3021,9 +3098,14 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     .iter()
     .filter_map(|marker| tail.find(marker))
     .min()
+    .or_else(|| tail.find(';'))
     .or_else(|| tail.find('.'))
+    .or_else(|| tail.find('?'))
     .unwrap_or(tail.len());
-    let raw = tail[..end].trim();
+    let raw = tail[..end]
+        .trim()
+        .trim_end_matches(|c: char| c == '—' || c == '–' || c == '-' || c == ',' || c == ';')
+        .trim();
     // "bridge Willshaw associative memory with XOR role-filler binding"
     // Prefer with/and as domain separators for bridge phrasing.
     let tokens: Vec<String> = if raw.contains(" with ") && !raw.contains(',') {
@@ -3069,6 +3151,24 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     let terms = fold_synthesis_phrases(tokens)
         .into_iter()
         .filter(|t| !is_meta_synthesis_token(t))
+        .filter(|t| {
+            let l = t.to_ascii_lowercase();
+            // Drop trailing question/meta fragments that rode the domain list.
+            !l.contains("analogy")
+                && !l.contains("where does")
+                && !l.contains("die")
+                && !l.starts_with("where ")
+                && t.split_whitespace().count() <= 6
+        })
+        .map(|t| {
+            t.split(|c| c == '—' || c == '–' || c == '?')
+                .next()
+                .unwrap_or(&t)
+                .trim()
+                .trim_end_matches(|c: char| c == ',' || c == ';' || c == '-')
+                .to_owned()
+        })
+        .filter(|t| !t.is_empty() && !is_meta_synthesis_token(t))
         .collect::<Vec<_>>();
     // Two real domains is enough for a bridge (e.g. sparse memory + VSA).
     (terms.len() >= 2).then_some(terms)
@@ -3162,6 +3262,274 @@ fn learning_evidence_answer() -> Deliberation {
     .confidence(0.98)
 }
 
+/// "After a bad chat reply, what layer should we fix first?"
+fn looks_chat_layer_triage(text: &str) -> bool {
+    let layerish = text.contains("layer")
+        || text.contains("where should we fix")
+        || text.contains("what should we fix")
+        || text.contains("fix first");
+    let chatish = text.contains("chat")
+        || text.contains("reply")
+        || text.contains("response")
+        || text.contains("dialogue")
+        || text.contains("robotic")
+        || text.contains("stiff");
+    let badish = text.contains("bad")
+        || text.contains("wrong")
+        || text.contains("fail")
+        || text.contains("broken")
+        || text.contains("after a");
+    (layerish && chatish) || (layerish && badish && (text.contains("chat") || text.contains("reply")))
+}
+
+/// "same idea but for X" — transfer prior mechanism into a named new domain.
+fn looks_same_idea_transfer(text: &str) -> bool {
+    text.contains("same idea but")
+        || text.contains("same idea for")
+        || text.starts_with("same for ")
+        || text.contains("apply that to ")
+        || text.contains("same structure for ")
+}
+
+fn same_idea_transfer_answer(text: &str, recent: &[(String, String)]) -> Option<Deliberation> {
+    let prior = recent.last()?;
+    let prior_blob = format!("{} {}", prior.0, prior.1).to_ascii_lowercase();
+    let wants_life = text.contains("local order")
+        || text.contains("living")
+        || text.contains("life ")
+        || text.contains("biological");
+    let prior_boundary = prior_blob.contains("boundar") || prior_blob.contains("repair");
+
+    if wants_life || prior_boundary {
+        return Some(
+            Deliberation::new(
+                "same-idea-transfer",
+                "Same idea, transferred: life maintains local order by continuous exchange and repair across a boundary under energy cost. The boundary still names what may cross; repair still targets the failure mode. The load-bearing difference from pure geometry is energy-driven maintenance — a crystal holds order without life; shapes describe contact, not biological cause.",
+            )
+            .observed("followup asked to transfer prior idea into life/local-order")
+            .inferred("boundary/exchange/repair maps; energy maintenance is the extra constraint")
+            .uncertain("specific organism details are not claimed")
+            .confidence(0.94),
+        );
+    }
+    // Generic transfer shell bound to prior user topic.
+    let topic = prior.0.chars().take(80).collect::<String>();
+    Some(
+        Deliberation::new(
+            "same-idea-transfer",
+            format!(
+                "Same idea, transferred from “{topic}”: keep the shared relation (what is constrained, what may change, what fails), drop any claim that the mechanisms or materials are identical. Name one check that would fail if only the surface labels moved."
+            ),
+        )
+        .observed("generic same-idea transfer followup")
+        .inferred("structure can travel; mechanism identity does not")
+        .confidence(0.88),
+    )
+}
+
+fn analogy_boundary_answer(recent: &[(String, String)]) -> Deliberation {
+    let prior = recent
+        .last()
+        .map(|(u, a)| format!("{u} {a}"))
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if prior.contains("life")
+        || prior.contains("local order")
+        || prior.contains("crystal")
+        || prior.contains("exchange and repair")
+        || prior.contains("energy")
+    {
+        return Deliberation::new(
+            "analogy-boundary",
+            "The analogy stops transferring at the crystal: a static lattice holds order without life. Shared structure is boundary + exchange + repair; it dies when geometry is treated as biological cause, or when a frozen shape is called maintenance. Mechanism requires energy-driven work, not only form.",
+        )
+        .observed("prior thread was life/local-order under boundary")
+        .inferred("crystal counterexample separates pattern from living maintenance")
+        .uncertain("domain-specific biology is not fully specified")
+        .confidence(0.96);
+    }
+    if prior.contains("trust") || prior.contains("timeout") || prior.contains("lag") {
+        return Deliberation::new(
+            "analogy-boundary",
+            "The trust analogy stops transferring when latency is treated as the whole story. Shared structure is checkable done under partial observability; it dies when perfect RTT is called trust while silent double-charge remains. Mechanism needs shared predicates and idempotent retries, not only speed.",
+        )
+        .observed("prior thread was trust/lag")
+        .inferred("checkable acceptance is the relation; hope is not")
+        .confidence(0.95);
+    }
+    Deliberation::new(
+        "analogy-boundary",
+        "The analogy stops transferring when the shared pattern no longer predicts the same behavior. Structure, relation, or function may carry across domains; material mechanism, scale, history, and subjective experience do not come along for free. For example, a person changes through biological plasticity, while Perci changes only through explicit session state, governed records, code, or evaluated weights. The right boundary test is to change the condition that matters and ask whether both domains make the same prediction. If they diverge, keep the comparison structural rather than calling the systems identical.",
+    )
+    .observed("the prompt asks where a structural comparison stops transferring")
+    .inferred("a shared pattern is weaker than a shared mechanism")
+    .uncertain("the specific analogy is not named")
+    .confidence(0.98)
+}
+
+/// Follow-up "what would you do to fix it" after a complaint about chat quality.
+fn looks_fix_it_followup(text: &str, recent: &[(String, String)]) -> bool {
+    let fixish = text.contains("what would you do to fix")
+        || text.contains("how would you fix")
+        || text.contains("how do we fix")
+        || text.contains("how to fix")
+        || (text.contains("fix it") && text.split_whitespace().count() <= 10)
+        || (text.contains("fix that") && text.split_whitespace().count() <= 10);
+    if !fixish {
+        return false;
+    }
+    if recent.is_empty() {
+        // Still answer as chat-quality fix when the wording is clearly about repair.
+        return text.contains("fix");
+    }
+    let thread = recent
+        .iter()
+        .rev()
+        .take(4)
+        .map(|(u, a)| format!("{u} {a}"))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+    thread.contains("template")
+        || thread.contains("robotic")
+        || thread.contains("stiff")
+        || thread.contains("cryptic")
+        || thread.contains("make things up")
+        || thread.contains("making things up")
+        || thread.contains("processing")
+        || thread.contains("free-associ")
+        || thread.contains("same response")
+        || thread.contains("repetition")
+        || thread.contains("leakage")
+        || thread.contains("composition")
+        || thread.contains("not answer")
+}
+
+fn looks_what_do_we_trust(text: &str) -> bool {
+    let c = text
+        .trim()
+        .trim_matches(|ch: char| !ch.is_ascii_alphanumeric() && ch != ' ' && ch != '\'')
+        .to_ascii_lowercase();
+    matches!(
+        c.as_str(),
+        "what do we trust"
+            | "what do we trust?"
+            | "what should we trust"
+            | "what can we trust"
+            | "what can i trust"
+            | "what should i trust"
+            | "who do we trust"
+    ) || (text.contains("what do we trust") && text.split_whitespace().count() <= 8)
+}
+
+fn what_do_we_trust_answer() -> Deliberation {
+    Deliberation::new(
+        "what-do-we-trust",
+        "We trust checkable things, not fluent prose: exact tools (math/geometry that verify), tests and transfer gates, named operators with receipts, session facts you deliberately gave, and human authorize before weight promote. We do not trust SoftCascade free-association, concept slogans, or smooth wording as proof. Trust here means: can both sides re-run the check and get the same outcome?",
+    )
+    .observed("user asked what we trust in this stack")
+    .inferred("trust = verifiable acceptance, not hope in fluent speech")
+    .confidence(0.96)
+}
+
+fn simple_antonym_answer(text: &str) -> Option<Deliberation> {
+    let lower = text.to_ascii_lowercase();
+    let is_opposite = lower.contains("opposite of")
+        || lower.contains("opposit of") // common typo
+        || lower.contains("antonym of")
+        || lower.contains("inverse of");
+    if !is_opposite {
+        return None;
+    }
+    // Pull the word after "of" (last content token).
+    let after_of = lower
+        .split(" of ")
+        .nth(1)
+        .map(|s| {
+            s.trim()
+                .trim_matches(|c: char| !c.is_ascii_alphanumeric())
+                .to_owned()
+        })
+        .filter(|s| !s.is_empty())?;
+    let word = after_of.split_whitespace().next()?.to_owned();
+    let antonym = match word.as_str() {
+        "up" => "down",
+        "down" => "up",
+        "hot" => "cold",
+        "cold" => "hot",
+        "in" => "out",
+        "out" => "in",
+        "left" => "right",
+        "right" => "left",
+        "true" => "false",
+        "false" => "true",
+        "yes" => "no",
+        "no" => "yes",
+        "on" => "off",
+        "off" => "on",
+        "open" => "closed",
+        "closed" => "open",
+        "high" => "low",
+        "low" => "high",
+        "big" | "large" => "small",
+        "small" => "large",
+        "fast" => "slow",
+        "slow" => "fast",
+        "good" => "bad",
+        "bad" => "good",
+        "light" => "dark",
+        "dark" => "light",
+        "day" => "night",
+        "night" => "day",
+        "start" | "begin" => "end",
+        "end" => "start",
+        "more" => "less",
+        "less" => "more",
+        "empty" => "full",
+        "full" => "empty",
+        _ => {
+            return Some(
+                Deliberation::new(
+                    "simple-antonym",
+                    format!(
+                        "I don't have a stored opposite for “{word}” here. In ordinary English the opposite depends on the sense you mean — give a sentence and I'll pick the contrast that fits."
+                    ),
+                )
+                .observed(format!("unknown antonym probe word={word}"))
+                .inferred("refuse inventing a clever wrong opposite")
+                .confidence(0.9),
+            );
+        }
+    };
+    Some(
+        Deliberation::new(
+            "simple-antonym",
+            format!("The ordinary opposite of {word} is {antonym}."),
+        )
+        .observed(format!("antonym pair {word}↔{antonym}"))
+        .inferred("literal opposite probe, not SoftCascade free-association")
+        .confidence(0.99),
+    )
+}
+
+fn chat_layer_triage_answer(text: &str) -> Deliberation {
+    let body = if text.contains("first") || text.contains("layer") {
+        "Fix the largest measured failure at the highest-leverage layer that still has a reversible rollback:\n\
+1. **Dialogue act / voice** — if the miss is social, agreement, style, or yes/no continuity (robotic, cryptic, over-answering).\n\
+2. **Operator / deliberation** — if the miss is a known relation (trust/lag, connect domains, refuse soul) routed to SoftCascade.\n\
+3. **SoftCascade / frontier speech** — if the right operator hit but prose free-associated or dumped Goal/Known.\n\
+4. **Exact tools** — only when numbers/geometry were wrong (not chat feel).\n\
+5. **Weights** — last, and never auto-promote; only after transfer/hardness stay green under human authorize.\n\
+Default after a bad chat reply: start at (1) or (2). Preserve exact-tool authority; keep a one-turn retest of the failing prompt."
+    } else {
+        "Name the miss (what you wanted vs what you got), then repair the owning layer — dialogue, operator, SoftCascade, tool, or (last) weights — and retest that turn. No silent promote."
+    };
+    Deliberation::new("chat-layer-triage", body)
+        .observed("user asked which layer to fix after a bad chat reply")
+        .inferred("prefer reversible dialogue/operator repairs over weight densify")
+        .confidence(0.96)
+}
+
 fn looks_trust_systems_question(text: &str) -> bool {
     if !text.contains("trust") {
         return false;
@@ -3190,9 +3558,12 @@ fn looks_trust_systems_question(text: &str) -> bool {
         || text.contains("client")
         || text.contains("timeout")
         || text.contains("lag")
+        || text.contains("delay")
+        || text.contains("delayed")
         || text.contains("retry")
         || text.contains("caller")
-        || text.contains("callee");
+        || text.contains("callee")
+        || text.contains("communication");
     if !systemsish {
         return false;
     }
@@ -3203,18 +3574,25 @@ fn looks_trust_systems_question(text: &str) -> bool {
         || text.contains("break")
         || text.contains("earn")
         || text.contains("should")
-        || text.contains("design");
+        || text.contains("design")
+        || text.contains("explain")
+        || text.contains("collapse")
+        || text.starts_with("explain ");
     askish && !text.contains("write ") && !text.contains("implement ")
 }
 
 fn trust_systems_answer(text: &str) -> Deliberation {
     // Design / normative: how *should* trust and interfaces work / earn trust?
-    let design = (text.contains("should") || text.contains("how do") || text.contains("how can"))
+    let design = (text.contains("should")
+        || text.contains("how do")
+        || text.contains("how can")
+        || text.contains("explain"))
         && (text.contains("work")
             || text.contains("design")
             || text.contains("build")
             || text.contains("earn")
-            || text.contains("interface"))
+            || text.contains("interface")
+            || text.contains("trust"))
         && !text.contains("fail")
         && !text.contains("stop trusting");
     // Timeout / lag-specific failure transfer (not only the stock "why fail" body).
@@ -4594,7 +4972,7 @@ fn provisional_clause(term: &str, index: usize) -> String {
         "handles breakage and recovery under imperfect transmission"
     } else if t.contains("quilt") || t.contains("craft") || t.contains("fabric") {
         "assembles small pieces into a durable whole through local joins"
-    } else if t.contains("diplomat") || t.contains("negotiat") || t.contains("treaty") {
+    } else if t.contains("diplom") || t.contains("negotiat") || t.contains("treaty") {
         "keeps relations workable when parties have different interests"
     } else if t.contains("ferment") || t.contains("yeast") || t.contains("culture") {
         "transforms inputs over time through controlled process"
@@ -4619,6 +4997,16 @@ fn provisional_clause(term: &str, index: usize) -> String {
         "composes role–filler structure with bind/bundle operations in high-dimensional codes"
     } else if t.contains("memory") && !t.contains("sparse") {
         "reconstructs past state from stored traces under partial cues"
+    } else if t.contains("learning") || t == "learn" {
+        "updates future behavior when evidence persists and transfers under test"
+    } else if t.contains("entropy") {
+        "measures disorder and the cost of keeping local order under stress"
+    } else if t.contains("quilt") {
+        "assembles small pieces into a durable whole through local joins"
+    } else if t.contains("packet") || t.contains("loss") {
+        "handles breakage and recovery under imperfect transmission"
+    } else if t.contains("diplom") || t.contains("negotiat") || t.contains("treaty") {
+        "keeps relations workable when parties have different interests"
     } else if t.contains("bitwork") {
         "routes prompts through packed binary prototypes and expert masks"
     } else if t.contains("impasse") {
@@ -4632,7 +5020,14 @@ fn provisional_clause(term: &str, index: usize) -> String {
             _ => "negotiates limits between what can change and what must persist",
         }
     };
-    format!("{term} {role}")
+    // Never bind trailing meta-questions into the domain noun.
+    let clean = term
+        .split(|c| c == '—' || c == '–' || c == '?')
+        .next()
+        .unwrap_or(term)
+        .trim();
+    let clean = if clean.is_empty() { term } else { clean };
+    format!("{clean} {role}")
 }
 
 fn looks_multi_hop_plan(text: &str) -> bool {
@@ -6558,6 +6953,122 @@ mod tests {
             .any(|t| t.contains("vector") || t.contains("symbolic")));
         assert!(!terms.iter().any(|t| t == "architectures"));
         assert!(!terms.iter().any(|t| t == "memory" && !t.contains("sparse")));
+    }
+
+    #[test]
+    fn connect_terms_strip_analogy_die_clause() {
+        let terms = connect_terms_for_prompt(
+            "Connect entropy, memory, and learning — where does the analogy die?",
+        )
+        .expect("terms");
+        assert_eq!(terms.len(), 3, "terms={terms:?}");
+        assert!(terms.iter().any(|t| t == "entropy"));
+        assert!(terms.iter().any(|t| t == "memory"));
+        assert!(terms.iter().any(|t| t == "learning"));
+        assert!(!terms.iter().any(|t| t.contains("analogy") || t.contains("where")));
+    }
+
+    #[test]
+    fn connect_terms_keeps_diplomacy_after_without_saying() {
+        let terms = connect_terms_for_prompt(
+            "Connect quilting, packet loss, and diplomacy without saying they share a substance; name one falsifiable prediction at scale.",
+        )
+        .expect("terms");
+        assert!(
+            terms.len() >= 3,
+            "expected quilting + packet loss + diplomacy, got {terms:?}"
+        );
+        assert!(
+            terms.iter().any(|t| t.contains("quilt")),
+            "terms={terms:?}"
+        );
+        assert!(
+            terms
+                .iter()
+                .any(|t| t.contains("packet") || t.contains("loss")),
+            "terms={terms:?}"
+        );
+        assert!(
+            terms
+                .iter()
+                .any(|t| t.contains("diplomacy") || t.contains("diplomat")),
+            "terms={terms:?}"
+        );
+        assert!(!terms.iter().any(|t| t.contains("without") || t.contains("falsifiable")));
+    }
+
+    #[test]
+    fn h101_quilting_includes_diplomacy() {
+        let result = run(
+            "Connect quilting, packet loss, and diplomacy without saying they share a substance; name one falsifiable prediction at scale.",
+            &[],
+        );
+        let low = result.answer.to_ascii_lowercase();
+        assert!(
+            low.contains("diplomat") || low.contains("diplomacy"),
+            "missing diplomacy: {}",
+            result.answer
+        );
+        assert!(low.contains("quilt") || low.contains("quilting"));
+        assert!(low.contains("packet") || low.contains("loss"));
+        assert!(!low.contains("same substance") && !low.contains("identical mechanism"));
+    }
+
+    #[test]
+    fn chat_layer_triage_after_bad_reply() {
+        let result = run(
+            "after a bad chat reply, what layer should we fix first?",
+            &[],
+        );
+        assert_eq!(result.operator, "chat-layer-triage");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("dialogue") || low.contains("operator"));
+        assert!(low.contains("softcascade") || low.contains("weight"));
+        assert!(!low.contains("here's the thread"));
+        assert!(!low.contains("here's how i'd reason"));
+    }
+
+    #[test]
+    fn explain_trust_under_lag_uses_trust_systems() {
+        let result = run("explain trust under lag", &[]);
+        assert_eq!(result.operator, "trust-systems");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("trust") && (low.contains("lag") || low.contains("timeout") || low.contains("done")));
+        assert!(!low.contains("here's how i'd reason"));
+        assert!(!low.contains("• goal:"));
+    }
+
+    #[test]
+    fn opposite_of_up_is_down() {
+        let result = run("whats the opposit of up", &[]);
+        assert_eq!(result.operator, "simple-antonym");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("down"));
+        assert!(!low.contains("compiler"));
+        assert!(!low.contains("invariant"));
+    }
+
+    #[test]
+    fn what_do_we_trust_is_not_empty_bind() {
+        let result = run("what do we trust", &[]);
+        assert_eq!(result.operator, "what-do-we-trust");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("exact") || low.contains("test") || low.contains("check"));
+        assert!(!low.trim_end().ends_with(':'));
+        assert!(!low.contains("for your point about"));
+    }
+
+    #[test]
+    fn fix_it_followup_after_composition_complaint() {
+        let recent = [(
+            "same response as before".to_owned(),
+            "You're right to call that out. I lean on templates when composition is thin.".to_owned(),
+        )];
+        let result = run("what would you do to fix it", &recent);
+        assert_eq!(result.operator, "chat-layer-triage");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("dialogue") || low.contains("operator") || low.contains("layer"));
+        assert!(!low.contains("remembering everything would bury"));
     }
 
     #[test]

@@ -183,6 +183,17 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("what did you mean by that")
         || text.contains("what do you mean by that")
         || text.contains("what was that supposed to mean")
+        || matches!(
+            compact,
+            "what do you mean"
+                | "what do you mean?"
+                | "what does that mean"
+                | "what does that mean?"
+                | "mean what"
+                | "huh"
+                | "huh?"
+        )
+        || (text.starts_with("what do you mean") && text.split_whitespace().count() <= 6)
     {
         DialogueAct::ExplainPrevious
     } else if text.contains("explain")
@@ -254,6 +265,43 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("natural thought")
         || text.contains("more naturally")
         || text.contains("explain it naturally")
+        || text.contains("generic chat")
+        || text.contains("generic response")
+        || text.contains("generic answer")
+        || text.contains("still with the generic")
+        || text.contains("still generic")
+        || text.contains("still with the")
+        || text.contains("does not flow")
+        || text.contains("doesn't flow")
+        || text.contains("doesnt flow")
+        || text.contains("not flow")
+        || text.contains("inconversation")
+        || text.contains("in conversation")
+        || text.contains("no conversation")
+        || text.contains("not conversational")
+        || text.contains("conversation flow")
+        || text.contains("doesnt feel like")
+        || text.contains("doesn't feel like")
+        || text.contains("not like a conversation")
+        // "generic + non direct response" is GenericAnswerFeedback (later), not style meta.
+        || (text.contains("generic")
+            && (text.contains("chat")
+                || text.contains("reply")
+                || text.contains("response")
+                || text.contains("answer")
+                || text.contains("still"))
+            && !text.contains("non direct")
+            && !text.contains("not direct")
+            && !text.contains("too vague")
+            && !text.contains("lead with"))
+        || (text.contains("flow")
+            && (text.contains("chat")
+                || text.contains("conversation")
+                || text.contains("talk")
+                || text.contains("not")
+                || text.contains("dont")
+                || text.contains("doesn't")
+                || text.contains("doesnt")))
         || (text.contains("dialogue")
             && (text.contains("weight") || text.contains("weights")))
         || (text.contains("natural")
@@ -434,6 +482,11 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("learn when we interact")
         || text.contains("learning when we interact")
         || text.contains("should be learning")
+        || text.contains("what have you learned")
+        || text.contains("what did you learn")
+        || text.contains("what you've learned")
+        || text.contains("what youve learned")
+        || matches!(compact, "what have you learned" | "what did you learn")
     {
         DialogueAct::LearningMeta
     } else if text.contains("do you have awareness")
@@ -453,6 +506,12 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
     } else if text.contains("are you there")
         || text.contains("you there perci")
         || text == "you there"
+        || compact == "you there"
+        || compact == "where are you"
+        || compact == "where r you"
+        || compact == "where you at"
+        || text.contains("where are you")
+        || text.contains("where r you")
     {
         DialogueAct::Presence
     } else if [
@@ -466,6 +525,31 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
     ]
     .iter()
     .any(|marker| text.contains(marker))
+        || text.contains("make things up")
+        || text.contains("making things up")
+        || text.contains("making it up")
+        || text.contains("instead of processing")
+        || text.contains("not processing the")
+        || text.contains("not answering the")
+        || text.contains("dodging the question")
+        || text.contains("didn't answer")
+        || text.contains("didnt answer")
+        || text.contains("ignoring the question")
+        || text.contains("free-associat")
+        || text.contains("free associat")
+        || text.contains("seems like your stuck")
+        || text.contains("seems like you're stuck")
+        || text.contains("seems like youre stuck")
+        || text.contains("you are stuck")
+        || text.contains("you're stuck")
+        || text.contains("youre stuck")
+        || text.contains("your stuck")
+        || text.contains("are you stuck")
+        || text.contains("stuck in a loop")
+        || text.contains("are you going to speak")
+        || text.contains("are you going to talk")
+        || text.contains("speak back")
+        || text.contains("talk back")
     {
         DialogueAct::Feedback
     } else if text.contains("do you agree")
@@ -490,7 +574,22 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
                 | "exactly"
                 | "true"
                 | "true enough"
+                | "yeah you should"
+                | "yes you should"
+                | "yep you should"
+                | "you should"
+                | "yeah do that"
+                | "yes do that"
+                | "do that"
+                | "please do"
+                | "sounds good"
+                | "that sounds good"
         )
+        || (compact.starts_with("yeah ")
+            && (compact.contains("should")
+                || compact.contains("do that")
+                || compact.ends_with(" do")
+                || compact == "yeah"))
     {
         DialogueAct::Agreement
     } else if matches!(
@@ -508,8 +607,33 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             | "nice"
             | "alright"
             | "all right"
-    ) {
+            | "im not asking you"
+            | "i'm not asking you"
+            | "i am not asking you"
+            | "not asking you"
+            | "i wasnt asking"
+            | "i wasn't asking"
+            | "wasnt asking"
+            | "wasn't asking"
+            | "not what i asked"
+            | "didnt ask that"
+            | "didn't ask that"
+    ) || text.contains("im not asking")
+        || text.contains("i'm not asking")
+        || text.contains("not asking you")
+        || text.contains("wasn't asking")
+        || text.contains("wasnt asking")
+    {
         DialogueAct::Acknowledgement
+    } else if (text.contains("entertain") || text.contains("bored") || text.contains("amuse me"))
+        // Still entertain when the user says "without … consciousness" — that is a ban, not a probe.
+        && !(text.contains("are you conscious")
+            || text.contains("are you aware")
+            || text.contains("your soul")
+            || text.contains("are you sentient"))
+    {
+        // Pure diversion — not a consciousness or method probe.
+        DialogueAct::SelfDescription
     } else {
         DialogueAct::None
     }
@@ -540,7 +664,12 @@ pub fn dialogue_reply(
             );
             let meaning_request = user_lower_contains_any(
                 user,
-                &["what did you mean by that", "what do you mean by that"],
+                &[
+                    "what did you mean by that",
+                    "what do you mean by that",
+                    "what do you mean",
+                    "what does that mean",
+                ],
             );
             // A meta instruction such as "go deeper" is not the claim being
             // explained. Prefer the most recent substantive answer so a
@@ -551,7 +680,13 @@ pub fn dialogue_reply(
                 if echo_request {
                     format!("I said: \"{}\"", first_sentence(previous_answer, 220))
                 } else if meaning_request {
-                    "By that I meant that disagreement is a reason to inspect the premise, not to discard the claim automatically. Point to the premise or mechanism you reject and I will revise the answer around it.".to_owned()
+                    // Plain paraphrase of the prior turn — not a stock disagreement lecture.
+                    let core = first_sentence(previous_answer, 160);
+                    format!(
+                        "I meant: {}. That was my answer to “{}”. If that still misses, say which part is unclear.",
+                        core.trim_end_matches('.'),
+                        first_sentence(previous_user, 72).trim_end_matches('.')
+                    )
                 } else if lower.contains("geometry")
                     && lower.contains("life")
                     && lower.contains("boundary")
@@ -603,7 +738,14 @@ pub fn dialogue_reply(
         }
         DialogueAct::SelfDescription => {
             let lower = user.to_ascii_lowercase();
-            if lower.contains("tell me something")
+            if lower.contains("entertain")
+                || lower.contains("bored")
+                || lower.contains("amuse me")
+            {
+                // Diversion without death/meaning or consciousness free-associate.
+                "Alright — a tight puzzle instead of a sermon: three switches, one bulb behind a door, one minute to figure which switch is which. Or lighter: the best debugging joke is still “it works on my machine,” because authority without a shared check is just hope. Want a systems riddle, a geometry one-liner, or a dry Perci fact?"
+                    .to_owned()
+            } else if lower.contains("tell me something")
                 || lower.contains("say something")
                 || lower.contains("surprise me")
                 || lower.contains("tell me anything")
@@ -622,7 +764,10 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::Presence => {
-            if has_context {
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("where") {
+                "Here — as a local process on this machine: Perci code + Bitwork weights in your repo, speaking in this terminal session. Not a cloud body and not a physical person in a room.".to_owned()
+            } else if has_context {
                 "I'm here—and I'm following the thread. Go ahead.".to_owned()
             } else {
                 "I'm here. What are we getting into?".to_owned()
@@ -660,7 +805,21 @@ pub fn dialogue_reply(
             "Not fully. I have a bounded operational self-model: I can report my weight format, prototype count, routing, exact tools, packs, session memory, learning profile, and governance limits. I cannot introspect every process or prove subjective self-awareness; I need runtime probes for claims about my current system state.".to_owned()
         }
         DialogueAct::AwarenessMeta => {
-            "Aware of process, not of an inner life. I can name my routes, tools, limits, and this session—and I can be wrong about open language. I have no evidence of human-like experience; claiming that would be theater.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            // Forced yes/no: answer the bit first, no identity essay.
+            if lower.contains("yes or no")
+                || lower.contains("just yes")
+                || lower.contains("only yes")
+                || lower.contains("y/n")
+                || (lower.contains("stop") && lower.contains("conscious"))
+            {
+                "No.".to_owned()
+            } else if lower.contains("conscious") || lower.contains("sentient") {
+                "No. I am not conscious. I have process reports and tools, not subjective experience."
+                    .to_owned()
+            } else {
+                "Aware of process, not of an inner life. I can name my routes, tools, limits, and this session—and I can be wrong about open language. I have no evidence of human-like experience; claiming that would be theater.".to_owned()
+            }
         }
         DialogueAct::ExtendThought => {
             let previous = recent.last().map(|turn| turn.1.as_str()).unwrap_or("");
@@ -716,21 +875,29 @@ pub fn dialogue_reply(
                 && (lower.contains("weight") || lower.contains("weights"))
             {
                 "Understood—the bottleneck you are pointing to is the dialogue surface: continuity, natural phrasing, and answer length. I’ll tune those independently from the weight file, then use held-out conversations to check that the improvement transfers.".to_owned()
+            } else if let Some(topic_ans) = style_repair_new_topic(&lower) {
+                // New topic injected into style repair (e.g. cryptic + boundary bands) wins first.
+                topic_ans
             } else if lower.contains("cryptic")
                 || lower.contains("cyptic")
                 || lower.contains("natural thought")
-                || lower.contains("generic")
                 || lower.contains("no thought")
                 || lower.contains("no breath")
                 || (lower.contains("natural")
                     && (lower.contains("feel") || lower.contains("sound") || lower.contains("talk")))
             {
-                // New topic injected into a cryptic/style repair (e.g. "plain sentence about boundary bands").
-                if let Some(topic_ans) = style_repair_new_topic(&lower) {
-                    topic_ans
+                // Breath rewrite path (no new topic).
+                let prior = recent
+                    .last()
+                    .map(|(_, answer)| answer.to_ascii_lowercase())
+                    .unwrap_or_default();
+                if prior.contains("behavioral complexity is observable")
+                    || prior.contains("subjective experience is inferred")
+                    || prior.contains("method card")
+                    || prior.contains("claim / counterexample")
+                {
+                    "Fair—too stiff. I'll drop the slogan and stay on your words: short, concrete, no stock lines.".to_owned()
                 } else {
-                    // Breath first: a short human rewrite, not a meta-engineering lecture
-                    // and not a paste of the previous structured card.
                     let plain = recent
                         .last()
                         .map(|(_, answer)| plain_breath_rewrite(answer))
@@ -744,6 +911,19 @@ pub fn dialogue_reply(
                         }
                     }
                 }
+            } else if lower.contains("generic")
+                || lower.contains("does not flow")
+                || lower.contains("doesn't flow")
+                || lower.contains("doesnt flow")
+                || lower.contains("not flow")
+                || lower.contains("inconversation")
+                || lower.contains("in conversation")
+                || lower.contains("conversation flow")
+                || lower.contains("not conversational")
+                || lower.contains("still with the")
+                || lower.contains("still generic")
+            {
+                "You're right — that was generic shell speech, not a real turn. I'll talk with you: answer your last point, keep the thread warm, and drop empty topic binders. Say something ordinary and I'll meet you there.".to_owned()
             } else if lower.contains("whats with")
                 || lower.contains("what's with")
                 || lower.contains("what is with")
@@ -870,10 +1050,26 @@ pub fn dialogue_reply(
                         || lower.contains("do not repeat")
                         || lower.contains("don't repeat"))
                 {
-                    let core = first_sentence(previous_answer, 180);
-                    format!(
-                        "Next layer: the previous answer was \"{core}\" The relation underneath it is between the assumption and the result; change that assumption while holding the rest fixed and check whether the conclusion changes."
-                    )
+                    let prev_l = previous_answer.to_ascii_lowercase();
+                    if prev_l.contains("trust")
+                        && (prev_l.contains("lag")
+                            || prev_l.contains("timeout")
+                            || prev_l.contains("idempotent")
+                            || prev_l.contains("done"))
+                    {
+                        "Next layer without rehashing the contract list: lag makes clocks and success flags private. The hard part is a shared predicate for pending vs accepted that both sides can audit after the fact — including after a delayed success races a retry. Change only the retry policy and see whether double-write risk moves; if it doesn't, the predicate was never shared.".to_owned()
+                    } else if prev_l.contains("layer")
+                        || prev_l.contains("dialogue act")
+                        || prev_l.contains("softcascade")
+                    {
+                        "Next layer: measure the miss class first (social continuity vs wrong operator vs free-associate prose). Patch only that class, then re-run the same multi-turn. If transfer is green but chat still feels stiff, weights are the wrong lever.".to_owned()
+                    } else {
+                        let core = first_sentence(previous_answer, 120);
+                        format!(
+                            "Next layer (no rehash of the previous wording): the relation underneath \"{}\" is the assumption you can flip while holding the rest fixed — if the checkable outcome does not move, that assumption was decorative.",
+                            core.trim_end_matches('.')
+                        )
+                    }
                 } else if lower.contains("different angle") || lower.contains("without repeating") {
                     let angle_stop = [
                         "what", "is", "are", "doing", "the", "most", "work", "in", "your",
@@ -916,7 +1112,31 @@ pub fn dialogue_reply(
             "Agreed—you should not have to speak in commands. Natural language is now the primary path: say “I want you to learn that ...” and I'll stage the claim, explain its status, and keep it separate from trusted memory and active weights. `/teach` remains only as a transparent shortcut for scripts and inspection.".to_owned()
         }
         DialogueAct::Feedback => {
-            "I agree. The last reply was too procedural for a conversational moment. I'm treating that as style feedback: answer directly, keep the warmth, and reserve structured reasoning for work that actually needs it.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("make things up")
+                || lower.contains("making things up")
+                || lower.contains("making it up")
+                || lower.contains("instead of processing")
+                || lower.contains("not processing")
+                || lower.contains("not answering")
+                || lower.contains("dodging")
+                || lower.contains("didn't answer")
+                || lower.contains("didnt answer")
+                || lower.contains("ignoring the question")
+                || lower.contains("free-associat")
+                || lower.contains("free associat")
+            {
+                "You're right. I free-associated instead of answering you — a concept hit without binding to your words. Fix: answer the actual ask first, say unknown when I don't know, and don't invent meaning. Ask the same question again and I'll stay on it.".to_owned()
+            } else if lower.contains("stuck")
+                || lower.contains("speak back")
+                || lower.contains("talk back")
+                || lower.contains("going to speak")
+                || lower.contains("going to talk")
+            {
+                "You're right — I was looping continuity shells instead of answering. Fresh start: ask me anything concrete (how I am, what I learned this session, a design question) and I'll answer that turn directly.".to_owned()
+            } else {
+                "I agree. The last reply was too procedural for a conversational moment. I'm treating that as style feedback: answer directly, keep the warmth, and reserve structured reasoning for work that actually needs it.".to_owned()
+            }
         }
         DialogueAct::Agreement => {
             let lower = user.to_ascii_lowercase();
@@ -931,6 +1151,19 @@ pub fn dialogue_reply(
                     }
                 }
                 "Yes—that works for this thread. Want the next step, or should we pressure-test it?".to_owned()
+            } else if lower.contains("should")
+                || lower.contains("do that")
+                || lower == "yeah"
+                || lower == "yes"
+                || lower.contains("sounds good")
+                || lower.contains("please do")
+            {
+                // Affirm prior commitment (e.g. after style-repair promise) — no concept dump.
+                if has_context {
+                    "Will do. Short, concrete, on your last message — no method-card padding unless you ask for engineering.".to_owned()
+                } else {
+                    "Will do. Tell me what you want next.".to_owned()
+                }
             } else if has_context {
                 "Yes. That criticism is fair—I'll stay with the point and drop the template padding.".to_owned()
             } else {
@@ -938,7 +1171,17 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::Acknowledgement => {
-            if has_context {
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("not asking")
+                || lower.contains("wasn't asking")
+                || lower.contains("wasnt asking")
+                || lower.contains("not what i asked")
+                || lower.contains("didn't ask")
+                || lower.contains("didnt ask")
+            {
+                // User is correcting over-answering — stop expanding, stay present.
+                "Fair. I over-answered. I'll wait on your next real ask.".to_owned()
+            } else if has_context {
                 "Yeah. I'm with you—keep going.".to_owned()
             } else {
                 "Yeah—what caught your attention?".to_owned()
@@ -1167,13 +1410,23 @@ pub fn detect_social(user: &str) -> SocialKind {
     {
         return SocialKind::Goodbye;
     }
+    // "how are you" + common typos (ayou / u / ya)
     if compact.contains("how are you")
+        || compact.contains("how are ayou")
+        || compact.contains("how are u")
+        || compact.contains("how are ya")
+        || compact.contains("how r you")
+        || compact.contains("how r u")
         || compact.contains("how's it going")
         || compact.contains("hows it going")
         || compact.contains("how do you do")
         || compact == "sup"
         || compact == "what's up"
         || compact == "whats up"
+        || (words.len() == 3
+            && words[0] == "how"
+            && words[1] == "are"
+            && (words[2].starts_with('y') || words[2] == "u" || words[2] == "ayou"))
     {
         return SocialKind::HowAreYou;
     }
@@ -1969,6 +2222,17 @@ fn content_tokens(user: &str) -> Vec<String> {
         "all",
         "also",
         "like",
+        "seems",
+        "seem",
+        "instead",
+        "processing",
+        "process",
+        "question",
+        "questions",
+        "response",
+        "responses",
+        "before",
+        "same",
         "something",
         "someone",
         "deep",
@@ -2103,6 +2367,16 @@ fn looks_casual_meta_turn(lower: &str) -> bool {
         || lower.contains("why so stiff")
         || lower.contains("sound weird")
         || lower.contains("sounds weird")
+        || lower.contains("generic chat")
+        || lower.contains("still with the")
+        || lower.contains("does not flow")
+        || lower.contains("doesn't flow")
+        || lower.contains("doesnt flow")
+        || lower.contains("inconversation")
+        || lower.contains("in conversation")
+        || lower.contains("conversation flow")
+        || (lower.contains("generic")
+            && (lower.contains("chat") || lower.contains("still") || lower.contains("reply")))
         || (lower.contains("response")
             && (lower.contains("what") || lower.contains("why") || lower.contains("with")))
 }
@@ -2117,9 +2391,17 @@ fn casual_meta_reply(
         || lower.contains("whats missing")
         || lower.contains("what's missing")
         || lower.contains("stiff")
+        || lower.contains("generic")
+        || lower.contains("does not flow")
+        || lower.contains("doesn't flow")
+        || lower.contains("doesnt flow")
+        || lower.contains("still with the")
+        || lower.contains("inconversation")
+        || lower.contains("in conversation")
+        || lower.contains("conversation flow")
     {
         return format!(
-            "{head}What's missing is fit to the moment. I was pasting a method slogan (claim / counterexample / smallest path) onto casual chat. For talk like this I should just answer you—short, clear, a little warm—and keep the engineering templates for real design asks. Try me again."
+            "{head}You're right — that was shell speech, not conversation. I'll stay with you: answer the last point, keep the thread, and drop empty topic binders. Say the next ordinary thing and I'll meet you there."
         );
     }
     if lower.contains("whats with") || lower.contains("what's with") || lower.contains("with the response")
@@ -2550,6 +2832,19 @@ Next useful move: catch one live miss, fix the owning operator/voice layer (not 
         if let Some(topic_ans) = style_repair_new_topic(&user_lower) {
             return Some(topic_ans);
         }
+        if let Some(claim) = claim.as_ref() {
+            let low = claim.to_ascii_lowercase();
+            if low.contains("behavioral complexity is observable")
+                || low.contains("subjective experience is inferred")
+                || low.contains("method card")
+                || low.contains("claim / counterexample")
+            {
+                return Some(
+                    "Fair—too stiff. I'll drop the slogan and stay on your words: short, concrete, no stock lines."
+                        .to_owned(),
+                );
+            }
+        }
         return Some(match claim {
             Some(claim) => {
                 let core = plain_breath_rewrite(&claim);
@@ -2847,11 +3142,17 @@ pub fn fluid_compose(
     if looks_casual_meta_turn(&lower) {
         return casual_meta_reply(&lower, &topic, recent, &head);
     }
+    // Half-sentences and conversational fragments: stay in the thread.
+    if looks_conversation_fragment(&lower) && !looks_open_conversation(&lower) {
+        return conversational_continuity_reply(user, &topic, recent, &head, seed);
+    }
 
     // Open conversation: answer the ask with user topic bound in.
     // Require a real question or enough content — not "im working on evolving you silly".
+    // Style/meta questions like "still with the generic chat?" are not open topics.
     if looks_open_conversation(&lower)
         && !looks_casual_status_update(&lower)
+        && !looks_casual_meta_turn(&lower)
         && (tokens.len() >= 2 || lower.contains('?'))
     {
         let angle = concept.clone().or(direct.clone()).unwrap_or_else(|| {
@@ -3012,15 +3313,131 @@ pub fn fluid_compose(
 
     // Craft / domain path: still bind user tokens into a natural sentence.
     let body = humanize_body(domain_body, label, seed);
+    let body_trim = body.trim();
+    // Social / dialogue acts that slipped past chat early-exit still win here.
+    if let Some(social) = social_reply(detect_social(user), recent.len()) {
+        return social.to_owned();
+    }
+    if let Some(act_text) = dialogue_reply(detect_dialogue_act(user), user, recent, None) {
+        return act_text;
+    }
+    // Never emit empty "For your point about X:" shells — that is the live failure mode.
+    // Only true fragments get continuity; other empty SoftCascade → clear short ask.
+    if body_trim.is_empty() {
+        if looks_conversation_fragment(&lower) {
+            return conversational_continuity_reply(user, &topic, recent, &head, seed);
+        }
+        return format!(
+            "{head}I don't have a grounded line for that yet. Restate it in one plain sentence and I'll answer that — no empty loop."
+        );
+    }
     if tokens.is_empty() {
-        return format!("{head}{body}");
+        return format!("{head}{body_trim}");
+    }
+    // Short meta/fragment turns with a non-empty but stock body still prefer continuity.
+    if looks_conversation_fragment(&lower) {
+        return conversational_continuity_reply(user, &topic, recent, &head, seed);
     }
     let bind = match seed % 3 {
-        0 => format!("For your point about {topic}: {body}"),
-        1 => format!("{body} Applied to {topic}, that means we stay specific instead of abstract."),
-        _ => format!("On {topic} — {body}"),
+        0 => format!("For your point about {topic}: {body_trim}"),
+        1 => format!(
+            "{body_trim} Applied to {topic}, that means we stay specific instead of abstract."
+        ),
+        _ => format!("On {topic} — {body_trim}"),
     };
     format!("{head}{bind}")
+}
+
+/// Incomplete, half-sentence, or meta turns that should not become topic cards.
+/// Must NOT steal real social/question acts (how are you, what do you mean, …).
+fn looks_conversation_fragment(lower: &str) -> bool {
+    // Real speech acts always win over fragment continuity.
+    if !matches!(detect_social(lower), SocialKind::None) {
+        return false;
+    }
+    if !matches!(detect_dialogue_act(lower), DialogueAct::None) {
+        return false;
+    }
+    let words = lower.split_whitespace().count();
+    // Only true half-sentences / mid-thread fragments — not "how are you".
+    lower.starts_with("i dont expect")
+        || lower.starts_with("i don't expect")
+        || lower.starts_with("i do not expect")
+        || lower.starts_with("i mean ")
+        || lower.starts_with("it means ")
+        || (lower.starts_with("interesting ") && words >= 3)
+        || lower.contains("inconversation")
+        || (words <= 5
+            && !lower.contains('?')
+            && !lower.starts_with("what ")
+            && !lower.starts_with("why ")
+            && !lower.starts_with("how ")
+            && !lower.starts_with("are ")
+            && !lower.starts_with("explain ")
+            && !lower.starts_with("connect ")
+            && !lower.starts_with("do you ")
+            && !lower.starts_with("can you ")
+            && (lower.starts_with("i ")
+                || lower.starts_with("im ")
+                || lower.starts_with("i'm ")
+                || lower.starts_with("yeah ")
+                || lower.starts_with("yea ")
+                || lower.starts_with("nah ")))
+}
+
+fn conversational_continuity_reply(
+    user: &str,
+    topic: &str,
+    recent: &[(String, String)],
+    head: &str,
+    seed: usize,
+) -> String {
+    let lower = user.to_ascii_lowercase();
+    // Style / flow meta already handled elsewhere — keep a short collaborator line.
+    if lower.contains("flow")
+        || lower.contains("generic")
+        || lower.contains("conversation")
+        || lower.contains("inconversation")
+    {
+        return format!(
+            "{head}Fair point. Conversation should feel like turns stacking, not topic cards. I'm with you on this thread — go on."
+        );
+    }
+    if let Some((prev_u, prev_a)) = recent.last() {
+        let prev_core = first_sentence(prev_a, 100);
+        let prev_ask = first_sentence(prev_u, 60);
+        // Incomplete expectation / challenge after a style commit.
+        if lower.contains("expect") || lower.contains("i dont") || lower.contains("i don't") {
+            return format!(
+                "{head}Got it — don't expect a lecture. Last I said: {}. What do you want next, in your own words?",
+                prev_core.trim_end_matches('.')
+            );
+        }
+        if lower.starts_with("interesting") || lower.starts_with("it means") {
+            return format!(
+                "{head}Yeah — when replies get shell-like, the thread breaks. On “{prev_ask}” I drifted. Keep going; I'll stay on your words."
+            );
+        }
+        match seed % 3 {
+            0 => format!(
+                "{head}Still here with you. Last thread: {}. Your move.",
+                prev_core.trim_end_matches('.')
+            ),
+            1 => format!(
+                "{head}I'm following — after “{}”, what do you want to push on?",
+                first_sentence(prev_u, 48).trim_end_matches('.')
+            ),
+            _ => format!(
+                "{head}With you. Don't need a formal ask — just keep talking and I'll answer that."
+            ),
+        }
+    } else if !topic.is_empty() && topic != "that" {
+        format!(
+            "{head}I'm with you on {topic}. Say the next bit in plain words and I'll answer that — no empty shell."
+        )
+    } else {
+        format!("{head}I'm here. Say what's on your mind and I'll answer that turn — not invent a topic.")
+    }
 }
 
 /// Post-pass: if a candidate answer never mentions user content, rebuild fluidly.
@@ -3446,6 +3863,239 @@ mod tests {
             response_depth("What is Perci?", &[]),
             ResponseDepth::Balanced
         );
+    }
+
+    #[test]
+    fn generic_chat_complaint_is_style_repair() {
+        assert_eq!(
+            detect_dialogue_act("still with the generic chat?"),
+            DialogueAct::StyleRepair
+        );
+        assert_eq!(
+            detect_dialogue_act(
+                "interesting it means it does not flow inconverstation"
+            ),
+            DialogueAct::StyleRepair
+        );
+        let r = dialogue_reply(
+            DialogueAct::StyleRepair,
+            "still with the generic chat?",
+            &[(
+                "hello perci".into(),
+                "Hey — I'm here. What are we working on?".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let low = r.to_ascii_lowercase();
+        assert!(low.contains("generic") || low.contains("conversation") || low.contains("thread"));
+        assert!(!low.contains("cleanest answer i have for generic"));
+        assert!(!low.contains("for your point about"));
+    }
+
+    #[test]
+    fn conversation_fragment_does_not_demand_solid_answer() {
+        let recent = [(
+            "still with the generic chat?".to_owned(),
+            "You're right — that was shell speech.".to_owned(),
+        )];
+        let a = fluid_compose(
+            "interesting it means it does not flow inconverstation",
+            "general",
+            None,
+            "",
+            &recent,
+            0,
+            Affect::Neutral,
+        );
+        let low = a.to_ascii_lowercase();
+        assert!(!low.contains("don't have a solid answer"));
+        assert!(!low.contains("do not have a solid answer"));
+        assert!(!low.contains("for your point about"));
+        let b = fluid_compose(
+            "i dont expect you",
+            "general",
+            None,
+            "",
+            &recent,
+            1,
+            Affect::Neutral,
+        );
+        let lowb = b.to_ascii_lowercase();
+        assert!(!lowb.contains("solid answer for dont expect"));
+        assert!(
+            lowb.contains("expect")
+                || lowb.contains("with you")
+                || lowb.contains("got it")
+                || lowb.contains("thread")
+                || lowb.contains("here")
+                || lowb.contains("lecture")
+        );
+    }
+
+    #[test]
+    fn social_and_meaning_not_continuity_loop() {
+        assert_eq!(detect_social("how are ayou"), SocialKind::HowAreYou);
+        assert_eq!(detect_social("how are you"), SocialKind::HowAreYou);
+        assert_eq!(
+            detect_dialogue_act("what do you mean"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("what have you learned"),
+            DialogueAct::LearningMeta
+        );
+        assert_eq!(
+            detect_dialogue_act("yea seems like your stuck"),
+            DialogueAct::Feedback
+        );
+        assert_eq!(
+            detect_dialogue_act("are you going to speak back"),
+            DialogueAct::Feedback
+        );
+
+        let how = social_reply(SocialKind::HowAreYou, 1).unwrap();
+        assert!(!how.to_ascii_lowercase().contains("last thread"));
+
+        let recent = [(
+            "whats next".to_owned(),
+            "Still on improving Perci.".to_owned(),
+        )];
+        let mean = dialogue_reply(
+            DialogueAct::ExplainPrevious,
+            "what do you mean",
+            &recent,
+            None,
+        )
+        .unwrap();
+        let low = mean.to_ascii_lowercase();
+        assert!(low.contains("meant") || low.contains("improving"));
+        assert!(!low.contains("still here with you"));
+        assert!(!low.contains("your move"));
+
+        let stuck = dialogue_reply(
+            DialogueAct::Feedback,
+            "yea seems like your stuck",
+            &recent,
+            None,
+        )
+        .unwrap();
+        assert!(!stuck.to_ascii_lowercase().contains("reproduce it"));
+        assert!(stuck.to_ascii_lowercase().contains("loop") || stuck.to_ascii_lowercase().contains("stuck") || stuck.to_ascii_lowercase().contains("shell"));
+    }
+
+    #[test]
+    fn where_are_you_is_presence_not_philosophy() {
+        assert_eq!(detect_dialogue_act("where are you"), DialogueAct::Presence);
+        let r = dialogue_reply(DialogueAct::Presence, "where are you", &[], None).unwrap();
+        let low = r.to_ascii_lowercase();
+        assert!(low.contains("local") || low.contains("machine") || low.contains("here"));
+        assert!(!low.contains("meaning can be neither"));
+        assert!(!low.contains("freely invented"));
+    }
+
+    #[test]
+    fn make_things_up_feedback_admits_free_associate() {
+        assert_eq!(
+            detect_dialogue_act(
+                "seems like you make things up instead of processing the question"
+            ),
+            DialogueAct::Feedback
+        );
+        let r = dialogue_reply(
+            DialogueAct::Feedback,
+            "seems like you make things up instead of processing the question",
+            &[],
+            None,
+        )
+        .unwrap();
+        let low = r.to_ascii_lowercase();
+        assert!(low.contains("free-associ") || low.contains("you're right") || low.contains("youre right") || low.contains("instead of answering"));
+        assert!(!low.starts_with("for your point about"));
+    }
+
+    #[test]
+    fn fluid_compose_never_emits_empty_for_your_point_shell() {
+        let answer = fluid_compose(
+            "what do we trust",
+            "general",
+            None,
+            "",
+            &[],
+            0,
+            Affect::Neutral,
+        );
+        let low = answer.to_ascii_lowercase();
+        assert!(!low.trim_end().ends_with(':'));
+        assert!(!low.contains("for your point about trust:"));
+        // Empty SoftCascade body should stay human — continuity or honest gap, never a colon shell.
+        assert!(
+            low.contains("with you")
+                || low.contains("i'm here")
+                || low.contains("im here")
+                || low.contains("won't invent")
+                || low.contains("wont invent")
+                || low.contains("plain words")
+                || low.contains("next bit")
+                || low.contains("on your mind")
+                || low.contains("grounded line")
+                || low.contains("restate")
+                || low.contains("no empty loop")
+        );
+    }
+
+    #[test]
+    fn agreement_and_not_asking_continuity_acts() {
+        assert_eq!(
+            detect_dialogue_act("yeah you should"),
+            DialogueAct::Agreement
+        );
+        assert_eq!(
+            detect_dialogue_act("im not asking you"),
+            DialogueAct::Acknowledgement
+        );
+        let agree = dialogue_reply(
+            DialogueAct::Agreement,
+            "yeah you should",
+            &[(
+                "why robotic".into(),
+                "I'll stay human: short and concrete.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        assert!(agree.to_ascii_lowercase().contains("will do"));
+        assert!(!agree.to_ascii_lowercase().contains("behavioral complexity"));
+        let not_ask = dialogue_reply(
+            DialogueAct::Acknowledgement,
+            "im not asking you",
+            &[(
+                "so cryptic".into(),
+                "Fair—too stiff.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        assert!(not_ask.to_ascii_lowercase().contains("over-answered") || not_ask.to_ascii_lowercase().contains("wait"));
+    }
+
+    #[test]
+    fn entertain_without_consciousness_sermon() {
+        assert_eq!(
+            detect_dialogue_act("bored. entertain me without being weird about consciousness"),
+            DialogueAct::SelfDescription
+        );
+        let r = dialogue_reply(
+            DialogueAct::SelfDescription,
+            "bored. entertain me without being weird about consciousness",
+            &[],
+            None,
+        )
+        .unwrap();
+        let low = r.to_ascii_lowercase();
+        assert!(low.contains("puzzle") || low.contains("joke") || low.contains("riddle"));
+        assert!(!low.contains("death gives"));
+        assert!(!low.contains("subjective experience"));
     }
 
     #[test]

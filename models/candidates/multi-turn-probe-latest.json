@@ -1,0 +1,131 @@
+{
+  "schema": "perci.multi-turn-probe.v1",
+  "generated_at_utc": "2026-07-21T00:43:57.036943+00:00",
+  "threads": 8,
+  "pass_first": 8,
+  "pass_after_reask": 8,
+  "sticky_fail_ids": [],
+  "recovery_rate": 1.0,
+  "rows": [
+    {
+      "id": "MT01",
+      "setup": [
+        "Why does trust collapse when communication is delayed?"
+      ],
+      "prompt": "what about timeout and retry though?",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "Interfaces earn trust under lag when “done” is checkable without private state. That holds because timeout is a one-sided story: without shared done-predicates and idempotent retries, silence is mistaken for agreement or betrayal. Still, counterexample: perfect RTTs with silent double-charge still destroy trust.",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT02",
+      "setup": [
+        "Explain how boundaries enable repair"
+      ],
+      "prompt": "same idea but for local order in living systems",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "Same idea, transferred: life maintains local order by continuous exchange and repair across a boundary under energy cost. The boundary still names what may cross; repair still targets the failure mode. The load-bearing difference from pure geometry is energy-driven maintenance — a crystal holds order without life; shapes describe contact, not biological cause.",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT03",
+      "setup": [
+        "How should interfaces earn trust under lag and retry?"
+      ],
+      "prompt": "say that again but shorter and without the list",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "Interfaces earn trust under lag and retry when “done” is checkable without private state.",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT04",
+      "setup": [
+        "How are memory and identity related?"
+      ],
+      "prompt": "I dont agree — which premise should we challenge first?",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "That is a fair challenge. The claim to examine is: \"The relationship is best understood through time.\" Which premise or mechanism do you reject?",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT05",
+      "setup": [
+        "Why does trust collapse when communication is delayed?",
+        "what about timeout and retry though?"
+      ],
+      "prompt": "what should i do next about that",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "From the last turn: Interfaces earn trust under lag when “done” is checkable without private state. Smallest next step: name the outcome, pick the check that would fail if we're wrong, run it before widening.",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT06",
+      "setup": [
+        "why does life maintain local order"
+      ],
+      "prompt": "where does that analogy stop transferring?",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "The analogy stops transferring at the crystal: a static lattice holds order without life. Shared structure is boundary + exchange + repair; it dies when geometry is treated as biological cause, or when a frozen shape is called maintenance. Mechanism requires energy-driven work, not only form.",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT07",
+      "setup": [
+        "working on improving your system"
+      ],
+      "prompt": "what should i do next about that",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "Still on improving Perci. Last solid point: We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, whi… Next useful move: catch one live miss, fix the owning operator/voice layer (not the pack), re-run that multi-turn plus transfer-suite. Weights stay frozen until a held-out win under human authorize. Which first—miss, patch, or retest?",
+      "answer_reask": ""
+    },
+    {
+      "id": "MT08",
+      "setup": [
+        "Give an original comparison between entropy and limits; state the limit of the comparison."
+      ],
+      "prompt": "sounds cryptic — give one plain sentence about boundary bands vs max coherence",
+      "pass_first": true,
+      "pass_after_reask": true,
+      "reasons_first": [],
+      "reasons_reask": [],
+      "taught": false,
+      "answer_first": "Boundary bands beat max coherence: stay in a calibrated region where transfer still falsifies and recovery remains possible, instead of maximizing fluent score or hugging failure.",
+      "answer_reask": ""
+    }
+  ],
+  "claim_boundary": [
+    "never auto-promote .pwgt",
+    "session teach is not durable weight promote",
+    "coherence is not consciousness"
+  ],
+  "automatic_promotion": false,
+  "receipt_sha256": "b2ddc4ee6a388cfa59c4c60d352b3c18fad6ade8708ab7f1651f0ac9cd757470"
+}

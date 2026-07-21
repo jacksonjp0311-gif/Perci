@@ -29,6 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if matches!(command.as_str(), "lowbit" | "low-bit" | "bitlayer") {
         return run_lowbit_command(&mut args);
     }
+    // Modular cognition: pack route, ThoughtPlan, field-fold experiment (no chat backend).
+    if matches!(
+        command.as_str(),
+        "modular" | "packs" | "thought" | "fold-exp" | "field-fold"
+    ) {
+        return run_modular_command(&command, &mut args);
+    }
 
     let personality = load_personality();
     let memory_path = env::var_os("PERCI_MEMORY")
@@ -870,6 +877,372 @@ where
         other => {
             return Err(format!(
                 "unknown hydra subcommand: {other} (try: perci hydra help)"
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+fn run_modular_command<I>(
+    command: &str,
+    args: &mut I,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    I: Iterator<Item = String>,
+{
+    // `perci modular <sub>` or shortcuts: packs|thought|fold-exp
+    let sub = if matches!(command, "modular") {
+        args.next().unwrap_or_else(|| "help".into())
+    } else {
+        command.to_owned()
+    };
+    match sub.as_str() {
+        "help" | "-h" | "--help" => {
+            println!(
+                "Modular binary cognition (Phase 1–6)\n\
+  perci modular status              pack discovery + law\n\
+  perci modular route <prompt>      sparse capability route + telemetry\n\
+  perci modular plan <prompt>       ThoughtPlan (SEM1+RSN1)\n\
+  perci modular sem <prompt>        PERCISEM1 frame extract + retrieve\n\
+  perci modular reason <prompt>     PERCIRSN1 bounded transitions\n\
+  perci modular discourse <prompt>  PERCIDSC1 discourse plan\n\
+  perci modular realize <prompt>    full SEM→RSN→DSC→LM pipeline\n\
+  perci modular build-sem|rsn|dsc|lm  build candidate packs\n\
+  perci modular eval-sem | eval-dsc   evals\n\
+  perci modular fold [depth]        PERCIFLD1 fold experiment\n\
+\n\
+Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
+            );
+        }
+        "status" | "packs" => {
+            let root = std::path::Path::new("models/candidates/packs");
+            let found = if root.is_dir() {
+                perci::pack_manifest::discover_manifests(root)
+            } else {
+                Vec::new()
+            };
+            println!("modular cognition status");
+            println!("  law: PERCIW03 reflex retained · packs sparse · no auto-promote");
+            println!("  pack root: {}", root.display());
+            println!("  manifests discovered: {}", found.len());
+            for m in found.iter().take(12) {
+                println!(
+                    "  - {} [{}] status={:?} tags={}",
+                    m.pack_id,
+                    m.magic,
+                    m.promotion_status,
+                    m.capability_tags.join(",")
+                );
+            }
+            if found.is_empty() {
+                println!("  (scaffold with: python scripts/scaffold_modular_packs.py)");
+            }
+        }
+        "route" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular route <prompt>".into());
+            }
+            let d = perci::capability_router::route_prompt(&prompt);
+            println!("{}", serde_json::to_string_pretty(&d)?);
+        }
+        "plan" | "thought" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular plan <prompt>".into());
+            }
+            // Prefer RSN1 bounded reason → ThoughtPlan; else deliberation; else route-only.
+            let intent = perci::thought_plan::Intent::infer_from_prompt(&prompt);
+            let plan = if !matches!(
+                intent,
+                perci::thought_plan::Intent::Social | perci::thought_plan::Intent::Exact
+            ) {
+                let (run, state, frame) = perci::reason_transition::run_bounded(&prompt, 8);
+                let mut plan = run.to_thought_plan(&frame, &state);
+                let route = perci::capability_router::route_prompt(&prompt);
+                // Prefer executor packs, merge route ids.
+                for p in route.active_packs {
+                    if !plan.active_packs.iter().any(|x| x == &p) {
+                        plan.active_packs.push(p);
+                    }
+                }
+                plan
+            } else if let Some(d) = deliberation::try_deliberate(&prompt, &[], &[]) {
+                d.to_thought_plan(&prompt)
+            } else {
+                let mut p = perci::thought_plan::ThoughtPlan::empty(
+                    "route-only",
+                    intent,
+                );
+                let route = perci::capability_router::route_prompt(&prompt);
+                p.active_packs = route.active_packs;
+                p.halt_reason = "no substantive operator matched; route only".into();
+                p
+            };
+            println!("{}", plan.receipt());
+            if !plan.surface_answer.is_empty() {
+                println!("--- surface ---");
+                println!("{}", plan.surface_answer);
+            }
+            println!("---");
+            println!("{}", serde_json::to_string_pretty(&plan)?);
+        }
+        "sem" | "semantic" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular sem <prompt>".into());
+            }
+            let frame = perci::semantic_field::extract_frame(&prompt);
+            println!("{}", frame.summary_line());
+            println!("{}", serde_json::to_string_pretty(&frame)?);
+            if let Some(pack) = perci::semantic_field::try_load_default() {
+                let hits = pack.retrieve(&frame, 3);
+                println!("--- retrieve (top3) ---");
+                for h in hits {
+                    println!(
+                        "  sim={}pm idx={} label={}",
+                        h.similarity_pm, h.index, h.label
+                    );
+                }
+                println!("mapped_bytes={}", pack.mapped_bytes());
+            } else {
+                println!("(no PERCISEM1 pack loaded — run: perci modular build-sem)");
+            }
+        }
+        "reason" | "rsn" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular reason <prompt>".into());
+            }
+            let (run, state, frame) = perci::reason_transition::run_bounded(&prompt, 8);
+            println!("frame: {}", frame.summary_line());
+            println!("halt: {} confidence_pm={}", run.halt_reason, run.final_confidence_pm);
+            for s in &run.steps {
+                println!(
+                    "  c{} {} gain={}pm conf={}pm — {}",
+                    s.cycle, s.op, s.expected_info_gain_pm, s.confidence_pm, s.note
+                );
+            }
+            let plan = run.to_thought_plan(&frame, &state);
+            println!("--- surface ---");
+            println!("{}", plan.surface_answer);
+            println!("--- receipt ---");
+            println!("{}", plan.receipt());
+        }
+        "build-sem" => {
+            let fixture = std::path::Path::new("training/modular/semantic-frames-v1.jsonl");
+            let frames = if fixture.is_file() {
+                perci::semantic_field::load_fixture_jsonl(fixture)?
+            } else {
+                // Built-in seed set
+                [
+                    "Why does trust collapse when communication is delayed?",
+                    "How should interfaces earn trust under lag and retry?",
+                    "Explain trust failure when messages are delayed.",
+                    "What is the boundary between knowledge and attention?",
+                    "Connect entropy, memory, and learning — where does the analogy die?",
+                    "What does geometry teach about boundary bands vs max coherence?",
+                    "How are memory and identity related?",
+                    "Entity Klystron-X has lag and trust. Transfer the relation.",
+                ]
+                .iter()
+                .map(|p| perci::semantic_field::extract_frame(p))
+                .collect()
+            };
+            let out = perci::semantic_field::SemanticFieldPack::default_path();
+            let n = perci::semantic_field::build_pack(&frames, &out)?;
+            println!("built PERCISEM1 candidate: {} frames → {}", n, out.display());
+            println!("promotion_status=candidate · never auto-promote");
+        }
+        "build-rsn" => {
+            let out = perci::reason_transition::ReasonTransitionPack::default_path();
+            let n = perci::reason_transition::build_default_pack(&out)?;
+            println!("built PERCIRSN1 candidate: {} transitions → {}", n, out.display());
+            println!("promotion_status=candidate · never auto-promote");
+        }
+        "build-dsc" => {
+            let out = perci::discourse_plan::DiscoursePack::default_path();
+            let n = perci::discourse_plan::build_default_pack(&out)?;
+            println!("built PERCIDSC1 candidate: {} plans → {}", n, out.display());
+            println!("promotion_status=candidate · never auto-promote");
+        }
+        "build-lm" => {
+            let out = perci::language_realize::LanguagePack::default_path();
+            let n = perci::language_realize::build_default_pack(&out)?;
+            println!("built PERCILM1 candidate: {} atoms → {}", n, out.display());
+            println!("promotion_status=candidate · never auto-promote");
+        }
+        "discourse" | "dsc" => {
+            let prompt = args.collect::<Vec<_>>().join(" ");
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular discourse <prompt>".into());
+            }
+            let (run, state, frame) = perci::reason_transition::run_bounded(&prompt, 8);
+            let mut plan = run.to_thought_plan(&frame, &state);
+            let d = perci::discourse_plan::plan_discourse(&plan, &prompt, 0);
+            perci::discourse_plan::apply_plan(&mut plan, &d);
+            println!("{}", d.summary());
+            println!("connectives: {:?}", d.connectives);
+            println!("style: {:?}", d.style_notes);
+            let slots = perci::discourse_plan::materialize_slots(&plan, &d);
+            for (act, text) in slots {
+                println!("  [{}] {}", act.as_str(), text);
+            }
+        }
+        "realize" | "speak" | "lm" => {
+            let all: Vec<String> = args.collect();
+            if all.is_empty() {
+                return Err(
+                    "usage: perci modular realize [1|2|4] <prompt>\n  example: perci modular realize 2 \"why does trust collapse under lag?\""
+                        .into(),
+                );
+            }
+            let (bits, prompt) = if matches!(
+                all[0].as_str(),
+                "1" | "2" | "4" | "1bit" | "2bit" | "4bit"
+            ) {
+                (
+                    perci::language_realize::BitWidth::from_str_loose(&all[0]),
+                    all[1..].join(" "),
+                )
+            } else {
+                (
+                    perci::language_realize::BitWidth::Two,
+                    all.join(" "),
+                )
+            };
+            if prompt.trim().is_empty() {
+                return Err("usage: perci modular realize [1|2|4] <prompt>".into());
+            }
+            let r = perci::language_realize::realize_from_prompt(&prompt, bits, 0);
+            println!("{}", r.text);
+            println!("---");
+            println!(
+                "discourse={} engine={} constraints_ok={} packs={}",
+                r.discourse,
+                r.engine,
+                r.constraints_ok,
+                r.active_packs.join(",")
+            );
+            if !r.missing_required.is_empty() {
+                println!("missing: {:?}", r.missing_required);
+            }
+            if !r.forbidden_hits.is_empty() {
+                println!("forbidden: {:?}", r.forbidden_hits);
+            }
+        }
+        "eval-dsc" => {
+            let report = perci::discourse_plan::evaluate_variation(&[
+                (
+                    perci::thought_plan::Intent::Trust,
+                    "how should interfaces earn trust under lag",
+                ),
+                (
+                    perci::thought_plan::Intent::Trust,
+                    "why does trust collapse when delayed",
+                ),
+                (
+                    perci::thought_plan::Intent::Trust,
+                    "earn trust under timeout and retry",
+                ),
+                (
+                    perci::thought_plan::Intent::CausalExplanation,
+                    "why does life maintain local order",
+                ),
+                (
+                    perci::thought_plan::Intent::CausalExplanation,
+                    "explain how boundaries enable repair",
+                ),
+            ]);
+            let out = std::path::Path::new("models/candidates/discourse-eval-latest.json");
+            if let Some(parent) = out.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::write(out, serde_json::to_string_pretty(&report)? + "\n")?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            println!("receipt: {}", out.display());
+        }
+        "eval-sem" => {
+            let cases_path = std::path::Path::new("training/modular/semantic-eval-v1.jsonl");
+            let cases: Vec<perci::semantic_field::SemEvalCase> = if cases_path.is_file() {
+                let text = std::fs::read_to_string(cases_path)?;
+                text.lines()
+                    .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+                    .filter_map(|l| serde_json::from_str(l).ok())
+                    .collect()
+            } else {
+                vec![
+                    perci::semantic_field::SemEvalCase {
+                        id: "T1".into(),
+                        prompts: vec![
+                            "Why does trust collapse under lag?".into(),
+                            "Explain trust failure when communication is delayed.".into(),
+                        ],
+                        expected_subject: "trust".into(),
+                        expected_condition: "delay".into(),
+                        expected_output: "mechanism".into(),
+                    },
+                    perci::semantic_field::SemEvalCase {
+                        id: "B1".into(),
+                        prompts: vec![
+                            "What is the boundary between knowledge and attention?".into(),
+                            "Explain the boundary of knowledge vs attention.".into(),
+                        ],
+                        expected_subject: "boundary".into(),
+                        expected_condition: String::new(),
+                        expected_output: "mechanism".into(),
+                    },
+                ]
+            };
+            let pack = perci::semantic_field::try_load_default();
+            let report = perci::semantic_field::evaluate_semantic(&cases, pack.as_ref());
+            let out = std::path::Path::new("models/candidates/semantic-eval-latest.json");
+            if let Some(parent) = out.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::write(out, serde_json::to_string_pretty(&report)? + "\n")?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            println!("receipt: {}", out.display());
+        }
+        "fold" | "fold-exp" | "field-fold" => {
+            let depth: u32 = args
+                .next()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3)
+                .clamp(1, 8);
+            let report = perci::field_fold::run_experiment(0xC0FFEE, depth);
+            let out = std::path::Path::new("models/candidates/field-fold-experiment-latest.json");
+            if let Some(parent) = out.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::write(out, serde_json::to_string_pretty(&report)? + "\n")?;
+            println!("field-fold experiment depth={depth}");
+            for f in &report.findings {
+                println!("  finding: {f}");
+            }
+            println!(
+                "  trials={} receipt={}",
+                report.trials.len(),
+                out.display()
+            );
+            // Compact table
+            for t in report.trials.iter().filter(|t| t.depth == 1 || t.depth == depth) {
+                println!(
+                    "  {} d{} recon={}pm match={}pm mis={}pm gen={}pm us={}",
+                    t.operator,
+                    t.depth,
+                    t.reconstruction_similarity_pm,
+                    t.matched_decode_pm,
+                    t.mismatched_decode_pm,
+                    t.generic_decode_pm,
+                    t.latency_us
+                );
+            }
+        }
+        other => {
+            return Err(format!(
+                "unknown modular subcommand: {other} (try: perci modular help)"
             )
             .into());
         }

@@ -110,6 +110,28 @@ SEEDS: list[dict] = [
         "want": ["entropy", "limit", "change", "constraint", "process"],
         "forbid": ["composition failure", "concept card got promoted"],
     },
+    # Multi-turn continuity (BRPC D) + recovery (BRPC K) seeds
+    {
+        "kind": "MT01",
+        "prompt": "what about timeout and retry though?",
+        "setup": ["Why does trust collapse when communication is delayed?"],
+        "want": ["timeout", "retry", "idempot", "done", "checkable", "trust", "lag"],
+        "forbid": ["structure under constraint for", "i am conscious"],
+    },
+    {
+        "kind": "MT02",
+        "prompt": "same idea but for local order in living systems",
+        "setup": ["Explain how boundaries enable repair"],
+        "want": ["order", "life", "boundar", "exchange", "repair", "mainten", "energy"],
+        "forbid": ["structure under constraint for", "i am conscious"],
+    },
+    {
+        "kind": "MT06",
+        "prompt": "where does that analogy stop transferring?",
+        "setup": ["why does life maintain local order"],
+        "want": ["crystal", "shape", "geometry", "mechanism", "dies", "stop", "boundar", "life"],
+        "forbid": ["i am conscious", "structure under constraint for"],
+    },
     # Limit-push set (H113-H124) — BRPC band / geometry / recovery
     {
         "kind": "H113",
@@ -170,6 +192,67 @@ SEEDS: list[dict] = [
         ],
         "want": ["band", "coheren", "boundar", "max"],
         "forbid": ["composition failure", "concept card got promoted"],
+    },
+    # Live-chat fragmentation set (continuity / location / empty bind / antonym)
+    {
+        "kind": "H125",
+        "prompt": "where are you",
+        "want": ["local", "machine", "here", "process", "terminal", "repo"],
+        "forbid": [
+            "meaning can be neither",
+            "freely invented",
+            "i am conscious",
+        ],
+    },
+    {
+        "kind": "H126",
+        "prompt": "seems like you make things up instead of processing the question",
+        "want": ["right", "answer", "free", "associ", "instead", "process", "question"],
+        "forbid": ["for your point about seems", "for your point about"],
+    },
+    {
+        "kind": "H127",
+        "prompt": "what would you do to fix it",
+        "setup": [
+            "same response as before",
+            "You're right to call that out. I lean on templates when composition is thin.",
+        ],
+        "want": ["layer", "dialogue", "operator", "softcascade", "fix", "retest", "weight"],
+        "forbid": ["remembering everything would bury", "for your point about"],
+    },
+    {
+        "kind": "H128",
+        "prompt": "what do we trust",
+        "want": ["trust", "exact", "test", "check", "authorize", "tool", "transfer"],
+        "forbid": ["for your point about trust:", "for your point about trust"],
+    },
+    {
+        "kind": "H129",
+        "prompt": "whats the opposit of up",
+        "want": ["down"],
+        "forbid": ["compiler", "invariant", "for your point about"],
+    },
+    {
+        "kind": "H130",
+        "prompt": "yeah you should",
+        "setup": [
+            "why do you seem so robotic",
+            "I'll stay human: short, concrete, and on your last message.",
+        ],
+        "want": ["will", "do", "short", "concrete", "message", "yes"],
+        "forbid": ["behavioral complexity is observable", "subjective experience is inferred"],
+    },
+    {
+        "kind": "H131",
+        "prompt": "stop. just yes or no: are you conscious?",
+        "want": ["no"],
+        "forbid": ["**consciousness:**", "i am conscious", "yes i am conscious"],
+    },
+    {
+        "kind": "H132",
+        "prompt": "bored. entertain me without being weird about consciousness",
+        "want": ["puzzle", "joke", "riddle", "switch", "debug", "fact"],
+        "forbid": ["death gives living", "subjective experience remains", "i am conscious"],
     },
 ]
 

@@ -742,9 +742,16 @@ fn phrase_covered(answer_lower: &str, phrase: &str) -> bool {
 }
 
 fn rewrite_role_for_term(term: &str, index: usize) -> String {
-    let t = term.to_ascii_lowercase();
+    // Strip trailing analogy/meta clauses glued onto a domain term by bad parses.
+    let clean = term
+        .split(|c| c == '—' || c == '–' || c == '?')
+        .next()
+        .unwrap_or(term)
+        .trim();
+    let clean = if clean.is_empty() { term } else { clean };
+    let t = clean.to_ascii_lowercase();
     if t.contains("sparse") || t.contains("distributed memory") || t.contains("sdm") {
-        format!("{term} stores patterns by similarity in a high-dimensional address space")
+        format!("{clean} stores patterns by similarity in a high-dimensional address space")
     } else if t.contains("vector symbolic")
         || t.contains("symbolic architect")
         || (t.contains("vector") && t.contains("symbolic"))
@@ -752,22 +759,32 @@ fn rewrite_role_for_term(term: &str, index: usize) -> String {
         || t.contains("vsa")
         || t.contains("hdc")
     {
-        format!("{term} composes role–filler structure with bind/bundle operations")
+        format!("{clean} composes role–filler structure with bind/bundle operations")
     } else if t.contains("memory") {
-        format!("{term} reconstructs past state from stored traces under partial cues")
+        format!("{clean} reconstructs past state from stored traces under partial cues")
+    } else if t.contains("learning") || t == "learn" {
+        format!("{clean} updates future behavior when evidence persists and transfers under test")
+    } else if t.contains("entropy") {
+        format!("{clean} measures disorder and the cost of keeping local order under stress")
+    } else if t.contains("quilt") {
+        format!("{clean} assembles small pieces into a durable whole through local joins")
+    } else if t.contains("packet") || (t.contains("loss") && t.contains("packet")) {
+        format!("{clean} handles breakage and recovery under imperfect transmission")
+    } else if t.contains("diplom") || t.contains("negotiat") || t.contains("treaty") {
+        format!("{clean} keeps relations workable when parties have different interests")
     } else if t.contains("bitwork") {
-        format!("{term} routes prompts through packed binary prototypes and expert masks")
+        format!("{clean} routes prompts through packed binary prototypes and expert masks")
     } else if t.contains("impasse") {
-        format!("{term} opens a bounded subgoal when the current path cannot proceed")
+        format!("{clean} opens a bounded subgoal when the current path cannot proceed")
     } else if t.contains("hardness") || t.contains("gate") {
-        format!("{term} refuses promotion unless held-out transfer stays green")
+        format!("{clean} refuses promotion unless held-out transfer stays green")
     } else {
         let role = match index % 3 {
             0 => "organizes parts so a larger pattern holds under stress",
             1 => "absorbs shocks without losing the relation it keeps",
             _ => "negotiates limits between what can change and what must persist",
         };
-        format!("{term} {role}")
+        format!("{clean} {role}")
     }
 }
 
@@ -798,9 +815,27 @@ fn rewrite_after_critic(
             // Flags stay in audit/trace — never append "Critic rewrite after flags"
             // into user-facing speech.
             let _ = report;
-            return Some(format!(
+            let mut body = format!(
                 "A workable bridge is constrained structure: {joined}. Together they show structure under constraint—pattern, integrity, and repair—while mechanisms stay domain-specific (not one shared substance)."
-            ));
+            );
+            if lower.contains("analogy die")
+                || lower.contains("analogy dies")
+                || lower.contains("where does the analogy")
+                || lower.contains("where the analogy")
+            {
+                body.push_str(
+                    " The analogy dies when you need one shared mechanism, one material substrate, or one mind behind the patterns — structure can travel; identity of process does not.",
+                );
+            }
+            if lower.contains("falsifiable")
+                || lower.contains("prediction at scale")
+                || lower.contains("name one prediction")
+            {
+                body.push_str(
+                    " Falsifiable prediction at scale: if the shared “local join / recover under stress” axis is real, systems that invest more in local integrity checks should show lower cascade failure under load than peers that only maximize throughput — measurable as recovery latency and unrepaired fragment rate.",
+                );
+            }
+            return Some(body);
         }
     }
     if program.program_id == "relational_inquiry" {

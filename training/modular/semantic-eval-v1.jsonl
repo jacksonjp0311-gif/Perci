@@ -1,0 +1,8 @@
+{"id":"T1","prompts":["Why does trust collapse under lag?","Explain trust failure when communication is delayed.","Why does trust collapse when communication is delayed?"],"expected_subject":"trust","expected_condition":"delay","expected_output":"mechanism"}
+{"id":"T2","prompts":["How should interfaces earn trust under lag and retry?","how should OrbitAPI earn trust when clients timeout under lag?"],"expected_subject":"trust","expected_condition":"delay","expected_output":"plan"}
+{"id":"B1","prompts":["What is the boundary between knowledge and attention?","Explain the boundary of knowledge vs attention."],"expected_subject":"boundary","expected_condition":"","expected_output":"mechanism"}
+{"id":"G1","prompts":["What does geometry teach about boundary bands vs max coherence?","Explain boundary bands versus maximizing coherence."],"expected_subject":"boundary","expected_condition":"","expected_output":"comparison"}
+{"id":"M1","prompts":["How are memory and identity related?","What is the relation between memory and identity?"],"expected_subject":"memory","expected_condition":"","expected_output":"explanation"}
+{"id":"R1","prompts":["Explain how boundaries enable repair","What enables repair across a membrane boundary under stress?"],"expected_subject":"boundary","expected_condition":"","expected_output":"mechanism"}
+{"id":"L1","prompts":["Why does life maintain local order","Connect maintenance, exchange, and local order without claiming shapes are alive"],"expected_subject":"life","expected_condition":"","expected_output":"mechanism"}
+{"id":"F1","prompts":["what about timeout and retry though?","How should recovery work when retries are not idempotent?"],"expected_subject":"trust","expected_condition":"timeout","expected_output":"mechanism"}

@@ -15,6 +15,8 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
     let plan = fabric::plan_for_prompt(user, "orchestrate");
     let mut body = seed_body.to_owned();
     let lower = user.to_ascii_lowercase();
+    // "falsifiable prediction" is content, not a request for pack provenance dumps.
+    // Only attach source-bearing blocks when the user asks for evidence/sources.
     let explicit_evidence_request = [
         "evidence",
         "source",
@@ -22,7 +24,9 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
         "according to",
         "show support",
         "what justifies",
-        "falsif",
+        "cite your",
+        "with sources",
+        "source-bearing",
     ]
     .iter()
     .any(|term| lower.contains(term));
@@ -86,6 +90,16 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
             | "geometry-field"
             | "hardness-recovery"
             | "entity-slot-transfer"
+            | "open-domain-synthesis"
+            | "cross-domain-synthesis"
+            | "cross-domain-compose"
+            | "cross-domain-analysis"
+            | "chat-layer-triage"
+            | "what-do-we-trust"
+            | "simple-antonym"
+            | "trust-systems"
+            | "identity-bound"
+            | "dialogue-act"
     );
     let want_fluency = !operator_owns_structure
         && (plan.language.is_some()

@@ -1,0 +1,30 @@
+{
+  "schema": "perci.pack-manifest.v1",
+  "magic": "PERCIFLD1",
+  "format_version": 1,
+  "pack_id": "percifld1-v0.1-candidate",
+  "family": "PERCIFLD1",
+  "capability_tags": [
+    "fold",
+    "operator",
+    "decode",
+    "experiment"
+  ],
+  "dimensions": 4096,
+  "record_count": 0,
+  "byte_length": 0,
+  "checksum_sha256": "",
+  "corpus_hash": "",
+  "builder_version": "scaffold_modular_packs.py",
+  "evaluation_receipt": "",
+  "promotion_status": "candidate",
+  "authorization_record": "pending human authorize \u2014 never auto-promote",
+  "dependency_packs": [
+    "PERCIW03"
+  ],
+  "compatible_decoders": [
+    "PERCIFLD1"
+  ],
+  "path": "",
+  "notes": "Candidate scaffold only (experiment-dependent). No weight payload. PERCIW03 remains the active reflex field. See docs/MODULAR_COGNITION_v1.md."
+}

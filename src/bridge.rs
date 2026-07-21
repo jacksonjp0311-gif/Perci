@@ -606,7 +606,8 @@ impl ThoughtArc {
             (AskShape::Open, 0) | (AskShape::Open, 2) | (AskShape::Open, 4) => {
                 out.push_str(&format!("{t}."));
             }
-            (AskShape::Open, _) => out.push_str(&format!("Here's the thread: {t0}.")),
+            // Prefer a direct thesis over "Here's the thread:" scaffolding.
+            (AskShape::Open, _) => out.push_str(&format!("{t}.")),
         }
 
         // Warrant — mechanism woven mid-stream (same paragraph feel).

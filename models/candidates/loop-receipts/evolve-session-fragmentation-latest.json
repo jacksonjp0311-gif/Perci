@@ -1,0 +1,53 @@
+{
+  "schema": "perci.evolve-session.v1",
+  "started_note": "probe-collect-assess-tune fragmentation alignment loop",
+  "ended_at_utc": "2026-07-20T16:19:30.965357+00:00",
+  "claim_boundary": [
+    "coherence is not consciousness",
+    "never auto-promote .pwgt",
+    "BRPC above_band => raise hardness/live stress, do not densify Bitwork"
+  ],
+  "gates": {
+    "hardness": {
+      "status": "PASS",
+      "passed": 132,
+      "case_count": 132,
+      "failed": null
+    },
+    "adversarial_probe": {
+      "status": "PASS",
+      "passed": 12,
+      "total": 12
+    },
+    "brpc": {
+      "C": 0.98224,
+      "H7": "above_band",
+      "weakest": [
+        "U",
+        "P",
+        "R"
+      ],
+      "automatic_promotion": false
+    },
+    "interact_evolve": {
+      "first_pass": 20,
+      "second_pass": 20,
+      "teaches": 20
+    }
+  },
+  "emergence": {
+    "fragmentation_was": "operator/voice routing + pack evidence glue, not prototype coverage",
+    "repairs": [
+      "dialogue acts: where/presence, free-associate feedback, agreement, entertain, yes/no conscious",
+      "operators: what-do-we-trust, simple-antonym, chat-layer-triage, connect term cuts, diplomacy role",
+      "orchestrate: stop falsif-triggered pack dumps; own structure for synthesis operators",
+      "hardness H125-H132 live chat fragmentation pack"
+    ],
+    "weight_reshape": {
+      "recommended": false,
+      "reason": "BRPC H7 above_band; hardness+transfer green; debt is operator ownership not densify",
+      "staged": "interact-evolve pending teach claims only; no .pwgt promote"
+    }
+  },
+  "promote_recommended": false
+}

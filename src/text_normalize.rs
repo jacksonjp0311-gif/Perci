@@ -44,6 +44,9 @@ const ALIASES: &[(&str, &str)] = &[
     ("provenancee", "provenance"),
     ("consequece", "consequence"),
     ("preservee", "preserve"),
+    ("ayou", "you"),
+    ("inconverstation", "in conversation"),
+    ("inconversation", "in conversation"),
 ];
 
 /// Canonical terms used for cautious one-edit correction.  The list is small

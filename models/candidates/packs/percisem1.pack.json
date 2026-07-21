@@ -1,0 +1,30 @@
+{
+  "schema": "perci.pack-manifest.v1",
+  "magic": "PERCISEM1",
+  "format_version": 1,
+  "pack_id": "percisem1-v0.1-candidate",
+  "family": "PERCISEM1",
+  "capability_tags": [
+    "semantic",
+    "binding",
+    "intent",
+    "relation"
+  ],
+  "dimensions": 4096,
+  "record_count": 0,
+  "byte_length": 0,
+  "checksum_sha256": "",
+  "corpus_hash": "",
+  "builder_version": "scaffold_modular_packs.py",
+  "evaluation_receipt": "",
+  "promotion_status": "candidate",
+  "authorization_record": "pending human authorize \u2014 never auto-promote",
+  "dependency_packs": [
+    "PERCIW03"
+  ],
+  "compatible_decoders": [
+    "PERCISEM1"
+  ],
+  "path": "",
+  "notes": "Candidate scaffold only (32-64 MiB engineering budget). No weight payload. PERCIW03 remains the active reflex field. See docs/MODULAR_COGNITION_v1.md."
+}

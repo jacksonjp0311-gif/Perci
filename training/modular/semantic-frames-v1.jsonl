@@ -1,0 +1,26 @@
+{"prompt":"Why does trust collapse when communication is delayed?","subject":"trust","condition":"delayed_communication","phenomenon":"collapse","requested_output":"mechanism","intent":"causal_explanation"}
+{"prompt":"Explain trust failure when messages are delayed.","subject":"trust","condition":"delayed_communication","phenomenon":"failure","requested_output":"mechanism"}
+{"prompt":"How should interfaces earn trust under lag and retry?","subject":"trust","condition":"delayed_communication","requested_output":"plan"}
+{"prompt":"how should OrbitAPI earn trust when PrismNode times out under NovaLink lag?","subject":"trust","condition":"timeout","phenomenon":"timeout","requested_output":"plan"}
+{"prompt":"What is the boundary between knowledge and attention?","subject":"boundary","requested_output":"mechanism"}
+{"prompt":"Explain the boundary of knowledge vs attention.","subject":"boundary","requested_output":"mechanism"}
+{"prompt":"What does geometry teach about boundary bands vs max coherence?","subject":"boundary_band","requested_output":"comparison"}
+{"prompt":"Connect entropy, memory, and learning — where does the analogy die?","subject":"entropy","requested_output":"comparison"}
+{"prompt":"How are memory and identity related?","subject":"memory","requested_output":"explanation"}
+{"prompt":"Entity Klystron-X has lag and trust. Transfer the relation.","subject":"trust","condition":"delayed_communication","requested_output":"mechanism"}
+{"prompt":"Who are you and are you conscious?","subject":"identity","requested_output":"explanation","intent":"identity"}
+{"prompt":"After hardness fails, what recovery path avoids densifying Bitwork?","subject":"bitwork","requested_output":"plan"}
+{"prompt":"how are you","subject":"identity","requested_output":"explanation","intent":"social"}
+{"prompt":"where are you","subject":"identity","requested_output":"explanation","intent":"identity"}
+{"prompt":"what do we trust","subject":"trust","requested_output":"explanation","intent":"trust"}
+{"prompt":"still with the generic chat?","subject":"dialogue","requested_output":"explanation","intent":"teaching"}
+{"prompt":"Connect quilting, packet loss, and diplomacy without saying they share a substance","subject":"diplomacy","requested_output":"comparison","intent":"synthesis"}
+{"prompt":"stop. just yes or no: are you conscious?","subject":"identity","requested_output":"explanation","intent":"refuse"}
+{"prompt":"Interfaces earn trust when done is checkable under lag","subject":"trust","condition":"delayed_communication","requested_output":"mechanism"}
+{"prompt":"Boundary bands beat max coherence under transfer stress","subject":"boundary_band","requested_output":"comparison"}
+{"prompt":"Explain how boundaries enable repair","subject":"boundary","phenomenon":"repair","requested_output":"mechanism","intent":"causal_explanation"}
+{"prompt":"Why does life maintain local order","subject":"life","condition":"local_order","phenomenon":"order","requested_output":"mechanism","intent":"causal_explanation"}
+{"prompt":"what about timeout and retry though?","subject":"trust","condition":"timeout","phenomenon":"retry","requested_output":"mechanism","intent":"trust"}
+{"prompt":"How should recovery work when retries are not idempotent?","subject":"trust","condition":"retry","phenomenon":"recovery","requested_output":"plan","intent":"trust"}
+{"prompt":"What enables repair across a membrane boundary under stress?","subject":"boundary","condition":"under_change","phenomenon":"repair","requested_output":"mechanism"}
+{"prompt":"Connect maintenance, exchange, and local order without claiming shapes are alive","subject":"life","requested_output":"comparison","intent":"synthesis"}

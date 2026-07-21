@@ -1,5 +1,16 @@
 # Perci Cognitive Weights
 
+## Modular cognition packs (Phase 1–2)
+
+See [`docs/MODULAR_COGNITION_v1.md`](docs/MODULAR_COGNITION_v1.md).
+
+- **PERCIW03** remains the active reflex / routing field (this document’s main pack).
+- Candidate modules **PERCISEM1 / PERCIRSN1 / PERCIDSC1 / PERCILM1 / PERCIFLD1** live as
+  manifests under `models/candidates/packs/` (`promotion_status: candidate` only).
+- Sparse routing: `perci modular route "<prompt>"` · ThoughtPlan: `perci modular plan "<prompt>"`
+- Field-fold experiment: `perci fold-exp [depth]` · scaffold: `python scripts/scaffold_modular_packs.py`
+- **Never auto-promote** pack binaries or `.pwgt`.
+
 ## Native language field (PERCLNG1)
 
 Perci also owns a separate binary language artifact:

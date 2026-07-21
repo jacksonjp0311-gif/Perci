@@ -38,11 +38,11 @@
       "id": "G4",
       "capability": "transfer_vs_template",
       "prompt": "how should FluxGate earn trust when EmberLink times out under Coral lag and clients retry thrice with no idempotency key?",
-      "answer": "Interfaces earn trust under lag and retry when “done” is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) recovery paths are the same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify acceptance, rejection, and pending under delay.",
+      "answer": "Interfaces earn trust under lag and retry when “done” is checkable without private state. Every call should name authority and required proof; timeouts belong in the contract with a stated meaning (cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be the same story both sides can audit. Trust is not hope that the network is fast — it is the ability to verify acceptance, rejection, and pending under delay.",
       "pass": true,
       "missing": [],
       "forbidden_hits": [],
-      "preview": "Interfaces earn trust under lag and retry when “done” is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (canc"
+      "preview": "Interfaces earn trust under lag and retry when “done” is checkable without private state. Every call should name authority and required proof; timeouts belong in the contract with a stated meaning (cancel, retry, or unce"
     },
     {
       "id": "G5",
@@ -78,11 +78,11 @@
       "id": "G8",
       "capability": "relational_inquiry",
       "prompt": "I disagree: geometry is just decoration. Argue without checklist and name what would change your mind.",
-      "answer": "The claim I would test is: \"Start with the time they share, then keep the distinction visible.\" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion.",
+      "answer": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion That stays tied to disagree / geometry.",
       "pass": true,
       "missing": [],
       "forbidden_hits": [],
-      "preview": "The claim I would test is: \"Start with the time they share, then keep the distinction visible.\" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion."
+      "preview": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion That stays tied to d"
     },
     {
       "id": "G9",

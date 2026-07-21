@@ -77,12 +77,40 @@ pub fn append(user: &str, d: &Deliberation) {
     };
     let user_esc = json_escape(&truncate(user, 200));
     let op_esc = json_escape(d.operator);
+    // Phase-2 ThoughtPlan + sparse pack route (shared operator/modular audit fields).
+    let plan = d.to_thought_plan(user);
+    let intent = plan.intent.as_str();
+    let packs = plan.active_packs.join(",");
+    let conf_pm = plan.confidence_pm;
+    let acts = plan
+        .discourse_acts
+        .iter()
+        .map(|a| a.as_str())
+        .collect::<Vec<_>>()
+        .join("→");
+    let claim0 = plan
+        .claims
+        .first()
+        .map(|c| truncate(&c.text, 120))
+        .unwrap_or_default();
+    let binds = plan
+        .semantic_bindings
+        .iter()
+        .take(4)
+        .map(|b| format!("{}={}", b.role, b.filler))
+        .collect::<Vec<_>>()
+        .join(";");
     let line = format!(
-        "{{\"ts\":{ts},\"operator\":{op_esc},\"program_id\":{},\"steps\":{},\"critic\":{},\"confidence\":{:.3},\"user\":{user_esc}}}\n",
+        "{{\"ts\":{ts},\"operator\":{op_esc},\"program_id\":{},\"steps\":{},\"critic\":{},\"confidence\":{:.3},\"intent\":{},\"active_packs\":{},\"confidence_pm\":{conf_pm},\"discourse\":{},\"claim\":{},\"bindings\":{},\"user\":{user_esc}}}\n",
         json_escape(program),
         json_escape(&steps),
         json_escape(critic),
         d.confidence,
+        json_escape(intent),
+        json_escape(&packs),
+        json_escape(&acts),
+        json_escape(&claim0),
+        json_escape(&binds),
     );
     if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
         let _ = f.write_all(line.as_bytes());

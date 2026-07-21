@@ -3,7 +3,7 @@
   "theory": "BRPC v0.1 — Boundary-Regulated Predictive Coherence",
   "claim_status": "candidate",
   "domain": "software-agent-adaptation",
-  "generated_at_utc": "2026-07-20T15:18:56.723147+00:00",
+  "generated_at_utc": "2026-07-21T00:45:03.930404+00:00",
   "claim_boundary": [
     "not a consciousness equation",
     "not a universal field",
@@ -15,15 +15,15 @@
     "hardness": {
       "path": "models\\candidates\\evaluation-hardness-v1.json",
       "present": true,
-      "sha256": "6dcf92dab0485b55886db9e12629ea8aebfb4ce67cead341dfaacb05aea0fa5a",
+      "sha256": "09cc0b84771cebcd06c14d68550efaec156a96097c384eb7b4b06ce9d93cf5a0",
       "status": "PASS",
-      "passed": 124,
-      "case_count": 124
+      "passed": 136,
+      "case_count": 136
     },
     "surgical": {
       "path": "models\\candidates\\interact-evolve-loop-latest.json",
       "present": true,
-      "sha256": "7bbfe879977de5bcf8027e038652c1b6f24bbbc37cfa13dfd49c9e99ee6f3372",
+      "sha256": "ee111325c91f21ea7e1933f977ea766c7ad4b4083464393367ec761e59df0e33",
       "second_pass_rate": 1.0,
       "still_fail_after_reask": 0,
       "promote_recommended": false
@@ -92,10 +92,10 @@
       "name": "recovery_margin"
     },
     "U": {
-      "value": 0.8690202560849345,
+      "value": 0.8887006960971441,
       "status": "observed",
       "source": "median_latency_ms",
-      "notes": "n_lat=148; med=443ms",
+      "notes": "n_lat=236; med=369ms",
       "name": "resource_efficiency"
     },
     "D": {
@@ -107,10 +107,10 @@
     }
   },
   "brpc": {
-    "C_BRPC": 0.979374,
-    "DeltaPhi_BRPC": 0.020842,
-    "Omega_BRPC": 0.979583,
-    "Omega_evidence_backed": 0.979583,
+    "C_BRPC": 0.981569,
+    "DeltaPhi_BRPC": 0.018603,
+    "Omega_BRPC": 0.981737,
+    "Omega_evidence_backed": 0.981737,
     "evidence_coverage": 1.0,
     "delta_phi_parts": {
       "P": 0.003025,
@@ -118,7 +118,7 @@
       "B": -0.0,
       "R": 0.002017,
       "K": -0.0,
-      "U": 0.014039,
+      "U": 0.011799,
       "D": -0.0
     },
     "weakest_factors": [
@@ -155,8 +155,8 @@
     {
       "factor": "U",
       "name": "resource_efficiency",
-      "value": "0.869",
-      "delta_phi_share": "0.0140",
+      "value": "0.889",
+      "delta_phi_share": "0.0118",
       "lane": "resource",
       "inject": "Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost."
     },
@@ -170,9 +170,9 @@
     }
   ],
   "teach_candidates_pending_review": [
-    "BRPC factor U (resource_efficiency) is weak at 0.869. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
+    "BRPC factor U (resource_efficiency) is weak at 0.889. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
   ],
   "automatic_promotion": false,
   "promote_recommended": false,
-  "receipt_sha256": "2b3de8f7ccc72f92b1799fa5264b7fed95b8e2ea7b3035bb75d73d71bf92e475"
+  "receipt_sha256": "672c4c096fa69cc4ff1da078db59eaa7b1bfecf40cedf92f6e329a8d6d620479"
 }

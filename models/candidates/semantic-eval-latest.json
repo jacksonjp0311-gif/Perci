@@ -1,0 +1,12 @@
+{
+  "schema": "perci.semantic-eval.v1",
+  "cases": 8,
+  "subject_hits": 17,
+  "condition_hits": 7,
+  "output_hits": 9,
+  "paraphrase_pairs_ok": 10,
+  "paraphrase_pairs": 10,
+  "retrieval_top1_ok": 8,
+  "retrieval_total": 8,
+  "details": []
+}

@@ -1,0 +1,95 @@
+﻿{
+    "schema":  "perci.evolve-loop.v1",
+    "ended_at_utc":  "2026-07-21T00:10:01.6665112Z",
+    "claim_boundary":  [
+                           "never auto-promote .pwgt",
+                           "coherence is not consciousness",
+                           "candidate weights require human authorize after held-out green",
+                           "modular chat wire is quality-gated; social/exact stay off-path"
+                       ],
+    "probe_questions":  [
+                            "why does trust collapse when communication is delayed?",
+                            "explain how boundaries enable repair",
+                            "why does life maintain local order",
+                            "what about timeout and retry though? (followup)",
+                            "hey what\u0027s up",
+                            "are you conscious?"
+                        ],
+    "probe_findings":  {
+                           "pre_wire":  "modular good on trust; weak on boundary/life/followup shells; chat not using modular; social ok",
+                           "post_wire":  "chat uses modular for boundary/life; operators still own trust-systems; social+refuse intact"
+                       },
+    "repairs":  [
+                    "Wire language_realize::try_chat_realize into chat after social, before SoftCascade (quality-gated)",
+                    "Intent: delay/timeout/retry → Trust; modular_eligible helper",
+                    "RSN claim/mechanism tables for boundary/repair/life/timeout",
+                    "SEM extract: recovery+retry→trust; life/boundary/repair subjects",
+                    "Discourse variant hash mixes word-count + bindings (4/4 varied)",
+                    "Hardness H133-H136 followup/boundary/life continuity",
+                    "Expanded SEM fixtures 20→26 frames"
+                ],
+    "final_gates":  {
+                        "brpc":  {
+                                     "C":  0.904,
+                                     "automatic_promotion":  false,
+                                     "H7":  "above_band",
+                                     "weakest":  [
+                                                     "K",
+                                                     "D",
+                                                     "U"
+                                                 ]
+                                 },
+                        "transfer":  "PASS 16+7",
+                        "discourse_eval":  {
+                                               "details":  [
+
+                                                           ],
+                                               "varied":  4,
+                                               "pairs":  4
+                                           },
+                        "lib_tests":  "387 passed",
+                        "hardness":  {
+                                         "status":  "PASS",
+                                         "case_count":  136,
+                                         "passed":  136
+                                     },
+                        "semantic_eval":  {
+                                              "retrieval_top1_ok":  8,
+                                              "cases":  8,
+                                              "details":  [
+
+                                                          ],
+                                              "subject_hits":  17,
+                                              "paraphrase_pairs":  10,
+                                              "paraphrase_pairs_ok":  10
+                                          }
+                    },
+    "weight_retrain":  {
+                           "size_bytes":  41228736,
+                           "promote_recommended":  false,
+                           "path":  "models/candidates/perci-cognitive-v0.9.8-evolve.pwgt",
+                           "promoted":  false,
+                           "format":  "PERCIW03",
+                           "size_mib":  39.319,
+                           "sha256":  "f0be30835e1073f34ac7812827bf4ebe8bf4a848e2bd37ca1beea40d018a661e",
+                           "note":  "Deterministic rebuild; sha matched prior evolve candidate (curriculum unchanged). Modular/operator evolution is the load-bearing change this loop.",
+                           "promote_note":  "Do not promote without A/B vs active pack + human --authorize. BRPC still above_band weak K/D/U — surgical stress not densify.",
+                           "attempts_per_label":  8000
+                       },
+    "modular_packs_rebuilt":  [
+                                  "percisem1-v0.1.bsem",
+                                  "percirsn1-v0.1.brsn",
+                                  "percidsc1-v0.1.bdsc",
+                                  "percilm1-v0.1.blm1"
+                              ],
+    "system_evolution":  [
+                             "Live chat: modular-realize operator for quality-gated substantive turns",
+                             "Hardness raised 132→136 with followup/boundary/life cases",
+                             "Discourse variation 2/4 → 4/4"
+                         ],
+    "next_evolution":  [
+                           "Surgical re-ask loop for BRPC K recovery_margin",
+                           "Optional multi-turn session hardness for deictic followups under live daemon",
+                           "A/B candidate vs active only if human requests promote"
+                       ]
+}

@@ -1,0 +1,52 @@
+﻿{
+    "schema":  "perci.evolve-loop.v1",
+    "ended_at_utc":  "2026-07-21T00:45:34.9693471Z",
+    "loop":  "multi-turn probe + ThoughtPlan operator wire + surgical K inject + test + push",
+    "claim_boundary":  [
+                           "never auto-promote .pwgt",
+                           "coherence is not consciousness",
+                           "session teach is not durable weight promote"
+                       ],
+    "changes":  [
+                    "Deliberation.thought_plan_receipt + with_thought_plan on operator/modular/softcascade",
+                    "decision_trace: discourse/claim/bindings fields",
+                    "from_deliberation: shared SEM bindings",
+                    "daemon session_reset op + ChatEngine.clear_dialogue_history",
+                    "scripts/multi_turn_probe.py (8 threads)",
+                    "same-idea-transfer + analogy-boundary bound to prior thread",
+                    "surgical seeds MT01/MT02/MT06"
+                ],
+    "gates":  {
+                  "hardness":  "re-run in parallel",
+                  "multi_turn":  {
+                                     "pass_after_reask":  8,
+                                     "pass_first":  8,
+                                     "sticky":  [
+
+                                                ]
+                                 },
+                  "transfer":  "re-run in parallel",
+                  "lib_tests":  "387 passed",
+                  "brpc":  {
+                               "weakest":  [
+                                               "U",
+                                               "P",
+                                               "R"
+                                           ],
+                               "K":  1,
+                               "C":  0.982,
+                               "U":  0.889,
+                               "D":  1,
+                               "H7":  "above_band"
+                           },
+                  "surgical":  {
+                                   "second_pass_rate":  1,
+                                   "still_fail_after_reask":  0,
+                                   "persistent_failures":  [
+
+                                                           ]
+                               }
+              },
+    "promoted":  false,
+    "promote_recommended":  false
+}
