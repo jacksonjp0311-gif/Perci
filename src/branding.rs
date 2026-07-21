@@ -29,9 +29,14 @@ pub fn badge_svg_path() -> &'static str {
     "assets/generated/perci-darkblood-badge.svg"
 }
 
-/// Relative path to raster mark for README / shortcuts.
+/// Relative path to raster mark for README / previews.
 pub fn mark_raster_path() -> &'static str {
     "assets/icons/perci-darkblood-mark.jpg"
+}
+
+/// Relative path to multi-size Windows icon for shortcuts.
+pub fn mark_ico_path() -> &'static str {
+    "assets/icons/perci-darkblood.ico"
 }
 
 /// Assert generated VERSION file matches crate (when present on disk).

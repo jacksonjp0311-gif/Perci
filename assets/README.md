@@ -16,12 +16,23 @@ On every `cargo build` / `cargo test`, `build.rs`:
 | Path | Role | Edit? |
 |------|------|-------|
 | `assets/icons/perci-darkblood-mark.svg` | Timeless diamond/blood sigil | yes (art) |
-| `assets/icons/perci-darkblood-mark.jpg` | Raster mark for README / shortcuts | replace art only |
+| `assets/icons/perci-darkblood-mark.jpg` | Raster mark for README / previews (letter **P**) | replace art only |
+| `assets/icons/perci-darkblood.ico` | Multi-size Windows shortcut icon | rebuild via script |
 | `assets/icons/perci-hero-darkblood.jpg` | README hero lattice banner | replace art only |
 | `assets/icons/perci-stack-strip.svg` | Cognitive stack strip (exact labels) | yes (art) |
 | `assets/generated/perci-darkblood-badge.svg` | Mark + **version** | **never** (auto) |
 | `assets/generated/VERSION` | Plain version stamp | **never** (auto) |
 | `assets/generated/brand-manifest.json` | Paths + policy | **never** (auto) |
+
+## Windows desktop shortcut icon
+
+If the Desktop `Perci.lnk` shows a blank/generic icon, the `.ico` path is missing.
+
+```powershell
+python scripts/build_icon_ico.py --desktop
+# Launcher also repairs Desktop\Perci.lnk to assets/icons/perci-darkblood.ico
+.\Launch-Perci.ps1 -Mode status
+```
 
 ## Guarantees
 

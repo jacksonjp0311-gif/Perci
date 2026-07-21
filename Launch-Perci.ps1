@@ -128,6 +128,56 @@ function Show-RedDnaBanner {
     Write-Host ''
 }
 
+function Repair-PerciDesktopShortcut {
+    <#
+    .SYNOPSIS
+      Ensure Desktop Perci.lnk uses assets/icons/perci-darkblood.ico (not a missing path).
+    #>
+    $ico = Join-Path $Root 'assets\icons\perci-darkblood.ico'
+    $jpg = Join-Path $Root 'assets\icons\perci-darkblood-mark.jpg'
+    if (-not (Test-Path -LiteralPath $ico) -and (Test-Path -LiteralPath $jpg)) {
+        $py = Get-Command python -ErrorAction SilentlyContinue
+        if ($py) {
+            try {
+                & $py.Source (Join-Path $Root 'scripts\build_icon_ico.py') --desktop 2>$null | Out-Null
+            } catch {}
+        }
+    }
+    if (-not (Test-Path -LiteralPath $ico)) {
+        return
+    }
+    $desktopDirs = @(
+        (Join-Path $env:USERPROFILE 'OneDrive\Desktop'),
+        (Join-Path $env:USERPROFILE 'Desktop')
+    ) | Where-Object { Test-Path -LiteralPath $_ }
+    foreach ($desk in $desktopDirs) {
+        $lnkPath = Join-Path $desk 'Perci.lnk'
+        if (-not (Test-Path -LiteralPath $lnkPath)) {
+            continue
+        }
+        try {
+            $shell = New-Object -ComObject WScript.Shell
+            $lnk = $shell.CreateShortcut($lnkPath)
+            $want = "$ico,0"
+            if ($lnk.IconLocation -ne $want -or -not (Test-Path -LiteralPath (($lnk.IconLocation -split ',')[0]))) {
+                $lnk.IconLocation = $want
+                if (-not $lnk.TargetPath) {
+                    $lnk.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+                    $lnk.Arguments = "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $Root 'Launch-Perci.ps1')`""
+                    $lnk.WorkingDirectory = $Root
+                }
+                $lnk.Description = 'Perci Dark-Blood - local governed cognition'
+                $lnk.Save()
+            }
+            # Keep legacy desktop ico in sync when present/missing
+            $legacy = Join-Path $desk 'Perci-DarkBlood-Icon.ico'
+            Copy-Item -LiteralPath $ico -Destination $legacy -Force -ErrorAction SilentlyContinue
+        } catch {
+            # Best-effort; never block chat launch on shortcut repair.
+        }
+    }
+}
+
 function Sync-PerciRuntimeWithRedDna {
     <#
     .SYNOPSIS
@@ -358,6 +408,9 @@ try {
     if (-not $Cargo) {
         throw 'Rust/Cargo is required for first build or source updates.'
     }
+
+    # Repair broken Desktop icon (missing .ico path) without blocking launch.
+    Repair-PerciDesktopShortcut
 
     if ($Mode -eq 'test') {
         & cargo test --release

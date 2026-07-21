@@ -33,7 +33,7 @@ fn main() {
 
     // Human-readable brand manifest.
     let manifest = format!(
-        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"source_of_truth\": \"Cargo.toml package.version\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml.\"\n}}\n"
+        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"mark_ico\": \"assets/icons/perci-darkblood.ico\",\n  \"source_of_truth\": \"Cargo.toml package.version\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml.\"\n}}\n"
     );
     fs::write(gen_dir.join("brand-manifest.json"), &manifest).expect("write brand manifest");
 

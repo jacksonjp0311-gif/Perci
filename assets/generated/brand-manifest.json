@@ -1,10 +1,11 @@
-{
-  "name": "Perci",
-  "theme": "dark-blood",
-  "version": "0.9.8",
-  "mark": "assets/icons/perci-darkblood-mark.svg",
-  "badge": "assets/generated/perci-darkblood-badge.svg",
-  "mark_raster": "assets/icons/perci-darkblood-mark.jpg",
-  "source_of_truth": "Cargo.toml package.version",
-  "policy": "Never hand-edit generated badge version; rebuild after bumping Cargo.toml."
+﻿{
+    "name":  "Perci",
+    "theme":  "dark-blood",
+    "version":  "0.9.8",
+    "mark":  "assets/icons/perci-darkblood-mark.svg",
+    "badge":  "assets/generated/perci-darkblood-badge.svg",
+    "mark_raster":  "assets/icons/perci-darkblood-mark.jpg",
+    "source_of_truth":  "Cargo.toml package.version",
+    "policy":  "Never hand-edit generated badge version; rebuild after bumping Cargo.toml.",
+    "mark_ico":  "assets/icons/perci-darkblood.ico"
 }
