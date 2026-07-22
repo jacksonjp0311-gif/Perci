@@ -13,6 +13,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_TURNS: usize = 48;
 
+fn preserve_operator_prose(operator: &str) -> bool {
+    matches!(
+        operator,
+        "intelligence-definition"
+            | "speed-accuracy-tradeoff"
+            | "plain-geometry"
+            | "conversation-audit"
+            | "last-answer-audit"
+            | "thread-learning-audit"
+            | "session-situation"
+            | "plain-language-followup"
+    )
+}
+
 #[derive(Debug)]
 pub struct ChatResponse {
     pub route: Route,
@@ -415,18 +429,41 @@ impl ChatEngine {
                 control.steps.join("→"),
                 control.state_fingerprint
             ));
-            // Capability Fabric: knowledge + native language under critic (governor retains control).
-            let enriched = crate::orchestrate::enrich_answer(input, result.operator, &raw);
-            let enriched = voice::shape_for_conversation(&enriched, input, &self.recent);
-            let text = crate::bridge::envelope_with_bitwork(
-                input,
-                crate::bridge::CognitionPath::Operator,
-                &[result.operator],
-                result.operator,
-                &enriched,
-                false,
-                bitwork.as_ref(),
-            );
+            // Capability Fabric is useful for open synthesis, but direct
+            // definitions, audits, and thread summaries must not receive a
+            // nearby concept append or native-language tail. Preserve their
+            // operator-owned prose verbatim, then use the light envelope.
+            let direct = preserve_operator_prose(result.operator);
+            let enriched = if direct {
+                raw.clone()
+            } else {
+                crate::orchestrate::enrich_answer(input, result.operator, &raw)
+            };
+            let enriched = if direct {
+                enriched
+            } else {
+                voice::shape_for_conversation(&enriched, input, &self.recent)
+            };
+            let text = if direct {
+                crate::bridge::envelope_light(
+                    input,
+                    crate::bridge::CognitionPath::Operator,
+                    &[result.operator],
+                    result.operator,
+                    &enriched,
+                    false,
+                )
+            } else {
+                crate::bridge::envelope_with_bitwork(
+                    input,
+                    crate::bridge::CognitionPath::Operator,
+                    &[result.operator],
+                    result.operator,
+                    &enriched,
+                    false,
+                    bitwork.as_ref(),
+                )
+            };
             result.answer = text.clone();
             result.observations.push(context_card.trace());
             result

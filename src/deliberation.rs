@@ -149,6 +149,7 @@ pub fn normalize_input(input: &str) -> String {
         ("ow separate", "now separate"),
         ("eplace ", "replace "),
         ("hich ", "which "),
+        ("oes ", "does "),
     ] {
         if lower.starts_with(broken) {
             repaired = format!("{replacement}{}", &trimmed[broken.len()..]);
@@ -220,6 +221,14 @@ pub fn try_deliberate(
     // reviewed memory, and durable weight change distinct.
     if looks_learning_evidence_question(&text) {
         return Some(learning_evidence_answer());
+    }
+
+    if let Some(d) = intelligence_definition_answer(&text) {
+        return Some(d);
+    }
+
+    if looks_speed_accuracy_tradeoff(&text) {
+        return Some(speed_accuracy_answer());
     }
 
     if text.contains("what are we testing") && text.contains("session") {
@@ -607,6 +616,9 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.99),
         );
     }
+    if text.contains("what part") && text.contains("last answer") && text.contains("weak") {
+        return Some(review_last_answer(recent));
+    }
     if (text.contains("which answer") && text.contains("weakest"))
         || text.contains("weakest answer")
     {
@@ -636,7 +648,12 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
                 .confidence(0.97),
         );
     }
-    if text.contains("what did you learn") && !text.contains("losa") && !text.contains("correction")
+    if (text.contains("what did you learn")
+        || (text.contains("summarize")
+            && (text.contains("learned") || text.contains("learn"))
+            && (text.contains("context") || text.contains("stayed") || text.contains("retained"))))
+        && !text.contains("losa")
+        && !text.contains("correction")
     {
         return Some(
             Deliberation::new(
@@ -1717,6 +1734,9 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .uncertain("the subject of the requested image")
             .confidence(0.88),
         );
+    }
+    if looks_plain_geometry_explanation(&text) {
+        return Some(plain_geometry_answer());
     }
     if (text.contains("what would you change in your own answer")
         || text.contains("what would you change about your answer")
@@ -3429,6 +3449,62 @@ fn learning_evidence_answer() -> Deliberation {
     .confidence(0.98)
 }
 
+fn intelligence_definition_answer(text: &str) -> Option<Deliberation> {
+    let compact = text
+        .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
+        .trim();
+    let asks_definition = compact == "what is intelligence"
+        || compact == "define intelligence"
+        || compact.ends_with("what is intelligence")
+        || compact.ends_with("define intelligence");
+    if !asks_definition || compact.contains("your intelligence") || compact.contains("perci") {
+        return None;
+    }
+    Some(
+        Deliberation::new(
+            "intelligence-definition",
+            "Intelligence is the ability to build and use models that help a system learn, predict, decide, and adapt when conditions change.",
+        )
+        .observed("the prompt asks for a definition of intelligence")
+        .inferred("a useful definition needs model use, prediction, adaptation, and changing conditions")
+        .confidence(0.96),
+    )
+}
+
+fn looks_speed_accuracy_tradeoff(text: &str) -> bool {
+    (text.contains("speed") || text.contains("fast"))
+        && (text.contains("accuracy") || text.contains("accurate"))
+        && (text.contains("matter") || text.contains("more") || text.contains("which"))
+}
+
+fn speed_accuracy_answer() -> Deliberation {
+    Deliberation::new(
+        "speed-accuracy-tradeoff",
+        "Accuracy matters more when a wrong answer is costly; speed matters more when errors are cheap and easily retried. The honest choice is to measure both latency and error cost, then spend extra computation only where the consequence justifies it.",
+    )
+    .observed("the prompt asks which matters more, speed or accuracy")
+    .inferred("the tradeoff depends on error cost and recoverability")
+    .confidence(0.96)
+}
+
+fn looks_plain_geometry_explanation(text: &str) -> bool {
+    (text.contains("explain geometry") || text.contains("what is geometry"))
+        && (text.contains("dislikes math")
+            || text.contains("doesn't like math")
+            || text.contains("doesnt like math")
+            || text.contains("plain"))
+}
+
+fn plain_geometry_answer() -> Deliberation {
+    Deliberation::new(
+        "plain-geometry",
+        "Geometry is simply a way to describe where things are, how far apart they are, and how their shapes relate. You can start with maps, rooms, shadows, and movement before using any equations.",
+    )
+    .observed("the user asks for an accessible explanation of geometry")
+    .inferred("concrete spatial examples are a better bridge than a sacred-geometry card")
+    .confidence(0.98)
+}
+
 /// A next-step question should inherit the live speech failure when the
 /// recent turns clearly establish one. This is deliberately narrow: a plain
 /// "what should we fix?" outside a speech thread still uses normal triage.
@@ -3999,6 +4075,8 @@ fn looks_session_situation_question(text: &str) -> bool {
             | "whats going on"
             | "what's going on"
             | "what are we working on"
+            | "what have we been working on"
+            | "what have we worked on"
             | "where are we"
             | "where are we going"
             | "where do we go"
@@ -4020,6 +4098,8 @@ fn looks_session_situation_question(text: &str) -> bool {
     }
     lower.starts_with("what are we doing ")
         || lower.starts_with("what are we working on")
+        || lower.starts_with("what have we been working on")
+        || lower.starts_with("what have we worked on")
         || lower.starts_with("where are we going")
         || lower.starts_with("where do we go")
         || lower.starts_with("what should i do")
@@ -5740,6 +5820,15 @@ fn maybe_strip_banned_word(mut result: Deliberation, user_lower: &str) -> Delibe
                 " (Stated without the banned term: the shared relation is selective interface and regulated exchange, not a shared material cause.)",
             );
         }
+    } else if banned == "structure" {
+        result.answer = result
+            .answer
+            .replace("structural", "pattern-based")
+            .replace("Structural", "Pattern-based")
+            .replace("structures", "patterns")
+            .replace("Structures", "Patterns")
+            .replace("structure", "pattern")
+            .replace("Structure", "Pattern");
     }
     result
         .observations
@@ -5859,6 +5948,31 @@ fn testable_synthesis(terms: &[String]) -> Option<Deliberation> {
         .inferred("domain mechanisms yield tests; the unqualified metaphor does not")
         .confidence(0.93),
     )
+}
+
+fn review_last_answer(recent: &[(String, String)]) -> Deliberation {
+    let Some((user, answer)) = recent.last() else {
+        return Deliberation::new(
+            "last-answer-audit",
+            "There is no prior answer in this session to audit yet. Ask one substantive question, then I can inspect its fit and failure mode.",
+        )
+        .observed("last-answer audit requested without a prior turn")
+        .confidence(0.90);
+    };
+    let (mechanism, improvement) = diagnose_response_failure(recent, recent.len() - 1);
+    Deliberation::new(
+        "last-answer-audit",
+        format!(
+            "The weakest part of my last answer was its fit to your request. For “{}” I said “{}”. Failure mechanism: {}. Improvement: {}.",
+            truncate(user, 90),
+            truncate(answer, 140),
+            mechanism,
+            improvement,
+        ),
+    )
+    .observed("the user asks for a direct audit of the immediately preceding answer")
+    .inferred("inspect the last turn rather than substituting a three-item conversation report")
+    .confidence(0.94)
 }
 
 fn review_conversation(recent: &[(String, String)]) -> Deliberation {
@@ -6324,6 +6438,10 @@ mod tests {
             normalize_input("hich premise should we test?"),
             "which premise should we test?"
         );
+        assert_eq!(
+            normalize_input("oes my last question change how you answer this one?"),
+            "does my last question change how you answer this one?"
+        );
         assert!(is_session_only_instruction(
             "emember this only for this session: 42"
         ));
@@ -6401,6 +6519,13 @@ mod tests {
         );
         assert_eq!(new_domains.operator, "cross-domain-synthesis");
         assert!(new_domains.answer.contains("structure"));
+
+        let banned = run(
+            "Connect music, memory, and time without using the word structure.",
+            &[],
+        );
+        assert_eq!(banned.operator, "cross-domain-synthesis");
+        assert!(!banned.answer.to_ascii_lowercase().contains("structure"));
     }
 
     #[test]
@@ -7711,6 +7836,58 @@ mod tests {
         let low = result.answer.to_ascii_lowercase();
         assert!(low.contains("dialogue") || low.contains("operator") || low.contains("layer"));
         assert!(!low.contains("remembering everything would bury"));
+    }
+
+    #[test]
+    fn direct_definitions_and_tradeoffs_do_not_fall_into_shells() {
+        let intelligence = run(
+            "Give me the shortest true answer: what is intelligence?",
+            &[],
+        );
+        assert_eq!(intelligence.operator, "intelligence-definition");
+        assert!(intelligence
+            .answer
+            .contains("learn, predict, decide, and adapt"));
+
+        let tradeoff = run("Which matters more here: speed or accuracy?", &[]);
+        assert_eq!(tradeoff.operator, "speed-accuracy-tradeoff");
+        assert!(tradeoff.answer.contains("error cost"));
+    }
+
+    #[test]
+    fn plain_geometry_explanation_respects_the_audience() {
+        let result = run("Explain geometry to someone who dislikes math.", &[]);
+        assert_eq!(result.operator, "plain-geometry");
+        assert!(result.answer.contains("where things are"));
+        assert!(!result
+            .answer
+            .to_ascii_lowercase()
+            .contains("sacred geometry"));
+    }
+
+    #[test]
+    fn learning_summary_separates_lesson_from_context() {
+        let result = run(
+            "Summarize what you learned, and separate that from what merely stayed in context.",
+            &[],
+        );
+        assert_eq!(result.operator, "thread-learning-audit");
+        assert!(result.answer.contains("did not learn a new fact"));
+        assert!(result.answer.contains("active weights"));
+    }
+
+    #[test]
+    fn weakest_last_answer_routes_to_conversation_audit() {
+        let recent = [(
+            "what is intelligence?".to_owned(),
+            "I can calculate or plan.".to_owned(),
+        )];
+        let result = run("What part of your last answer was weakest?", &recent);
+        assert_eq!(result.operator, "last-answer-audit");
+        assert!(result
+            .answer
+            .to_ascii_lowercase()
+            .contains("failure mechanism"));
     }
 
     #[test]

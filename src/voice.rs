@@ -418,6 +418,9 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         DialogueAct::GenericAnswerFeedback
     } else if text.contains("need more")
         || text.contains("go deeper")
+        || text.contains("deeper version")
+        || text.contains("deeper explanation")
+        || text.contains("deeper answer")
         || text.contains("one level deeper")
         || text.contains("without repeating")
         || text.contains("more detail")
@@ -516,7 +519,11 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         && (text.contains("refer") || text.contains("last question"))
     {
         DialogueAct::PronounResolution
-    } else if text.contains("test whether") && text.contains("follow context") {
+    } else if (text.contains("last question")
+        && text.contains("change")
+        && (text.contains("answer") || text.contains("respond")))
+        || (text.contains("test whether") && text.contains("follow context"))
+    {
         DialogueAct::ContextChallenge
     } else if text.starts_with("my ") && text.contains(" is ") {
         DialogueAct::SessionFact
@@ -1197,7 +1204,12 @@ pub fn dialogue_reply(
             "Good. Let's test the boundary honestly. Give me one challenge at a time—conversation, exact reasoning, ambiguous routing, memory, contradiction, or system self-knowledge. I'll show the measured time and expose a miss instead of bluffing through it.".to_owned()
         }
         DialogueAct::ContextChallenge => {
-            "Good. I'll treat the next details as session context, not durable memory, and I should be able to explain both what you said and why it matters to the thread.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("last question") && lower.contains("change") {
+                "Yes. Your last question changes the local context I should use for this answer—especially the subject and depth—but it does not rewrite my weights. A good test is a paraphrased follow-up: the topic should stay stable while the answer changes when the request changes.".to_owned()
+            } else {
+                "Good. I'll treat the next details as session context, not durable memory, and I should be able to explain both what you said and why it matters to the thread.".to_owned()
+            }
         }
         DialogueAct::SessionFact => {
             format!("Got it. I'll hold this in the current session context, without treating it as durable truth: “{}”", user.trim())
@@ -1344,9 +1356,18 @@ pub fn dialogue_reply(
                     format!(
                         "A different angle on {topic} is to treat it as a control problem: change one relation while holding the others steady, then observe which behavior moves. That exposes the mechanism without repeating the earlier wording."
                     )
-                } else if lower.contains("go deeper") || lower.contains("one level deeper") {
+                } else if lower.contains("go deeper")
+                    || lower.contains("one level deeper")
+                    || lower.contains("deeper version")
+                    || lower.contains("deeper explanation")
+                    || lower.contains("deeper answer")
+                {
                     let prev_l = previous_answer.to_ascii_lowercase();
-                    if prev_l.contains("broad discourse coverage")
+                    if previous_user.to_ascii_lowercase().contains("intelligence")
+                        || prev_l.contains("learn, predict, decide, and adapt")
+                    {
+                        "Deeper: intelligence is not just producing an answer; it is maintaining a model, using it to predict consequences, noticing error, and revising behavior when evidence changes. The test is transfer: change the surface details, preserve the problem, and see whether the useful relation survives.".to_owned()
+                    } else if prev_l.contains("broad discourse coverage")
                         || prev_l.contains("learned transition field")
                     {
                         "The deeper bottleneck is not vocabulary; it is turn-level control. A fluent system keeps a live representation of the topic, the user's intent, the requested depth, and what has already been said, then changes its answer when one of those variables changes. Perci has pieces of that loop, but the learned field still needs more context-conditioned examples and held-out paraphrases before it can reliably carry an open conversation.".to_owned()
@@ -5314,6 +5335,23 @@ mod tests {
     }
 
     #[test]
+    fn context_change_question_gets_a_direct_answer() {
+        let answer = dialogue_reply(
+            DialogueAct::ContextChallenge,
+            "does my last question change how you answer this one?",
+            &[(
+                "what is intelligence?".to_owned(),
+                "a prior answer".to_owned(),
+            )],
+            None,
+        )
+        .unwrap()
+        .to_ascii_lowercase();
+        assert!(answer.contains("local context"));
+        assert!(answer.contains("does not rewrite my weights"));
+    }
+
+    #[test]
     fn synthesis_prompts_are_not_social_frustration() {
         let prompts = [
             "Connect entropy, memory, and learning in one coherent thought.",
@@ -5474,6 +5512,10 @@ mod tests {
         assert_eq!(
             detect_dialogue_act("Now explain what it refers to in my last question."),
             DialogueAct::PronounResolution
+        );
+        assert_eq!(
+            detect_dialogue_act("does my last question change how you answer this one?"),
+            DialogueAct::ContextChallenge
         );
         assert_eq!(
             detect_dialogue_act("help me evolve the system perci"),
