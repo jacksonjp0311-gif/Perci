@@ -294,6 +294,80 @@ impl ChatEngine {
             .map(|learner| learner.recent_teaching_claims(5))
             .transpose()?
             .unwrap_or_default();
+
+        // A small set of relational acts must outrank deliberation. Questions
+        // such as “why did you laugh at me?” or “are answers improving?” are
+        // about the previous turn or this runtime's quality, not causal-chain
+        // prompts; letting the deliberator see them first produces a polished
+        // but completely wrong method card. Keep the preemption narrow so
+        // learning, review, and engineering operators retain their richer
+        // deliberation paths.
+        let dialogue_act = voice::detect_dialogue_act(input);
+        let lower_dialogue = input.to_ascii_lowercase();
+        let preempt_deliberation = match dialogue_act {
+            voice::DialogueAct::ConversationReview | voice::DialogueAct::LearningReflection => true,
+            voice::DialogueAct::ExplainPrevious => {
+                lower_dialogue.contains("why did you laugh")
+                    || lower_dialogue.contains("why were you laughing")
+                    || lower_dialogue.contains("did you laugh at me")
+                    || lower_dialogue.contains("why did you respond like that")
+                    || lower_dialogue.contains("why did you answer like that")
+                    || lower_dialogue.contains("why did you reply like that")
+            }
+            voice::DialogueAct::ImprovementDistinction => {
+                lower_dialogue.contains("answer") || lower_dialogue.contains("reply")
+            }
+            voice::DialogueAct::Acknowledgement => {
+                (lower_dialogue.contains("whoa")
+                    || lower_dialogue.contains("wow")
+                    || lower_dialogue.contains("lol")
+                    || lower_dialogue.contains("haha"))
+                    && !lower_dialogue.contains('?')
+            }
+            _ => false,
+        };
+        let dialogue_text = if preempt_deliberation {
+            voice::dialogue_reply(
+                dialogue_act,
+                input,
+                &self.recent,
+                self.learning.as_ref().map(|learner| learner.profile()),
+            )
+        } else {
+            None
+        };
+        if let Some(text) = dialogue_text {
+            let mut deliberation = Deliberation::new("dialogue-act", text.clone())
+                .observed(format!("dialogue_act={dialogue_act:?}"))
+                .inferred("recent dialogue constrained the response")
+                .confidence(0.90);
+            deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+                input,
+                &self.recent,
+                deliberation,
+            );
+            let text = deliberation.answer.clone();
+            self.backend.set_dialogue_history(&self.recent);
+            let bitwork = self.backend.probe_cognition(input);
+            let text = crate::bridge::envelope_with_bitwork(
+                input,
+                crate::bridge::CognitionPath::Open,
+                &["dialogue"],
+                "dialogue-act",
+                &text,
+                false,
+                bitwork.as_ref(),
+            );
+            deliberation.answer = text.clone();
+            self.last_deliberation = Some(deliberation);
+            self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
         if let Some(mut result) =
             deliberation::try_deliberate(input, &self.recent, &teaching_claims)
         {
@@ -352,6 +426,48 @@ impl ChatEngine {
             });
         }
 
+        // Preserve the established fallback for learning, style, governance,
+        // and other dialogue acts that intentionally yield to deliberation.
+        // Only the narrow preempted set above must be handled before it.
+        if !preempt_deliberation {
+            if let Some(text) = voice::dialogue_reply(
+                dialogue_act,
+                input,
+                &self.recent,
+                self.learning.as_ref().map(|learner| learner.profile()),
+            ) {
+                let mut deliberation = Deliberation::new("dialogue-act", text.clone())
+                    .observed(format!("dialogue_act={dialogue_act:?}"))
+                    .inferred("recent dialogue constrained the response")
+                    .confidence(0.90);
+                deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+                    input,
+                    &self.recent,
+                    deliberation,
+                );
+                let text = deliberation.answer.clone();
+                self.backend.set_dialogue_history(&self.recent);
+                let bitwork = self.backend.probe_cognition(input);
+                let text = crate::bridge::envelope_with_bitwork(
+                    input,
+                    crate::bridge::CognitionPath::Open,
+                    &["dialogue"],
+                    "dialogue-act",
+                    &text,
+                    false,
+                    bitwork.as_ref(),
+                );
+                deliberation.answer = text.clone();
+                self.last_deliberation = Some(deliberation);
+                self.push_turn(input, &text);
+                crate::bridge::set_turn_verbose(false);
+                return Ok(ChatResponse {
+                    route: Route::Chat,
+                    text,
+                });
+            }
+        }
+
         // Formal proof fabric path only (exact arithmetic still handled below with richer receipts).
         let lower_in = input.to_ascii_lowercase();
         if lower_in.contains("prove")
@@ -383,47 +499,6 @@ impl ChatEngine {
                     text,
                 });
             }
-        }
-
-        // Relational dialogue acts must be resolved before exact-tool parsing.
-        // Natural phrases such as "defend the distinction" can contain token
-        // fragments that resemble arithmetic operators without asking for math.
-        let dialogue_act = voice::detect_dialogue_act(input);
-        if let Some(text) = voice::dialogue_reply(
-            dialogue_act,
-            input,
-            &self.recent,
-            self.learning.as_ref().map(|learner| learner.profile()),
-        ) {
-            let mut deliberation = Deliberation::new("dialogue-act", text.clone())
-                .observed(format!("dialogue_act={dialogue_act:?}"))
-                .inferred("recent dialogue constrained the response")
-                .confidence(0.90);
-            deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
-                input,
-                &self.recent,
-                deliberation,
-            );
-            let text = deliberation.answer.clone();
-            self.backend.set_dialogue_history(&self.recent);
-            let bitwork = self.backend.probe_cognition(input);
-            let text = crate::bridge::envelope_with_bitwork(
-                input,
-                crate::bridge::CognitionPath::Open,
-                &["dialogue"],
-                "dialogue-act",
-                &text,
-                false,
-                bitwork.as_ref(),
-            );
-            deliberation.answer = text.clone();
-            self.last_deliberation = Some(deliberation);
-            self.push_turn(input, &text);
-            crate::bridge::set_turn_verbose(false);
-            return Ok(ChatResponse {
-                route: Route::Chat,
-                text,
-            });
         }
 
         match try_solve_arithmetic(input) {

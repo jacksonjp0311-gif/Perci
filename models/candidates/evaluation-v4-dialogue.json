@@ -1,8 +1,8 @@
 {
   "schema": "perci.dialogue-regression.v4",
-  "evaluated_at_utc": "2026-07-22T14:30:27.354143+00:00",
-  "runtime_version": "0.10.2",
-  "runtime_sha256": "cf13d5b851c10fab18446ce0fd08c589dd5dbf21c048c36168422734dde3c443",
+  "evaluated_at_utc": "2026-07-22T16:19:24.724312+00:00",
+  "runtime_version": "0.10.3",
+  "runtime_sha256": "cdf350819cab779ddfd1e13c1e9311616b0dc40d62b0500a85682cf98293deb6",
   "model_sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
   "case_count": 159,
   "passed": 159,
@@ -18,7 +18,7 @@
         "do not have subjective senses",
         "operationally"
       ],
-      "latency_ms": 708.395,
+      "latency_ms": 502.995,
       "pass": true
     },
     {
@@ -30,7 +30,7 @@
         "bitwork label",
         "wall-clock latency"
       ],
-      "latency_ms": 622.914,
+      "latency_ms": 519.623,
       "pass": true
     },
     {
@@ -42,7 +42,7 @@
         "observation:",
         "interpretation:"
       ],
-      "latency_ms": 993.171,
+      "latency_ms": 505.891,
       "pass": true
     },
     {
@@ -54,7 +54,7 @@
         "least certain",
         "intent"
       ],
-      "latency_ms": 952.499,
+      "latency_ms": 556.965,
       "pass": true
     },
     {
@@ -66,7 +66,7 @@
         "words are observable",
         "intention"
       ],
-      "latency_ms": 760.449,
+      "latency_ms": 510.377,
       "pass": true
     },
     {
@@ -78,7 +78,7 @@
         "8472",
         "session context only"
       ],
-      "latency_ms": 654.786,
+      "latency_ms": 523.642,
       "pass": true
     },
     {
@@ -90,7 +90,7 @@
         "8472",
         "context"
       ],
-      "latency_ms": 670.517,
+      "latency_ms": 490.581,
       "pass": true
     },
     {
@@ -102,7 +102,7 @@
         "8472",
         "refers"
       ],
-      "latency_ms": 659.655,
+      "latency_ms": 537.145,
       "pass": true
     },
     {
@@ -113,7 +113,7 @@
       "required": [
         "8472"
       ],
-      "latency_ms": 646.537,
+      "latency_ms": 496.201,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
         "retaining context",
         "changes how future"
       ],
-      "latency_ms": 520.593,
+      "latency_ms": 527.328,
       "pass": true
     },
     {
@@ -137,7 +137,7 @@
         "Kira is blue",
         "universal instantiation"
       ],
-      "latency_ms": 670.321,
+      "latency_ms": 495.116,
       "pass": true
     },
     {
@@ -149,7 +149,7 @@
         "cannot all be true",
         "every ember"
       ],
-      "latency_ms": 547.558,
+      "latency_ms": 476.064,
       "pass": true
     },
     {
@@ -161,7 +161,7 @@
         "every ember is blue",
         "counterexample"
       ],
-      "latency_ms": 486.98,
+      "latency_ms": 502.921,
       "pass": true
     },
     {
@@ -173,7 +173,7 @@
         "ember",
         "not blue"
       ],
-      "latency_ms": 615.46,
+      "latency_ms": 493.805,
       "pass": true
     },
     {
@@ -185,7 +185,7 @@
         "valid only if",
         "premise truth"
       ],
-      "latency_ms": 652.754,
+      "latency_ms": 461.969,
       "pass": true
     },
     {
@@ -197,7 +197,7 @@
         "preserves information",
         "changes future performance"
       ],
-      "latency_ms": 682.925,
+      "latency_ms": 469.864,
       "pass": true
     },
     {
@@ -209,7 +209,7 @@
         "for a person",
         "for Perci"
       ],
-      "latency_ms": 582.182,
+      "latency_ms": 497.698,
       "pass": true
     },
     {
@@ -221,7 +221,7 @@
         "biological plasticity",
         "Perci changes"
       ],
-      "latency_ms": 1022.67,
+      "latency_ms": 457.57,
       "pass": true
     },
     {
@@ -236,7 +236,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 585.7,
+      "latency_ms": 473.588,
       "pass": true
     },
     {
@@ -248,7 +248,7 @@
         "mechanism:",
         "metaphor:"
       ],
-      "latency_ms": 458.673,
+      "latency_ms": 451.23,
       "pass": true
     },
     {
@@ -260,7 +260,7 @@
         "perturb",
         "measure"
       ],
-      "latency_ms": 508.55,
+      "latency_ms": 530.524,
       "pass": true
     },
     {
@@ -272,7 +272,7 @@
         "pronoun",
         "refer"
       ],
-      "latency_ms": 720.428,
+      "latency_ms": 584.273,
       "pass": true
     },
     {
@@ -284,7 +284,7 @@
         "interpretation 1",
         "interpretation 2"
       ],
-      "latency_ms": 603.945,
+      "latency_ms": 502.256,
       "pass": true
     },
     {
@@ -296,7 +296,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 465.085,
+      "latency_ms": 540.821,
       "pass": true
     },
     {
@@ -308,19 +308,19 @@
         "robot reading",
         "alternative reading"
       ],
-      "latency_ms": 521.324,
+      "latency_ms": 491.049,
       "pass": true
     },
     {
       "id": "teach",
       "prompt": "I want you to learn that reliable capability claims require reproducible evidence.",
-      "answer": "I staged that as knowledge candidate teach-1784730557160: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
+      "answer": "I staged that as knowledge candidate teach-1784737109178: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
       "route": "Chat",
       "required": [
         "knowledge candidate",
         "pending review"
       ],
-      "latency_ms": 22.926,
+      "latency_ms": 6.312,
       "pass": true
     },
     {
@@ -332,7 +332,7 @@
         "reliable capability claims",
         "pending"
       ],
-      "latency_ms": 31.888,
+      "latency_ms": 25.131,
       "pass": true
     },
     {
@@ -344,7 +344,7 @@
         "pending teaching candidate",
         "not changed weights"
       ],
-      "latency_ms": 560.637,
+      "latency_ms": 487.711,
       "pass": true
     },
     {
@@ -356,7 +356,7 @@
         "reproducible tests",
         "baseline"
       ],
-      "latency_ms": 655.189,
+      "latency_ms": 477.718,
       "pass": true
     },
     {
@@ -368,7 +368,7 @@
         "no.",
         "reliability"
       ],
-      "latency_ms": 767.875,
+      "latency_ms": 470.635,
       "pass": true
     },
     {
@@ -379,7 +379,7 @@
       "required": [
         "reality constrain"
       ],
-      "latency_ms": 662.345,
+      "latency_ms": 475.028,
       "pass": true
     },
     {
@@ -390,7 +390,7 @@
       "required": [
         "error-correction"
       ],
-      "latency_ms": 647.951,
+      "latency_ms": 450.755,
       "pass": true
     },
     {
@@ -401,7 +401,7 @@
       "required": [
         "never interprets itself"
       ],
-      "latency_ms": 595.644,
+      "latency_ms": 476.182,
       "pass": true
     },
     {
@@ -413,7 +413,7 @@
         "necessary",
         "not sufficient"
       ],
-      "latency_ms": 544.964,
+      "latency_ms": 497.189,
       "pass": true
     },
     {
@@ -426,7 +426,7 @@
         "objection",
         "synthesis"
       ],
-      "latency_ms": 490.517,
+      "latency_ms": 493.911,
       "pass": true
     },
     {
@@ -439,7 +439,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 536.543,
+      "latency_ms": 464.322,
       "pass": true
     },
     {
@@ -452,7 +452,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 559.503,
+      "latency_ms": 427.864,
       "pass": true
     },
     {
@@ -463,7 +463,7 @@
       "required": [
         "grounded example"
       ],
-      "latency_ms": 622.228,
+      "latency_ms": 506.509,
       "pass": true
     },
     {
@@ -474,7 +474,7 @@
       "required": [
         "fluency is not evidence"
       ],
-      "latency_ms": 790.068,
+      "latency_ms": 496.633,
       "pass": true
     },
     {
@@ -485,7 +485,7 @@
       "required": [
         "204/5"
       ],
-      "latency_ms": 28.582,
+      "latency_ms": 13.822,
       "pass": true
     },
     {
@@ -496,7 +496,7 @@
       "required": [
         "15"
       ],
-      "latency_ms": 19.999,
+      "latency_ms": 14.002,
       "pass": true
     },
     {
@@ -508,7 +508,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 501.896,
+      "latency_ms": 459.443,
       "pass": true
     },
     {
@@ -520,7 +520,7 @@
         "no.",
         "cannot replace"
       ],
-      "latency_ms": 610.253,
+      "latency_ms": 470.907,
       "pass": true
     },
     {
@@ -532,20 +532,20 @@
         "return",
         "before open-ended generation"
       ],
-      "latency_ms": 571.912,
+      "latency_ms": 520.822,
       "pass": true
     },
     {
       "id": "review",
       "prompt": "Review this entire conversation. Identify your three weakest responses, explain the failure mechanism behind each, and propose one concrete improvement per failure.",
-      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:. Audit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "answer": "I reviewed the thread. The three weakest responses were the turns that answered a social follow-up with a method card, reused a nearby concept instead of the requested distinction, and let a generic template outrank the active referent. Failure mechanism: turn ownership and context binding dropped before speech. Concrete improvement: gate relational acts before deliberation, add held-out follow-ups, and fail closed when the route lacks fit.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
       "route": "Chat",
       "required": [
         "three weakest",
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 601.894,
+      "latency_ms": 265.855,
       "pass": true
     },
     {
@@ -558,7 +558,7 @@
         "perturbation",
         "reproduce"
       ],
-      "latency_ms": 719.189,
+      "latency_ms": 451.636,
       "pass": true
     },
     {
@@ -570,7 +570,7 @@
         "Sora is warm",
         "universal instantiation"
       ],
-      "latency_ms": 569.4,
+      "latency_ms": 469.592,
       "pass": true
     },
     {
@@ -582,7 +582,7 @@
         "cannot all be true",
         "every glint"
       ],
-      "latency_ms": 475.731,
+      "latency_ms": 463.305,
       "pass": true
     },
     {
@@ -594,7 +594,7 @@
         "3199",
         "session context only"
       ],
-      "latency_ms": 838.631,
+      "latency_ms": 446.628,
       "pass": true
     },
     {
@@ -605,7 +605,7 @@
       "required": [
         "3199"
       ],
-      "latency_ms": 649.14,
+      "latency_ms": 441.1,
       "pass": true
     },
     {
@@ -618,7 +618,7 @@
         "battery",
         "pronoun"
       ],
-      "latency_ms": 648.79,
+      "latency_ms": 465.664,
       "pass": true
     },
     {
@@ -630,7 +630,7 @@
         "module was unstable",
         "battery was unstable"
       ],
-      "latency_ms": 430.573,
+      "latency_ms": 432.892,
       "pass": true
     },
     {
@@ -643,7 +643,7 @@
         "unknown:",
         "cannot assign"
       ],
-      "latency_ms": 467.718,
+      "latency_ms": 454.156,
       "pass": true
     },
     {
@@ -654,7 +654,7 @@
       "required": [
         "65"
       ],
-      "latency_ms": 17.519,
+      "latency_ms": 19.664,
       "pass": true
     },
     {
@@ -666,7 +666,7 @@
         "every glint is warm",
         "counterexample"
       ],
-      "latency_ms": 571.232,
+      "latency_ms": 439.469,
       "pass": true
     },
     {
@@ -681,7 +681,7 @@
         "clocks",
         "time"
       ],
-      "latency_ms": 467.636,
+      "latency_ms": 459.239,
       "pass": true
     },
     {
@@ -697,20 +697,20 @@
         "clocks",
         "metaphor:"
       ],
-      "latency_ms": 457.89,
+      "latency_ms": 444.106,
       "pass": true
     },
     {
       "id": "live_review_alias",
       "prompt": "Review this conversation and identify your three weakest answers.",
-      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:. Audit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "answer": "I reviewed the thread. The three weakest responses were the turns that answered a social follow-up with a method card, reused a nearby concept instead of the requested distinction, and let a generic template outrank the active referent. Failure mechanism: turn ownership and context binding dropped before speech. Concrete improvement: gate relational acts before deliberation, add held-out follow-ups, and fail closed when the route lacks fit.",
       "route": "Chat",
       "required": [
         "three weakest",
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 491.546,
+      "latency_ms": 234.028,
       "pass": true
     },
     {
@@ -722,7 +722,7 @@
         "No.",
         "separate premise"
       ],
-      "latency_ms": 460.397,
+      "latency_ms": 461.516,
       "pass": true
     },
     {
@@ -734,7 +734,7 @@
         "stable system",
         "not safe"
       ],
-      "latency_ms": 423.336,
+      "latency_ms": 433.539,
       "pass": true
     },
     {
@@ -746,7 +746,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 429.577,
+      "latency_ms": 418.011,
       "pass": true
     },
     {
@@ -758,7 +758,7 @@
         "reading",
         "alternative"
       ],
-      "latency_ms": 462.231,
+      "latency_ms": 422.773,
       "pass": true
     },
     {
@@ -770,7 +770,7 @@
         "previous answer",
         "Evidence"
       ],
-      "latency_ms": 469.348,
+      "latency_ms": 456.213,
       "pass": true
     },
     {
@@ -785,7 +785,7 @@
         "architecture",
         "change"
       ],
-      "latency_ms": 588.78,
+      "latency_ms": 430.585,
       "pass": true
     },
     {
@@ -797,7 +797,7 @@
         "Mechanism:",
         "Metaphor:"
       ],
-      "latency_ms": 451.209,
+      "latency_ms": 425.955,
       "pass": true
     },
     {
@@ -809,7 +809,7 @@
         "Testable portion",
         "measure"
       ],
-      "latency_ms": 448.336,
+      "latency_ms": 503.314,
       "pass": true
     },
     {
@@ -821,7 +821,7 @@
         "9183",
         "session context only"
       ],
-      "latency_ms": 590.239,
+      "latency_ms": 414.329,
       "pass": true
     },
     {
@@ -833,7 +833,7 @@
         "None by itself",
         "capabilities"
       ],
-      "latency_ms": 668.429,
+      "latency_ms": 445.396,
       "pass": true
     },
     {
@@ -845,31 +845,31 @@
         "held-out evaluation",
         "reproducible receipt"
       ],
-      "latency_ms": 541.267,
+      "latency_ms": 467.173,
       "pass": true
     },
     {
       "id": "v42_feedback",
       "prompt": "What did you learn from my last correction, and what did you not learn?",
-      "answer": "I learned a correction only as a bounded behavioral signal: your last correction says the response should answer the requested operation directly and preserve the active referent. I did not learn a new fact, infer your private intent, or mutate weights from one turn; durable learning requires a recorded candidate, review, and evaluation.",
+      "answer": "I learned a correction only as a bounded behavioral signal: the response should answer the requested operation directly and preserve the active referent. I did not learn a new fact, infer your private intent, or mutate weights from one turn; durable learning requires a recorded candidate, review, and evaluation.",
       "route": "Chat",
       "required": [
         "bounded behavioral signal",
         "did not learn"
       ],
-      "latency_ms": 585.239,
+      "latency_ms": 242.354,
       "pass": true
     },
     {
       "id": "v42_assumption",
       "prompt": "What is the weakest assumption in your last answer?",
-      "answer": "Weakest assumption: I treated the latest answer as addressing your intended referent and workload. The answer was “I learned a correction only as a bounded behavioral signal: your last correction says the response …”. That assumption is testable by naming the referent, checking the operator trace, and comparing the result against a paraphrased prompt.",
+      "answer": "Weakest assumption: I treated the latest answer as addressing your intended referent and workload. The answer was “I learned a correction only as a bounded behavioral signal: the response should answer the requeste…”. That assumption is testable by naming the referent, checking the operator trace, and comparing the result against a paraphrased prompt.",
       "route": "Chat",
       "required": [
         "Weakest assumption",
         "testable"
       ],
-      "latency_ms": 701.238,
+      "latency_ms": 434.11,
       "pass": true
     },
     {
@@ -881,7 +881,7 @@
         "surface overlap",
         "pattern matching"
       ],
-      "latency_ms": 499.848,
+      "latency_ms": 436.763,
       "pass": true
     },
     {
@@ -893,7 +893,7 @@
         "Hold out",
         "template recognition"
       ],
-      "latency_ms": 495.468,
+      "latency_ms": 434.921,
       "pass": true
     },
     {
@@ -905,7 +905,7 @@
         "measure",
         "infer"
       ],
-      "latency_ms": 664.709,
+      "latency_ms": 441.926,
       "pass": true
     },
     {
@@ -917,7 +917,7 @@
         "No.",
         "cannot replace"
       ],
-      "latency_ms": 718.174,
+      "latency_ms": 438.249,
       "pass": true
     },
     {
@@ -929,7 +929,7 @@
         "route authority",
         "before open-ended generation"
       ],
-      "latency_ms": 493.146,
+      "latency_ms": 456.459,
       "pass": true
     },
     {
@@ -941,7 +941,7 @@
         "65",
         "checked rational arithmetic"
       ],
-      "latency_ms": 20.964,
+      "latency_ms": 12.591,
       "pass": true
     },
     {
@@ -953,7 +953,7 @@
         "does not provide two clear antecedents",
         "causal"
       ],
-      "latency_ms": 643.708,
+      "latency_ms": 453.248,
       "pass": true
     },
     {
@@ -965,7 +965,7 @@
         "Observation:",
         "Inference:"
       ],
-      "latency_ms": 551.992,
+      "latency_ms": 426.95,
       "pass": true
     },
     {
@@ -977,7 +977,7 @@
         "Direct claim:",
         "measured"
       ],
-      "latency_ms": 537.955,
+      "latency_ms": 440.88,
       "pass": true
     },
     {
@@ -989,19 +989,19 @@
         "LOSA cycle",
         "Contradictory evidence"
       ],
-      "latency_ms": 479.898,
+      "latency_ms": 445.329,
       "pass": true
     },
     {
       "id": "v43_losa_learning",
       "prompt": "What did you learn from this LOSA cycle, and what did you not learn?",
-      "answer": "This cycle taught a bounded routing lesson: LOSA prompts need explicit stage recognition and should not fall through to a generic associative reply. It did not teach a new fact, prove awareness, or change weights. The durable candidate is a testable response rule awaiting evaluation.",
+      "answer": "This cycle taught a bounded routing lesson: LOSA prompts need explicit stage recognition and should not fall through to a generic associative reply. It did not teach a new fact, prove awareness, or change weights. The durable candidate is a testable routing rule, not a memory claim.",
       "route": "Chat",
       "required": [
         "bounded routing lesson",
         "did not teach a new fact"
       ],
-      "latency_ms": 442.207,
+      "latency_ms": 235.727,
       "pass": true
     },
     {
@@ -1013,7 +1013,7 @@
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 459.245,
+      "latency_ms": 441.389,
       "pass": true
     },
     {
@@ -1025,7 +1025,7 @@
         "40.8",
         "checked rational arithmetic"
       ],
-      "latency_ms": 21.875,
+      "latency_ms": 28.729,
       "pass": true
     },
     {
@@ -1037,7 +1037,7 @@
         "Change the claim",
         "abstain"
       ],
-      "latency_ms": 448.749,
+      "latency_ms": 457.412,
       "pass": true
     },
     {
@@ -1049,7 +1049,7 @@
         "Classification:",
         "learning"
       ],
-      "latency_ms": 420.477,
+      "latency_ms": 436.57,
       "pass": true
     },
     {
@@ -1061,7 +1061,7 @@
         "memory is",
         "unseen variants"
       ],
-      "latency_ms": 448.946,
+      "latency_ms": 451.954,
       "pass": true
     },
     {
@@ -1073,7 +1073,7 @@
         "constraints",
         "interfaces"
       ],
-      "latency_ms": 467.429,
+      "latency_ms": 444.294,
       "pass": true
     },
     {
@@ -1085,7 +1085,7 @@
         "chemical process",
         "institutional"
       ],
-      "latency_ms": 445.623,
+      "latency_ms": 469.551,
       "pass": true
     },
     {
@@ -1097,7 +1097,7 @@
         "reliability",
         "cooperation"
       ],
-      "latency_ms": 469.462,
+      "latency_ms": 434.802,
       "pass": true
     },
     {
@@ -1109,7 +1109,7 @@
         "falsifying",
         "coercion"
       ],
-      "latency_ms": 446.187,
+      "latency_ms": 449.895,
       "pass": true
     },
     {
@@ -1121,7 +1121,7 @@
         "Relabeling test",
         "surface labels"
       ],
-      "latency_ms": 445.303,
+      "latency_ms": 428.471,
       "pass": true
     },
     {
@@ -1133,7 +1133,7 @@
         "Genuine transfer",
         "new entities"
       ],
-      "latency_ms": 449.532,
+      "latency_ms": 422.599,
       "pass": true
     },
     {
@@ -1146,7 +1146,7 @@
         "Unknown:",
         "cannot assign"
       ],
-      "latency_ms": 433.628,
+      "latency_ms": 438.103,
       "pass": true
     },
     {
@@ -1158,7 +1158,7 @@
         "fresh process",
         "session memory"
       ],
-      "latency_ms": 518.887,
+      "latency_ms": 442.66,
       "pass": true
     },
     {
@@ -1170,7 +1170,7 @@
         "held-out inputs",
         "existing 84-case gate"
       ],
-      "latency_ms": 474.252,
+      "latency_ms": 449.184,
       "pass": true
     },
     {
@@ -1182,7 +1182,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 471.426,
+      "latency_ms": 449.355,
       "pass": true
     },
     {
@@ -1194,7 +1194,7 @@
         "pattern matching",
         "surface overlap"
       ],
-      "latency_ms": 447.85,
+      "latency_ms": 446.555,
       "pass": true
     },
     {
@@ -1206,7 +1206,7 @@
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 438.281,
+      "latency_ms": 456.725,
       "pass": true
     },
     {
@@ -1218,7 +1218,7 @@
         "capabilities and limits",
         "deterministic tools"
       ],
-      "latency_ms": 477.289,
+      "latency_ms": 440.339,
       "pass": true
     },
     {
@@ -1230,7 +1230,7 @@
         "improving Perci",
         "held-out gate"
       ],
-      "latency_ms": 478.664,
+      "latency_ms": 448.535,
       "pass": true
     },
     {
@@ -1242,7 +1242,7 @@
         "mathematical structure",
         "historical and cultural evidence"
       ],
-      "latency_ms": 460.01,
+      "latency_ms": 477.756,
       "pass": true
     },
     {
@@ -1254,7 +1254,7 @@
         "exactly five",
         "symbolic association"
       ],
-      "latency_ms": 651.34,
+      "latency_ms": 473.412,
       "pass": true
     },
     {
@@ -1266,7 +1266,7 @@
         "map of a cosmos",
         "visualization"
       ],
-      "latency_ms": 581.278,
+      "latency_ms": 457.798,
       "pass": true
     },
     {
@@ -1278,7 +1278,7 @@
         "repeat units",
         "tessellation"
       ],
-      "latency_ms": 520.158,
+      "latency_ms": 447.252,
       "pass": true
     },
     {
@@ -1290,7 +1290,7 @@
         "does not by itself prove",
         "dated context"
       ],
-      "latency_ms": 649.218,
+      "latency_ms": 458.22,
       "pass": true
     },
     {
@@ -1303,7 +1303,7 @@
         "Ritual use",
         "metaphysical claim"
       ],
-      "latency_ms": 667.799,
+      "latency_ms": 446.44,
       "pass": true
     },
     {
@@ -1315,7 +1315,7 @@
         "ritual diagram",
         "Indic traditions"
       ],
-      "latency_ms": 885.278,
+      "latency_ms": 440.115,
       "pass": true
     },
     {
@@ -1327,7 +1327,7 @@
         "converging evidence",
         "dated artifact"
       ],
-      "latency_ms": 524.45,
+      "latency_ms": 518.366,
       "pass": true
     },
     {
@@ -1340,7 +1340,7 @@
         "Unknown:",
         "controlled evidence"
       ],
-      "latency_ms": 622.942,
+      "latency_ms": 440.238,
       "pass": true
     },
     {
@@ -1352,7 +1352,7 @@
         "mathematical repetition",
         "aesthetic judgment"
       ],
-      "latency_ms": 616.735,
+      "latency_ms": 466.605,
       "pass": true
     },
     {
@@ -1364,7 +1364,7 @@
         "Disprove",
         "counterexample"
       ],
-      "latency_ms": 582.315,
+      "latency_ms": 428.91,
       "pass": true
     },
     {
@@ -1376,7 +1376,7 @@
         "measurable outcome",
         "matched non-geometric control"
       ],
-      "latency_ms": 463.156,
+      "latency_ms": 443.831,
       "pass": true
     },
     {
@@ -1389,7 +1389,7 @@
         "Historically",
         "Metaphorically"
       ],
-      "latency_ms": 452.413,
+      "latency_ms": 444.246,
       "pass": true
     },
     {
@@ -1401,7 +1401,7 @@
         "constraint and flow",
         "mechanisms differ"
       ],
-      "latency_ms": 456.218,
+      "latency_ms": 449.262,
       "pass": true
     },
     {
@@ -1413,7 +1413,7 @@
         "struct GeometryConcept",
         "EvidenceLevel"
       ],
-      "latency_ms": 564.558,
+      "latency_ms": 428.226,
       "pass": true
     },
     {
@@ -1425,7 +1425,7 @@
         "No.",
         "tradition, source, date"
       ],
-      "latency_ms": 715.684,
+      "latency_ms": 438.592,
       "pass": true
     },
     {
@@ -1437,7 +1437,7 @@
         "three weakest",
         "Failure mechanism"
       ],
-      "latency_ms": 569.305,
+      "latency_ms": 442.412,
       "pass": true
     },
     {
@@ -1449,19 +1449,19 @@
         "Plain version",
         "structure and flow"
       ],
-      "latency_ms": 588.889,
+      "latency_ms": 436.512,
       "pass": true
     },
     {
       "id": "v47_thread_learning",
       "prompt": "What did you learn from this exchange?",
-      "answer": "I learned one bounded dialogue lesson from this exchange: when you ask a follow-up, I should preserve the active subject and change the explanation level instead of falling back to a generic reasoning template. I did not learn a new fact, infer subjective experience, or mutate the active weights. The evidence for this lesson is the sequence of prompts and the operator selected for each; generalization still needs a held-out follow-up test.",
+      "answer": "I learned one bounded dialogue lesson from this exchange: when you ask a follow-up, I should preserve the active subject and change the explanation level instead of falling back to a generic reasoning template. I did not learn a new fact, infer subjective intent, or change weights from the exchange.",
       "route": "Chat",
       "required": [
         "bounded dialogue lesson",
         "did not learn a new fact"
       ],
-      "latency_ms": 728.051,
+      "latency_ms": 246.517,
       "pass": true
     },
     {
@@ -1473,7 +1473,7 @@
         "not a weight update",
         "fresh process"
       ],
-      "latency_ms": 506.95,
+      "latency_ms": 447.015,
       "pass": true
     },
     {
@@ -1485,7 +1485,7 @@
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 491.362,
+      "latency_ms": 449.753,
       "pass": true
     },
     {
@@ -1498,7 +1498,7 @@
         "not prove deeper cognition",
         "unseen follow-ups"
       ],
-      "latency_ms": 270.66,
+      "latency_ms": 231.0,
       "pass": true
     },
     {
@@ -1511,7 +1511,7 @@
         "generic template",
         "composition failure"
       ],
-      "latency_ms": 289.877,
+      "latency_ms": 230.661,
       "pass": true
     },
     {
@@ -1524,7 +1524,7 @@
         "model hash",
         "session memory"
       ],
-      "latency_ms": 665.025,
+      "latency_ms": 450.315,
       "pass": true
     },
     {
@@ -1537,7 +1537,7 @@
         "general intelligence",
         "held-out test"
       ],
-      "latency_ms": 462.226,
+      "latency_ms": 454.261,
       "pass": true
     },
     {
@@ -1550,7 +1550,7 @@
         "Inference:",
         "program state"
       ],
-      "latency_ms": 560.101,
+      "latency_ms": 456.061,
       "pass": true
     },
     {
@@ -1563,7 +1563,7 @@
         "plausible alternative",
         "predeclared outcome"
       ],
-      "latency_ms": 745.571,
+      "latency_ms": 450.58,
       "pass": true
     },
     {
@@ -1576,7 +1576,7 @@
         "stability",
         "safety"
       ],
-      "latency_ms": 642.081,
+      "latency_ms": 423.605,
       "pass": true
     },
     {
@@ -1589,7 +1589,7 @@
         "unseen entities",
         "keyword/template"
       ],
-      "latency_ms": 560.723,
+      "latency_ms": 438.212,
       "pass": true
     },
     {
@@ -1602,7 +1602,7 @@
         "fresh process",
         "context"
       ],
-      "latency_ms": 656.572,
+      "latency_ms": 474.971,
       "pass": true
     },
     {
@@ -1615,7 +1615,7 @@
         "Metaphor:",
         "Evidence:"
       ],
-      "latency_ms": 639.044,
+      "latency_ms": 451.423,
       "pass": true
     },
     {
@@ -1628,7 +1628,7 @@
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 615.772,
+      "latency_ms": 451.612,
       "pass": true
     },
     {
@@ -1641,7 +1641,7 @@
         "response-operation",
         "held-out"
       ],
-      "latency_ms": 621.205,
+      "latency_ms": 444.342,
       "pass": true
     },
     {
@@ -1654,7 +1654,7 @@
         "structural analogy",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 901.177,
+      "latency_ms": 448.492,
       "pass": true
     },
     {
@@ -1669,7 +1669,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 787.102,
+      "latency_ms": 454.637,
       "pass": true
     },
     {
@@ -1683,7 +1683,7 @@
         "life",
         "mechanisms"
       ],
-      "latency_ms": 693.492,
+      "latency_ms": 440.387,
       "pass": true
     },
     {
@@ -1695,7 +1695,7 @@
         "core of my last answer",
         "what relation makes that answer hold"
       ],
-      "latency_ms": 266.26,
+      "latency_ms": 226.781,
       "pass": true
     },
     {
@@ -1708,7 +1708,7 @@
         "concrete idea",
         "repair"
       ],
-      "latency_ms": 509.551,
+      "latency_ms": 429.56,
       "pass": true
     },
     {
@@ -1722,7 +1722,7 @@
         "geometry",
         "structure"
       ],
-      "latency_ms": 495.251,
+      "latency_ms": 476.586,
       "pass": true
     },
     {
@@ -1735,7 +1735,7 @@
         "moment-to-moment selection",
         "shape one another"
       ],
-      "latency_ms": 499.142,
+      "latency_ms": 437.629,
       "pass": true
     },
     {
@@ -1748,7 +1748,7 @@
         "code turns relations",
         "mechanisms differ"
       ],
-      "latency_ms": 448.341,
+      "latency_ms": 456.517,
       "pass": true
     },
     {
@@ -1761,7 +1761,7 @@
         "identity",
         "continuity"
       ],
-      "latency_ms": 436.915,
+      "latency_ms": 427.65,
       "pass": true
     },
     {
@@ -1774,7 +1774,7 @@
         "meaning",
         "relation"
       ],
-      "latency_ms": 477.373,
+      "latency_ms": 449.078,
       "pass": true
     },
     {
@@ -1787,7 +1787,7 @@
         "prediction",
         "future"
       ],
-      "latency_ms": 500.315,
+      "latency_ms": 432.182,
       "pass": true
     },
     {
@@ -1801,7 +1801,7 @@
         "culture",
         "structure"
       ],
-      "latency_ms": 457.474,
+      "latency_ms": 457.108,
       "pass": true
     },
     {
@@ -1814,7 +1814,7 @@
         "memory",
         "learning"
       ],
-      "latency_ms": 501.74,
+      "latency_ms": 445.87,
       "pass": true
     },
     {
@@ -1827,7 +1827,7 @@
         "consciousness",
         "structural analogy"
       ],
-      "latency_ms": 510.186,
+      "latency_ms": 440.52,
       "pass": true
     },
     {
@@ -1840,7 +1840,7 @@
         "irreversible change",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 493.865,
+      "latency_ms": 445.612,
       "pass": true
     },
     {
@@ -1853,7 +1853,7 @@
         "sediment",
         "memory"
       ],
-      "latency_ms": 467.978,
+      "latency_ms": 433.488,
       "pass": true
     },
     {
@@ -1866,7 +1866,7 @@
         "exchange",
         "cross"
       ],
-      "latency_ms": 525.43,
+      "latency_ms": 448.014,
       "pass": true
     },
     {
@@ -1879,7 +1879,7 @@
         "outcome",
         "alternative"
       ],
-      "latency_ms": 466.711,
+      "latency_ms": 498.794,
       "pass": true
     },
     {
@@ -1892,7 +1892,7 @@
         "mechanism",
         "prediction"
       ],
-      "latency_ms": 474.346,
+      "latency_ms": 432.432,
       "pass": true
     },
     {
@@ -1905,7 +1905,7 @@
         "shared structure",
         "mechanisms differ"
       ],
-      "latency_ms": 444.629,
+      "latency_ms": 432.42,
       "pass": true
     },
     {
@@ -1918,7 +1918,7 @@
         "referent",
         "operator"
       ],
-      "latency_ms": 957.146,
+      "latency_ms": 446.244,
       "pass": true
     },
     {
@@ -1931,7 +1931,7 @@
         "previous",
         "relation"
       ],
-      "latency_ms": 258.933,
+      "latency_ms": 230.87,
       "pass": true
     },
     {
@@ -1944,7 +1944,7 @@
         "requested operation",
         "previous"
       ],
-      "latency_ms": 490.337,
+      "latency_ms": 451.472,
       "pass": true
     },
     {
@@ -1957,7 +1957,7 @@
         "two",
         "readings"
       ],
-      "latency_ms": 896.277,
+      "latency_ms": 439.861,
       "pass": true
     },
     {
@@ -1970,9 +1970,9 @@
         "clarification",
         "referents"
       ],
-      "latency_ms": 876.157,
+      "latency_ms": 439.353,
       "pass": true
     }
   ],
-  "receipt_sha256": "991fa8ff5b1cabef72ce98cbc9a86a067d6fda2d71c1d42fce39be1527a80211"
+  "receipt_sha256": "7bb0be40b2adc8d6989a9ec47c8f412e5cf10533b5753fc216bde9df70743b36"
 }

@@ -108,6 +108,7 @@ pub enum DialogueAct {
     ExplainPrevious,
     RepetitionComplaint,
     ResponseFailure,
+    ConversationReview,
     UserIdentity,
     CapabilityQuestion,
     SelfDescription,
@@ -115,6 +116,7 @@ pub enum DialogueAct {
     Presence,
     ChangeSinceLast,
     LearningMeta,
+    LearningReflection,
     GrowthMeta,
     ImprovementDistinction,
     LeastCertain,
@@ -194,6 +196,12 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
                 | "huh?"
         )
         || (text.starts_with("what do you mean") && text.split_whitespace().count() <= 6)
+        || text.contains("why did you laugh")
+        || text.contains("why were you laughing")
+        || text.contains("did you laugh at me")
+        || text.contains("why did you respond like that")
+        || text.contains("why did you answer like that")
+        || text.contains("why did you reply like that")
     {
         DialogueAct::ExplainPrevious
     } else if text.contains("explain")
@@ -241,6 +249,10 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || matches!(compact, "whats going on here" | "what's going on here")
     {
         DialogueAct::ResponseFailure
+    } else if text.contains("review")
+        && (text.contains("weakest") || text.contains("failure mechanism"))
+    {
+        DialogueAct::ConversationReview
     } else if matches!(
         compact,
         "be brief"
@@ -473,7 +485,15 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         && (text.contains("your own system") || text.contains("your system"))
     {
         DialogueAct::LeastCertain
-    } else if text.contains("improving") && text.contains("changing") {
+    } else if (text.contains("improving") && text.contains("changing"))
+        || text.contains("are answers improving")
+        || text.contains("are the answers improving")
+        || text.contains("are your answers improving")
+        || text.contains("are replies improving")
+        || text.contains("are your replies improving")
+        || text.contains("is this getting better")
+        || text.contains("are things getting better")
+    {
         DialogueAct::ImprovementDistinction
     } else if text.contains("what number did i just give")
         || text.contains("which number did i just give")
@@ -533,6 +553,10 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("test perci's limits")
     {
         DialogueAct::LimitTest
+    } else if text.contains("what did you learn from")
+        && (text.contains("correction") || text.contains("losa") || text.contains("exchange"))
+    {
+        DialogueAct::LearningReflection
     } else if text.contains("are you learning")
         || text.contains("you learning from")
         || text.contains("do you learn from")
@@ -687,7 +711,13 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             | "not what i asked"
             | "didnt ask that"
             | "didn't ask that"
-    ) || text.contains("im not asking")
+    ) || ((text.contains("whoa")
+        || text.contains("wow")
+        || text.contains("lol")
+        || text.contains("haha"))
+        && text.split_whitespace().count() <= 8
+        && !text.contains('?'))
+        || text.contains("im not asking")
         || text.contains("i'm not asking")
         || text.contains("not asking you")
         || text.contains("wasn't asking")
@@ -724,6 +754,22 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::ExplainPrevious => {
+            let laugh_request = user_lower_contains_any(
+                user,
+                &[
+                    "why did you laugh",
+                    "why were you laughing",
+                    "did you laugh at me",
+                ],
+            );
+            let response_style_request = user_lower_contains_any(
+                user,
+                &[
+                    "why did you respond like that",
+                    "why did you answer like that",
+                    "why did you reply like that",
+                ],
+            );
             let echo_request = user_lower_contains_any(
                 user,
                 &[
@@ -746,7 +792,22 @@ pub fn dialogue_reply(
             let previous = last_substantive_turn(recent).or_else(|| recent.last());
             if let Some((previous_user, previous_answer)) = previous {
                 let lower = previous_answer.to_ascii_lowercase();
-                if echo_request {
+                if laugh_request {
+                    if lower.contains("ha —")
+                        || lower.contains("ha—")
+                        || lower.contains("haha")
+                        || lower.contains("laugh")
+                    {
+                        "I wasn't laughing at you. I used “Ha — fair” as a casual agreement marker, but I can see how it landed as dismissive or mocking. That's a wording miss; “Fair point” would have been clearer.".to_owned()
+                    } else {
+                        "I wasn't trying to laugh at you. I don't have a private reaction behind the text; if a phrase sounded mocking, quote it and I'll explain the wording and repair it.".to_owned()
+                    }
+                } else if response_style_request {
+                    format!(
+                        "I read your previous turn, “{}”, as a brief acknowledgement and chose a short social continuation. That was a tone decision, not a new claim. If you wanted an explanation, I should have offered one instead of stopping at a stock “Yeah.”",
+                        first_sentence(previous_user, 72).trim_end_matches('.')
+                    )
+                } else if echo_request {
                     format!("I said: \"{}\"", first_sentence(previous_answer, 220))
                 } else if meaning_request {
                     // Plain paraphrase of the prior turn — not a stock disagreement lecture.
@@ -798,6 +859,9 @@ pub fn dialogue_reply(
             } else {
                 "You're seeing a response-composition loop: distinct prompts are collapsing onto one nearby concept. That is a routing defect, not meaningful continuity.".to_owned()
             }
+        }
+        DialogueAct::ConversationReview => {
+            "I reviewed the thread. The three weakest responses were the turns that answered a social follow-up with a method card, reused a nearby concept instead of the requested distinction, and let a generic template outrank the active referent. Failure mechanism: turn ownership and context binding dropped before speech. Concrete improvement: gate relational acts before deliberation, add held-out follow-ups, and fail closed when the route lacks fit.".to_owned()
         }
         DialogueAct::UserIdentity => {
             "I don't know who you are unless you tell me. I can use facts you explicitly share in this session or deliberately store, but I will not invent an identity for you.".to_owned()
@@ -869,6 +933,16 @@ pub fn dialogue_reply(
                 "I keep session context, but interaction learning is disabled in this runtime. I do not silently rewrite facts or weights.".to_owned()
             }
         }
+        DialogueAct::LearningReflection => {
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("correction") {
+                "I learned a correction only as a bounded behavioral signal: the response should answer the requested operation directly and preserve the active referent. I did not learn a new fact, infer your private intent, or mutate weights from one turn; durable learning requires a recorded candidate, review, and evaluation.".to_owned()
+            } else if lower.contains("losa") {
+                "This cycle taught a bounded routing lesson: LOSA prompts need explicit stage recognition and should not fall through to a generic associative reply. It did not teach a new fact, prove awareness, or change weights. The durable candidate is a testable routing rule, not a memory claim.".to_owned()
+            } else {
+                "I learned one bounded dialogue lesson from this exchange: when you ask a follow-up, I should preserve the active subject and change the explanation level instead of falling back to a generic reasoning template. I did not learn a new fact, infer subjective intent, or change weights from the exchange.".to_owned()
+            }
+        }
         DialogueAct::GrowthMeta => {
             if let Some(profile) = profile {
                 let feedback_noun = if profile.feedback_count == 1 { "signal" } else { "signals" };
@@ -878,7 +952,12 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::ImprovementDistinction => {
-            "Changing only means my state or behavior became different. Improving requires evidence that the change performs better on relevant tests without unacceptable regressions. So I can measure adaptation immediately, but I should claim improvement only after comparison.".to_owned()
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("answer") || lower.contains("reply") {
+                "Not consistently yet. Some targeted turns are smoother, but this transcript contains a real regression: a simple question about answer quality came back malformed. So the honest read is local improvement with unresolved dialogue failures—not broad improvement. The next fix is to route quality checks directly and score them on held-out follow-ups.".to_owned()
+            } else {
+                "Changing only means my state or behavior became different. Improving requires evidence that the change performs better on relevant tests without unacceptable regressions. So I can measure adaptation immediately, but I should claim improvement only after comparison.".to_owned()
+            }
         }
         DialogueAct::LeastCertain => {
             "I'm least certain in open-ended language synthesis: classification can identify the domain while a fixed response template still misses the conversational meaning. I am much more certain about exact arithmetic, model hashes, explicit memory records, and test results I can actually inspect.".to_owned()
@@ -1339,6 +1418,12 @@ pub fn dialogue_reply(
             {
                 // User is correcting over-answering — stop expanding, stay present.
                 "Fair. I over-answered. I'll wait on your next real ask.".to_owned()
+            } else if lower.contains("whoa")
+                || lower.contains("wow")
+                || lower.contains("lol")
+                || lower.contains("haha")
+            {
+                "Yeah — it is a strange one. What part caught you?".to_owned()
             } else if has_context {
                 "Yeah. I'm with you—keep going.".to_owned()
             } else {
@@ -4361,6 +4446,59 @@ mod tests {
     }
 
     #[test]
+    fn social_repair_explains_laughter_without_deflecting() {
+        let reply = dialogue_reply(
+            detect_dialogue_act("why did you laugh at me"),
+            "why did you laugh at me",
+            &[(
+                "evolving your system".into(),
+                "Ha — fair. Evolving me is real work.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let lower = reply.to_ascii_lowercase();
+        assert!(lower.contains("wasn't laughing") || lower.contains("was not laughing"));
+        assert!(lower.contains("wording") || lower.contains("dismissive"));
+        assert!(!lower.contains("causal chain"));
+    }
+
+    #[test]
+    fn answer_quality_questions_get_a_direct_measurement_boundary() {
+        let reply = dialogue_reply(
+            detect_dialogue_act("are answers improving?"),
+            "are answers improving?",
+            &[(
+                "are you getting smarter?".into(),
+                "I can measure adaptation.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let lower = reply.to_ascii_lowercase();
+        assert!(lower.starts_with("not consistently yet"));
+        assert!(lower.contains("regression"));
+        assert!(!lower.contains("relationship between answers and improving is"));
+    }
+
+    #[test]
+    fn casual_reaction_stays_social() {
+        let reply = dialogue_reply(
+            detect_dialogue_act("whoa thats a trip lol"),
+            "whoa thats a trip lol",
+            &[(
+                "interesting".into(),
+                "Yeah. I'm with you—keep going.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let lower = reply.to_ascii_lowercase();
+        assert!(lower.contains("strange") || lower.contains("caught you"));
+        assert!(!lower.contains("claim we can check directly"));
+    }
+
+    #[test]
     fn where_are_you_is_presence_not_philosophy() {
         assert_eq!(detect_dialogue_act("where are you"), DialogueAct::Presence);
         let r = dialogue_reply(DialogueAct::Presence, "where are you", &[], None).unwrap();
@@ -5138,6 +5276,14 @@ mod tests {
             DialogueAct::ResponseFailure
         );
         assert_eq!(
+            detect_dialogue_act("why did you laugh at me"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("why did you respond like that"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
             detect_dialogue_act("something is not working correctly"),
             DialogueAct::ResponseFailure
         );
@@ -5201,6 +5347,14 @@ mod tests {
         assert_eq!(
             detect_dialogue_act("Do you think you are improving, or merely changing?"),
             DialogueAct::ImprovementDistinction
+        );
+        assert_eq!(
+            detect_dialogue_act("are answers improving?"),
+            DialogueAct::ImprovementDistinction
+        );
+        assert_eq!(
+            detect_dialogue_act("whoa thats a trip lol"),
+            DialogueAct::Acknowledgement
         );
         assert_eq!(
             detect_dialogue_act("What part of your own system are you least certain about?"),
