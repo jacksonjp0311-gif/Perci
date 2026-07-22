@@ -98,9 +98,10 @@ Snapshot from sealed receipts on **v0.10.3** (2026-07-22). Re-run gates after ma
 | **Latest BRPC candidate** | **C=0.98137**, **U=0.887**, no promotion | `models/candidates/brpc-perci-receipt-latest.json` |
 | **Security/dialogue assessment** | **S1–S7 findings documented**; 7/7 sensitive live probes explicitly bounded; no default-path execution demonstrated | [`docs/SECURITY_ASSESSMENT_20260722.md`](docs/SECURITY_ASSESSMENT_20260722.md) |
 | **PERCICTX1 observer gate** | **12 / 12 PASS**; mean observer score **0.919**, geometry alignment **1.000** | `python scripts/evaluate_context_observer.py` · [`docs/PERCICTX1_CONTEXT_CARD.md`](docs/PERCICTX1_CONTEXT_CARD.md) |
+| **Runtime package** | **5 / 5 LFS artifacts verified**; active PERCIW03 and native language fields sealed | `python scripts/verify_package.py` · [`models/PACKAGE_MANIFEST.json`](models/PACKAGE_MANIFEST.json) |
 | **Weight promote** | **never automatic** | human `--authorize` only |
 
-Pack on disk (local, not in git):
+Packaged runtime artifacts (Git LFS):
 
 | Property | Value |
 |----------|------:|
@@ -112,6 +113,18 @@ Pack on disk (local, not in git):
 | Activation | **4,096** bits · integer AND/POPCOUNT hot path |
 | Native language | **PERCLNG1** (+ optional phrase / relation / world fields) |
 | Low-bit sidecar | **PERCLBW1** (experimental, assessed separately) |
+
+The complete runtime package is versioned through Git LFS: the active PERCIW03
+pack, PERCIW02 fallback, PERCIW01 legacy baseline, PERCLNG1 native language
+field, and PERCPHR1 phrase field. `models/PACKAGE_MANIFEST.json` seals each
+artifact's format, byte length, SHA-256, and role. A fresh clone should install
+Git LFS and pull the payloads before launching:
+
+```powershell
+git lfs install
+git lfs pull
+python .\scripts\verify_package.py
+```
 
 Version is never hand-edited on the badge: `build.rs` stamps `assets/generated/*` from `Cargo.toml`.
 
@@ -360,14 +373,16 @@ When you cut a real crate bump (e.g. 0.9.9 / 0.10.3): edit `Cargo.toml`, rebuild
 
 - Windows, macOS, or Linux  
 - Rust + Cargo  
-- Local pack: `models/perci-cognitive-v0.3.pwgt` (**not** in the clone)
+- Git LFS for the packaged weights and native language fields
 
 ### Windows launch
 
 ```powershell
 git clone https://github.com/jacksonjp0311-gif/Perci.git
 cd .\Perci
-# place PERCIW03 under models\  (or $env:PERCI_WEIGHTS = "...")
+git lfs install
+git lfs pull
+python .\scripts\verify_package.py
 Set-ExecutionPolicy -Scope Process Bypass -Force
 .\Launch-Perci.ps1
 ```
@@ -494,16 +509,21 @@ Still never auto-promotes `.pwgt`.
 
 ---
 
-## Weights (local only)
+## Weights and runtime package
 
 ```text
-models/perci-cognitive-v0.3.pwgt        # not in git
-models/perci-cognitive-v0.3.pwgt.json   # metadata in git
+models/perci-cognitive-v0.3.pwgt        # active PERCIW03, Git LFS
+models/perci-cognitive-v0.2.pwgt        # compact fallback, Git LFS
+models/perci-cognitive-v0.1.pwgt        # legacy baseline, Git LFS
+models/perci-language-v0.1.blng         # native sequence field, Git LFS
+models/perci-language-v0.2.bphr         # native phrase field, Git LFS
+models/PACKAGE_MANIFEST.json            # hashes, sizes, formats, roles
 ```
 
 ```powershell
 python .\scripts\verify_weights.py
 python .\scripts\test_weights.py
+python .\scripts\verify_package.py
 # rebuild candidates (promote still requires --authorize):
 python .\scripts\build_weights_v3.py
 ```
@@ -553,7 +573,7 @@ perci/
   assets/                 # brand mark · hero · auto-stamped badge
   docs/                   # architecture · roadmap · evolve protocol
   knowledge/packs/        # intelligence packs
-  models/                 # *.pwgt local; candidates/ for receipts
+  models/                 # Git LFS runtime fields; candidates/ for receipts
   scripts/                # hardness · BRPC · evolve · promote · release
   src/                    # Rust: cognitive · bridge · operators · voice · fabric · agent
   training/hardness/      # hardness-pack-v1.jsonl (sealed cases)

@@ -1,0 +1,53 @@
+{
+  "schema": "perci.package-manifest.v1",
+  "package_version": "0.10.3",
+  "lfs_required": true,
+  "description": "Runtime weights and native language fields required for a complete Perci checkout.",
+  "artifacts": [
+    {
+      "path": "models/perci-cognitive-v0.3.pwgt",
+      "kind": "active_associative_weights",
+      "format": "PERCIW03",
+      "bytes": 209710296,
+      "sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
+      "tracked_with": "git-lfs"
+    },
+    {
+      "path": "models/perci-cognitive-v0.2.pwgt",
+      "kind": "fallback_associative_weights",
+      "format": "PERCIW02",
+      "bytes": 20094368,
+      "sha256": "11c20d1bee6fd946d4d7165a625dc0db2bc52f51957ef8b66aea6db5949c7747",
+      "tracked_with": "git-lfs"
+    },
+    {
+      "path": "models/perci-cognitive-v0.1.pwgt",
+      "kind": "legacy_associative_weights",
+      "format": "PERCIW01",
+      "bytes": 209715200,
+      "sha256": "6060189283f93e75a03edf59dd7914ef6ab952ca531dd3e26e90ffd36c763eda",
+      "tracked_with": "git-lfs"
+    },
+    {
+      "path": "models/perci-language-v0.1.blng",
+      "kind": "native_language_field",
+      "format": "PERCLNG1",
+      "bytes": 9409323,
+      "sha256": "17f7077f9f06e2c77db3949b46dcdd5af5b644bafba088b00d4bdefb0ce18ede",
+      "tracked_with": "git-lfs"
+    },
+    {
+      "path": "models/perci-language-v0.2.bphr",
+      "kind": "native_phrase_field",
+      "format": "PERCPHR1",
+      "bytes": 466862,
+      "sha256": "a9009e6698632421c2c4b94ecb66a905b4e5908632cef85700701124d2d5e973",
+      "tracked_with": "git-lfs"
+    }
+  ],
+  "verification": {
+    "active_weights": "python scripts/verify_weights.py --model models/perci-cognitive-v0.3.pwgt",
+    "package": "python scripts/verify_package.py",
+    "promotion_policy": "binary weight promotion remains human-authorized; packaging is not promotion"
+  }
+}

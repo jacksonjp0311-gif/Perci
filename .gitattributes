@@ -1,2 +1,6 @@
 *.pwgt filter=lfs diff=lfs merge=lfs -text
 *.gguf filter=lfs diff=lfs merge=lfs -text
+*.blng filter=lfs diff=lfs merge=lfs -text
+*.bphr filter=lfs diff=lfs merge=lfs -text
+*.brel filter=lfs diff=lfs merge=lfs -text
+*.bwm filter=lfs diff=lfs merge=lfs -text

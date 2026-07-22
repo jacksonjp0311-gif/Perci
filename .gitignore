@@ -28,8 +28,8 @@ models/**/*.bphr
 *.bwm
 models/**/*.brel
 models/**/*.bwm
-# Bitwork packs are ~200 MiB — exceed GitHub hard limits; build/download locally.
-# Keep sidecar JSON metadata and .gitkeep under models/.
+# Bitwork and native language binaries are tracked through Git LFS.
+# Keep unpromoted candidates, backups, and temporary partial downloads local.
 *.pwgt
 models/**/*.pwgt
 models/previous/
