@@ -205,6 +205,17 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
     {
         DialogueAct::ExplainPrevious
     } else if text.contains("explain")
+        && (text.contains("child")
+            || text.contains("kid")
+            || text.contains("simple")
+            || text.contains("first time"))
+        && (text.contains("it") || text.contains("that") || text.contains("intelligence"))
+    {
+        // Audience changes are follow-ups, not a new topic. Preserve the
+        // active subject so "explain it to a child" cannot fall into a
+        // generic method card.
+        DialogueAct::ElaboratePrevious
+    } else if text.contains("explain")
         && (text.contains("different angle") || text.contains("without repeating"))
     {
         // Reframing is an operation on the prior idea, not generic style or
@@ -1271,6 +1282,24 @@ pub fn dialogue_reply(
                 compact_model_explanation(true)
             } else if let Some((previous_user, previous_answer)) = last_substantive_turn(recent) {
                 let lower = user.to_ascii_lowercase();
+                let child_level = lower.contains("child")
+                    || lower.contains("kid")
+                    || lower.contains("first time")
+                    || lower.contains("simple");
+                if child_level {
+                    let prior_l = previous_answer.to_ascii_lowercase();
+                    if previous_user.to_ascii_lowercase().contains("intelligence")
+                        || prior_l.contains("learn, predict, decide, and adapt")
+                    {
+                        return Some(
+                            "For a child: intelligence is learning what works, noticing when it does not, and trying a better way. A person who learns from a mistake is showing more intelligence than one who only repeats a memorized answer.".to_owned(),
+                        );
+                    }
+                    return Some(format!(
+                        "For a child: {}",
+                        first_sentence(&plain_breath_rewrite(previous_answer), 220)
+                    ));
+                }
                 let shorter = lower.contains("shorter")
                     || lower.contains("without the list")
                     || lower.contains("without a list")
@@ -4736,6 +4765,20 @@ mod tests {
         assert!(low.contains("talk to me plainly"));
         assert!(low.contains("exact calculation"));
         assert!(!low.contains("grounded line"));
+    }
+
+    #[test]
+    fn child_followup_preserves_intelligence_subject() {
+        let prompt = "Now explain it to a child.";
+        assert_eq!(detect_dialogue_act(prompt), DialogueAct::ElaboratePrevious);
+        let recent = [(
+            "What is intelligence in one sentence?".to_owned(),
+            "Intelligence is the ability to build and use models that help a system learn, predict, decide, and adapt when conditions change.".to_owned(),
+        )];
+        let answer = dialogue_reply(DialogueAct::ElaboratePrevious, prompt, &recent, None).unwrap();
+        let low = answer.to_ascii_lowercase();
+        assert!(low.contains("for a child") && low.contains("learn") && low.contains("mistake"));
+        assert!(!low.contains("what outcome do you want"));
     }
 
     #[test]

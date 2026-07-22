@@ -24,6 +24,10 @@ fn preserve_operator_prose(operator: &str) -> bool {
             | "thread-learning-audit"
             | "session-situation"
             | "plain-language-followup"
+            | "intelligence-definition-challenge"
+            | "weight-change-evidence"
+            | "capability-use"
+            | "intelligence-criteria"
     )
 }
 

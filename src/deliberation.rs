@@ -227,6 +227,30 @@ pub fn try_deliberate(
         return Some(d);
     }
 
+    // A definition challenge is a conversational falsifier, not a request
+    // for the formal proof engine. Keep the active definition in view and
+    // name a counterexample that would expose its missing condition.
+    if looks_intelligence_definition_challenge(&text, recent) {
+        return Some(intelligence_definition_challenge_answer());
+    }
+
+    // Weight-state questions need the artifact boundary even when the user
+    // does not use the word "prove". Otherwise the open proof/fallback path
+    // can swallow a direct operational question.
+    if looks_weight_change_question(&text) {
+        return Some(weight_change_evidence_answer());
+    }
+
+    // Keep capability instructions out of the generic associative bind. The
+    // user is asking how to work with Perci, not asking for a concept essay.
+    if looks_capability_use_question(&text) {
+        return Some(capability_use_answer());
+    }
+
+    if looks_intelligence_criteria_question(&text) {
+        return Some(intelligence_criteria_answer());
+    }
+
     if looks_speed_accuracy_tradeoff(&text) {
         return Some(speed_accuracy_answer());
     }
@@ -616,7 +640,9 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.99),
         );
     }
-    if text.contains("what part") && text.contains("last answer") && text.contains("weak") {
+    if text.contains("last answer")
+        && ((text.contains("what part") && text.contains("weak")) || text.contains("weakest part"))
+    {
         return Some(review_last_answer(recent));
     }
     if (text.contains("which answer") && text.contains("weakest"))
@@ -1090,7 +1116,8 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             && text.contains("not ")
             && (text.contains("what exactly conflicts")
                 || text.contains("what conflicts")
-                || text.contains("conflict"))))
+                || text.contains("conflict")
+                || text.contains("what failed"))))
         && (text.contains("suppose") || text.contains("not "))
     {
         let frame = find_universal_case(recent);
@@ -3453,10 +3480,12 @@ fn intelligence_definition_answer(text: &str) -> Option<Deliberation> {
     let compact = text
         .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
         .trim();
-    let asks_definition = compact == "what is intelligence"
-        || compact == "define intelligence"
-        || compact.ends_with("what is intelligence")
-        || compact.ends_with("define intelligence");
+    let asks_definition = (compact.contains("what is intelligence")
+        || compact.contains("define intelligence"))
+        && (compact.len() <= 96
+            || compact.contains("one sentence")
+            || compact.contains("shortest true")
+            || compact.contains("short answer"));
     if !asks_definition || compact.contains("your intelligence") || compact.contains("perci") {
         return None;
     }
@@ -3469,6 +3498,83 @@ fn intelligence_definition_answer(text: &str) -> Option<Deliberation> {
         .inferred("a useful definition needs model use, prediction, adaptation, and changing conditions")
         .confidence(0.96),
     )
+}
+
+fn looks_intelligence_definition_challenge(text: &str, recent: &[(String, String)]) -> bool {
+    text.contains("definition")
+        && (text.contains("incomplete")
+            || text.contains("missing")
+            || text.contains("wrong")
+            || text.contains("falsif")
+            || text.contains("change your mind"))
+        && has_recent_topic(recent, &["intelligence"])
+}
+
+fn intelligence_definition_challenge_answer() -> Deliberation {
+    Deliberation::new(
+        "intelligence-definition-challenge",
+        "A counterexample would show the definition is too broad or too narrow: a system might produce useful answers from memorized patterns yet fail when the surface details change, so it would not be learning, predicting, deciding, and adapting in the stronger sense. The missing test is transfer to unseen cases plus error-driven revision.",
+    )
+    .observed("the user challenges the active definition of intelligence")
+    .inferred("incompleteness is exposed by a counterexample and a transfer test")
+    .confidence(0.98)
+}
+
+fn looks_weight_change_question(text: &str) -> bool {
+    (text.contains("weight change")
+        || text.contains("weights change")
+        || text.contains("weights changed")
+        || text.contains("weight changed"))
+        && (text.contains("did")
+            || text.contains("during")
+            || text.contains("conversation")
+            || text.contains("session")
+            || text.contains("prove"))
+}
+
+fn weight_change_evidence_answer() -> Deliberation {
+    Deliberation::new(
+        "weight-change-evidence",
+        "No durable weight change occurred from this conversation. The answer can change because session context or session memory, a dialogue preference, or the selected operator changed. To prove a weight change, compare the old and candidate model hash in fresh processes with cleared session memory, then require persistent improvement on held-out paraphrases without regressions.",
+    )
+    .observed("the question asks whether the active weight artifact changed")
+    .inferred("fresh-process persistence separates weights from session context")
+    .confidence(0.99)
+}
+
+fn looks_capability_use_question(text: &str) -> bool {
+    let compact = text.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
+    matches!(
+        compact,
+        "how can i use you" | "how do i use you" | "what can i use you for" | "how can you help me"
+    )
+}
+
+fn capability_use_answer() -> Deliberation {
+    Deliberation::new(
+        "capability-use",
+        "You can talk to me plainly. Ask for an explanation, an exact calculation, a geometry check, a code or repository plan, a session-only memory note, or a test of my limits. I am strongest when the goal is concrete and I can show evidence; when a route is missing, I should say so instead of filling the gap with a generic answer.",
+    )
+    .observed("the user asks how to use Perci")
+    .inferred("a direct capability map is more useful than a concept card")
+    .confidence(0.98)
+}
+
+fn looks_intelligence_criteria_question(text: &str) -> bool {
+    (text.contains("what makes a system intelligent")
+        || text.contains("what makes behavior intelligent")
+        || text.contains("when should we call behavior intelligent"))
+        && !text.contains("conscious")
+}
+
+fn intelligence_criteria_answer() -> Deliberation {
+    Deliberation::new(
+        "intelligence-criteria",
+        "A system looks intelligent when it builds and uses a model, predicts consequences, notices error, and changes its behavior when conditions change. Fluent output alone is not enough; the stronger test is transfer to unseen cases with measurable improvement.",
+    )
+    .observed("the user asks for criteria rather than a dictionary definition")
+    .inferred("intelligence requires model use, prediction, error detection, and adaptation")
+    .confidence(0.98)
 }
 
 fn looks_speed_accuracy_tradeoff(text: &str) -> bool {
@@ -6230,7 +6336,7 @@ fn exact_turn(user: &str) -> bool {
 fn parse_universal_case(text: &str) -> Option<(String, String, String)> {
     let after_every = text.split_once("every ")?.1;
     let (class, rest) = after_every.split_once(" is ")?;
-    let (property, second) = rest.split_once(',')?;
+    let (property, second) = rest.split_once(',').or_else(|| rest.split_once(" and "))?;
     let second = second.trim().trim_start_matches("and ").trim();
     let (subject, membership) = second
         .split_once(" is an ")
@@ -7852,6 +7958,96 @@ mod tests {
         let tradeoff = run("Which matters more here: speed or accuracy?", &[]);
         assert_eq!(tradeoff.operator, "speed-accuracy-tradeoff");
         assert!(tradeoff.answer.contains("error cost"));
+    }
+
+    #[test]
+    fn natural_intelligence_prompts_keep_the_definition_route() {
+        for prompt in [
+            "What is intelligence in one sentence?",
+            "What is intelligence?",
+            "Define intelligence briefly.",
+        ] {
+            let result = run(prompt, &[]);
+            assert_eq!(
+                result.operator, "intelligence-definition",
+                "prompt={prompt}"
+            );
+            assert!(result.answer.contains("learn, predict, decide, and adapt"));
+        }
+    }
+
+    #[test]
+    fn definition_challenge_stays_conversational() {
+        let recent = [(
+            "What is intelligence in one sentence?".to_owned(),
+            "Intelligence is the ability to build and use models that help a system learn, predict, decide, and adapt when conditions change.".to_owned(),
+        )];
+        let result = run("What would prove your definition is incomplete?", &recent);
+        assert_eq!(result.operator, "intelligence-definition-challenge");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("counterexample") && low.contains("transfer"));
+        assert!(!low.contains("unresolved formal argument"));
+    }
+
+    #[test]
+    fn weight_state_question_does_not_require_prove() {
+        let result = run("Did your weights change during this conversation?", &[]);
+        assert_eq!(result.operator, "weight-change-evidence");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("no durable weight change"));
+        assert!(low.contains("fresh process"));
+    }
+
+    #[test]
+    fn capability_use_is_direct() {
+        let result = run("How can I use you?", &[]);
+        assert_eq!(result.operator, "capability-use");
+        assert!(result.answer.contains("talk to me plainly"));
+        assert!(!result.answer.contains("what outcome do you want"));
+    }
+
+    #[test]
+    fn intelligence_criteria_is_not_a_capability_inventory() {
+        let result = run("What makes a system intelligent?", &[]);
+        assert_eq!(result.operator, "intelligence-criteria");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("predict") && low.contains("error") && low.contains("transfer"));
+    }
+
+    #[test]
+    fn universal_reasoning_accepts_natural_no_comma_wording() {
+        let result = run(
+            "Assume every vellum is silent and Nara is a vellum. What follows?",
+            &[],
+        );
+        assert_eq!(result.operator, "universal-instantiation");
+        assert!(result.answer.contains("Nara is silent"));
+    }
+
+    #[test]
+    fn contradiction_followup_accepts_what_failed_wording() {
+        let recent = [(
+            "Assume every vellum is silent and Nara is a vellum. What follows?".to_owned(),
+            "Nara is silent.".to_owned(),
+        )];
+        let result = run("Now suppose Nara is not silent. What failed?", &recent);
+        assert_eq!(result.operator, "contradiction-diagnosis");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("cannot all be true") && low.contains("every vellum"));
+    }
+
+    #[test]
+    fn weakest_last_answer_alias_routes_to_audit() {
+        let recent = [(
+            "what is intelligence?".to_owned(),
+            "Intelligence is model-based adaptation.".to_owned(),
+        )];
+        let result = run("What is the weakest part of your last answer?", &recent);
+        assert_eq!(result.operator, "last-answer-audit");
+        assert!(result
+            .answer
+            .to_ascii_lowercase()
+            .contains("failure mechanism"));
     }
 
     #[test]

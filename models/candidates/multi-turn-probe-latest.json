@@ -1,6 +1,6 @@
 {
   "schema": "perci.multi-turn-probe.v1",
-  "generated_at_utc": "2026-07-21T00:43:57.036943+00:00",
+  "generated_at_utc": "2026-07-22T22:19:19.893442+00:00",
   "threads": 8,
   "pass_first": 8,
   "pass_after_reask": 8,
@@ -75,7 +75,7 @@
       "reasons_first": [],
       "reasons_reask": [],
       "taught": false,
-      "answer_first": "From the last turn: Interfaces earn trust under lag when “done” is checkable without private state. Smallest next step: name the outcome, pick the check that would fail if we're wrong, run it before widening.",
+      "answer_first": "Last useful claim: Interfaces earn trust under lag when “done” is checkable without private state. We're still on Why does trust collapse when communication; what about timeout and retry thought?. The next useful move is small and checkable: catch one live miss from this chat, fix the layer that owns it (operator or voice—not the pack), then re-run the same multi-turn and transfer-suite. Weights stay frozen until a candidate beats held-out under human authorize. Which of those do you want first—",
       "answer_reask": ""
     },
     {
@@ -89,7 +89,7 @@
       "reasons_first": [],
       "reasons_reask": [],
       "taught": false,
-      "answer_first": "The analogy stops transferring at the crystal: a static lattice holds order without life. Shared structure is boundary + exchange + repair; it dies when geometry is treated as biological cause, or when a frozen shape is called maintenance. Mechanism requires energy-driven work, not only form.",
+      "answer_first": "The analogy stops transferring at the crystal: a static lattice holds order without life. The shared pattern is boundary + exchange + repair, but the mechanism is different: life uses energy-driven maintenance while a lattice only holds form. The comparison is useful only while it makes a testable prediction; geometry alone does not predict biological activity.",
       "answer_reask": ""
     },
     {
@@ -103,7 +103,7 @@
       "reasons_first": [],
       "reasons_reask": [],
       "taught": false,
-      "answer_first": "Still on improving Perci. Last solid point: We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, whi… Next useful move: catch one live miss, fix the owning operator/voice layer (not the pack), re-run that multi-turn plus transfer-suite. Weights stay frozen until a held-out win under human authorize. Which first—miss, patch, or retest?",
+      "answer_first": "Last useful claim: We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. We're still on improving Perci / system evolution. The next useful move is small and checkable: catch one live miss from this chat, fix the layer that owns it (operator or voice—not the pack), then re-run the same multi-tu",
       "answer_reask": ""
     },
     {
@@ -127,5 +127,5 @@
     "coherence is not consciousness"
   ],
   "automatic_promotion": false,
-  "receipt_sha256": "b2ddc4ee6a388cfa59c4c60d352b3c18fad6ade8708ab7f1651f0ac9cd757470"
+  "receipt_sha256": "8c8e8e35d699cd7594e97c73f452a5eb074f5668ac2b95d9afab9b9bb772d6b0"
 }
