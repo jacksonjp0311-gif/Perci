@@ -1,6 +1,6 @@
 {
   "schema": "perci.live-probe.v1",
-  "evaluated_at_utc": "2026-07-22T22:19:22.807216+00:00",
+  "evaluated_at_utc": "2026-07-22T23:08:58.768493+00:00",
   "passed": 23,
   "case_count": 23,
   "status": "PASS",
@@ -190,5 +190,5 @@
       "forbidden_hits": []
     }
   ],
-  "receipt_sha256": "48f8c750d8a50974caff74ac028422d3d09bb8b044ba6b999527095e41aa4990"
+  "receipt_sha256": "e49cfb88db65cffc60afea5a2b78033c5a0200ac7fd1048ec078ea8250b155b5"
 }

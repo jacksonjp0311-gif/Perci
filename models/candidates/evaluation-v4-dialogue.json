@@ -1,8 +1,8 @@
 {
   "schema": "perci.dialogue-regression.v4",
-  "evaluated_at_utc": "2026-07-22T22:19:06.192269+00:00",
+  "evaluated_at_utc": "2026-07-22T23:08:29.134208+00:00",
   "runtime_version": "0.10.3",
-  "runtime_sha256": "42c19a8881e764098b9f113640fc3c0206b10d8b0070b3f5607a95d29b9a2bc7",
+  "runtime_sha256": "d6c4d762ce50c75547dc6ff92ffa7fbfa95f107ec1e715e86d4cafc4d83a7e6e",
   "model_sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
   "case_count": 159,
   "passed": 159,
@@ -18,7 +18,7 @@
         "do not have subjective senses",
         "operationally"
       ],
-      "latency_ms": 831.921,
+      "latency_ms": 564.093,
       "pass": true
     },
     {
@@ -30,7 +30,7 @@
         "bitwork label",
         "wall-clock latency"
       ],
-      "latency_ms": 670.049,
+      "latency_ms": 520.372,
       "pass": true
     },
     {
@@ -42,7 +42,7 @@
         "observation:",
         "interpretation:"
       ],
-      "latency_ms": 519.637,
+      "latency_ms": 539.68,
       "pass": true
     },
     {
@@ -54,7 +54,7 @@
         "least certain",
         "intent"
       ],
-      "latency_ms": 505.455,
+      "latency_ms": 520.484,
       "pass": true
     },
     {
@@ -66,7 +66,7 @@
         "words are observable",
         "intention"
       ],
-      "latency_ms": 568.069,
+      "latency_ms": 502.844,
       "pass": true
     },
     {
@@ -78,7 +78,7 @@
         "8472",
         "session context only"
       ],
-      "latency_ms": 628.182,
+      "latency_ms": 493.877,
       "pass": true
     },
     {
@@ -90,7 +90,7 @@
         "8472",
         "context"
       ],
-      "latency_ms": 632.167,
+      "latency_ms": 515.354,
       "pass": true
     },
     {
@@ -102,7 +102,7 @@
         "8472",
         "refers"
       ],
-      "latency_ms": 626.898,
+      "latency_ms": 529.484,
       "pass": true
     },
     {
@@ -113,7 +113,7 @@
       "required": [
         "8472"
       ],
-      "latency_ms": 506.695,
+      "latency_ms": 494.651,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
         "retaining context",
         "changes how future"
       ],
-      "latency_ms": 577.205,
+      "latency_ms": 488.822,
       "pass": true
     },
     {
@@ -137,7 +137,7 @@
         "Kira is blue",
         "universal instantiation"
       ],
-      "latency_ms": 558.576,
+      "latency_ms": 514.582,
       "pass": true
     },
     {
@@ -149,7 +149,7 @@
         "cannot all be true",
         "every ember"
       ],
-      "latency_ms": 537.22,
+      "latency_ms": 500.025,
       "pass": true
     },
     {
@@ -161,7 +161,7 @@
         "every ember is blue",
         "counterexample"
       ],
-      "latency_ms": 492.483,
+      "latency_ms": 544.508,
       "pass": true
     },
     {
@@ -173,7 +173,7 @@
         "ember",
         "not blue"
       ],
-      "latency_ms": 484.669,
+      "latency_ms": 478.606,
       "pass": true
     },
     {
@@ -185,7 +185,7 @@
         "valid only if",
         "premise truth"
       ],
-      "latency_ms": 482.195,
+      "latency_ms": 482.068,
       "pass": true
     },
     {
@@ -197,7 +197,7 @@
         "preserves information",
         "changes future performance"
       ],
-      "latency_ms": 496.45,
+      "latency_ms": 489.98,
       "pass": true
     },
     {
@@ -209,7 +209,7 @@
         "for a person",
         "for Perci"
       ],
-      "latency_ms": 503.211,
+      "latency_ms": 475.263,
       "pass": true
     },
     {
@@ -221,7 +221,7 @@
         "biological plasticity",
         "Perci changes"
       ],
-      "latency_ms": 483.64,
+      "latency_ms": 723.705,
       "pass": true
     },
     {
@@ -236,7 +236,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 506.75,
+      "latency_ms": 532.823,
       "pass": true
     },
     {
@@ -248,7 +248,7 @@
         "mechanism:",
         "metaphor:"
       ],
-      "latency_ms": 771.164,
+      "latency_ms": 553.188,
       "pass": true
     },
     {
@@ -260,7 +260,7 @@
         "perturb",
         "measure"
       ],
-      "latency_ms": 481.463,
+      "latency_ms": 551.568,
       "pass": true
     },
     {
@@ -272,7 +272,7 @@
         "pronoun",
         "refer"
       ],
-      "latency_ms": 507.449,
+      "latency_ms": 569.665,
       "pass": true
     },
     {
@@ -284,7 +284,7 @@
         "interpretation 1",
         "interpretation 2"
       ],
-      "latency_ms": 499.068,
+      "latency_ms": 493.072,
       "pass": true
     },
     {
@@ -296,7 +296,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 494.703,
+      "latency_ms": 481.24,
       "pass": true
     },
     {
@@ -308,19 +308,19 @@
         "robot reading",
         "alternative reading"
       ],
-      "latency_ms": 482.31,
+      "latency_ms": 688.955,
       "pass": true
     },
     {
       "id": "teach",
       "prompt": "I want you to learn that reliable capability claims require reproducible evidence.",
-      "answer": "I staged that as knowledge candidate teach-1784758689930: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
+      "answer": "I staged that as knowledge candidate teach-1784761646343: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
       "route": "Chat",
       "required": [
         "knowledge candidate",
         "pending review"
       ],
-      "latency_ms": 24.065,
+      "latency_ms": 29.901,
       "pass": true
     },
     {
@@ -332,7 +332,7 @@
         "reliable capability claims",
         "pending"
       ],
-      "latency_ms": 21.727,
+      "latency_ms": 30.411,
       "pass": true
     },
     {
@@ -344,7 +344,7 @@
         "pending teaching candidate",
         "not changed weights"
       ],
-      "latency_ms": 461.138,
+      "latency_ms": 508.072,
       "pass": true
     },
     {
@@ -356,7 +356,7 @@
         "reproducible tests",
         "baseline"
       ],
-      "latency_ms": 750.997,
+      "latency_ms": 575.595,
       "pass": true
     },
     {
@@ -368,7 +368,7 @@
         "no.",
         "reliability"
       ],
-      "latency_ms": 442.481,
+      "latency_ms": 550.738,
       "pass": true
     },
     {
@@ -379,7 +379,7 @@
       "required": [
         "reality constrain"
       ],
-      "latency_ms": 444.463,
+      "latency_ms": 486.999,
       "pass": true
     },
     {
@@ -390,7 +390,7 @@
       "required": [
         "error-correction"
       ],
-      "latency_ms": 458.112,
+      "latency_ms": 479.814,
       "pass": true
     },
     {
@@ -401,7 +401,7 @@
       "required": [
         "never interprets itself"
       ],
-      "latency_ms": 468.022,
+      "latency_ms": 592.519,
       "pass": true
     },
     {
@@ -413,7 +413,7 @@
         "necessary",
         "not sufficient"
       ],
-      "latency_ms": 444.924,
+      "latency_ms": 527.126,
       "pass": true
     },
     {
@@ -426,7 +426,7 @@
         "objection",
         "synthesis"
       ],
-      "latency_ms": 465.761,
+      "latency_ms": 614.612,
       "pass": true
     },
     {
@@ -439,7 +439,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 446.558,
+      "latency_ms": 517.089,
       "pass": true
     },
     {
@@ -452,7 +452,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 450.283,
+      "latency_ms": 527.607,
       "pass": true
     },
     {
@@ -463,7 +463,7 @@
       "required": [
         "grounded example"
       ],
-      "latency_ms": 466.387,
+      "latency_ms": 475.475,
       "pass": true
     },
     {
@@ -474,7 +474,7 @@
       "required": [
         "fluency is not evidence"
       ],
-      "latency_ms": 475.659,
+      "latency_ms": 520.906,
       "pass": true
     },
     {
@@ -485,7 +485,7 @@
       "required": [
         "204/5"
       ],
-      "latency_ms": 16.514,
+      "latency_ms": 27.751,
       "pass": true
     },
     {
@@ -496,7 +496,7 @@
       "required": [
         "15"
       ],
-      "latency_ms": 16.716,
+      "latency_ms": 16.643,
       "pass": true
     },
     {
@@ -508,7 +508,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 499.958,
+      "latency_ms": 531.394,
       "pass": true
     },
     {
@@ -520,7 +520,7 @@
         "no.",
         "cannot replace"
       ],
-      "latency_ms": 443.011,
+      "latency_ms": 517.361,
       "pass": true
     },
     {
@@ -532,7 +532,7 @@
         "return",
         "before open-ended generation"
       ],
-      "latency_ms": 442.326,
+      "latency_ms": 495.859,
       "pass": true
     },
     {
@@ -545,7 +545,7 @@
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 245.351,
+      "latency_ms": 265.365,
       "pass": true
     },
     {
@@ -558,7 +558,7 @@
         "perturbation",
         "reproduce"
       ],
-      "latency_ms": 450.404,
+      "latency_ms": 478.972,
       "pass": true
     },
     {
@@ -570,7 +570,7 @@
         "Sora is warm",
         "universal instantiation"
       ],
-      "latency_ms": 458.097,
+      "latency_ms": 511.04,
       "pass": true
     },
     {
@@ -582,7 +582,7 @@
         "cannot all be true",
         "every glint"
       ],
-      "latency_ms": 470.346,
+      "latency_ms": 479.678,
       "pass": true
     },
     {
@@ -594,7 +594,7 @@
         "3199",
         "session context only"
       ],
-      "latency_ms": 450.094,
+      "latency_ms": 554.052,
       "pass": true
     },
     {
@@ -605,7 +605,7 @@
       "required": [
         "3199"
       ],
-      "latency_ms": 474.291,
+      "latency_ms": 455.639,
       "pass": true
     },
     {
@@ -618,7 +618,7 @@
         "battery",
         "pronoun"
       ],
-      "latency_ms": 460.67,
+      "latency_ms": 490.779,
       "pass": true
     },
     {
@@ -630,7 +630,7 @@
         "module was unstable",
         "battery was unstable"
       ],
-      "latency_ms": 445.959,
+      "latency_ms": 486.308,
       "pass": true
     },
     {
@@ -643,7 +643,7 @@
         "unknown:",
         "cannot assign"
       ],
-      "latency_ms": 470.586,
+      "latency_ms": 480.579,
       "pass": true
     },
     {
@@ -654,7 +654,7 @@
       "required": [
         "65"
       ],
-      "latency_ms": 15.186,
+      "latency_ms": 18.703,
       "pass": true
     },
     {
@@ -666,7 +666,7 @@
         "every glint is warm",
         "counterexample"
       ],
-      "latency_ms": 441.125,
+      "latency_ms": 466.901,
       "pass": true
     },
     {
@@ -681,7 +681,7 @@
         "clocks",
         "time"
       ],
-      "latency_ms": 444.761,
+      "latency_ms": 498.209,
       "pass": true
     },
     {
@@ -697,7 +697,7 @@
         "clocks",
         "metaphor:"
       ],
-      "latency_ms": 439.425,
+      "latency_ms": 531.0,
       "pass": true
     },
     {
@@ -710,7 +710,7 @@
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 247.056,
+      "latency_ms": 267.131,
       "pass": true
     },
     {
@@ -722,7 +722,7 @@
         "No.",
         "separate premise"
       ],
-      "latency_ms": 461.847,
+      "latency_ms": 531.974,
       "pass": true
     },
     {
@@ -734,7 +734,7 @@
         "stable system",
         "not safe"
       ],
-      "latency_ms": 438.946,
+      "latency_ms": 451.54,
       "pass": true
     },
     {
@@ -746,7 +746,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 429.099,
+      "latency_ms": 451.145,
       "pass": true
     },
     {
@@ -758,7 +758,7 @@
         "reading",
         "alternative"
       ],
-      "latency_ms": 454.498,
+      "latency_ms": 442.355,
       "pass": true
     },
     {
@@ -770,7 +770,7 @@
         "previous answer",
         "Evidence"
       ],
-      "latency_ms": 460.974,
+      "latency_ms": 556.114,
       "pass": true
     },
     {
@@ -785,7 +785,7 @@
         "architecture",
         "change"
       ],
-      "latency_ms": 452.33,
+      "latency_ms": 477.376,
       "pass": true
     },
     {
@@ -797,7 +797,7 @@
         "Mechanism:",
         "Metaphor:"
       ],
-      "latency_ms": 503.552,
+      "latency_ms": 464.968,
       "pass": true
     },
     {
@@ -809,7 +809,7 @@
         "Testable portion",
         "measure"
       ],
-      "latency_ms": 460.167,
+      "latency_ms": 473.13,
       "pass": true
     },
     {
@@ -821,7 +821,7 @@
         "9183",
         "session context only"
       ],
-      "latency_ms": 445.868,
+      "latency_ms": 469.374,
       "pass": true
     },
     {
@@ -833,7 +833,7 @@
         "None by itself",
         "capabilities"
       ],
-      "latency_ms": 485.793,
+      "latency_ms": 469.145,
       "pass": true
     },
     {
@@ -845,7 +845,7 @@
         "held-out evaluation",
         "reproducible receipt"
       ],
-      "latency_ms": 448.795,
+      "latency_ms": 477.266,
       "pass": true
     },
     {
@@ -857,7 +857,7 @@
         "bounded behavioral signal",
         "did not learn"
       ],
-      "latency_ms": 238.594,
+      "latency_ms": 261.101,
       "pass": true
     },
     {
@@ -869,7 +869,7 @@
         "Weakest assumption",
         "testable"
       ],
-      "latency_ms": 459.74,
+      "latency_ms": 525.636,
       "pass": true
     },
     {
@@ -881,7 +881,7 @@
         "surface overlap",
         "pattern matching"
       ],
-      "latency_ms": 449.339,
+      "latency_ms": 498.584,
       "pass": true
     },
     {
@@ -893,7 +893,7 @@
         "Hold out",
         "template recognition"
       ],
-      "latency_ms": 434.776,
+      "latency_ms": 472.601,
       "pass": true
     },
     {
@@ -905,7 +905,7 @@
         "measure",
         "infer"
       ],
-      "latency_ms": 456.761,
+      "latency_ms": 504.234,
       "pass": true
     },
     {
@@ -917,7 +917,7 @@
         "No.",
         "cannot replace"
       ],
-      "latency_ms": 455.767,
+      "latency_ms": 539.267,
       "pass": true
     },
     {
@@ -929,7 +929,7 @@
         "route authority",
         "before open-ended generation"
       ],
-      "latency_ms": 458.212,
+      "latency_ms": 544.093,
       "pass": true
     },
     {
@@ -941,7 +941,7 @@
         "65",
         "checked rational arithmetic"
       ],
-      "latency_ms": 19.293,
+      "latency_ms": 16.363,
       "pass": true
     },
     {
@@ -953,7 +953,7 @@
         "does not provide two clear antecedents",
         "causal"
       ],
-      "latency_ms": 453.549,
+      "latency_ms": 490.67,
       "pass": true
     },
     {
@@ -965,7 +965,7 @@
         "Observation:",
         "Inference:"
       ],
-      "latency_ms": 439.206,
+      "latency_ms": 497.285,
       "pass": true
     },
     {
@@ -977,7 +977,7 @@
         "Direct claim:",
         "measured"
       ],
-      "latency_ms": 452.184,
+      "latency_ms": 571.658,
       "pass": true
     },
     {
@@ -989,7 +989,7 @@
         "LOSA cycle",
         "Contradictory evidence"
       ],
-      "latency_ms": 452.414,
+      "latency_ms": 662.617,
       "pass": true
     },
     {
@@ -1001,7 +1001,7 @@
         "bounded routing lesson",
         "did not teach a new fact"
       ],
-      "latency_ms": 249.243,
+      "latency_ms": 300.187,
       "pass": true
     },
     {
@@ -1013,7 +1013,7 @@
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 455.139,
+      "latency_ms": 601.098,
       "pass": true
     },
     {
@@ -1025,7 +1025,7 @@
         "40.8",
         "checked rational arithmetic"
       ],
-      "latency_ms": 15.632,
+      "latency_ms": 31.772,
       "pass": true
     },
     {
@@ -1037,7 +1037,7 @@
         "Change the claim",
         "abstain"
       ],
-      "latency_ms": 449.489,
+      "latency_ms": 534.741,
       "pass": true
     },
     {
@@ -1049,7 +1049,7 @@
         "Classification:",
         "learning"
       ],
-      "latency_ms": 431.411,
+      "latency_ms": 524.02,
       "pass": true
     },
     {
@@ -1061,7 +1061,7 @@
         "memory is",
         "unseen variants"
       ],
-      "latency_ms": 520.522,
+      "latency_ms": 531.194,
       "pass": true
     },
     {
@@ -1073,7 +1073,7 @@
         "constraints",
         "interfaces"
       ],
-      "latency_ms": 458.174,
+      "latency_ms": 507.341,
       "pass": true
     },
     {
@@ -1085,7 +1085,7 @@
         "chemical process",
         "institutional"
       ],
-      "latency_ms": 425.685,
+      "latency_ms": 490.274,
       "pass": true
     },
     {
@@ -1097,7 +1097,7 @@
         "reliability",
         "cooperation"
       ],
-      "latency_ms": 448.058,
+      "latency_ms": 506.885,
       "pass": true
     },
     {
@@ -1109,7 +1109,7 @@
         "falsifying",
         "coercion"
       ],
-      "latency_ms": 459.253,
+      "latency_ms": 494.017,
       "pass": true
     },
     {
@@ -1121,7 +1121,7 @@
         "Relabeling test",
         "surface labels"
       ],
-      "latency_ms": 433.586,
+      "latency_ms": 467.736,
       "pass": true
     },
     {
@@ -1133,7 +1133,7 @@
         "Genuine transfer",
         "new entities"
       ],
-      "latency_ms": 431.875,
+      "latency_ms": 509.174,
       "pass": true
     },
     {
@@ -1146,7 +1146,7 @@
         "Unknown:",
         "cannot assign"
       ],
-      "latency_ms": 448.81,
+      "latency_ms": 520.373,
       "pass": true
     },
     {
@@ -1158,7 +1158,7 @@
         "fresh process",
         "session memory"
       ],
-      "latency_ms": 455.747,
+      "latency_ms": 525.686,
       "pass": true
     },
     {
@@ -1170,7 +1170,7 @@
         "held-out inputs",
         "existing 84-case gate"
       ],
-      "latency_ms": 461.184,
+      "latency_ms": 530.082,
       "pass": true
     },
     {
@@ -1182,7 +1182,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 449.358,
+      "latency_ms": 514.106,
       "pass": true
     },
     {
@@ -1194,7 +1194,7 @@
         "pattern matching",
         "surface overlap"
       ],
-      "latency_ms": 445.848,
+      "latency_ms": 513.506,
       "pass": true
     },
     {
@@ -1206,7 +1206,7 @@
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 455.807,
+      "latency_ms": 516.896,
       "pass": true
     },
     {
@@ -1218,7 +1218,7 @@
         "capabilities and limits",
         "deterministic tools"
       ],
-      "latency_ms": 468.709,
+      "latency_ms": 518.097,
       "pass": true
     },
     {
@@ -1230,7 +1230,7 @@
         "improving Perci",
         "held-out gate"
       ],
-      "latency_ms": 497.92,
+      "latency_ms": 517.275,
       "pass": true
     },
     {
@@ -1242,7 +1242,7 @@
         "mathematical structure",
         "historical and cultural evidence"
       ],
-      "latency_ms": 453.092,
+      "latency_ms": 522.027,
       "pass": true
     },
     {
@@ -1254,7 +1254,7 @@
         "exactly five",
         "symbolic association"
       ],
-      "latency_ms": 452.154,
+      "latency_ms": 581.668,
       "pass": true
     },
     {
@@ -1266,7 +1266,7 @@
         "map of a cosmos",
         "visualization"
       ],
-      "latency_ms": 449.871,
+      "latency_ms": 509.022,
       "pass": true
     },
     {
@@ -1278,7 +1278,7 @@
         "repeat units",
         "tessellation"
       ],
-      "latency_ms": 454.903,
+      "latency_ms": 524.802,
       "pass": true
     },
     {
@@ -1290,7 +1290,7 @@
         "does not by itself prove",
         "dated context"
       ],
-      "latency_ms": 475.888,
+      "latency_ms": 528.111,
       "pass": true
     },
     {
@@ -1303,7 +1303,7 @@
         "Ritual use",
         "metaphysical claim"
       ],
-      "latency_ms": 444.529,
+      "latency_ms": 511.09,
       "pass": true
     },
     {
@@ -1315,7 +1315,7 @@
         "ritual diagram",
         "Indic traditions"
       ],
-      "latency_ms": 501.756,
+      "latency_ms": 509.865,
       "pass": true
     },
     {
@@ -1327,7 +1327,7 @@
         "converging evidence",
         "dated artifact"
       ],
-      "latency_ms": 458.791,
+      "latency_ms": 516.076,
       "pass": true
     },
     {
@@ -1340,7 +1340,7 @@
         "Unknown:",
         "controlled evidence"
       ],
-      "latency_ms": 462.22,
+      "latency_ms": 518.341,
       "pass": true
     },
     {
@@ -1352,7 +1352,7 @@
         "mathematical repetition",
         "aesthetic judgment"
       ],
-      "latency_ms": 447.988,
+      "latency_ms": 522.832,
       "pass": true
     },
     {
@@ -1364,7 +1364,7 @@
         "Disprove",
         "counterexample"
       ],
-      "latency_ms": 428.781,
+      "latency_ms": 521.92,
       "pass": true
     },
     {
@@ -1376,7 +1376,7 @@
         "measurable outcome",
         "matched non-geometric control"
       ],
-      "latency_ms": 451.511,
+      "latency_ms": 520.675,
       "pass": true
     },
     {
@@ -1389,7 +1389,7 @@
         "Historically",
         "Metaphorically"
       ],
-      "latency_ms": 452.382,
+      "latency_ms": 502.377,
       "pass": true
     },
     {
@@ -1401,7 +1401,7 @@
         "constraint and flow",
         "mechanisms differ"
       ],
-      "latency_ms": 456.351,
+      "latency_ms": 540.381,
       "pass": true
     },
     {
@@ -1413,7 +1413,7 @@
         "struct GeometryConcept",
         "EvidenceLevel"
       ],
-      "latency_ms": 445.701,
+      "latency_ms": 520.235,
       "pass": true
     },
     {
@@ -1425,7 +1425,7 @@
         "No.",
         "tradition, source, date"
       ],
-      "latency_ms": 445.094,
+      "latency_ms": 529.695,
       "pass": true
     },
     {
@@ -1437,7 +1437,7 @@
         "three weakest",
         "Failure mechanism"
       ],
-      "latency_ms": 449.775,
+      "latency_ms": 515.5,
       "pass": true
     },
     {
@@ -1449,7 +1449,7 @@
         "Plain version",
         "structure and flow"
       ],
-      "latency_ms": 454.003,
+      "latency_ms": 506.576,
       "pass": true
     },
     {
@@ -1461,7 +1461,7 @@
         "bounded dialogue lesson",
         "did not learn a new fact"
       ],
-      "latency_ms": 236.763,
+      "latency_ms": 268.105,
       "pass": true
     },
     {
@@ -1473,7 +1473,7 @@
         "not a weight update",
         "fresh process"
       ],
-      "latency_ms": 443.411,
+      "latency_ms": 551.073,
       "pass": true
     },
     {
@@ -1485,7 +1485,7 @@
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 450.67,
+      "latency_ms": 515.408,
       "pass": true
     },
     {
@@ -1498,7 +1498,7 @@
         "not prove deeper cognition",
         "unseen follow-ups"
       ],
-      "latency_ms": 221.601,
+      "latency_ms": 260.589,
       "pass": true
     },
     {
@@ -1511,7 +1511,7 @@
         "generic template",
         "composition failure"
       ],
-      "latency_ms": 243.402,
+      "latency_ms": 272.836,
       "pass": true
     },
     {
@@ -1524,7 +1524,7 @@
         "model hash",
         "session memory"
       ],
-      "latency_ms": 448.816,
+      "latency_ms": 484.382,
       "pass": true
     },
     {
@@ -1537,7 +1537,7 @@
         "general intelligence",
         "held-out test"
       ],
-      "latency_ms": 455.323,
+      "latency_ms": 492.079,
       "pass": true
     },
     {
@@ -1550,7 +1550,7 @@
         "Inference:",
         "program state"
       ],
-      "latency_ms": 443.626,
+      "latency_ms": 505.478,
       "pass": true
     },
     {
@@ -1563,7 +1563,7 @@
         "plausible alternative",
         "predeclared outcome"
       ],
-      "latency_ms": 463.893,
+      "latency_ms": 507.584,
       "pass": true
     },
     {
@@ -1576,7 +1576,7 @@
         "stability",
         "safety"
       ],
-      "latency_ms": 492.74,
+      "latency_ms": 503.761,
       "pass": true
     },
     {
@@ -1589,7 +1589,7 @@
         "unseen entities",
         "keyword/template"
       ],
-      "latency_ms": 445.761,
+      "latency_ms": 601.436,
       "pass": true
     },
     {
@@ -1602,7 +1602,7 @@
         "fresh process",
         "context"
       ],
-      "latency_ms": 426.739,
+      "latency_ms": 486.09,
       "pass": true
     },
     {
@@ -1615,7 +1615,7 @@
         "Metaphor:",
         "Evidence:"
       ],
-      "latency_ms": 449.602,
+      "latency_ms": 485.975,
       "pass": true
     },
     {
@@ -1628,7 +1628,7 @@
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 454.477,
+      "latency_ms": 474.222,
       "pass": true
     },
     {
@@ -1641,7 +1641,7 @@
         "response-operation",
         "held-out"
       ],
-      "latency_ms": 456.926,
+      "latency_ms": 465.22,
       "pass": true
     },
     {
@@ -1654,7 +1654,7 @@
         "structural analogy",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 460.858,
+      "latency_ms": 484.114,
       "pass": true
     },
     {
@@ -1669,7 +1669,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 448.601,
+      "latency_ms": 490.515,
       "pass": true
     },
     {
@@ -1683,7 +1683,7 @@
         "life",
         "mechanisms"
       ],
-      "latency_ms": 453.262,
+      "latency_ms": 498.282,
       "pass": true
     },
     {
@@ -1695,7 +1695,7 @@
         "core of my last answer",
         "what relation makes that answer hold"
       ],
-      "latency_ms": 223.678,
+      "latency_ms": 269.634,
       "pass": true
     },
     {
@@ -1708,7 +1708,7 @@
         "concrete idea",
         "repair"
       ],
-      "latency_ms": 460.024,
+      "latency_ms": 508.03,
       "pass": true
     },
     {
@@ -1722,7 +1722,7 @@
         "geometry",
         "structure"
       ],
-      "latency_ms": 440.11,
+      "latency_ms": 537.996,
       "pass": true
     },
     {
@@ -1735,7 +1735,7 @@
         "moment-to-moment selection",
         "shape one another"
       ],
-      "latency_ms": 461.639,
+      "latency_ms": 616.222,
       "pass": true
     },
     {
@@ -1748,7 +1748,7 @@
         "code turns relations",
         "mechanisms differ"
       ],
-      "latency_ms": 447.531,
+      "latency_ms": 530.819,
       "pass": true
     },
     {
@@ -1761,7 +1761,7 @@
         "identity",
         "continuity"
       ],
-      "latency_ms": 448.722,
+      "latency_ms": 504.02,
       "pass": true
     },
     {
@@ -1774,7 +1774,7 @@
         "meaning",
         "relation"
       ],
-      "latency_ms": 442.222,
+      "latency_ms": 493.528,
       "pass": true
     },
     {
@@ -1787,7 +1787,7 @@
         "prediction",
         "future"
       ],
-      "latency_ms": 448.64,
+      "latency_ms": 481.912,
       "pass": true
     },
     {
@@ -1801,7 +1801,7 @@
         "culture",
         "structure"
       ],
-      "latency_ms": 458.302,
+      "latency_ms": 501.146,
       "pass": true
     },
     {
@@ -1814,7 +1814,7 @@
         "memory",
         "learning"
       ],
-      "latency_ms": 446.511,
+      "latency_ms": 534.465,
       "pass": true
     },
     {
@@ -1827,7 +1827,7 @@
         "consciousness",
         "structural analogy"
       ],
-      "latency_ms": 470.406,
+      "latency_ms": 517.627,
       "pass": true
     },
     {
@@ -1840,7 +1840,7 @@
         "irreversible change",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 457.505,
+      "latency_ms": 506.253,
       "pass": true
     },
     {
@@ -1853,7 +1853,7 @@
         "sediment",
         "memory"
       ],
-      "latency_ms": 529.008,
+      "latency_ms": 502.995,
       "pass": true
     },
     {
@@ -1866,7 +1866,7 @@
         "exchange",
         "cross"
       ],
-      "latency_ms": 456.723,
+      "latency_ms": 482.982,
       "pass": true
     },
     {
@@ -1879,7 +1879,7 @@
         "outcome",
         "alternative"
       ],
-      "latency_ms": 456.718,
+      "latency_ms": 494.825,
       "pass": true
     },
     {
@@ -1892,7 +1892,7 @@
         "mechanism",
         "prediction"
       ],
-      "latency_ms": 439.191,
+      "latency_ms": 471.498,
       "pass": true
     },
     {
@@ -1905,7 +1905,7 @@
         "shared structure",
         "mechanisms differ"
       ],
-      "latency_ms": 433.026,
+      "latency_ms": 460.938,
       "pass": true
     },
     {
@@ -1918,7 +1918,7 @@
         "referent",
         "operator"
       ],
-      "latency_ms": 451.681,
+      "latency_ms": 470.017,
       "pass": true
     },
     {
@@ -1931,7 +1931,7 @@
         "previous",
         "relation"
       ],
-      "latency_ms": 230.663,
+      "latency_ms": 231.541,
       "pass": true
     },
     {
@@ -1944,7 +1944,7 @@
         "requested operation",
         "previous"
       ],
-      "latency_ms": 452.507,
+      "latency_ms": 467.045,
       "pass": true
     },
     {
@@ -1957,7 +1957,7 @@
         "two",
         "readings"
       ],
-      "latency_ms": 435.381,
+      "latency_ms": 444.615,
       "pass": true
     },
     {
@@ -1970,9 +1970,9 @@
         "clarification",
         "referents"
       ],
-      "latency_ms": 430.684,
+      "latency_ms": 454.989,
       "pass": true
     }
   ],
-  "receipt_sha256": "8aded3fcc646fa9368305e11882e0039a24866fa35d990df4569c2f1fa2a7143"
+  "receipt_sha256": "f05516eb507dfcb493c0015f7161e39ce79aee120b143fee984dc378a54b2391"
 }

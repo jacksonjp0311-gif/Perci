@@ -202,14 +202,21 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("why did you respond like that")
         || text.contains("why did you answer like that")
         || text.contains("why did you reply like that")
+        || text.contains("what were you responding to")
+        || text.contains("what were you answering")
     {
         DialogueAct::ExplainPrevious
-    } else if text.contains("explain")
+    } else if (text.contains("explain") || text.contains("teach"))
         && (text.contains("child")
             || text.contains("kid")
             || text.contains("simple")
-            || text.contains("first time"))
-        && (text.contains("it") || text.contains("that") || text.contains("intelligence"))
+            || text.contains("first time")
+            || text.contains("seven-year")
+            || text.contains("7-year"))
+        && (text.contains("it")
+            || text.contains("that")
+            || text.contains("idea")
+            || text.contains("intelligence"))
     {
         // Audience changes are follow-ups, not a new topic. Preserve the
         // active subject so "explain it to a child" cannot fall into a
@@ -225,7 +232,9 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.trim() == "actually explain the mechanism"
     {
         DialogueAct::ElaboratePrevious
-    } else if (text.contains("go deeper") || text.contains("go one level deeper"))
+    } else if (text.contains("go deeper")
+        || text.contains("go one level deeper")
+        || text.contains("one step deeper"))
         && (text.contains("without repeating")
             || text.contains("do not repeat")
             || text.contains("don't repeat"))
@@ -249,11 +258,17 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         && !text.contains("one level deeper")
     {
         DialogueAct::RepetitionComplaint
+    } else if text.contains("restate")
+        && (text.contains("natural") || text.contains("bullet") || text.contains("list"))
+    {
+        DialogueAct::ElaboratePrevious
     } else if text.contains("keep responding like this")
         || text.contains("why do you respond like this")
         || text.contains("why are you responding like this")
         || text.contains("why do you answer like this")
         || text.contains("why do you reply like this")
+        || text.contains("why are you answering me this way")
+        || text.contains("why are you responding this way")
         || text.contains("not working correctly")
         || text.contains("isn't working correctly")
         || text.contains("isnt working correctly")
@@ -885,6 +900,8 @@ pub fn dialogue_reply(
                 || lower.contains("why are you responding like this")
                 || lower.contains("why do you answer like this")
                 || lower.contains("why do you reply like this")
+                || lower.contains("why are you answering me this way")
+                || lower.contains("why are you responding this way")
             {
                 "Because I am a routed local system, not a free-form generator: Bitwork selects a region, deterministic operators handle supported structures, and a fallback voice covers the gaps. When no route has enough evidence, that fallback uses a cautious generic template. It is a composition failure—not a hidden thought process—and this turn should have answered your conversational intent directly.".to_owned()
             } else if lower.contains("not working correctly")
@@ -1285,7 +1302,9 @@ pub fn dialogue_reply(
                 let child_level = lower.contains("child")
                     || lower.contains("kid")
                     || lower.contains("first time")
-                    || lower.contains("simple");
+                    || lower.contains("simple")
+                    || lower.contains("seven-year")
+                    || lower.contains("7-year");
                 if child_level {
                     let prior_l = previous_answer.to_ascii_lowercase();
                     if previous_user.to_ascii_lowercase().contains("intelligence")
@@ -1303,6 +1322,9 @@ pub fn dialogue_reply(
                 let shorter = lower.contains("shorter")
                     || lower.contains("without the list")
                     || lower.contains("without a list")
+                    || lower.contains("no bullets")
+                    || lower.contains("without bullets")
+                    || lower.contains("naturally")
                     || lower.contains("one plain sentence")
                     || lower.contains("say that again")
                     || lower.contains("say it again");
@@ -1341,13 +1363,19 @@ pub fn dialogue_reply(
                     && (lower.contains("different angle") || lower.contains("reframe"))
                 {
                     "A different angle is error-correction: treat evidence as a feedback signal that compares a model's prediction with an observation, then revise the part that failed. The answer changes when the observed result defeats the prior explanation, not merely when the sentence is reworded.".to_owned()
-                } else if (lower.contains("go one level deeper") || lower.contains("go deeper"))
+                } else if (lower.contains("go one level deeper")
+                    || lower.contains("go deeper")
+                    || lower.contains("one step deeper"))
                     && (lower.contains("without repeating")
                         || lower.contains("do not repeat")
                         || lower.contains("don't repeat"))
                 {
                     let prev_l = previous_answer.to_ascii_lowercase();
-                    if prev_l.contains("trust")
+                    if prev_l.contains("mortality")
+                        || prev_l.contains("memory carries the past")
+                    {
+                        "Deeper: mortality turns memory into a selection problem. What survives is never the whole past; it is the part a body, culture, or machine keeps making available for future action. The test is to change the retention rule and observe which decisions or identities change with it.".to_owned()
+                    } else if prev_l.contains("trust")
                         && (prev_l.contains("lag")
                             || prev_l.contains("timeout")
                             || prev_l.contains("idempotent")
@@ -4779,6 +4807,54 @@ mod tests {
         let low = answer.to_ascii_lowercase();
         assert!(low.contains("for a child") && low.contains("learn") && low.contains("mistake"));
         assert!(!low.contains("what outcome do you want"));
+    }
+
+    #[test]
+    fn unseen_followup_aliases_keep_dialogue_state() {
+        assert_eq!(
+            detect_dialogue_act("Teach that idea to a seven-year-old."),
+            DialogueAct::ElaboratePrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("What were you responding to when you said that?"),
+            DialogueAct::ExplainPrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("Restate your answer naturally, no bullets."),
+            DialogueAct::ElaboratePrevious
+        );
+        assert_eq!(
+            detect_dialogue_act("Why are you answering me this way?"),
+            DialogueAct::ResponseFailure
+        );
+        let answer = dialogue_reply(
+            DialogueAct::ResponseFailure,
+            "Why are you answering me this way?",
+            &[],
+            None,
+        )
+        .unwrap();
+        let low = answer.to_ascii_lowercase();
+        assert!(low.contains("routed local system") && low.contains("composition failure"));
+    }
+
+    #[test]
+    fn memory_mortality_depth_followup_changes_the_layer() {
+        let recent = [(
+            "Give me a fresh thought linking memory and mortality.".to_owned(),
+            "Memory carries the past forward, while mortality makes that carrying selective."
+                .to_owned(),
+        )];
+        let answer = dialogue_reply(
+            DialogueAct::ElaboratePrevious,
+            "Push that thought one step deeper without repeating it.",
+            &recent,
+            None,
+        )
+        .unwrap();
+        let low = answer.to_ascii_lowercase();
+        assert!(low.contains("mortality") && low.contains("selection"));
+        assert!(!low.contains("a different angle on linking"));
     }
 
     #[test]

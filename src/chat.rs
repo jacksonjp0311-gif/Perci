@@ -28,6 +28,11 @@ fn preserve_operator_prose(operator: &str) -> bool {
             | "weight-change-evidence"
             | "capability-use"
             | "intelligence-criteria"
+            | "memory-mortality-insight"
+            | "memorization-challenge"
+            | "relation-transfer-test"
+            | "context-only-audit"
+            | "natural-restatement"
     )
 }
 

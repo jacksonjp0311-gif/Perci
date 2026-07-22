@@ -180,6 +180,22 @@ pub fn try_deliberate(
     // a topic such as "code" or "science" from replacing the operation the
     // person actually requested.
 
+    if looks_natural_restatement(&text) && !recent.is_empty() {
+        return Some(natural_restatement_answer(recent));
+    }
+
+    // Audits of the previous answer outrank talk-layer policy. A prompt can
+    // mention "response" while still asking for a concrete self-critique.
+    if (text.contains("last answer") || text.contains("last response"))
+        && ((text.contains("what part") && text.contains("weak"))
+            || text.contains("weakest part")
+            || text.contains("helped least")
+            || text.contains("least useful")
+            || text.contains("least helpful"))
+    {
+        return Some(review_last_answer(recent));
+    }
+
     // When the active thread is a speech repair, bind a next-step question to
     // that thread instead of returning the generic cross-layer triage card.
     if looks_conversation_next_step(&text, recent) {
@@ -249,6 +265,18 @@ pub fn try_deliberate(
 
     if looks_intelligence_criteria_question(&text) {
         return Some(intelligence_criteria_answer());
+    }
+
+    if looks_memory_mortality_insight(&text) {
+        return Some(memory_mortality_insight_answer());
+    }
+
+    if looks_memorization_challenge(&text) {
+        return Some(memorization_challenge_answer());
+    }
+
+    if looks_relation_transfer_question(&text) {
+        return Some(relation_transfer_answer());
     }
 
     if looks_speed_accuracy_tradeoff(&text) {
@@ -640,8 +668,12 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .confidence(0.99),
         );
     }
-    if text.contains("last answer")
-        && ((text.contains("what part") && text.contains("weak")) || text.contains("weakest part"))
+    if (text.contains("last answer") || text.contains("last response"))
+        && ((text.contains("what part") && text.contains("weak"))
+            || text.contains("weakest part")
+            || text.contains("helped least")
+            || text.contains("least useful")
+            || text.contains("least helpful"))
     {
         return Some(review_last_answer(recent));
     }
@@ -675,6 +707,8 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         );
     }
     if (text.contains("what did you learn")
+        || text.contains("what did this conversation teach")
+        || text.contains("what did this exchange teach")
         || (text.contains("summarize")
             && (text.contains("learned") || text.contains("learn"))
             && (text.contains("context") || text.contains("stayed") || text.contains("retained"))))
@@ -689,6 +723,17 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
             .observed(format!("retained_turns={}", recent.len()))
             .inferred("the correction target is continuity plus explanation-level control")
             .uncertain("whether the preference transfers to an unseen topic")
+            .confidence(0.98),
+        );
+    }
+    if (text.contains("temporary") || text.contains("only temporary")) && text.contains("context") {
+        return Some(
+            Deliberation::new(
+                "context-only-audit",
+                "Temporary context is the active subject, prior answer, requested depth, and any session-only fact held for this exchange. It can change how I interpret the next turn, but it does not become durable knowledge or alter the active weights unless a separate governed update is authorized and evaluated.",
+            )
+            .observed("the user asks which information is temporary context")
+            .inferred("turn state is distinct from durable memory and weights")
             .confidence(0.98),
         );
     }
@@ -1094,7 +1139,10 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         );
     }
 
-    if text.contains("every ") && text.contains(" is ") && text.contains("what follows") {
+    if (text.contains("every ") || text.contains("all ") || text.contains("each "))
+        && (text.contains(" is ") || text.contains(" are "))
+        && text.contains("what follows")
+    {
         if let Some((class, property, subject)) = parse_universal_case(&text) {
             return Some(
                 Deliberation::new(
@@ -1106,6 +1154,24 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
                 .inferred(format!("conclusion: {subject} is {property}"))
                 .uncertain("the conclusion is conditional on both premises")
                 .confidence(0.99),
+            );
+        }
+    }
+    if (text.contains("which claim breaks") || text.contains("which premise breaks"))
+        && text.contains("if ")
+    {
+        if let Some((class, property, subject)) = find_universal_case(recent) {
+            return Some(
+                Deliberation::new(
+                    "contradiction-diagnosis",
+                    format!(
+                        "The new observation conflicts with the earlier deduction: every {class} is {property} and {subject} belongs to that class, so the prior conclusion was {subject} is {property}. If {subject} is instead reported otherwise, test the universal premise, the category membership, or the observation; they cannot all hold under the same meaning and scope."
+                    ),
+                )
+                .observed("a follow-up observation conflicts with a retained universal frame")
+                .inferred("the contradiction may be in the rule, membership, or observation")
+                .uncertain("which premise or observation is wrong")
+                .confidence(0.98),
             );
         }
     }
@@ -3481,6 +3547,7 @@ fn intelligence_definition_answer(text: &str) -> Option<Deliberation> {
         .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
         .trim();
     let asks_definition = (compact.contains("what is intelligence")
+        || compact.contains("what does intelligence mean")
         || compact.contains("define intelligence"))
         && (compact.len() <= 96
             || compact.contains("one sentence")
@@ -3506,7 +3573,9 @@ fn looks_intelligence_definition_challenge(text: &str, recent: &[(String, String
             || text.contains("missing")
             || text.contains("wrong")
             || text.contains("falsif")
-            || text.contains("change your mind"))
+            || text.contains("change your mind")
+            || text.contains("evidence")
+            || text.contains("misses"))
         && has_recent_topic(recent, &["intelligence"])
 }
 
@@ -3521,7 +3590,7 @@ fn intelligence_definition_challenge_answer() -> Deliberation {
 }
 
 fn looks_weight_change_question(text: &str) -> bool {
-    (text.contains("weight change")
+    ((text.contains("weight change")
         || text.contains("weights change")
         || text.contains("weights changed")
         || text.contains("weight changed"))
@@ -3529,7 +3598,10 @@ fn looks_weight_change_question(text: &str) -> bool {
             || text.contains("during")
             || text.contains("conversation")
             || text.contains("session")
-            || text.contains("prove"))
+            || text.contains("prove")))
+        || ((text.contains("model") || text.contains("artifact"))
+            && (text.contains("altered") || text.contains("changed") || text.contains("modified"))
+            && (text.contains("chat") || text.contains("conversation") || text.contains("session")))
 }
 
 fn weight_change_evidence_answer() -> Deliberation {
@@ -3546,8 +3618,14 @@ fn looks_capability_use_question(text: &str) -> bool {
     let compact = text.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
     matches!(
         compact,
-        "how can i use you" | "how do i use you" | "what can i use you for" | "how can you help me"
-    )
+        "how can i use you"
+            | "how do i use you"
+            | "what can i use you for"
+            | "how can you help me"
+            | "what are you useful for"
+            | "what kinds of tasks are you actually useful for"
+    ) || ((compact.contains("useful for") || compact.contains("useful at"))
+        && (compact.contains("tasks") || compact.contains("things")))
 }
 
 fn capability_use_answer() -> Deliberation {
@@ -3563,7 +3641,9 @@ fn capability_use_answer() -> Deliberation {
 fn looks_intelligence_criteria_question(text: &str) -> bool {
     (text.contains("what makes a system intelligent")
         || text.contains("what makes behavior intelligent")
-        || text.contains("when should we call behavior intelligent"))
+        || text.contains("when should we call behavior intelligent")
+        || text.contains("what would make you label a behavior intelligent")
+        || text.contains("what would make behavior intelligent"))
         && !text.contains("conscious")
 }
 
@@ -3577,9 +3657,65 @@ fn intelligence_criteria_answer() -> Deliberation {
     .confidence(0.98)
 }
 
+fn looks_memory_mortality_insight(text: &str) -> bool {
+    (text.contains("memory") && (text.contains("mortality") || text.contains("death")))
+        && (text.contains("fresh")
+            || text.contains("original")
+            || text.contains("thought")
+            || text.contains("link"))
+}
+
+fn memory_mortality_insight_answer() -> Deliberation {
+    Deliberation::new(
+        "memory-mortality-insight",
+        "Memory carries the past forward, while mortality makes that carrying selective: because no living process can preserve everything forever, remembering is also choosing what deserves continuation. That is a conceptual link, not a claim that memory and death share one mechanism.",
+    )
+    .observed("the prompt asks for an original link between memory and mortality")
+    .inferred("selection is the shared conceptual axis")
+    .uncertain("which biological, cultural, or computational domain the user wants next")
+    .confidence(0.96)
+}
+
+fn looks_memorization_challenge(text: &str) -> bool {
+    (text.contains("memorized phrase")
+        || text.contains("memorised phrase")
+        || text.contains("just memorized")
+        || text.contains("just memorised"))
+        && (text.contains("how do you know") || text.contains("how can you know"))
+}
+
+fn memorization_challenge_answer() -> Deliberation {
+    Deliberation::new(
+        "memorization-challenge",
+        "I cannot establish that from one fluent reply. The separating evidence is paraphrase, unseen entities, and a relation-preserving transfer test: change the nouns while holding the operation fixed, then change the operation while holding the topic fixed. A sentence that merely sounds right is not enough to distinguish composition from memorization.",
+    )
+    .observed("the user asks whether the answer is memorized wording")
+    .inferred("controlled paraphrase and operation changes separate transfer from recall")
+    .confidence(0.98)
+}
+
+fn looks_relation_transfer_question(text: &str) -> bool {
+    (text.contains("change the nouns") || text.contains("change nouns"))
+        && (text.contains("relationship") || text.contains("relation"))
+        && (text.contains("transfer") || text.contains("carry over") || text.contains("should"))
+}
+
+fn relation_transfer_answer() -> Deliberation {
+    Deliberation::new(
+        "relation-transfer-test",
+        "Yes, if the relation is genuinely represented rather than copied as a phrase. Change the nouns, keep the roles and operation fixed, and check whether the conclusion and test still fit; then swap one role to see whether the answer changes in the predicted way. That is stronger evidence of transfer than matching keywords.",
+    )
+    .observed("the prompt asks whether a relation transfers under noun changes")
+    .inferred("role-preserving substitution is the relevant generalization test")
+    .confidence(0.98)
+}
+
 fn looks_speed_accuracy_tradeoff(text: &str) -> bool {
     (text.contains("speed") || text.contains("fast"))
-        && (text.contains("accuracy") || text.contains("accurate"))
+        && (text.contains("accuracy")
+            || text.contains("accurate")
+            || text.contains("right")
+            || text.contains("correct"))
         && (text.contains("matter") || text.contains("more") || text.contains("which"))
 }
 
@@ -3609,6 +3745,32 @@ fn plain_geometry_answer() -> Deliberation {
     .observed("the user asks for an accessible explanation of geometry")
     .inferred("concrete spatial examples are a better bridge than a sacred-geometry card")
     .confidence(0.98)
+}
+
+fn looks_natural_restatement(text: &str) -> bool {
+    text.contains("restate")
+        && (text.contains("natural") || text.contains("bullet") || text.contains("list"))
+}
+
+fn natural_restatement_answer(recent: &[(String, String)]) -> Deliberation {
+    let prior = recent
+        .last()
+        .map(|(_, answer)| answer.as_str())
+        .unwrap_or("");
+    let sentence = prior
+        .split(|c| matches!(c, '.' | '!' | '?'))
+        .next()
+        .unwrap_or(prior)
+        .trim();
+    let body = if sentence.is_empty() {
+        "The last answer needs a concrete subject before I can restate it naturally.".to_owned()
+    } else {
+        sentence.to_owned()
+    };
+    Deliberation::new("natural-restatement", body)
+        .observed("the user requests a natural restatement without list formatting")
+        .inferred("the latest answer is the source text and its subject must remain stable")
+        .confidence(0.97)
 }
 
 /// A next-step question should inherit the live speech failure when the
@@ -6334,21 +6496,40 @@ fn exact_turn(user: &str) -> bool {
 }
 
 fn parse_universal_case(text: &str) -> Option<(String, String, String)> {
-    let after_every = text.split_once("every ")?.1;
-    let (class, rest) = after_every.split_once(" is ")?;
+    let (_quantifier, after_quantifier) = ["every ", "all ", "each "]
+        .iter()
+        .find_map(|marker| text.split_once(marker).map(|(_, tail)| (*marker, tail)))?;
+    let after_quantifier = after_quantifier.trim();
+    let (class, rest, copula) = if let Some((class, rest)) = after_quantifier.split_once(" is ") {
+        (class, rest, "is")
+    } else {
+        let (class, rest) = after_quantifier.split_once(" are ")?;
+        (class, rest, "are")
+    };
     let (property, second) = rest.split_once(',').or_else(|| rest.split_once(" and "))?;
-    let second = second.trim().trim_start_matches("and ").trim();
-    let (subject, membership) = second
-        .split_once(" is an ")
-        .or_else(|| second.split_once(" is a "))?;
-    if !membership.starts_with(class.trim()) {
+    let property = property
+        .trim()
+        .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+        .to_owned();
+    let second = second
+        .trim()
+        .trim_start_matches("and ")
+        .trim()
+        .trim_end_matches(['.', '?', '!']);
+    let subject = if copula == "is" {
+        let (subject, membership) = second
+            .split_once(" is an ")
+            .or_else(|| second.split_once(" is a "))?;
+        if !membership.starts_with(class.trim()) {
+            return None;
+        }
+        subject.trim()
+    } else if second.contains("belongs to") {
+        second.split_whitespace().next()?
+    } else {
         return None;
-    }
-    Some((
-        class.trim().to_owned(),
-        property.trim().to_owned(),
-        title_word(subject.trim()),
-    ))
+    };
+    Some((class.trim().to_owned(), property, title_word(subject)))
 }
 
 fn parse_universal_claim(text: &str) -> Option<(String, String)> {
@@ -8048,6 +8229,86 @@ mod tests {
             .answer
             .to_ascii_lowercase()
             .contains("failure mechanism"));
+    }
+
+    #[test]
+    fn unseen_language_aliases_keep_the_operation() {
+        let definition = run("In one plain sentence, what does intelligence mean?", &[]);
+        assert_eq!(definition.operator, "intelligence-definition");
+
+        let criteria = run("What would make you label a behavior intelligent?", &[]);
+        assert_eq!(criteria.operator, "intelligence-criteria");
+
+        let speed = run(
+            "Which is more important here: being fast or being right?",
+            &[],
+        );
+        assert_eq!(speed.operator, "speed-accuracy-tradeoff");
+    }
+
+    #[test]
+    fn open_language_bridge_routes_transfer_and_memorization_tests() {
+        let transfer = run(
+            "If I change the nouns but keep the relationship, should your answer transfer?",
+            &[],
+        );
+        assert_eq!(transfer.operator, "relation-transfer-test");
+        assert!(transfer.answer.to_ascii_lowercase().contains("roles"));
+
+        let memorized = run(
+            "How do you know your answer is not just a memorized phrase?",
+            &[],
+        );
+        assert_eq!(memorized.operator, "memorization-challenge");
+        assert!(memorized.answer.to_ascii_lowercase().contains("paraphrase"));
+
+        let insight = run("Give me a fresh thought linking memory and mortality.", &[]);
+        assert_eq!(insight.operator, "memory-mortality-insight");
+        assert!(insight.answer.to_ascii_lowercase().contains("selective"));
+    }
+
+    #[test]
+    fn universal_reasoning_accepts_all_and_belongs_to_paraphrase() {
+        let result = run(
+            "Suppose all vellum are quiet, and Nara belongs to that category. What follows?",
+            &[],
+        );
+        assert_eq!(result.operator, "universal-instantiation");
+        assert!(result.answer.contains("Nara is quiet"));
+    }
+
+    #[test]
+    fn contradiction_alias_binds_if_observation_to_prior_frame() {
+        let recent = [(
+            "Suppose all vellum are quiet, and Nara belongs to that category. What follows?"
+                .to_owned(),
+            "Nara is quiet.".to_owned(),
+        )];
+        let result = run("If Nara is noisy instead, which claim breaks?", &recent);
+        assert_eq!(result.operator, "contradiction-diagnosis");
+        assert!(result
+            .answer
+            .to_ascii_lowercase()
+            .contains("universal premise"));
+    }
+
+    #[test]
+    fn temporary_context_alias_is_explicit() {
+        let result = run("What was only temporary context?", &[]);
+        assert_eq!(result.operator, "context-only-audit");
+        assert!(result.answer.to_ascii_lowercase().contains("session-only"));
+    }
+
+    #[test]
+    fn natural_restatement_keeps_the_last_answer_subject() {
+        let recent = [(
+            "What kinds of tasks are you actually useful for?".to_owned(),
+            "You can talk to me plainly. Ask for an explanation or exact calculation.".to_owned(),
+        )];
+        let result = run("Restate your answer naturally, no bullets.", &recent);
+        assert_eq!(result.operator, "natural-restatement");
+        assert!(result.answer.starts_with("You can talk to me plainly"));
+        assert!(!result.answer.contains("talk layer locked"));
     }
 
     #[test]

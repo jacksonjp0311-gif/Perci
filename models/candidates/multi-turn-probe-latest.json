@@ -1,6 +1,6 @@
 {
   "schema": "perci.multi-turn-probe.v1",
-  "generated_at_utc": "2026-07-22T22:19:19.893442+00:00",
+  "generated_at_utc": "2026-07-22T23:08:44.898499+00:00",
   "threads": 8,
   "pass_first": 8,
   "pass_after_reask": 8,
@@ -127,5 +127,5 @@
     "coherence is not consciousness"
   ],
   "automatic_promotion": false,
-  "receipt_sha256": "8c8e8e35d699cd7594e97c73f452a5eb074f5668ac2b95d9afab9b9bb772d6b0"
+  "receipt_sha256": "ce9718b01e72d0ab3506655646c18745b181f9dabec009c5a56805c41aca068d"
 }
