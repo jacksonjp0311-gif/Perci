@@ -307,6 +307,17 @@ fn feedback_signal(user: &str) -> &'static str {
         "lacking smoothness",
         "too stiff",
         "too robotic",
+        "greeting seems robotic",
+        "greetings seem robotic",
+        "greeting feels robotic",
+        "greetings feel robotic",
+        "robotic greeting",
+        "robotic greetings",
+        "feels scripted",
+        "seems scripted",
+        "sounds scripted",
+        "feels canned",
+        "sounds canned",
         "too procedural",
         "too formal",
         "too verbose",
@@ -486,6 +497,20 @@ mod tests {
         let raw = fs::read_to_string(events).unwrap();
         assert!(raw.contains("pending_review"));
         assert!(raw.contains("automatic_weight_mutation\":false"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn robotic_greeting_feedback_updates_style_preferences() {
+        let root = env::temp_dir().join(format!("perci_greeting_feedback_{}", now_ms()));
+        let mut learner =
+            InteractionLearner::new(root.join("events.jsonl"), root.join("profile.json"));
+        learner
+            .observe("the greetings seem robotic", "I'll vary the opening.", None)
+            .unwrap();
+        assert_eq!(learner.profile().feedback_count, 1);
+        assert!(learner.profile().prefer_concise);
+        assert!(learner.profile().prefer_direct_answers);
         let _ = fs::remove_dir_all(root);
     }
 

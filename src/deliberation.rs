@@ -443,8 +443,14 @@ pub fn try_deliberate(
 
     // Pure greetings must not fall through to empty SoftCascade in transfer probes.
     if looks_pure_greeting(&text) {
+        let greeting = crate::voice::social_reply_for_input(
+            crate::voice::detect_social(&text),
+            &text,
+            recent.len(),
+        )
+        .unwrap_or_else(|| "I'm here. What's on your mind?".to_owned());
         return Some(
-            Deliberation::new("greeting", "Hey — I'm here. What are we working on?")
+            Deliberation::new("greeting", greeting)
                 .observed("short social greeting")
                 .inferred("presence without concept-card dump")
                 .confidence(0.99),

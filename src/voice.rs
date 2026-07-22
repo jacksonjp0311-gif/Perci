@@ -376,6 +376,14 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
                 || text.contains("weak")
                 || text.contains("capabilit")
                 || text.contains("where are you weak")))
+        || matches!(
+            compact,
+            "how can i use you"
+                | "how do i use you"
+                | "what can i use you for"
+                | "how can you help me"
+                | "what are you useful for"
+        )
     {
         DialogueAct::CapabilityQuestion
     } else if text.contains("tell me more about yourself") || text.contains("describe yourself") {
@@ -675,6 +683,16 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
                 || compact.contains("do that")
                 || compact.ends_with(" do")
                 || compact == "yeah"))
+        || (compact.starts_with("yes ")
+            && (compact.contains("what you should")
+                || compact.contains("what you ought")
+                || compact.contains("exactly what you")
+                || compact.contains("that is what you")
+                || compact.contains("that's what you")))
+        || (compact.starts_with("yeah ")
+            && (compact.contains("what you should")
+                || compact.contains("that is what you")
+                || compact.contains("that's what you")))
     {
         DialogueAct::Agreement
     } else if matches!(
@@ -874,6 +892,12 @@ pub fn dialogue_reply(
                     || lower.contains("response"))
             {
                 "The missing piece is broad discourse coverage: frontier systems carry meaning across turns, vary answer shape, and choose depth from context. Perci now has bounded operators plus a learned transition field, so it can be quick and coherent in familiar frames but still lose the thread on open language. The next improvement is context-conditioned training and held-out transfer—not simply a larger weight file.".to_owned()
+            } else if lower.contains("how can i use")
+                || lower.contains("how do i use")
+                || lower.contains("what can i use you for")
+                || lower.contains("how can you help")
+            {
+                "You can talk to me plainly. Ask for an explanation, an exact calculation, a geometry check, a code or repository plan, a memory note, or a test of my limits. I’m strongest when the goal is concrete and I can show evidence; I’m weaker at unrestricted open-ended language, so I’ll say when a route is missing instead of pretending.".to_owned()
             } else {
                 "I route unfamiliar prompts through a sparse 4,096-bit Bitwork core, retrieve weight-resident concepts, solve bounded arithmetic and geometry exactly, track session context, stage reviewable teaching, search local memory, and expose evidence for my decisions. My weak edge is unrestricted language generation: I reason by associative routing and deterministic machinery, not by hiding a large language model.".to_owned()
             }
@@ -1142,7 +1166,7 @@ pub fn dialogue_reply(
                 || lower.contains("what's missing")
                 || lower.contains("what is missing")
             {
-                "What's missing is fit, not more scripts. I was binding your words into a generic method card (claim / counterexample / smallest failing path) instead of talking with you. For casual turns I should greet, acknowledge, or answer directly—and save structured method talk for real engineering asks. I'll stay human: short, concrete, and on your last message.".to_owned()
+                "What's missing is fit, not more scripts. I was binding your words into a generic method card (claim / counterexample / smallest failing path) instead of talking with you. For casual turns I should greet, acknowledge, or answer directly—and save structured method talk for real engineering asks. I'll keep it conversational: short, concrete, and on your last message.".to_owned()
             } else if lower.contains("smart")
                 || lower.contains("intelligent")
                 || lower.contains("speak")
@@ -1201,7 +1225,7 @@ pub fn dialogue_reply(
         DialogueAct::EvolveSystem => {
             let lower = user.to_ascii_lowercase();
             if lower.contains("silly") || lower.contains("working on") || lower.contains("evolving you") {
-                "Ha — fair. Evolving me is real work: catch where I go stiff or wrong, fix the owning layer (dialogue act, operator, SoftCascade, not silent weights), and retest. Right now the useful lever is conversation quality — if a reply feels robotic, call it out and I'll drop the template. What do you want to improve first: how I talk, how I reason, or a hard gate like transfer?".to_owned()
+                "Yes. Evolving me is real work: catch where I go stiff or wrong, fix the owning layer (dialogue act, operator, SoftCascade, not silent weights), and retest. Right now the useful lever is conversation quality — if a reply feels robotic, call it out and I'll drop the template. What do you want to improve first: how I talk, how I reason, or a hard gate like transfer?".to_owned()
             } else {
                 "Yes. Let's evolve one measurable capability at a time: name the behavior, capture a failing example, repair the responsible layer (operator / speech / tool — not densify Bitwork), then retest before promoting anything. For chat quality, one bad reply + what you wanted is enough. For knowledge, stage a claim for review — never silent weight promote.".to_owned()
             }
@@ -1805,6 +1829,31 @@ pub fn social_reply(kind: SocialKind, variant: usize) -> Option<&'static str> {
     }
 }
 
+/// Context-aware wording for the live social path. The stable `social_reply`
+/// API remains available for callers that only know the social kind, while
+/// interactive greetings can respond to the user's actual opening.
+pub fn social_reply_for_input(kind: SocialKind, user: &str, variant: usize) -> Option<String> {
+    if kind != SocialKind::Greeting {
+        return social_reply(kind, variant).map(str::to_owned);
+    }
+
+    let lower = user.trim().to_ascii_lowercase();
+    let reply = if lower.contains("good morning") {
+        "Morning. What's on your mind?"
+    } else if lower.contains("good evening") {
+        "Good evening. What would you like to work through?"
+    } else if lower == "yo" {
+        "Hey. What's up?"
+    } else {
+        match variant % 3 {
+            0 => "Hey — I'm here. What are you thinking about?",
+            1 => "Hi. Good to hear from you. What should we work on?",
+            _ => "Hello. Want to talk something through or test a capability?",
+        }
+    };
+    Some(reply.to_owned())
+}
+
 /// Pull short usable phrases from pack/context lines (no bolted headers).
 pub fn weave_guidance(context: &[String], max_bits: usize) -> Vec<String> {
     let mut bits = Vec::new();
@@ -1870,7 +1919,7 @@ pub fn compose_reply(
     // Pure social short-circuits (except frustration with technical content — merge).
     // Never short-circuit multi-domain synthesis or relational inquiry into comfort text.
     if !inquiry {
-        if let Some(social_text) = social_reply(social, variant) {
+        if let Some(social_text) = social_reply_for_input(social, user, variant) {
             let technical = user_has_tech_signal(user);
             if !technical
                 || matches!(
@@ -1883,7 +1932,7 @@ pub fn compose_reply(
                 )
             {
                 if !matches!(social, SocialKind::Frustration) || !technical {
-                    return with_continuity(social_text, recent, user);
+                    return with_continuity(&social_text, recent, user);
                 }
             }
         }
@@ -3702,8 +3751,8 @@ pub fn fluid_compose(
     let body = humanize_body(domain_body, label, seed);
     let body_trim = body.trim();
     // Social / dialogue acts that slipped past chat early-exit still win here.
-    if let Some(social) = social_reply(detect_social(user), recent.len()) {
-        return social.to_owned();
+    if let Some(social) = social_reply_for_input(detect_social(user), user, recent.len()) {
+        return social;
     }
     if let Some(act_text) = dialogue_reply(detect_dialogue_act(user), user, recent, None) {
         return act_text;
@@ -4446,6 +4495,16 @@ mod tests {
     }
 
     #[test]
+    fn greeting_wording_responds_to_the_opening() {
+        let hi = social_reply_for_input(SocialKind::Greeting, "hi perci", 0).unwrap();
+        let morning = social_reply_for_input(SocialKind::Greeting, "good morning", 0).unwrap();
+        let yo = social_reply_for_input(SocialKind::Greeting, "yo", 0).unwrap();
+        assert!(hi.contains("thinking about"));
+        assert!(morning.starts_with("Morning"));
+        assert!(yo.contains("What's up"));
+    }
+
+    #[test]
     fn social_repair_explains_laughter_without_deflecting() {
         let reply = dialogue_reply(
             detect_dialogue_act("why did you laugh at me"),
@@ -4635,6 +4694,17 @@ mod tests {
         assert!(low.contains("discourse coverage"));
         assert!(low.contains("context-conditioned"));
         assert!(!low.ends_with("mechanism is."));
+    }
+
+    #[test]
+    fn natural_capability_question_gets_a_human_inventory() {
+        let prompt = "how can i use you";
+        assert_eq!(detect_dialogue_act(prompt), DialogueAct::CapabilityQuestion);
+        let answer = dialogue_reply(DialogueAct::CapabilityQuestion, prompt, &[], None).unwrap();
+        let low = answer.to_ascii_lowercase();
+        assert!(low.contains("talk to me plainly"));
+        assert!(low.contains("exact calculation"));
+        assert!(!low.contains("grounded line"));
     }
 
     #[test]
@@ -5295,6 +5365,14 @@ mod tests {
         assert_eq!(
             detect_dialogue_act("what can you do"),
             DialogueAct::CapabilityQuestion
+        );
+        assert_eq!(
+            detect_dialogue_act("how can i use you"),
+            DialogueAct::CapabilityQuestion
+        );
+        assert_eq!(
+            detect_dialogue_act("yes that is what you should do"),
+            DialogueAct::Agreement
         );
         assert_eq!(
             detect_dialogue_act("tell me more about yourself"),

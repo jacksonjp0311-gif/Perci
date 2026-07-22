@@ -305,7 +305,10 @@ impl ChatEngine {
         let dialogue_act = voice::detect_dialogue_act(input);
         let lower_dialogue = input.to_ascii_lowercase();
         let preempt_deliberation = match dialogue_act {
-            voice::DialogueAct::ConversationReview | voice::DialogueAct::LearningReflection => true,
+            voice::DialogueAct::ConversationReview
+            | voice::DialogueAct::LearningReflection
+            | voice::DialogueAct::Agreement
+            | voice::DialogueAct::CapabilityQuestion => true,
             voice::DialogueAct::ExplainPrevious => {
                 lower_dialogue.contains("why did you laugh")
                     || lower_dialogue.contains("why were you laughing")
@@ -349,15 +352,29 @@ impl ChatEngine {
             let text = deliberation.answer.clone();
             self.backend.set_dialogue_history(&self.recent);
             let bitwork = self.backend.probe_cognition(input);
-            let text = crate::bridge::envelope_with_bitwork(
-                input,
-                crate::bridge::CognitionPath::Open,
-                &["dialogue"],
-                "dialogue-act",
-                &text,
-                false,
-                bitwork.as_ref(),
-            );
+            let text = if matches!(
+                dialogue_act,
+                voice::DialogueAct::Agreement | voice::DialogueAct::CapabilityQuestion
+            ) {
+                crate::bridge::envelope_light(
+                    input,
+                    crate::bridge::CognitionPath::Open,
+                    &["dialogue"],
+                    "dialogue-act",
+                    &text,
+                    false,
+                )
+            } else {
+                crate::bridge::envelope_with_bitwork(
+                    input,
+                    crate::bridge::CognitionPath::Open,
+                    &["dialogue"],
+                    "dialogue-act",
+                    &text,
+                    false,
+                    bitwork.as_ref(),
+                )
+            };
             deliberation.answer = text.clone();
             self.last_deliberation = Some(deliberation);
             self.push_turn(input, &text);
@@ -626,7 +643,7 @@ impl ChatEngine {
             && !lower.contains("error")
             && !lower.contains("cargo")
         {
-            if let Some(text) = voice::social_reply(social, self.recent.len()) {
+            if let Some(text) = voice::social_reply_for_input(social, input, self.recent.len()) {
                 let text = crate::bridge::envelope_light(
                     input,
                     crate::bridge::CognitionPath::Social,
