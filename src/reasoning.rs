@@ -131,9 +131,7 @@ pub fn is_explanatory_math(lower: &str) -> bool {
         || lower.contains("explain why")
         || lower.contains("justify why")
         || lower.contains("what does it mean")
-        || (lower.contains("explain")
-            && (lower.contains("equal") || has_arith_op)
-            && has_digit)
+        || (lower.contains("explain") && (lower.contains("equal") || has_arith_op) && has_digit)
         || (lower.contains("prove that") && (has_digit || has_arith_op))
         || (lower.starts_with("why ") && (lower.contains("equal") || lower.contains("true")));
     if whyish {

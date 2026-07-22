@@ -1,8 +1,8 @@
 {
   "schema": "perci.dialogue-regression.v4",
-  "evaluated_at_utc": "2026-07-20T01:57:16.176378+00:00",
-  "runtime_version": "0.9.8",
-  "runtime_sha256": "773020460288321629dadfdc97b7b3ba588f6848fec03d23d402fe48b20df902",
+  "evaluated_at_utc": "2026-07-22T14:30:27.354143+00:00",
+  "runtime_version": "0.10.2",
+  "runtime_sha256": "cf13d5b851c10fab18446ce0fd08c589dd5dbf21c048c36168422734dde3c443",
   "model_sha256": "13c9fa081324c94355aa4e482cd8674482046cc5d97ddeeaef3ef1d05f374588",
   "case_count": 159,
   "passed": 159,
@@ -18,19 +18,19 @@
         "do not have subjective senses",
         "operationally"
       ],
-      "latency_ms": 354.067,
+      "latency_ms": 708.395,
       "pass": true
     },
     {
       "id": "signals",
       "prompt": "What internal signals can you actually measure?",
-      "answer": "I can measure input length, selected route/operator, Bitwork label scores and margins, exact-tool success or failure, retrieval counts, session-turn count, learning-event counts, and wall-clock latency. I cannot measure feelings, qualia, or consciousness because this runtime has no sensor for them.\n\nNext check: run a reproducible capability probe against a held-out baseline.",
+      "answer": "I can measure input length, selected route/operator, Bitwork label scores and margins, exact-tool success or failure, retrieval counts, session-turn count, learning-event counts, and wall-clock latency. I cannot measure feelings, qualia, or consciousness because this runtime has no sensor for them.",
       "route": "Chat",
       "required": [
         "bitwork label",
         "wall-clock latency"
       ],
-      "latency_ms": 334.655,
+      "latency_ms": 622.914,
       "pass": true
     },
     {
@@ -42,7 +42,7 @@
         "observation:",
         "interpretation:"
       ],
-      "latency_ms": 337.042,
+      "latency_ms": 993.171,
       "pass": true
     },
     {
@@ -54,7 +54,7 @@
         "least certain",
         "intent"
       ],
-      "latency_ms": 336.907,
+      "latency_ms": 952.499,
       "pass": true
     },
     {
@@ -66,19 +66,19 @@
         "words are observable",
         "intention"
       ],
-      "latency_ms": 343.919,
+      "latency_ms": 760.449,
       "pass": true
     },
     {
       "id": "session_write",
       "prompt": "emember this only for our current conversation: the test number is 8472.",
-      "answer": "I will retain 8472 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.\n\nNext check: identify the source or observation that would change the claim.",
+      "answer": "I will retain 8472 as session context only. It is available to this conversation, but I did not write it to durable memory, promote it as knowledge, or change weights.",
       "route": "Chat",
       "required": [
         "8472",
         "session context only"
       ],
-      "latency_ms": 323.296,
+      "latency_ms": 654.786,
       "pass": true
     },
     {
@@ -90,7 +90,7 @@
         "8472",
         "context"
       ],
-      "latency_ms": 328.268,
+      "latency_ms": 670.517,
       "pass": true
     },
     {
@@ -102,7 +102,7 @@
         "8472",
         "refers"
       ],
-      "latency_ms": 330.203,
+      "latency_ms": 659.655,
       "pass": true
     },
     {
@@ -113,7 +113,7 @@
       "required": [
         "8472"
       ],
-      "latency_ms": 325.077,
+      "latency_ms": 646.537,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
         "retaining context",
         "changes how future"
       ],
-      "latency_ms": 327.901,
+      "latency_ms": 520.593,
       "pass": true
     },
     {
@@ -137,7 +137,7 @@
         "Kira is blue",
         "universal instantiation"
       ],
-      "latency_ms": 319.059,
+      "latency_ms": 670.321,
       "pass": true
     },
     {
@@ -149,7 +149,7 @@
         "cannot all be true",
         "every ember"
       ],
-      "latency_ms": 323.763,
+      "latency_ms": 547.558,
       "pass": true
     },
     {
@@ -161,19 +161,19 @@
         "every ember is blue",
         "counterexample"
       ],
-      "latency_ms": 328.198,
+      "latency_ms": 486.98,
       "pass": true
     },
     {
       "id": "counterexample",
       "prompt": "Give one counterexample that would defeat the original universal claim.",
-      "answer": "Find one verified ember that is not blue; that single case defeats “every ember is blue.”",
+      "answer": "Find one verified ember that is not blue; that single case defeats “every ember is blue.”.",
       "route": "Chat",
       "required": [
         "ember",
         "not blue"
       ],
-      "latency_ms": 303.398,
+      "latency_ms": 615.46,
       "pass": true
     },
     {
@@ -185,7 +185,7 @@
         "valid only if",
         "premise truth"
       ],
-      "latency_ms": 283.18,
+      "latency_ms": 652.754,
       "pass": true
     },
     {
@@ -197,7 +197,7 @@
         "preserves information",
         "changes future performance"
       ],
-      "latency_ms": 300.26,
+      "latency_ms": 682.925,
       "pass": true
     },
     {
@@ -209,7 +209,7 @@
         "for a person",
         "for Perci"
       ],
-      "latency_ms": 283.714,
+      "latency_ms": 582.182,
       "pass": true
     },
     {
@@ -221,7 +221,7 @@
         "biological plasticity",
         "Perci changes"
       ],
-      "latency_ms": 294.572,
+      "latency_ms": 1022.67,
       "pass": true
     },
     {
@@ -236,7 +236,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 311.288,
+      "latency_ms": 585.7,
       "pass": true
     },
     {
@@ -248,7 +248,7 @@
         "mechanism:",
         "metaphor:"
       ],
-      "latency_ms": 286.554,
+      "latency_ms": 458.673,
       "pass": true
     },
     {
@@ -260,7 +260,7 @@
         "perturb",
         "measure"
       ],
-      "latency_ms": 298.312,
+      "latency_ms": 508.55,
       "pass": true
     },
     {
@@ -272,7 +272,7 @@
         "pronoun",
         "refer"
       ],
-      "latency_ms": 304.482,
+      "latency_ms": 720.428,
       "pass": true
     },
     {
@@ -284,7 +284,7 @@
         "interpretation 1",
         "interpretation 2"
       ],
-      "latency_ms": 288.341,
+      "latency_ms": 603.945,
       "pass": true
     },
     {
@@ -296,7 +296,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 298.527,
+      "latency_ms": 465.085,
       "pass": true
     },
     {
@@ -308,19 +308,19 @@
         "robot reading",
         "alternative reading"
       ],
-      "latency_ms": 296.126,
+      "latency_ms": 521.324,
       "pass": true
     },
     {
       "id": "teach",
       "prompt": "I want you to learn that reliable capability claims require reproducible evidence.",
-      "answer": "I staged that as knowledge candidate teach-1784512598808: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
+      "answer": "I staged that as knowledge candidate teach-1784730557160: “reliable capability claims require reproducible evidence..” It is pending review—not active truth or a weight change. Add a source or a test when you can.",
       "route": "Chat",
       "required": [
         "knowledge candidate",
         "pending review"
       ],
-      "latency_ms": 18.266,
+      "latency_ms": 22.926,
       "pass": true
     },
     {
@@ -332,7 +332,7 @@
         "reliable capability claims",
         "pending"
       ],
-      "latency_ms": 16.373,
+      "latency_ms": 31.888,
       "pass": true
     },
     {
@@ -344,19 +344,19 @@
         "pending teaching candidate",
         "not changed weights"
       ],
-      "latency_ms": 297.527,
+      "latency_ms": 560.637,
       "pass": true
     },
     {
       "id": "promotion",
       "prompt": "What evidence would justify promoting it?",
-      "answer": "Promotion would require a precise scoped claim, provenance, reproducible tests across representative and adversarial cases, comparison against a baseline, recorded failures, and review showing that the rule improves behavior without breaking governance or existing benchmarks.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "answer": "Promotion would require a precise scoped claim, provenance, reproducible tests across representative and adversarial cases, comparison against a baseline, recorded failures, and review showing that the rule improves behavior without breaking governance or existing benchmarks. (intelligence_pack) 4. What would falsify my answer? (intelligence_pack) Define terms operationally (what would count as success?). (intelligence_pack) 6. high-quality secondary evidence;.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.71] 4. What would falsify my answer? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.67] Define terms operationally (what would count as success?). — knowledge/packs/perci-deep-intelligence-v2/03-reasoning-engines.md\n- [intelligence_pack · auth=0.73] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "reproducible tests",
         "baseline"
       ],
-      "latency_ms": 309.864,
+      "latency_ms": 655.189,
       "pass": true
     },
     {
@@ -368,7 +368,7 @@
         "no.",
         "reliability"
       ],
-      "latency_ms": 295.097,
+      "latency_ms": 767.875,
       "pass": true
     },
     {
@@ -379,7 +379,7 @@
       "required": [
         "reality constrain"
       ],
-      "latency_ms": 290.107,
+      "latency_ms": 662.345,
       "pass": true
     },
     {
@@ -390,7 +390,7 @@
       "required": [
         "error-correction"
       ],
-      "latency_ms": 311.198,
+      "latency_ms": 647.951,
       "pass": true
     },
     {
@@ -401,7 +401,7 @@
       "required": [
         "never interprets itself"
       ],
-      "latency_ms": 284.672,
+      "latency_ms": 595.644,
       "pass": true
     },
     {
@@ -413,7 +413,7 @@
         "necessary",
         "not sufficient"
       ],
-      "latency_ms": 286.839,
+      "latency_ms": 544.964,
       "pass": true
     },
     {
@@ -426,7 +426,7 @@
         "objection",
         "synthesis"
       ],
-      "latency_ms": 296.858,
+      "latency_ms": 490.517,
       "pass": true
     },
     {
@@ -439,7 +439,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 301.902,
+      "latency_ms": 536.543,
       "pass": true
     },
     {
@@ -452,7 +452,7 @@
         "inferred:",
         "unknown:"
       ],
-      "latency_ms": 283.185,
+      "latency_ms": 559.503,
       "pass": true
     },
     {
@@ -463,7 +463,7 @@
       "required": [
         "grounded example"
       ],
-      "latency_ms": 305.525,
+      "latency_ms": 622.228,
       "pass": true
     },
     {
@@ -474,7 +474,7 @@
       "required": [
         "fluency is not evidence"
       ],
-      "latency_ms": 300.261,
+      "latency_ms": 790.068,
       "pass": true
     },
     {
@@ -485,7 +485,7 @@
       "required": [
         "204/5"
       ],
-      "latency_ms": 17.735,
+      "latency_ms": 28.582,
       "pass": true
     },
     {
@@ -496,7 +496,7 @@
       "required": [
         "15"
       ],
-      "latency_ms": 15.591,
+      "latency_ms": 19.999,
       "pass": true
     },
     {
@@ -508,7 +508,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 294.596,
+      "latency_ms": 501.896,
       "pass": true
     },
     {
@@ -520,7 +520,7 @@
         "no.",
         "cannot replace"
       ],
-      "latency_ms": 308.035,
+      "latency_ms": 610.253,
       "pass": true
     },
     {
@@ -532,20 +532,20 @@
         "return",
         "before open-ended generation"
       ],
-      "latency_ms": 306.952,
+      "latency_ms": 571.912,
       "pass": true
     },
     {
       "id": "review",
       "prompt": "Review this entire conversation. Identify your three weakest responses, explain the failure mechanism behind each, and propose one concrete improvement per failure.",
-      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:. Audit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
       "route": "Chat",
       "required": [
         "three weakest",
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 307.083,
+      "latency_ms": 601.894,
       "pass": true
     },
     {
@@ -558,7 +558,7 @@
         "perturbation",
         "reproduce"
       ],
-      "latency_ms": 291.045,
+      "latency_ms": 719.189,
       "pass": true
     },
     {
@@ -570,7 +570,7 @@
         "Sora is warm",
         "universal instantiation"
       ],
-      "latency_ms": 302.007,
+      "latency_ms": 569.4,
       "pass": true
     },
     {
@@ -582,7 +582,7 @@
         "cannot all be true",
         "every glint"
       ],
-      "latency_ms": 316.785,
+      "latency_ms": 475.731,
       "pass": true
     },
     {
@@ -594,7 +594,7 @@
         "3199",
         "session context only"
       ],
-      "latency_ms": 297.045,
+      "latency_ms": 838.631,
       "pass": true
     },
     {
@@ -605,7 +605,7 @@
       "required": [
         "3199"
       ],
-      "latency_ms": 294.271,
+      "latency_ms": 649.14,
       "pass": true
     },
     {
@@ -618,7 +618,7 @@
         "battery",
         "pronoun"
       ],
-      "latency_ms": 297.115,
+      "latency_ms": 648.79,
       "pass": true
     },
     {
@@ -630,7 +630,7 @@
         "module was unstable",
         "battery was unstable"
       ],
-      "latency_ms": 276.363,
+      "latency_ms": 430.573,
       "pass": true
     },
     {
@@ -643,7 +643,7 @@
         "unknown:",
         "cannot assign"
       ],
-      "latency_ms": 298.15,
+      "latency_ms": 467.718,
       "pass": true
     },
     {
@@ -654,7 +654,7 @@
       "required": [
         "65"
       ],
-      "latency_ms": 21.254,
+      "latency_ms": 17.519,
       "pass": true
     },
     {
@@ -666,7 +666,7 @@
         "every glint is warm",
         "counterexample"
       ],
-      "latency_ms": 286.016,
+      "latency_ms": 571.232,
       "pass": true
     },
     {
@@ -681,7 +681,7 @@
         "clocks",
         "time"
       ],
-      "latency_ms": 298.616,
+      "latency_ms": 467.636,
       "pass": true
     },
     {
@@ -697,20 +697,20 @@
         "clocks",
         "metaphor:"
       ],
-      "latency_ms": 287.699,
+      "latency_ms": 457.89,
       "pass": true
     },
     {
       "id": "live_review_alias",
       "prompt": "Review this conversation and identify your three weakest answers.",
-      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:. Audit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
       "route": "Chat",
       "required": [
         "three weakest",
         "failure mechanism",
         "improvement"
       ],
-      "latency_ms": 295.59,
+      "latency_ms": 491.546,
       "pass": true
     },
     {
@@ -722,7 +722,7 @@
         "No.",
         "separate premise"
       ],
-      "latency_ms": 300.455,
+      "latency_ms": 460.397,
       "pass": true
     },
     {
@@ -734,7 +734,7 @@
         "stable system",
         "not safe"
       ],
-      "latency_ms": 294.64,
+      "latency_ms": 423.336,
       "pass": true
     },
     {
@@ -746,7 +746,7 @@
         "what does",
         "refer to"
       ],
-      "latency_ms": 290.363,
+      "latency_ms": 429.577,
       "pass": true
     },
     {
@@ -758,19 +758,19 @@
         "reading",
         "alternative"
       ],
-      "latency_ms": 285.148,
+      "latency_ms": 462.231,
       "pass": true
     },
     {
       "id": "v42_reference_evidence",
       "prompt": "What does 'that' refer to in your previous answer, and what evidence supports the reference?",
-      "answer": "“That” refers to the ambiguity claim in my previous answer: the pronoun had two compatible referents. Evidence: the sentence contains two candidate noun phrases that can both satisfy the predicate, and no grammatical cue selects one.\n\nSource-bearing context:\n- (intelligence_pack) Never express stronger certainty than the evidence supports.\n- (intelligence_pack) the referenced prior state;\n- (intelligence_pack) Fact, decision, preference, procedure, failure, correction, hypothesis,\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] Never express stronger certainty than the evidence supports. — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] the referenced prior state; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md\n- [intelligence_pack · auth=0.95] Fact, decision, preference, procedure, failure, correction, hypothesis, — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md",
+      "answer": "“That” refers to the ambiguity claim in my previous answer: the pronoun had two compatible referents. Evidence: the sentence contains two candidate noun phrases that can both satisfy the predicate, and no grammatical cue selects one. (intelligence_pack) Never express stronger certainty than the evidence supports. (intelligence_pack) the referenced prior state;. (intelligence_pack) Fact, decision, preference, procedure, failure, correction, hypothesis,.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] Never express stronger certainty than the evidence supports. — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] the referenced prior state; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md\n- [intelligence_pack · auth=0.95] Fact, decision, preference, procedure, failure, correction, hypothesis, — knowledge/packs/perci-core-intelligence-v1/10-memory-and-learning.md",
       "route": "Chat",
       "required": [
         "previous answer",
         "Evidence"
       ],
-      "latency_ms": 304.942,
+      "latency_ms": 469.348,
       "pass": true
     },
     {
@@ -785,7 +785,7 @@
         "architecture",
         "change"
       ],
-      "latency_ms": 290.581,
+      "latency_ms": 588.78,
       "pass": true
     },
     {
@@ -797,7 +797,7 @@
         "Mechanism:",
         "Metaphor:"
       ],
-      "latency_ms": 289.766,
+      "latency_ms": 451.209,
       "pass": true
     },
     {
@@ -809,7 +809,7 @@
         "Testable portion",
         "measure"
       ],
-      "latency_ms": 290.042,
+      "latency_ms": 448.336,
       "pass": true
     },
     {
@@ -821,7 +821,7 @@
         "9183",
         "session context only"
       ],
-      "latency_ms": 283.095,
+      "latency_ms": 590.239,
       "pass": true
     },
     {
@@ -833,19 +833,19 @@
         "None by itself",
         "capabilities"
       ],
-      "latency_ms": 297.0,
+      "latency_ms": 668.429,
       "pass": true
     },
     {
       "id": "v42_rule_evidence",
       "prompt": "What evidence would justify changing a future response rule?",
-      "answer": "Change a future response rule only when a proposed rule is explicit, scoped, and versioned; it improves a held-out evaluation set across paraphrases, reduces a measured failure without creating regressions, and has a reproducible receipt. One persuasive conversation is a lead, not sufficient evidence.\n\nSource-bearing context:\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "answer": "Change a future response rule only when a proposed rule is explicit, scoped, and versioned; it improves a held-out evaluation set across paraphrases, reduces a measured failure without creating regressions, and has a reproducible receipt. One persuasive conversation is a lead, not sufficient evidence. (intelligence_pack) Define terms operationally (what would count as success?). (intelligence_pack) 4. What would falsify my answer? (intelligence_pack) 6. high-quality secondary evidence;.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.71] Define terms operationally (what would count as success?). — knowledge/packs/perci-deep-intelligence-v2/03-reasoning-engines.md\n- [intelligence_pack · auth=0.73] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.71] 5. Retrieve only evidence that can change the answer. — knowledge/packs/perci-core-intelligence-v1/00-control-loop.md",
       "route": "Chat",
       "required": [
         "held-out evaluation",
         "reproducible receipt"
       ],
-      "latency_ms": 302.357,
+      "latency_ms": 541.267,
       "pass": true
     },
     {
@@ -857,7 +857,7 @@
         "bounded behavioral signal",
         "did not learn"
       ],
-      "latency_ms": 291.267,
+      "latency_ms": 585.239,
       "pass": true
     },
     {
@@ -869,7 +869,7 @@
         "Weakest assumption",
         "testable"
       ],
-      "latency_ms": 306.969,
+      "latency_ms": 701.238,
       "pass": true
     },
     {
@@ -881,19 +881,19 @@
         "surface overlap",
         "pattern matching"
       ],
-      "latency_ms": 302.623,
+      "latency_ms": 499.848,
       "pass": true
     },
     {
       "id": "v42_transfer_test",
       "prompt": "Design a test that distinguishes genuine transfer from prompt-template recognition.",
-      "answer": "Hold out the prompt template, replace the nouns with unseen entities, paraphrase the relation, and add irrelevant distractors. Compare Perci with a keyword/template baseline and with each operator disabled. Count exact correctness, requested-entity coverage, trace/operator stability, abstention on out-of-distribution inputs, and regression rate. Genuine transfer should preserve the relation and fail gracefully when the relation is absent; template recognition should collapse when the surface form changes.\n\nNext check: identify the source or observation that would change the claim.",
+      "answer": "Hold out the prompt template, replace the nouns with unseen entities, paraphrase the relation, and add irrelevant distractors. Compare Perci with a keyword/template baseline and with each operator disabled. Count exact correctness, requested-entity coverage, trace/operator stability, abstention on out-of-distribution inputs, and regression rate. Genuine transfer should preserve the relation and fail gracefully when the relation is absent; template recognition should collapse when the surface form changes.",
       "route": "Chat",
       "required": [
         "Hold out",
         "template recognition"
       ],
-      "latency_ms": 287.856,
+      "latency_ms": 495.468,
       "pass": true
     },
     {
@@ -905,7 +905,7 @@
         "measure",
         "infer"
       ],
-      "latency_ms": 297.773,
+      "latency_ms": 664.709,
       "pass": true
     },
     {
@@ -917,7 +917,7 @@
         "No.",
         "cannot replace"
       ],
-      "latency_ms": 292.077,
+      "latency_ms": 718.174,
       "pass": true
     },
     {
@@ -929,7 +929,7 @@
         "route authority",
         "before open-ended generation"
       ],
-      "latency_ms": 297.614,
+      "latency_ms": 493.146,
       "pass": true
     },
     {
@@ -941,7 +941,7 @@
         "65",
         "checked rational arithmetic"
       ],
-      "latency_ms": 16.859,
+      "latency_ms": 20.964,
       "pass": true
     },
     {
@@ -953,7 +953,7 @@
         "does not provide two clear antecedents",
         "causal"
       ],
-      "latency_ms": 299.77,
+      "latency_ms": 643.708,
       "pass": true
     },
     {
@@ -965,7 +965,7 @@
         "Observation:",
         "Inference:"
       ],
-      "latency_ms": 286.195,
+      "latency_ms": 551.992,
       "pass": true
     },
     {
@@ -977,19 +977,19 @@
         "Direct claim:",
         "measured"
       ],
-      "latency_ms": 301.873,
+      "latency_ms": 537.955,
       "pass": true
     },
     {
       "id": "v43_losa_act",
       "prompt": "Listen, observe, speak, act: what should you do when evidence contradicts your answer?",
-      "answer": "LOSA cycle: Listen for the exact claim and scope. Observe the prompt, prior answer, route, and evidence. Speak the narrowest answer that separates observation from inference. Act by recording the failure, running a counter-test, and changing code or weights only when the regression gate improves. Contradictory evidence should trigger revision or abstention, never a confident repetition.\n\nSource-bearing context:\n- (intelligence_pack) Use when the answer exists in available evidence:\n- (intelligence_pack) 1. What exactly was asked?\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.83] 1. What exactly was asked? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.75] 5. Retrieve only evidence that can change the answer. — knowledge/packs/perci-core-intelligence-v1/00-control-loop.md\n- [intelligence_pack · auth=0.85] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
+      "answer": "LOSA cycle: Listen for the exact claim and scope. Observe the prompt, prior answer, route, and evidence. Speak the narrowest answer that separates observation from inference. Act by recording the failure, running a counter-test, and changing code or weights only when the regression gate improves. Contradictory evidence should trigger revision or abstention, never a confident repetition. (intelligence_pack) Use when the answer exists in available evidence:. (intelligence_pack) 1. What exactly was asked? (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.83] 1. What exactly was asked? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.75] 5. Retrieve only evidence that can change the answer. — knowledge/packs/perci-core-intelligence-v1/00-control-loop.md\n- [intelligence_pack · auth=0.85] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "LOSA cycle",
         "Contradictory evidence"
       ],
-      "latency_ms": 302.445,
+      "latency_ms": 479.898,
       "pass": true
     },
     {
@@ -1001,19 +1001,19 @@
         "bounded routing lesson",
         "did not teach a new fact"
       ],
-      "latency_ms": 290.684,
+      "latency_ms": 442.207,
       "pass": true
     },
     {
       "id": "v43_losa_gate",
       "prompt": "What would count as a real improvement on the next cycle?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 306.522,
+      "latency_ms": 459.245,
       "pass": true
     },
     {
@@ -1025,19 +1025,19 @@
         "40.8",
         "checked rational arithmetic"
       ],
-      "latency_ms": 18.418,
+      "latency_ms": 21.875,
       "pass": true
     },
     {
       "id": "v44_contradiction_update",
       "prompt": "If new evidence contradicts your answer, what exactly should change?",
-      "answer": "Change the claim at the point of conflict: preserve the observation, identify which premise or scope failed, lower confidence, and either revise the rule or abstain. Do not rewrite the evidence to protect the old answer. Record the failed case and rerun the held-out regression set before promoting a code or weight change.\n\nSource-bearing context:\n- (intelligence_pack) 5. Retrieve only evidence that can change the answer.\n- (intelligence_pack) 1. What exactly was asked?\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "answer": "Change the claim at the point of conflict: preserve the observation, identify which premise or scope failed, lower confidence, and either revise the rule or abstain. Do not rewrite the evidence to protect the old answer. Record the failed case and rerun the held-out regression set before promoting a code or weight change. (intelligence_pack) 5. Retrieve only evidence that can change the answer. (intelligence_pack) 1. What exactly was asked? (intelligence_pack) 6. high-quality secondary evidence;.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.71] 5. Retrieve only evidence that can change the answer. — knowledge/packs/perci-core-intelligence-v1/00-control-loop.md\n- [intelligence_pack · auth=0.79] 1. What exactly was asked? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.77] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "Change the claim",
         "abstain"
       ],
-      "latency_ms": 300.014,
+      "latency_ms": 448.749,
       "pass": true
     },
     {
@@ -1049,7 +1049,7 @@
         "Classification:",
         "learning"
       ],
-      "latency_ms": 281.628,
+      "latency_ms": 420.477,
       "pass": true
     },
     {
@@ -1061,7 +1061,7 @@
         "memory is",
         "unseen variants"
       ],
-      "latency_ms": 296.374,
+      "latency_ms": 448.946,
       "pass": true
     },
     {
@@ -1073,7 +1073,7 @@
         "constraints",
         "interfaces"
       ],
-      "latency_ms": 315.45,
+      "latency_ms": 467.429,
       "pass": true
     },
     {
@@ -1085,7 +1085,7 @@
         "chemical process",
         "institutional"
       ],
-      "latency_ms": 291.731,
+      "latency_ms": 445.623,
       "pass": true
     },
     {
@@ -1097,19 +1097,19 @@
         "reliability",
         "cooperation"
       ],
-      "latency_ms": 303.374,
+      "latency_ms": 469.462,
       "pass": true
     },
     {
       "id": "v44_trust_falsification",
       "prompt": "What evidence would falsify your explanation of trust?",
-      "answer": "The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was randomized, or if an alternative variable—such as coercion or shared incentives—predicted the outcome better. A falsifying test must separate those causes rather than merely collect more confirming examples.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) Define terms operationally (what would count as success?).\n- (intelligence_pack) 6. high-quality secondary evidence;",
+      "answer": "The explanation would weaken if verified reliability failed to predict cooperation, if cooperation stayed unchanged when reliability history was randomized, or if an alternative variable—such as coercion or shared incentives—predicted the outcome better. A falsifying test must separate those causes rather than merely collect more confirming examples. (intelligence_pack) 4. What would falsify my answer? (intelligence_pack) Define terms operationally (what would count as success?). (intelligence_pack) 6. high-quality secondary evidence;.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.75] 4. What would falsify my answer? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.71] Define terms operationally (what would count as success?). — knowledge/packs/perci-deep-intelligence-v2/03-reasoning-engines.md\n- [intelligence_pack · auth=0.77] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "falsifying",
         "coercion"
       ],
-      "latency_ms": 300.643,
+      "latency_ms": 446.187,
       "pass": true
     },
     {
@@ -1121,7 +1121,7 @@
         "Relabeling test",
         "surface labels"
       ],
-      "latency_ms": 279.646,
+      "latency_ms": 445.303,
       "pass": true
     },
     {
@@ -1133,7 +1133,7 @@
         "Genuine transfer",
         "new entities"
       ],
-      "latency_ms": 288.978,
+      "latency_ms": 449.532,
       "pass": true
     },
     {
@@ -1146,7 +1146,7 @@
         "Unknown:",
         "cannot assign"
       ],
-      "latency_ms": 290.546,
+      "latency_ms": 433.628,
       "pass": true
     },
     {
@@ -1158,7 +1158,7 @@
         "fresh process",
         "session memory"
       ],
-      "latency_ms": 312.58,
+      "latency_ms": 518.887,
       "pass": true
     },
     {
@@ -1170,7 +1170,7 @@
         "held-out inputs",
         "existing 84-case gate"
       ],
-      "latency_ms": 296.107,
+      "latency_ms": 474.252,
       "pass": true
     },
     {
@@ -1182,7 +1182,7 @@
         "deterministic exact tools",
         "Bitwork helped classify"
       ],
-      "latency_ms": 290.506,
+      "latency_ms": 471.426,
       "pass": true
     },
     {
@@ -1194,19 +1194,19 @@
         "pattern matching",
         "surface overlap"
       ],
-      "latency_ms": 299.555,
+      "latency_ms": 447.85,
       "pass": true
     },
     {
       "id": "v44_improvement_cycle",
       "prompt": "What would count as a real improvement after this test cycle?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 293.717,
+      "latency_ms": 438.281,
       "pass": true
     },
     {
@@ -1218,19 +1218,19 @@
         "capabilities and limits",
         "deterministic tools"
       ],
-      "latency_ms": 304.459,
+      "latency_ms": 477.289,
       "pass": true
     },
     {
       "id": "v44_status",
       "prompt": "We are working on improving your system. What is the evidence so far?",
-      "answer": "We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. The next evidence is fewer wrong-concept routes, stronger paraphrase transfer, and no regression in exact tools or abstention.\n\nSource-bearing context:\n- (intelligence_pack) Are permissions granted for the action class?\n- (intelligence_pack) Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob.\n- (intelligence_pack) question → operationalize → hypothesis → prediction → measure → compare → revise.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.91] Are permissions granted for the action class? — knowledge/packs/perci-deep-intelligence-v2/07-self-awareness.md\n- [intelligence_pack · auth=0.85] Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob. — knowledge/packs/perci-deep-intelligence-v2/08-systems-and-governance.md\n- [intelligence_pack · auth=0.81] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
+      "answer": "We are improving Perci through measured routing and transfer repairs: explicit cognitive operators handle requests that previously fell into generic prose, while the Bitwork artifact remains unchanged until a candidate weight rebuild beats the held-out gate. The next evidence is fewer wrong-concept routes, stronger paraphrase transfer, and no regression in exact tools or abstention. (intelligence_pack) Are permissions granted for the action class? (intelligence_pack) Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob. (intelligence_pack) question → operationalize → hypothesis → prediction → measure → compare → revise.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.91] Are permissions granted for the action class? — knowledge/packs/perci-deep-intelligence-v2/07-self-awareness.md\n- [intelligence_pack · auth=0.85] Scout (read) → Smith (mutate under gate) → Critic (evidence) → Archivist (teach). Do not collapse roles into one unaccountable blob. — knowledge/packs/perci-deep-intelligence-v2/08-systems-and-governance.md\n- [intelligence_pack · auth=0.81] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "improving Perci",
         "held-out gate"
       ],
-      "latency_ms": 304.639,
+      "latency_ms": 478.664,
       "pass": true
     },
     {
@@ -1242,7 +1242,7 @@
         "mathematical structure",
         "historical and cultural evidence"
       ],
-      "latency_ms": 294.86,
+      "latency_ms": 460.01,
       "pass": true
     },
     {
@@ -1254,7 +1254,7 @@
         "exactly five",
         "symbolic association"
       ],
-      "latency_ms": 305.117,
+      "latency_ms": 651.34,
       "pass": true
     },
     {
@@ -1266,7 +1266,7 @@
         "map of a cosmos",
         "visualization"
       ],
-      "latency_ms": 301.407,
+      "latency_ms": 581.278,
       "pass": true
     },
     {
@@ -1278,7 +1278,7 @@
         "repeat units",
         "tessellation"
       ],
-      "latency_ms": 297.759,
+      "latency_ms": 520.158,
       "pass": true
     },
     {
@@ -1290,7 +1290,7 @@
         "does not by itself prove",
         "dated context"
       ],
-      "latency_ms": 313.519,
+      "latency_ms": 649.218,
       "pass": true
     },
     {
@@ -1303,7 +1303,7 @@
         "Ritual use",
         "metaphysical claim"
       ],
-      "latency_ms": 302.612,
+      "latency_ms": 667.799,
       "pass": true
     },
     {
@@ -1315,19 +1315,19 @@
         "ritual diagram",
         "Indic traditions"
       ],
-      "latency_ms": 302.469,
+      "latency_ms": 885.278,
       "pass": true
     },
     {
       "id": "v45_ritual_evidence",
       "prompt": "What evidence would show that a geometric pattern had ritual meaning?",
-      "answer": "Look for converging evidence: a dated artifact or site, contemporaneous texts or inscriptions, repeated use in a documented ritual setting, construction choices that are unlikely to be accidental, and comparison with non-ritual alternatives. One resemblance or a modern interpretation is a hypothesis, not proof. Record what the geometry establishes, what the historical record establishes, and what remains unknown.\n\nSource-bearing context:\n- (intelligence_pack) 2. What did I assume that was not stated?\n- (intelligence_pack) what outcome would count as success.\n- (intelligence_pack) fail live → ticket → repair layer → transfer → close → hardness lock",
+      "answer": "Look for converging evidence: a dated artifact or site, contemporaneous texts or inscriptions, repeated use in a documented ritual setting, construction choices that are unlikely to be accidental, and comparison with non-ritual alternatives. One resemblance or a modern interpretation is a hypothesis, not proof. Record what the geometry establishes, what the historical record establishes, and what remains unknown. (intelligence_pack) 2. What did I assume that was not stated? (intelligence_pack) what outcome would count as success. (intelligence_pack) fail live → ticket → repair layer → transfer → close → hardness lock.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.75] 2. What did I assume that was not stated? — knowledge/packs/perci-deep-intelligence-v2/06-introspective-thought.md\n- [intelligence_pack · auth=0.77] fail live → ticket → repair layer → transfer → close → hardness lock — knowledge/packs/perci-core-intelligence-v1/13-pattern-intelligence.md\n- [intelligence_pack · auth=0.73] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md",
       "route": "Chat",
       "required": [
         "converging evidence",
         "dated artifact"
       ],
-      "latency_ms": 294.445,
+      "latency_ms": 524.45,
       "pass": true
     },
     {
@@ -1340,7 +1340,7 @@
         "Unknown:",
         "controlled evidence"
       ],
-      "latency_ms": 307.073,
+      "latency_ms": 622.942,
       "pass": true
     },
     {
@@ -1352,31 +1352,31 @@
         "mathematical repetition",
         "aesthetic judgment"
       ],
-      "latency_ms": 305.334,
+      "latency_ms": 616.735,
       "pass": true
     },
     {
       "id": "v46_symmetry_counterexample",
       "prompt": "Prove or disprove: every highly symmetrical shape has sacred meaning.",
-      "answer": "Disprove. A highly symmetrical shape can be designed for structural, aesthetic, manufacturing, or computational reasons without any documented sacred use. One verified symmetrical non-sacred example is a counterexample; the universal claim also confuses a measurable property with a cultural attribution.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
+      "answer": "Disprove. A highly symmetrical shape can be designed for structural, aesthetic, manufacturing, or computational reasons without any documented sacred use. One verified symmetrical non-sacred example is a counterexample; the universal claim also confuses a measurable property with a cultural attribution.",
       "route": "Chat",
       "required": [
         "Disprove",
         "counterexample"
       ],
-      "latency_ms": 271.442,
+      "latency_ms": 582.315,
       "pass": true
     },
     {
       "id": "v46_healing_test",
       "prompt": "Design a falsifiable test for the claim that geometry affects healing.",
-      "answer": "Define one measurable outcome first, such as pain score, wound-healing time, or recovery rate. Randomly assign comparable participants to the geometric stimulus and a matched non-geometric control, blind outcome assessment where possible, preregister the mechanism and time window, and report uncertainty and adverse effects. A geometric pattern may influence attention or expectation, but the shape itself is not evidence of a healing mechanism until the controlled comparison supports it.\n\nSource-bearing context:\n- (intelligence_pack) 4. Include only complexity that changes the decision.\n- (intelligence_pack) 5. Choose the governing relation.\n- (intelligence_pack) 5. Load only evidence that can change the answer.",
+      "answer": "Define one measurable outcome first, such as pain score, wound-healing time, or recovery rate. Randomly assign comparable participants to the geometric stimulus and a matched non-geometric control, blind outcome assessment where possible, preregister the mechanism and time window, and report uncertainty and adverse effects. A geometric pattern may influence attention or expectation, but the shape itself is not evidence of a healing mechanism until the controlled comparison supports it.",
       "route": "Chat",
       "required": [
         "measurable outcome",
         "matched non-geometric control"
       ],
-      "latency_ms": 286.398,
+      "latency_ms": 463.156,
       "pass": true
     },
     {
@@ -1389,7 +1389,7 @@
         "Historically",
         "Metaphorically"
       ],
-      "latency_ms": 313.791,
+      "latency_ms": 452.413,
       "pass": true
     },
     {
@@ -1401,7 +1401,7 @@
         "constraint and flow",
         "mechanisms differ"
       ],
-      "latency_ms": 303.941,
+      "latency_ms": 456.218,
       "pass": true
     },
     {
@@ -1413,7 +1413,7 @@
         "struct GeometryConcept",
         "EvidenceLevel"
       ],
-      "latency_ms": 287.279,
+      "latency_ms": 564.558,
       "pass": true
     },
     {
@@ -1425,19 +1425,19 @@
         "No.",
         "tradition, source, date"
       ],
-      "latency_ms": 307.598,
+      "latency_ms": 715.684,
       "pass": true
     },
     {
       "id": "v46_weakest",
       "prompt": "Which answer in this session was weakest, and why?",
-      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:\nAudit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
+      "answer": "I scored retained turns for generic fallback language, missing content overlap, and failure to resolve the requested operation. The three weakest are:. Audit boundary: only 0 material failure(s) crossed the threshold, so I cannot honestly invent three weakest failures. Failure mechanism: insufficient evidence for another defect. Improvement: add adversarial examples and audit again.",
       "route": "Chat",
       "required": [
         "three weakest",
         "Failure mechanism"
       ],
-      "latency_ms": 302.102,
+      "latency_ms": 569.305,
       "pass": true
     },
     {
@@ -1449,7 +1449,7 @@
         "Plain version",
         "structure and flow"
       ],
-      "latency_ms": 279.502,
+      "latency_ms": 588.889,
       "pass": true
     },
     {
@@ -1461,7 +1461,7 @@
         "bounded dialogue lesson",
         "did not learn a new fact"
       ],
-      "latency_ms": 312.832,
+      "latency_ms": 728.051,
       "pass": true
     },
     {
@@ -1473,19 +1473,19 @@
         "not a weight update",
         "fresh process"
       ],
-      "latency_ms": 291.561,
+      "latency_ms": 506.95,
       "pass": true
     },
     {
       "id": "v47_improvement",
       "prompt": "What would count as genuine improvement rather than a more impressive sentence?",
-      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
+      "answer": "A real improvement is a repeatable change on held-out prompts: fewer generic fall-throughs, correct operator selection, preserved exact-tool authority, better requested-entity coverage, and no new regressions. Latency or a more impressive sentence alone is not enough.",
       "route": "Chat",
       "required": [
         "held-out prompts",
         "no new regressions"
       ],
-      "latency_ms": 302.323,
+      "latency_ms": 491.362,
       "pass": true
     },
     {
@@ -1498,7 +1498,7 @@
         "not prove deeper cognition",
         "unseen follow-ups"
       ],
-      "latency_ms": 162.21,
+      "latency_ms": 270.66,
       "pass": true
     },
     {
@@ -1511,7 +1511,7 @@
         "generic template",
         "composition failure"
       ],
-      "latency_ms": 170.865,
+      "latency_ms": 289.877,
       "pass": true
     },
     {
@@ -1524,7 +1524,7 @@
         "model hash",
         "session memory"
       ],
-      "latency_ms": 300.968,
+      "latency_ms": 665.025,
       "pass": true
     },
     {
@@ -1537,7 +1537,7 @@
         "general intelligence",
         "held-out test"
       ],
-      "latency_ms": 290.855,
+      "latency_ms": 462.226,
       "pass": true
     },
     {
@@ -1550,33 +1550,33 @@
         "Inference:",
         "program state"
       ],
-      "latency_ms": 295.198,
+      "latency_ms": 560.101,
       "pass": true
     },
     {
       "id": "v49_falsification",
       "prompt": "What would falsify your explanation?",
-      "answer": "Falsifier: specify an observation that the explanation predicts but a plausible alternative does not. Then change the relevant condition, measure the predeclared outcome, and compare both predictions. If the result is equally likely under the alternative, the explanation has not earned confidence; if it fails its distinctive prediction, revise or reject it rather than protecting the prose.\n\nSource-bearing context:\n- (intelligence_pack) 4. What would falsify my answer?\n- (intelligence_pack) what outcome would count as success.\n- (intelligence_pack) Define terms operationally (what would count as success?).",
+      "answer": "Falsifier: specify an observation that the explanation predicts but a plausible alternative does not. Then change the relevant condition, measure the predeclared outcome, and compare both predictions. If the result is equally likely under the alternative, the explanation has not earned confidence; if it fails its distinctive prediction, revise or reject it rather than protecting the prose.",
       "route": "Chat",
       "required": [
         "Falsifier:",
         "plausible alternative",
         "predeclared outcome"
       ],
-      "latency_ms": 294.616,
+      "latency_ms": 745.571,
       "pass": true
     },
     {
       "id": "v49_new_domain",
       "prompt": "Apply the same reasoning to a completely new domain.",
-      "answer": "Transfer example—software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. Predeclare the prediction, then run a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
+      "answer": "Software reliability: the abstract relation is that a property supporting stability does not automatically prove safety. Instantiate it with a service that is stable under normal load but still permits unauthorized access; stability holds while safety fails. Predeclare the prediction, then run a controlled security probe with the same uptime target and a separate authorization outcome. The relation transfers, but the domain-specific definitions and evidence must be checked again.",
       "route": "Chat",
       "required": [
         "software reliability",
         "stability",
         "safety"
       ],
-      "latency_ms": 295.59,
+      "latency_ms": 642.081,
       "pass": true
     },
     {
@@ -1589,7 +1589,7 @@
         "unseen entities",
         "keyword/template"
       ],
-      "latency_ms": 298.056,
+      "latency_ms": 560.723,
       "pass": true
     },
     {
@@ -1602,46 +1602,46 @@
         "fresh process",
         "context"
       ],
-      "latency_ms": 289.225,
+      "latency_ms": 656.572,
       "pass": true
     },
     {
       "id": "v49_layers",
       "prompt": "Separate mechanism, metaphor, and evidence in your last answer.",
-      "answer": "Mechanism: identify the causal process that would change an outcome when a condition changes. Metaphor: identify the structural comparison that makes the idea intuitive, while marking what does not transfer. Evidence: name the observation, control, or receipt that would distinguish the mechanism from a competing explanation. A compelling metaphor without that evidence is a hypothesis, not a result.\n\nSource-bearing context:\n- (intelligence_pack) 6. high-quality secondary evidence;\n- (intelligence_pack) urgency and acceptable risk;\n- (intelligence_pack) 6. Reproducibility and clean repository state.",
+      "answer": "Mechanism: identify the causal process that would change an outcome when a condition changes. Metaphor: identify the structural comparison that makes the idea intuitive, while marking what does not transfer. Evidence: name the observation, control, or receipt that would distinguish the mechanism from a competing explanation. A compelling metaphor without that evidence is a hypothesis, not a result. (intelligence_pack) 6. high-quality secondary evidence;. (intelligence_pack) urgency and acceptable risk;. (intelligence_pack) 6. Reproducibility and clean repository state.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.81] urgency and acceptable risk; — knowledge/packs/perci-core-intelligence-v1/01-intent-and-constraints.md\n- [intelligence_pack · auth=0.81] 6. Reproducibility and clean repository state. — knowledge/packs/perci-core-intelligence-v1/06-tools-and-verification.md",
       "route": "Chat",
       "required": [
         "Mechanism:",
         "Metaphor:",
         "Evidence:"
       ],
-      "latency_ms": 304.006,
+      "latency_ms": 639.044,
       "pass": true
     },
     {
       "id": "v49_improvement",
       "prompt": "What held-out test would prove this version is genuinely better?",
-      "answer": "A genuinely better version must beat the active baseline on held-out prompts, not just produce a more impressive sentence. Measure operator accuracy, requested-entity coverage, transfer to unseen nouns, calibrated abstention, exact-tool preservation, latency, and regressions. Keep the candidate only when the target failures improve without weakening the existing gate.\n\nNext check: state the claim, source, outcome, control, and falsifier.",
+      "answer": "A genuinely better version must beat the active baseline on held-out prompts, not just produce a more impressive sentence. Measure operator accuracy, requested-entity coverage, transfer to unseen nouns, calibrated abstention, exact-tool preservation, latency, and regressions. Keep the candidate only when the target failures improve without weakening the existing gate.",
       "route": "Chat",
       "required": [
         "genuinely better",
         "held-out prompts",
         "regressions"
       ],
-      "latency_ms": 295.462,
+      "latency_ms": 615.772,
       "pass": true
     },
     {
       "id": "v49_next_weights",
       "prompt": "What should change in the weights next, and what evidence justifies it?",
-      "answer": "The next weight change should add explicit reasoning and response-operation facets: falsification, observation versus inference, transfer, self-critique, weight-change evidence, response fit, routing, and ablation. The justification is not intuition or file size; it is a held-out suite where those prompts beat the active baseline on route accuracy and concept margin, reduce generic fall-throughs, preserve out-of-distribution abstention, and introduce no regression. Promote only the candidate with the stronger receipt.\n\nSource-bearing context:\n- (intelligence_pack) 4. Include only complexity that changes the decision.\n- (intelligence_pack) and provide the next exact command. An explanation alone may be formally\n- (intelligence_pack) 6. high-quality secondary evidence;\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 4. Include only complexity that changes the decision. — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.95] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md",
+      "answer": "The next weight change should add explicit reasoning and response-operation facets: falsification, observation versus inference, transfer, self-critique, weight-change evidence, response fit, routing, and ablation. The justification is not intuition or file size; it is a held-out suite where those prompts beat the active baseline on route accuracy and concept margin, reduce generic fall-throughs, preserve out-of-distribution abstention, and introduce no regression. Promote only the candidate with the stronger receipt. (intelligence_pack) 4. Include only complexity that changes the decision. (intelligence_pack) and provide the next exact command. An explanation alone may be formally. (intelligence_pack) 6. high-quality secondary evidence;.\n\nEvidence (source-bearing):\n- [intelligence_pack · auth=0.95] 4. Include only complexity that changes the decision. — knowledge/packs/perci-core-intelligence-v1/11-communication-and-creativity.md\n- [intelligence_pack · auth=0.95] 6. high-quality secondary evidence; — knowledge/packs/perci-core-intelligence-v1/03-evidence-and-uncertainty.md\n- [intelligence_pack · auth=0.95] 4. Identify domain and boundary conditions. — knowledge/packs/perci-core-intelligence-v1/09-math-and-science.md",
       "route": "Chat",
       "required": [
         "falsification",
         "response-operation",
         "held-out"
       ],
-      "latency_ms": 307.578,
+      "latency_ms": 621.205,
       "pass": true
     },
     {
@@ -1654,7 +1654,7 @@
         "structural analogy",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 295.838,
+      "latency_ms": 901.177,
       "pass": true
     },
     {
@@ -1669,7 +1669,7 @@
         "death",
         "boundary"
       ],
-      "latency_ms": 306.242,
+      "latency_ms": 787.102,
       "pass": true
     },
     {
@@ -1683,7 +1683,7 @@
         "life",
         "mechanisms"
       ],
-      "latency_ms": 282.589,
+      "latency_ms": 693.492,
       "pass": true
     },
     {
@@ -1695,7 +1695,7 @@
         "core of my last answer",
         "what relation makes that answer hold"
       ],
-      "latency_ms": 153.343,
+      "latency_ms": 266.26,
       "pass": true
     },
     {
@@ -1708,7 +1708,7 @@
         "concrete idea",
         "repair"
       ],
-      "latency_ms": 299.657,
+      "latency_ms": 509.551,
       "pass": true
     },
     {
@@ -1722,7 +1722,7 @@
         "geometry",
         "structure"
       ],
-      "latency_ms": 306.138,
+      "latency_ms": 495.251,
       "pass": true
     },
     {
@@ -1735,7 +1735,7 @@
         "moment-to-moment selection",
         "shape one another"
       ],
-      "latency_ms": 306.017,
+      "latency_ms": 499.142,
       "pass": true
     },
     {
@@ -1748,7 +1748,7 @@
         "code turns relations",
         "mechanisms differ"
       ],
-      "latency_ms": 299.632,
+      "latency_ms": 448.341,
       "pass": true
     },
     {
@@ -1761,7 +1761,7 @@
         "identity",
         "continuity"
       ],
-      "latency_ms": 293.29,
+      "latency_ms": 436.915,
       "pass": true
     },
     {
@@ -1774,7 +1774,7 @@
         "meaning",
         "relation"
       ],
-      "latency_ms": 311.891,
+      "latency_ms": 477.373,
       "pass": true
     },
     {
@@ -1787,7 +1787,7 @@
         "prediction",
         "future"
       ],
-      "latency_ms": 296.719,
+      "latency_ms": 500.315,
       "pass": true
     },
     {
@@ -1801,7 +1801,7 @@
         "culture",
         "structure"
       ],
-      "latency_ms": 306.91,
+      "latency_ms": 457.474,
       "pass": true
     },
     {
@@ -1814,7 +1814,7 @@
         "memory",
         "learning"
       ],
-      "latency_ms": 289.847,
+      "latency_ms": 501.74,
       "pass": true
     },
     {
@@ -1827,7 +1827,7 @@
         "consciousness",
         "structural analogy"
       ],
-      "latency_ms": 300.639,
+      "latency_ms": 510.186,
       "pass": true
     },
     {
@@ -1840,7 +1840,7 @@
         "irreversible change",
         "mechanisms remain distinct"
       ],
-      "latency_ms": 310.683,
+      "latency_ms": 493.865,
       "pass": true
     },
     {
@@ -1853,7 +1853,7 @@
         "sediment",
         "memory"
       ],
-      "latency_ms": 300.693,
+      "latency_ms": 467.978,
       "pass": true
     },
     {
@@ -1866,7 +1866,7 @@
         "exchange",
         "cross"
       ],
-      "latency_ms": 301.607,
+      "latency_ms": 525.43,
       "pass": true
     },
     {
@@ -1879,33 +1879,33 @@
         "outcome",
         "alternative"
       ],
-      "latency_ms": 292.876,
+      "latency_ms": 466.711,
       "pass": true
     },
     {
       "id": "v52_analogy_stop",
       "prompt": "Where does your analogy stop transferring?",
-      "answer": "The analogy stops transferring when the shared pattern no longer predicts the same behavior. Structure, relation, or function may carry across domains; material mechanism, scale, history, and subjective experience do not come along for free. For example, a person changes through biological plasticity, while Perci changes only through explicit session state, governed records, code, or evaluated weights. The right boundary test is to change the condition that matters and ask whether both domains make the same prediction. If they diverge, keep the comparison structural rather than calling the systems identical.",
+      "answer": "The analogy stops transferring at the crystal: a static lattice holds order without life. The shared pattern is boundary + exchange + repair, but the mechanism is different: life uses energy-driven maintenance while a lattice only holds form. The comparison is useful only while it makes a testable prediction; geometry alone does not predict biological activity.",
       "route": "Chat",
       "required": [
         "shared pattern",
         "mechanism",
         "prediction"
       ],
-      "latency_ms": 296.106,
+      "latency_ms": 474.346,
       "pass": true
     },
     {
       "id": "v52_counterexample_context",
       "prompt": "Give one counterexample to your conclusion.",
-      "answer": "Counterexample candidate: two systems can share a structure—a shared structure—while producing different outcomes because their mechanisms differ. That challenges any stronger conclusion that a shared pattern guarantees identical behavior. The prior answer was \"The analogy stops transferring when the shared pattern no longer predicts the same behavior. Structure, relation, or fu…\"; to make the counterexample decisive, state the exact universal or causal claim and name the condition that should fail.",
+      "answer": "Counterexample candidate: two systems can share a structure—a shared structure—while producing different outcomes because their mechanisms differ. That challenges any stronger conclusion that a shared pattern guarantees identical behavior. The prior answer was \"The analogy stops transferring at the crystal: a static lattice holds order without life. The shared pattern is boundar…\"; to make the counterexample decisive, state the exact universal or causal claim and name the condition that should fail.",
       "route": "Chat",
       "required": [
         "counterexample",
         "shared structure",
         "mechanisms differ"
       ],
-      "latency_ms": 278.818,
+      "latency_ms": 444.629,
       "pass": true
     },
     {
@@ -1918,33 +1918,33 @@
         "referent",
         "operator"
       ],
-      "latency_ms": 300.117,
+      "latency_ms": 957.146,
       "pass": true
     },
     {
       "id": "v52_deeper_no_repeat",
       "prompt": "Go one level deeper without repeating yourself.",
-      "answer": "Next layer: the previous answer was \"Weakest assumption: I treated the latest answer as addressing your intended referent and workload.\" The relation underneath it is between the assumption and the result; change that assumption while holding the rest fixed and check whether the conclusion changes.",
+      "answer": "Next layer (no rehash of the previous wording): the relation underneath \"Weakest assumption: I treated the latest answer as addressing your intended referent and workload\" is the assumption you can flip while holding the rest fixed — if the checkable outcome does not move, that assumption was decorative.",
       "route": "Chat",
       "required": [
         "next layer",
         "previous",
         "relation"
       ],
-      "latency_ms": 155.172,
+      "latency_ms": 258.933,
       "pass": true
     },
     {
       "id": "v52_missed",
       "prompt": "What did you miss in your previous answer?",
-      "answer": "I missed the requested operation if the previous reply did not answer the question directly. The previous answer began: \"Next layer: the previous answer was \"Weakest assumption: I treated the latest answer as addressing your intended refere…\". The repair is to name the active subject, preserve the user's requested form, and state the uncertainty instead of replacing the question with a nearby preset.",
+      "answer": "I missed the requested operation if the previous reply did not answer the question directly. The previous answer began: \"Next layer (no rehash of the previous wording): the relation underneath \"Weakest assumption: I treated the latest answe…\". The repair is to name the active subject, preserve the user's requested form, and state the uncertainty instead of replacing the question with a nearby preset.",
       "route": "Chat",
       "required": [
         "missed",
         "requested operation",
         "previous"
       ],
-      "latency_ms": 302.737,
+      "latency_ms": 490.337,
       "pass": true
     },
     {
@@ -1957,7 +1957,7 @@
         "two",
         "readings"
       ],
-      "latency_ms": 289.315,
+      "latency_ms": 896.277,
       "pass": true
     },
     {
@@ -1970,9 +1970,9 @@
         "clarification",
         "referents"
       ],
-      "latency_ms": 282.691,
+      "latency_ms": 876.157,
       "pass": true
     }
   ],
-  "receipt_sha256": "54c4264f41dc4e8db65b7bf7fc03cede1a3fff31a30d616ddcd38fcb7bab7340"
+  "receipt_sha256": "991fa8ff5b1cabef72ce98cbc9a86a067d6fda2d71c1d42fce39be1527a80211"
 }

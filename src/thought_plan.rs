@@ -267,16 +267,12 @@ impl ThoughtPlan {
     }
 
     pub fn push_uncertainty(mut self, text: impl Into<String>) -> Self {
-        self.uncertainties.push(Uncertainty {
-            text: text.into(),
-        });
+        self.uncertainties.push(Uncertainty { text: text.into() });
         self
     }
 
     pub fn push_boundary(mut self, text: impl Into<String>) -> Self {
-        self.boundaries.push(Constraint {
-            text: text.into(),
-        });
+        self.boundaries.push(Constraint { text: text.into() });
         self
     }
 
@@ -382,12 +378,7 @@ pub fn from_deliberation(user: &str, d: &Deliberation) -> ThoughtPlan {
     }
 
     // First sentence as primary claim when non-empty.
-    let claim = d
-        .answer
-        .split(['.', '!', '?'])
-        .next()
-        .unwrap_or("")
-        .trim();
+    let claim = d.answer.split(['.', '!', '?']).next().unwrap_or("").trim();
     if claim.len() >= 12 {
         plan = plan.push_claim(claim, "working");
     }
@@ -507,10 +498,7 @@ mod tests {
         .inferred("checkable done predicates")
         .uncertain("entity names are surface labels")
         .confidence(0.94);
-        let plan = from_deliberation(
-            "how should interfaces earn trust under lag",
-            &d,
-        );
+        let plan = from_deliberation("how should interfaces earn trust under lag", &d);
         assert_eq!(plan.operator, "trust-systems");
         assert!(!plan.claims.is_empty());
         assert!(plan.confidence_pm >= 900);

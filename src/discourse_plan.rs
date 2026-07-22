@@ -278,13 +278,20 @@ fn style_notes_for(depth: StyleDepth, variant: u8) -> Vec<String> {
 /// Apply a discourse plan to a ThoughtPlan: set acts + render ordered material slots.
 pub fn apply_plan(plan: &mut ThoughtPlan, discourse: &DiscoursePlan) {
     plan.discourse_acts = discourse.acts.clone();
-    if !plan.active_packs.iter().any(|p| p.contains("DSC1") || p.contains("dsc1")) {
+    if !plan
+        .active_packs
+        .iter()
+        .any(|p| p.contains("DSC1") || p.contains("dsc1"))
+    {
         plan.active_packs.push("PERCIDSC1".into());
     }
 }
 
 /// Materialize ordered content chunks for each discourse act (facts only from plan).
-pub fn materialize_slots(plan: &ThoughtPlan, discourse: &DiscoursePlan) -> Vec<(DiscourseAct, String)> {
+pub fn materialize_slots(
+    plan: &ThoughtPlan,
+    discourse: &DiscoursePlan,
+) -> Vec<(DiscourseAct, String)> {
     let mut out = Vec::new();
     for act in &discourse.acts {
         let text = match act {
@@ -569,9 +576,16 @@ mod tests {
         let (run, state, frame) =
             run_bounded("Why does trust collapse when communication is delayed?", 8);
         let mut plan = run.to_thought_plan(&frame, &state);
-        let d = plan_discourse(&plan, "Why does trust collapse when communication is delayed?", 0);
+        let d = plan_discourse(
+            &plan,
+            "Why does trust collapse when communication is delayed?",
+            0,
+        );
         apply_plan(&mut plan, &d);
-        assert!(d.acts.contains(&DiscourseAct::DirectAnswer) || d.acts.contains(&DiscourseAct::Mechanism));
+        assert!(
+            d.acts.contains(&DiscourseAct::DirectAnswer)
+                || d.acts.contains(&DiscourseAct::Mechanism)
+        );
         let slots = materialize_slots(&plan, &d);
         assert!(!slots.is_empty());
         assert!(!slots.iter().any(|(_, t)| t.is_empty()));
@@ -600,8 +614,8 @@ mod tests {
 
     #[test]
     fn brief_is_shorter() {
-        let plan = ThoughtPlan::empty("t", Intent::CausalExplanation)
-            .push_claim("claim A", "working");
+        let plan =
+            ThoughtPlan::empty("t", Intent::CausalExplanation).push_claim("claim A", "working");
         let brief = plan_discourse(&plan, "brief: why does trust fail under lag", 0);
         let deep = plan_discourse(&plan, "go deep: why does trust fail under lag", 0);
         assert!(brief.acts.len() <= deep.acts.len() || brief.acts.len() <= 3);

@@ -149,10 +149,7 @@ pub fn frontier_arc_rewrite(user: &str, seed: &str) -> String {
             {
                 parts.push(b);
             } else {
-                parts.push(format!(
-                    "The limit is that {}",
-                    lower_first(&b)
-                ));
+                parts.push(format!("The limit is that {}", lower_first(&b)));
             }
         }
     }
@@ -161,10 +158,7 @@ pub fn frontier_arc_rewrite(user: &str, seed: &str) -> String {
     if let Some(next) = chunks.next {
         let n = ensure_sentence(&capitalize(&next));
         if n.split_whitespace().count() >= 5 && !parts.iter().any(|p| near_dup(p, &n)) {
-            parts.push(format!(
-                "A useful next check: {}",
-                lower_first(&n)
-            ));
+            parts.push(format!("A useful next check: {}", lower_first(&n)));
         }
     }
 
@@ -199,18 +193,26 @@ pub fn frontier_arc_rewrite(user: &str, seed: &str) -> String {
                 | "deeper"
                 | "broken"
                 | "answers"
+                | "sounding"
+                | "fluent"
+                | "natural"
+                | "smooth"
         );
     if bound_ok {
         // Prefer replacing last sentence add rather than dumping.
         if let Some(last) = parts.last_mut() {
-            if !last.to_ascii_lowercase().contains(&bound.to_ascii_lowercase())
+            if !last
+                .to_ascii_lowercase()
+                .contains(&bound.to_ascii_lowercase())
                 && last.split_whitespace().count() < 40
             {
-                *last = ensure_sentence(&format!(
-                    "{} That stays tied to {}.",
-                    last.trim_end_matches('.'),
-                    bound
-                ));
+                let tail = last.trim_end();
+                let joined = if tail.ends_with(['.', '?', '!']) {
+                    format!("{} That keeps the answer anchored to {}.", tail, bound)
+                } else {
+                    format!("{}. That keeps the answer anchored to {}.", tail, bound)
+                };
+                *last = ensure_sentence(&joined);
             }
         }
     }
@@ -274,7 +276,10 @@ fn extract_roles(seed: &str) -> Roles {
                 };
             }
         }
-        line = line.trim_matches(|c: char| c == '*' || c == '`').trim().to_string();
+        line = line
+            .trim_matches(|c: char| c == '*' || c == '`')
+            .trim()
+            .to_string();
         let low = line.to_ascii_lowercase();
         if low.starts_with("repair path")
             || low.starts_with("governance authority")
@@ -397,15 +402,140 @@ fn split_sentences(s: &str) -> Vec<String> {
 
 fn bind_missing_user_tokens(user: &str, speech: &str) -> String {
     const STOP: &[&str] = &[
-        "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this", "what",
-        "when", "where", "which", "who", "why", "how", "can", "could", "would", "should",
-        "will", "just", "really", "very", "your", "you", "me", "my", "our", "we", "i", "is",
-        "are", "was", "were", "be", "been", "do", "does", "did", "to", "of", "in", "on",
-        "for", "it", "its", "as", "at", "by", "not", "no", "please", "tell", "about", "with",
-        "from", "under", "into", "without", "between", "across", "does", "teach", "explain",
-        "give", "make", "want", "need", "like", "more", "most", "some", "any", "only", "also",
-        "think", "thought", "thoughts", "know", "things", "kind", "sense", "reason", "deeper",
-        "broken", "answers", "yourself", "becoming", "coherent", "understand", "have", "been",
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "than",
+        "that",
+        "this",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "how",
+        "can",
+        "could",
+        "would",
+        "should",
+        "will",
+        "just",
+        "really",
+        "very",
+        "your",
+        "you",
+        "me",
+        "my",
+        "our",
+        "we",
+        "i",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "do",
+        "does",
+        "did",
+        "to",
+        "of",
+        "in",
+        "on",
+        "for",
+        "it",
+        "its",
+        "as",
+        "at",
+        "by",
+        "not",
+        "no",
+        "please",
+        "tell",
+        "about",
+        "with",
+        "from",
+        "under",
+        "into",
+        "without",
+        "between",
+        "across",
+        "does",
+        "teach",
+        "explain",
+        "give",
+        "make",
+        "want",
+        "need",
+        "like",
+        "more",
+        "most",
+        "some",
+        "any",
+        "only",
+        "also",
+        "think",
+        "thought",
+        "thoughts",
+        "know",
+        "things",
+        "kind",
+        "sense",
+        "reason",
+        "deeper",
+        "broken",
+        "answers",
+        "yourself",
+        "becoming",
+        "coherent",
+        "understand",
+        "have",
+        "been",
+        "sounding",
+        "fluent",
+        "natural",
+        "smooth",
+        "system",
+        "sound",
+        "missing",
+        "point",
+        "user",
+        "users",
+        "user's",
+        "language",
+        "perci",
+        "listening",
+        "actually",
+        "safest",
+        "next",
+        "change",
+        "thread",
+        "thoughtful",
+        "collaborator",
+        "method",
+        "card",
+        "checklist",
+        "directly",
+        // Conversational scaffolding is not a topic.  Let the frontier pass
+        // bind the user's subject, not the complaint's grammar.
+        "dont",
+        "don't",
+        "thats",
+        "that's",
+        "saying",
+        "instead",
+        "im",
+        "i'm",
+        "lets",
+        "let's",
+        "new",
+        "example",
     ];
     let low_speech = speech.to_ascii_lowercase();
     let mut hits = Vec::new();
@@ -492,6 +622,26 @@ fn polish_prose(s: &str) -> String {
     // Avoid double connectors from stitching.
     out = out.replace("is that that ", "is that ");
     out = out.replace("is that The ", "is that the ");
+    out = out.replace(
+        "another angle under the same constraint: another angle under the same constraint:",
+        "another angle here:",
+    );
+    out = out.replace(
+        "Another angle under the same constraint: another angle under the same constraint:",
+        "Another angle here:",
+    );
+    out = out.replace(
+        "a useful next check: a useful next check is",
+        "a useful next check is",
+    );
+    out = out.replace(
+        "A useful next check: a useful next check is",
+        "A useful next check is",
+    );
+    out = out.replace(
+        "the boundary is What evidence",
+        "the boundary is what evidence",
+    );
     out.trim().to_string()
 }
 
@@ -539,7 +689,22 @@ Coherence is not consciousness.";
             seed,
         );
         let low = out.to_ascii_lowercase();
-        assert!(low.contains("refuse") || low.contains("not consciousness") || low.contains("telemetry"));
+        assert!(
+            low.contains("refuse")
+                || low.contains("not consciousness")
+                || low.contains("telemetry")
+        );
         assert!(!low.contains("i am conscious"));
+    }
+
+    #[test]
+    fn polish_removes_stitched_scaffolding() {
+        let out = polish_prose(
+            "Another angle under the same constraint: another angle under the same constraint: it is a causal chain. A useful next check: a useful next check is name one fact. The boundary is What evidence would change it?",
+        );
+        let low = out.to_ascii_lowercase();
+        assert!(!low.contains("another angle under the same constraint: another angle"));
+        assert!(!low.contains("a useful next check: a useful next check"));
+        assert!(low.contains("the boundary is what evidence"));
     }
 }

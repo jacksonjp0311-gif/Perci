@@ -76,6 +76,7 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
     let operator_owns_structure = matches!(
         operator,
         "learning-evidence"
+            | "agent-loop-plan"
             | "multi-hop-plan"
             | "math-explanation"
             | "causal-chain"
@@ -94,6 +95,8 @@ pub fn enrich_answer(user: &str, operator: &str, seed_body: &str) -> String {
             | "cross-domain-synthesis"
             | "cross-domain-compose"
             | "cross-domain-analysis"
+            | "counterargument"
+            | "geometry-provenance-design"
             | "chat-layer-triage"
             | "what-do-we-trust"
             | "simple-antonym"
@@ -223,6 +226,21 @@ mod tests {
         );
         assert!(out.contains("fresh-process A/B"));
         assert!(out.contains("unseen variants"));
+    }
+
+    #[test]
+    fn agent_loop_operator_keeps_ordered_lifecycle() {
+        let out = enrich_answer(
+            "How should Perci plan an agent loop with measure ticket transfer close under lag?",
+            "agent-loop-plan",
+            "Agent loop (governed):\n1. Measure\n2. Ticket\n3. Repair\n4. Transfer\n5. Close",
+        );
+        let low = out.to_ascii_lowercase();
+        let measure = low.find("measure").expect("measure");
+        let ticket = low.find("ticket").expect("ticket");
+        let transfer = low.find("transfer").expect("transfer");
+        let close = low.find("close").expect("close");
+        assert!(measure < ticket && ticket < transfer && transfer < close);
     }
 
     #[test]

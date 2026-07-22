@@ -23,12 +23,35 @@ PRIMERS = (
     "<intent> when we examine <topic>, the mechanism is",
     "<intent> a deeper connection in <topic> is",
 )
+INTENT_PRIMERS = {
+    "improvement": (
+        "<intent> a measurable improvement in <topic> is",
+        "<intent> the useful change in <topic> is the one that",
+        "<intent> to improve <topic>, first observe whether",
+    ),
+    "repair": (
+        "<intent> you are pointing to a dialogue failure: the missing link is",
+        "<intent> the repair is to connect your meaning to the answer by",
+        "<intent> I should not guess past your point; the direct issue is",
+    ),
+    "social": (
+        "<intent> I am with you; the point worth carrying forward is",
+        "<intent> that reaction matters because it notices",
+        "<intent> I hear the opening; we can follow it toward",
+    ),
+    "capability": (
+        "<intent> the language gap around <topic> is coverage and discourse state: the next test is",
+        "<intent> a learned sequence can sound natural when it preserves <topic> across turns",
+        "<intent> the honest boundary for <topic> is that this field learns transitions, not",
+    ),
+}
 TOPIC_STOP = {
     "what", "why", "how", "are", "the", "this", "that", "you", "can", "does",
     "about", "tell", "explain", "connect", "give", "reflect", "creatively", "imagine",
     "original", "thought", "express", "new", "say", "differently", "more", "next",
     "one", "direct", "claim", "evidence", "test", "name", "first", "state", "which",
     "would", "could", "when", "inside", "without", "think", "between", "from", "into",
+    "dont", "don't", "thats", "that's", "saying", "instead", "im", "i'm", "like",
 }
 
 
@@ -80,6 +103,19 @@ def topic_for(row: dict[str, object]) -> str:
 
 
 def intent_for(row: dict[str, object]) -> str:
+    prompt = str(row.get("prompt", "")).lower()
+    if "improv" in prompt or ("evolv" in prompt and "system" in prompt):
+        return "improvement"
+    if ("why dont you" in prompt or "why don't you" in prompt) and any(
+        word in prompt for word in ("say", "saying", "think", "mean")
+    ):
+        return "repair"
+    if "frontier" in prompt and any(
+        word in prompt for word in ("response", "language", "natural", "like")
+    ):
+        return "capability"
+    if prompt.strip() in {"interesting", "thats interesting", "that's interesting", "wow"}:
+        return "social"
     family = str(row.get("intent") or row.get("family") or "general").strip().lower()
     aliases = {
         "rephrase": "clarification",
@@ -162,7 +198,7 @@ def main() -> int:
         for row in rows:
             topic = topic_for(row)
             intent = intent_for(row)
-            for primer in PRIMERS:
+            for primer in INTENT_PRIMERS.get(intent, PRIMERS):
                 context = context_for(row, args.prompt_conditioned)
                 suffix = f" {context}" if context else ""
                 handle.write(
@@ -218,6 +254,9 @@ def main() -> int:
         "prompt_conditioned": args.prompt_conditioned,
         "context_rows": sum(bool(context_for(row, args.prompt_conditioned)) for row in rows),
         "primer_count": len(PRIMERS),
+        "intent_primer_counts": {
+            key: len(value) for key, value in INTENT_PRIMERS.items()
+        },
         "order": max(1, min(4, args.order)),
         "byte_field": str(byte_field),
         "byte_field_sha256": sha256(byte_field),

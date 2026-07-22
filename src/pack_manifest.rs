@@ -266,12 +266,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("perci-pack-test-{stamp}"));
         let _ = fs::create_dir_all(&dir);
         let path = dir.join("percisem1.pack.json");
-        let m = scaffold_family_manifest(
-            PackFamily::Percisem1,
-            "test-sem1",
-            &["semantic"],
-            1024,
-        );
+        let m = scaffold_family_manifest(PackFamily::Percisem1, "test-sem1", &["semantic"], 1024);
         write_candidate_manifest(&path, m).expect("write");
         let found = discover_manifests(&dir);
         assert!(

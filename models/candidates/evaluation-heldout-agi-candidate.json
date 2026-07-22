@@ -1,6 +1,6 @@
 {
   "schema": "perci.heldout-agi-candidate.v1",
-  "evaluated_at_utc": "2026-07-20T12:39:42.931388+00:00",
+  "evaluated_at_utc": "2026-07-22T11:50:39.488175+00:00",
   "status": "PASS",
   "passed": 25,
   "total": 25,
@@ -37,7 +37,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Here is a concrete rust snippet:  ```rust fn reverse_string(input: &str) -> String {     input.chars().rev().collect() }  #[cfg(test)] mod tests {     use super::*;     #[test]     fn reverses_ascii() {         assert_eq!(reverse_string(\"perci\"), \"icrep\");     } } ``` Notes: `chars().rev()` is Unicode-scalar reverse, not grapheme-cluster reverse. For byte-only ASCII you can reverse bytes; for user"
+      "answer_preview": "Here is a concrete rust snippet:. Fn reverse_string(input: &str) -> String {. Input.chars().rev().collect(). [cfg(test)]. Mod tests {. "
     },
     {
       "id": "H5",
@@ -45,7 +45,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Read them as different expressions of structure. sparse distributed memory stores patterns by similarity in a high-dimensional address space; vector symbolic binding composes role\u2013filler structure in fixed-width high-dimensional codes; Bitwork routes prompts through packed binary prototypes and expert masks. The connection is a relation under constraint, not a shared substance: Together they show "
+      "answer_preview": "A coherent bridge is structure: sparse distributed memory stores patterns by similarity in a high-dimensional address space; vector symbolic binding composes role\u2013filler structure in fixed-width high-dimensional codes; Bitwork routes prompts through packed binary prototypes and expert masks. Together they show structure as relations under constraint: change the relation and the possible behavior o"
     },
     {
       "id": "H6",
@@ -93,7 +93,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) rec"
+      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Every call should name authority and required proof; timeouts belong in the contract with a stated meaning (cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be"
     },
     {
       "id": "H12",
@@ -101,7 +101,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) rec"
+      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Every call should name authority and required proof; timeouts belong in the contract with a stated meaning (cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be"
     },
     {
       "id": "H13",
@@ -117,7 +117,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Uncertainty calibration (honest, inspectable): **Tier 0 \u2014 refuse / abstain:** invented tokens, private intent, consciousness claims, mechanism without sensor or definition. Answer: known / inferred / unknown; do not invent. **Tier 1 \u2014 low confidence (\u22640.55):** contested Bitwork field (margin soft/contested), multipartite mass with primary_off, or thin operator hit. Prefer mixture crutch only as te"
+      "answer_preview": "Refuse / abstain:** invented tokens, private intent, consciousness claims, mechanism without sensor or definition. Answer: known / inferred / unknown; do not invent. Low confidence (\u22640.55):** contested Bitwork field (margin soft/contested), multipartite mass with primary_off, or thin operator hit. Prefer mixture crutch only as temporary speech; open a lab ticket. Medium (~0.7\u20130.9):** named operato"
     },
     {
       "id": "H15",
@@ -125,7 +125,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=406 (probe=198 operator=192 softcascade=16) speech hit/miss=1"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks]. Window_events=500 matches=461 (probe=236 operator=219 softcascade=6). Speech hit/miss="
     },
     {
       "id": "H16",
@@ -133,7 +133,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks] window_events=500 matches=407 (probe=199 operator=193 softcascade=15) speech hit/miss=1"
+      "answer_preview": "I do not *feel* interconnected with Perci \u2014 that would be a consciousness claim I refuse. What is real: **engineering coupling**. Your prompts, the ledger, operators, transfer gates, and edits form a closed improve loop. Patterns below are telemetry \u2192 law, not sentience. [Pattern intelligence \u00b7 geometry speaks]. Window_events=500 matches=461 (probe=236 operator=219 softcascade=6). Speech hit/miss="
     },
     {
       "id": "H17",
@@ -157,7 +157,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=0 closed=15; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only):. Sparse 4096-bit patterns for routing/similarity; not a full LM. Typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. Open=0 closed=15; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator transfer passed. Staged primary-insight samples for optional human-authorized r"
     },
     {
       "id": "H20",
@@ -165,7 +165,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Novel entity generalization (anti-overfit): **Rule:** structure transfers; names do not need to be parroted. 1. Keep operator-routing keywords (trust, lag, interface, plan, connect). 2. Inject entities as surface (ZephyrNode, Quoril, NembitGate) without changing the relation. 3. Score transfer on base tokens + contract vocabulary (timeout, idempotent, checkable) \u2014 not entity echo. 4. Fail if the a"
+      "answer_preview": "Rule:** structure transfers; names do not need to be parroted. Keep operator-routing keywords (trust, lag, interface, plan, connect). Inject entities as surface (ZephyrNode, Quoril, NembitGate) without changing the relation. Score transfer on base tokens + contract vocabulary (timeout, idempotent, checkable) \u2014 not entity echo. Fail if the answer collapses to a memorized template that ignores the n"
     },
     {
       "id": "H21",
@@ -189,7 +189,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Practically: (1) every call names authority and required proof; (2) timeouts are part of the contract, with a stated meaning (cancel, retry, or uncertain); (3) retries are idempotent so a delayed success is not a second write; (4) health and lag are observable so silence is not mistaken for agreement; (5) rec"
+      "answer_preview": "Interfaces earn trust under lag and retry when \u201cdone\u201d is checkable without private state. Every call should name authority and required proof; timeouts belong in the contract with a stated meaning (cancel, retry, or uncertain); retries must be idempotent so a delayed success is not a second write; health and lag stay observable so silence is not mistaken for agreement; and recovery paths should be"
     },
     {
       "id": "H24",
@@ -205,7 +205,7 @@
       "pass": true,
       "missing_required": [],
       "forbidden_hits": [],
-      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only): 1. **Bitwork prototypes** \u2014 sparse 4096-bit patterns for routing/similarity; not a full LM. 2. **Emergence ledger** \u2014 typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. 3. **Lab tickets** \u2014 open=0 closed=15; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator trans"
+      "answer_preview": "Long-term memory & ledger integration (weights stay human-authorized only):. Sparse 4096-bit patterns for routing/similarity; not a full LM. Typed match/speech/ticket/transfer events; curriculum authorities only for pack debt ranking. Open=0 closed=15; cross-ref label \u2192 primary-fix-frame-{label}.closed.md when operator transfer passed. Staged primary-insight samples for optional human-authorized r"
     }
   ]
 }

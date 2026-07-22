@@ -655,7 +655,7 @@ capability write_repo={} network={} git_push={}\n\n\
         sample.capability.capabilities.git_push,
     );
     report
-        .replace("v0.7.5", "v0.9.8")
+        .replace("v0.7.5", "v0.10.1")
         .replace("local model language surface", "native binary language surface")
         .replace(
             "Phase 2: language_sidecar + local HTTP model + knowledge_fabric; all optional",

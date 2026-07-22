@@ -63,8 +63,7 @@ pub struct RealizeConstraints {
 
 impl RealizeConstraints {
     pub fn from_plan(plan: &ThoughtPlan, user: &str, bits: BitWidth) -> Self {
-        let mut required_claims: Vec<String> =
-            plan.claims.iter().map(|c| c.text.clone()).collect();
+        let mut required_claims: Vec<String> = plan.claims.iter().map(|c| c.text.clone()).collect();
         for m in plan.mechanisms.iter().take(2) {
             required_claims.push(m.object.clone());
         }
@@ -213,10 +212,7 @@ fn looks_followup_micro(user: &str) -> bool {
 
 /// Chat-path modular realize: substantive intents only, quality-gated.
 /// Social / exact / thin unknown stays on SoftCascade / dialogue reflexes.
-pub fn try_chat_realize(
-    user: &str,
-    recent: &[(String, String)],
-) -> Option<RealizeResult> {
+pub fn try_chat_realize(user: &str, recent: &[(String, String)]) -> Option<RealizeResult> {
     let intent = Intent::infer_from_prompt(user);
     if matches!(intent, Intent::Social | Intent::Exact) {
         return None;
@@ -298,7 +294,10 @@ pub fn realize_plan(
     if !packs.iter().any(|p| p.contains("LM1") || p.contains("lm1")) {
         packs.push("PERCILM1".into());
     }
-    if !packs.iter().any(|p| p.contains("DSC1") || p.contains("dsc1")) {
+    if !packs
+        .iter()
+        .any(|p| p.contains("DSC1") || p.contains("dsc1"))
+    {
         packs.push("PERCIDSC1".into());
     }
 
@@ -424,10 +423,7 @@ fn soft_bridge(bits: BitWidth, act: &DiscourseAct, planned: &str, index: usize) 
     }
 }
 
-fn check_constraints(
-    text: &str,
-    c: &RealizeConstraints,
-) -> (bool, Vec<String>, Vec<String>) {
+fn check_constraints(text: &str, c: &RealizeConstraints) -> (bool, Vec<String>, Vec<String>) {
     let low = text.to_ascii_lowercase();
     let mut missing = Vec::new();
     // Require at least one claim fragment to appear if claims exist
@@ -596,13 +592,20 @@ mod tests {
         assert!(!r.text.is_empty());
         assert!(!r.text.contains("• Goal:"));
         assert!(!r.text.to_ascii_lowercase().contains("i am conscious"));
-        assert!(r.constraints_ok, "missing={:?} forb={:?}", r.missing_required, r.forbidden_hits);
+        assert!(
+            r.constraints_ok,
+            "missing={:?} forb={:?}",
+            r.missing_required, r.forbidden_hits
+        );
         assert!(
             r.text.to_ascii_lowercase().contains("trust")
                 || r.text.to_ascii_lowercase().contains("timeout")
                 || r.text.to_ascii_lowercase().contains("done")
         );
-        assert!(r.active_packs.iter().any(|p| p.contains("LM1") || p.contains("DSC1")));
+        assert!(r
+            .active_packs
+            .iter()
+            .any(|p| p.contains("LM1") || p.contains("DSC1")));
     }
 
     #[test]

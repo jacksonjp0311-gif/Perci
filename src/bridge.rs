@@ -337,19 +337,10 @@ pub fn compose_soft_cascade(
     // When field mass coheres, deepen the arc so speech carries multipartite
     // structure (geometry-led "LLM-like" flow without a transformer).
     let coh_pre = field_coherence_score(matched, user);
-    let depth = if coh_pre >= 0.55 {
-        2u8
-    } else {
-        style_depth()
-    };
+    let depth = if coh_pre >= 0.55 { 2u8 } else { style_depth() };
     let force_multi = geo.force_multipartite_arc || coh_pre >= 0.48;
-    let mut arc = ThoughtArc::from_packet(
-        &packet,
-        aligned_domain,
-        matched.margin,
-        depth,
-        force_multi,
-    );
+    let mut arc =
+        ThoughtArc::from_packet(&packet, aligned_domain, matched.margin, depth, force_multi);
     if let Some(ref thesis) = mix_thesis {
         arc.thesis = thesis.trim().trim_end_matches('.').trim().to_owned();
         arc.contested = true;
@@ -376,24 +367,52 @@ pub fn compose_soft_cascade(
         out = crate::voice::weave_composition_frame(&out, &packet.composition, variant);
     }
 
-    // Bind user topic if diluted (always when geometry_blind or mixture-corrected).
+    // Bind user topic if diluted — but never glue onto thin shells or casual speech threads.
+    // "All of that still answers talk response" is a known live failure mode.
     let ol = out.to_ascii_lowercase();
+    let shellish = ol.contains("claim we can check")
+        || ol.contains("won't fake certainty")
+        || ol.contains("wont fake certainty")
+        || ol.contains("what's the claim")
+        || ol.contains("composition fails when")
+        || ol.split_whitespace().count() < 12;
+    let casual_user = {
+        let u = user.to_ascii_lowercase();
+        u.contains("speech")
+            || u.contains("speach")
+            || u.contains("talk")
+            || u.contains("generic")
+            || u.contains("response")
+            || u.contains("robotic")
+            || u.split_whitespace().count() <= 8
+    };
     let hit = tokens.iter().filter(|t| ol.contains(t.as_str())).count();
-    let need_bind = tokens.len() >= 2 && hit == 0;
-    let force_bind = geo.geometry_blind || (used_mix && hit < tokens.len().min(2));
+    let need_bind = tokens.len() >= 2 && hit == 0 && !shellish && !casual_user;
+    let force_bind = (geo.geometry_blind || (used_mix && hit < tokens.len().min(2)))
+        && !shellish
+        && !casual_user;
     if need_bind || force_bind {
         if hit == 0 && tokens.len() >= 2 {
             out.push(' ');
             out.push_str(&format!(
-                "All of that still answers {}.",
-                tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
+                "That still ties to {}.",
+                tokens
+                    .iter()
+                    .take(2)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(" / ")
             ));
         } else if force_bind && hit < 2 && !tokens.is_empty() {
             out.push(' ');
-            // Geometry bind without ticket-speak.
             out.push_str(&format!(
                 "Held against {}: change the constraint and watch what breaks.",
-                tokens.iter().take(3).cloned().collect::<Vec<_>>().join(" ")
+                tokens
+                    .iter()
+                    .take(2)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(" / ")
             ));
         }
     }
@@ -2133,9 +2152,8 @@ mod tests {
         let mut m = sample_match();
         m.overlap_z = 18.0;
         m.margin = 4;
-        m.insight = Some(
-            "Trust under lag is checkable acceptance, not hope the network is fast.".into(),
-        );
+        m.insight =
+            Some("Trust under lag is checkable acceptance, not hope the network is fast.".into());
         let c = field_coherence_score(&m, "how should interfaces earn trust under lag?");
         assert!(
             c >= 0.35,

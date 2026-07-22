@@ -208,7 +208,31 @@ impl BinaryPhraseModel {
         if state == 0 {
             state = 1;
         }
-        let primers: &[&str] = match domain {
+        // Intent is a learned control signal, not a second response engine:
+        // these primers give the transition field a discourse state before it
+        // walks the binary vocabulary.  Domain primers remain the fallback.
+        let primers: &[&str] = match intent {
+            "improvement" => &[
+                "<intent> a measurable improvement in <topic> is",
+                "<intent> the useful change in <topic> is the one that",
+                "<intent> to improve <topic>, first observe whether",
+            ],
+            "repair" => &[
+                "<intent> you are pointing to a dialogue failure: the missing link is",
+                "<intent> the repair is to connect your meaning to the answer by",
+                "<intent> I should not guess past your point; the direct issue is",
+            ],
+            "social" => &[
+                "<intent> I am with you; the point worth carrying forward is",
+                "<intent> that reaction matters because it notices",
+                "<intent> I hear the opening; we can follow it toward",
+            ],
+            "capability" => &[
+                "<intent> the language gap around <topic> is coverage and discourse state: the next test is",
+                "<intent> a learned sequence can sound natural when it preserves <topic> across turns",
+                "<intent> the honest boundary for <topic> is that this field learns transitions, not",
+            ],
+            _ => match domain {
             "geometry" => &[
                 "<intent> geometry makes the relation visible: <topic> is",
                 "<intent> a geometric reading of <topic> begins with the boundary that",
@@ -240,6 +264,7 @@ impl BinaryPhraseModel {
                 "<intent> when we examine <topic>, the mechanism is",
                 "<intent> a deeper connection in <topic> is",
             ],
+            },
         };
         let primer = primers[(state as usize) % primers.len()];
         let mut history = vec![self.id_for("<unk>"); self.order];
@@ -825,7 +850,33 @@ fn render_tokens(tokens: &[String], topic: &str) -> String {
 /// layer remains authoritative for final response shape.
 fn salient_intent(user: &str) -> &'static str {
     let lower = crate::text_normalize::normalize_for_routing(user);
-    if lower.contains("dont agree")
+    if lower.contains("improving")
+        || lower.contains("improvement")
+        || (lower.contains("evolve") && lower.contains("system"))
+    {
+        "improvement"
+    } else if (lower.contains("why dont you") || lower.contains("why don't you"))
+        && (lower.contains("say")
+            || lower.contains("saying")
+            || lower.contains("think")
+            || lower.contains("mean"))
+    {
+        "repair"
+    } else if lower == "interesting"
+        || lower == "thats interesting"
+        || lower == "that's interesting"
+        || lower == "that is interesting"
+        || lower == "wow"
+    {
+        "social"
+    } else if lower.contains("frontier")
+        && (lower.contains("response")
+            || lower.contains("language")
+            || lower.contains("natural")
+            || lower.contains("like"))
+    {
+        "capability"
+    } else if lower.contains("dont agree")
         || lower.contains("don't agree")
         || lower.contains("disagree")
         || lower.contains("seems wrong")
@@ -974,6 +1025,16 @@ fn salient_topic(user: &str) -> String {
         "changes",
         "time",
         "lived",
+        "dont",
+        "don't",
+        "thats",
+        "that's",
+        "saying",
+        "instead",
+        "im",
+        "i'm",
+        "why",
+        "like",
     ];
     crate::text_normalize::repair_typos(user)
         .split_whitespace()
@@ -1152,6 +1213,37 @@ mod tests {
             humanize_topic("geometry memory language"),
             "the relationship among geometry, memory, and language"
         );
+    }
+
+    #[test]
+    fn learned_sequence_conditions_on_dialogue_intent() {
+        let mut trainer = BinaryPhraseTrainer::new(4);
+        trainer.train_text(&format!(
+            "{PRIMER_CORPUS}\n\
+                a measurable improvement in <topic> is a change that survives a held-out check.\n\
+                you are pointing to a dialogue failure: the missing link is the user's meaning.\n\
+                I am with you; the point worth carrying forward is the new observation.\n\
+                the language gap is coverage and discourse state: the next test is transfer."
+        ));
+        let path = env::temp_dir().join(format!(
+            "perci-binary-phrase-intent-{}-{}.bphr",
+            std::process::id(),
+            now_millis()
+        ));
+        trainer.write(&path).unwrap();
+        let model = BinaryPhraseModel::load(&path).unwrap();
+        let improvement = model.generate_reply("improving your system", "general", 280, 13);
+        let repair = model.generate_reply(
+            "why dont you think about what im saying instead",
+            "general",
+            280,
+            17,
+        );
+        assert!(improvement.len() > 12);
+        assert!(repair.len() > 12);
+        assert!(!improvement.to_ascii_lowercase().contains("<intent>"));
+        assert!(!repair.to_ascii_lowercase().contains("<topic>"));
+        let _ = fs::remove_file(path);
     }
 
     fn now_millis() -> u128 {

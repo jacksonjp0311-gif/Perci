@@ -291,10 +291,8 @@ pub fn run_experiment(seed: u64, max_depth: u32) -> FoldExperimentReport {
             );
         }
         if xor1.matched_decode_pm >= 900 {
-            findings.push(
-                "xor_bind: near-lossless unbind at depth 1 (self-inverse binding)."
-                    .into(),
-            );
+            findings
+                .push("xor_bind: near-lossless unbind at depth 1 (self-inverse binding).".into());
         }
     }
 
@@ -323,9 +321,8 @@ pub fn run_experiment(seed: u64, max_depth: u32) -> FoldExperimentReport {
         "Folding is experimental telemetry, not a claim of infinite or lossless compression."
             .into(),
     );
-    findings.push(
-        "Observer = decode operator only; not consciousness or quantum observation.".into(),
-    );
+    findings
+        .push("Observer = decode operator only; not consciousness or quantum observation.".into());
 
     FoldExperimentReport {
         schema: "perci.field-fold-experiment.v1".into(),

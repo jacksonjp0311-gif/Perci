@@ -344,7 +344,10 @@ mod tests {
             production_only: false,
         };
         let d = router.route("bind the subject and condition for delayed trust");
-        assert!(d.active_packs.iter().any(|p| p == "sem1-test" || p.contains("PERCISEM1")));
+        assert!(d
+            .active_packs
+            .iter()
+            .any(|p| p == "sem1-test" || p.contains("PERCISEM1")));
         assert!(d.telemetry.installed_pack_count >= 1);
         let _ = std::fs::remove_dir_all(&dir);
     }

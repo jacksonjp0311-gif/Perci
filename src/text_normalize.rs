@@ -7,6 +7,9 @@
 //! Unknown names and invented words therefore remain untouched.
 
 const ALIASES: &[(&str, &str)] = &[
+    // Common dropped/transposed letters observed in live dialogue.  Keep this
+    // explicit: broad fuzzy repair could silently change names or domain terms.
+    ("imnproving", "improving"),
     ("intellegence", "intelligence"),
     ("inteligence", "intelligence"),
     ("intellgent", "intelligent"),
@@ -273,6 +276,14 @@ mod tests {
         assert_eq!(
             normalize_for_routing("  WHY is natral   language hard? "),
             "why is natural language hard?"
+        );
+    }
+
+    #[test]
+    fn live_typo_reaches_the_learned_sequence_surface() {
+        assert_eq!(
+            normalize_for_routing("imnproving your system"),
+            "improving your system"
         );
     }
 }

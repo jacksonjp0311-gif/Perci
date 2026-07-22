@@ -133,7 +133,10 @@ pub fn extract_frame(user: &str) -> SemanticFrame {
     };
 
     // Requested output
-    if t.contains("why ") || t.contains("how does") || t.contains("how do ") || t.contains("mechanism")
+    if t.contains("why ")
+        || t.contains("how does")
+        || t.contains("how do ")
+        || t.contains("mechanism")
     {
         frame.requested_output = "mechanism".into();
     } else if t.contains("compare") || t.contains("versus") || t.contains(" vs ") {
@@ -184,7 +187,10 @@ pub fn extract_frame(user: &str) -> SemanticFrame {
     // Subjects — prefer multi-word motifs then single.
     // Recovery + retry/idempot is trust-under-lag region (not bare "should" noun).
     if (t.contains("recovery") || t.contains("recover"))
-        && (t.contains("retry") || t.contains("idempot") || t.contains("timeout") || t.contains("lag"))
+        && (t.contains("retry")
+            || t.contains("idempot")
+            || t.contains("timeout")
+            || t.contains("lag"))
     {
         frame.subject = "trust".into();
     }
@@ -252,7 +258,15 @@ pub fn extract_frame(user: &str) -> SemanticFrame {
             if w.len() >= 4
                 && !matches!(
                     w,
-                    "does" | "when" | "with" | "that" | "this" | "from" | "into" | "about" | "under"
+                    "does"
+                        | "when"
+                        | "with"
+                        | "that"
+                        | "this"
+                        | "from"
+                        | "into"
+                        | "about"
+                        | "under"
                 )
             {
                 frame.subject = w.trim_matches(|c: char| !c.is_ascii_alphanumeric()).into();
@@ -523,7 +537,12 @@ pub fn build_pack(frames: &[SemanticFrame], out: impl AsRef<Path>) -> io::Result
         let label = if frame.subject.is_empty() {
             format!("f{idx}")
         } else {
-            frame.subject.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_').take(12).collect::<String>()
+            frame
+                .subject
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .take(12)
+                .collect::<String>()
         };
         let mut lab = [0u8; 16];
         for (i, b) in label.bytes().take(14).enumerate() {
@@ -618,10 +637,7 @@ pub struct SemEvalReport {
     pub details: Vec<String>,
 }
 
-pub fn evaluate_semantic(
-    cases: &[SemEvalCase],
-    pack: Option<&SemanticFieldPack>,
-) -> SemEvalReport {
+pub fn evaluate_semantic(cases: &[SemEvalCase], pack: Option<&SemanticFieldPack>) -> SemEvalReport {
     let mut subject_hits = 0;
     let mut condition_hits = 0;
     let mut output_hits = 0;
@@ -669,8 +685,8 @@ pub fn evaluate_semantic(
                 let b = encode_frame(&frames[j]).query;
                 let sim = similarity_pm(a, b);
                 // Same subject is a soft pass even when HV sim is mid (role slots differ).
-                let same_subject = !frames[i].subject.is_empty()
-                    && frames[i].subject == frames[j].subject;
+                let same_subject =
+                    !frames[i].subject.is_empty() && frames[i].subject == frames[j].subject;
                 if sim >= 550 || same_subject {
                     paraphrase_pairs_ok += 1;
                 } else {
