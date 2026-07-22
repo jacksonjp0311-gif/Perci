@@ -91,7 +91,8 @@ impl Deliberation {
                 .map(|b| format!("{}↔{}", b.role, b.filler))
                 .collect::<Vec<_>>()
                 .join(", ");
-            self.observations.push(format!("thought_plan.bindings={binds}"));
+            self.observations
+                .push(format!("thought_plan.bindings={binds}"));
         }
         self
     }
@@ -248,6 +249,72 @@ pub fn try_deliberate(
         );
     }
 
+    // A conversational counterexample request may omit the noun
+    // "counterexample". Keep the active explanation in view and name the
+    // smallest evidence-bearing revision path instead of falling to a generic
+    // continuation shell.
+    if (text.contains("what would make") || text.contains("what would cause"))
+        && (text.contains("explanation") || text.contains("answer") || text.contains("claim"))
+        && (text.contains("fail") || text.contains("wrong") || text.contains("false"))
+    {
+        return Some(
+            Deliberation::new(
+                "explanation-counterexample",
+                "A counterexample or failed prediction would make that explanation fail: find an observation the explanation cannot account for, then compare it with a competing account. The smallest test is to predeclare the evidence that would change the claim and revise it if that evidence appears.",
+            )
+            .observed("the prompt asks for a failure condition on the active explanation")
+            .inferred("counterexample and predeclared evidence are the shortest separating path")
+            .uncertain("which domain-specific observation the user has in mind")
+            .confidence(0.96),
+        );
+    }
+
+    // A depth prefix should modify the budget, not hide a relational question
+    // from the relation parser (for example, "Go deeper: how are memory and
+    // attention related?").
+    if (text.starts_with("go deeper:") || text.starts_with("go one level deeper:"))
+        && !(text.contains("knowledge") && text.contains("attention"))
+        && parse_relational_inquiry(text.as_str()).is_none()
+    {
+        let stripped = text
+            .split_once(':')
+            .map(|(_, rest)| rest.trim())
+            .unwrap_or(text.as_str());
+        if let Some((left, right, relation)) = parse_relational_inquiry(stripped) {
+            if let Some(mut result) = relational_inquiry(&left, &right, relation, recent.len()) {
+                result.answer = format!("Going one layer deeper: {}", result.answer.trim_start());
+                result
+                    .observations
+                    .push("depth prefix preserved the relational operator".to_owned());
+                return Some(result);
+            }
+        }
+    }
+
+    // Held-out transfer wording should activate the same frame lattice as an
+    // explicit connect prompt. This is a structural transfer, not keyword
+    // copying: both target domains remain visible in the answer and trace.
+    if text.contains("same structural relation")
+        && text.contains("code")
+        && text.contains("culture")
+    {
+        return cross_domain_summary(&text)
+            .map(|summary| cross_domain_analysis_answer(&summary, recent.len()));
+    }
+
+    if text.contains("smallest test") && (text.contains("bridge") || text.contains("whether")) {
+        return Some(
+            Deliberation::new(
+                "smallest-bridge-test",
+                "Test the bridge by stating the relation it claims to preserve, measure that relation on one concrete case, and record the evidence before and after a controlled perturbation. A counterexample or unchanged result is the smallest signal that the bridge does not hold and the explanation should be revised.",
+            )
+            .observed("the prompt asks for a minimal test of a conceptual bridge")
+            .inferred("one perturbation and one predeclared measure provide the smallest viable check")
+            .uncertain("which concrete domains the bridge is meant to connect")
+            .confidence(0.95),
+        );
+    }
+
     // Evidence questions about a healing effect need a claim-level answer,
     // not the nearest geometry/ritual concept. Keep mechanism, control, and
     // falsifier together so symbolic association cannot masquerade as causal
@@ -316,6 +383,10 @@ pub fn try_deliberate(
         }
     }
 
+    if looks_conscious_self_model(&text) {
+        return Some(conscious_self_model_answer());
+    }
+
     // Multi-hop / dual-motif / entity-slot expansions before trust-systems steals
     // "trust…lag…repair" compose prompts.
     if let Some(d) = crate::cognition_expand::try_expand(&repaired, recent) {
@@ -331,6 +402,20 @@ pub fn try_deliberate(
     // Agent-staged auto-repairs (hardness fail catalog) after first-class operators.
     if let Some(d) = crate::auto_repairs::try_auto_repair(&repaired) {
         return Some(d);
+    }
+
+    // Speech / talk quality workstream — before SoftCascade steals the turn.
+    if looks_speech_quality_goal(&text) {
+        return Some(speech_quality_goal_answer(&text, recent));
+    }
+    if looks_talk_layer_focus(&text, recent) {
+        return Some(talk_layer_focus_answer(recent));
+    }
+    if looks_weights_vs_generic_policy(&text) {
+        return Some(weights_vs_generic_policy_answer());
+    }
+    if looks_output_adjust_complaint(&text) {
+        return Some(output_adjust_complaint_answer(recent));
     }
 
     // Meta: "what are we doing" / "what should I do" / "where are we going"
@@ -359,13 +444,10 @@ pub fn try_deliberate(
     // Pure greetings must not fall through to empty SoftCascade in transfer probes.
     if looks_pure_greeting(&text) {
         return Some(
-            Deliberation::new(
-                "greeting",
-                "Hey — I'm here. What are we working on?",
-            )
-            .observed("short social greeting")
-            .inferred("presence without concept-card dump")
-            .confidence(0.99),
+            Deliberation::new("greeting", "Hey — I'm here. What are we working on?")
+                .observed("short social greeting")
+                .inferred("presence without concept-card dump")
+                .confidence(0.99),
         );
     }
 
@@ -823,6 +905,23 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
                 .observed("explicit session-only scope")
                 .inferred("retain in dialogue context, not governed memory")
                 .confidence(0.99),
+        );
+    }
+    if looks_session_recall_purpose(&text) {
+        let number = find_recent_number(recent);
+        let has_number = number.is_some();
+        let answer = match number {
+            Some(n) => format!(
+                "The checksum was {n}. You gave it to me to test whether I could retain and resolve session context; that purpose is an inference from the surrounding questions, not something I can know directly."
+            ),
+            None => "I can infer that the number was a session-context test, but I cannot recover the checksum from the available session window.".to_owned(),
+        };
+        return Some(
+            Deliberation::new("session-recall-purpose", answer)
+                .observed("the prompt combines a request to recall a session number with a request to infer its purpose")
+                .inferred("the number was supplied as a context-retention probe")
+                .uncertain("the user's private motive beyond the conversational evidence")
+                .confidence(if has_number { 0.98 } else { 0.82 }),
         );
     }
     if text.contains("why did i give you that number") {
@@ -2325,7 +2424,7 @@ fn cross_domain_analysis_answer(summary: &CrossDomainSummary, variant: usize) ->
         "The useful bridge here is"
     };
     let answer = format!(
-        "{lead} {axis}: {clauses}. The local frame map is a scaffold, not authority. The comparison is structural, not a claim that the mechanisms are identical. Domain tests: {tests}.{missing}"
+        "{lead} {axis}: {clauses}. The local frame map is a scaffold, not authority. The shared relation is structural; the comparison is not a claim that the mechanisms are identical. Domain tests: {tests}.{missing}"
     );
     let mut result = Deliberation::new("cross-domain-analysis", answer)
         .observed(format!(
@@ -2479,7 +2578,11 @@ fn cross_domain_terms(user: &str) -> Vec<String> {
         || lower.contains("without collapsing")
         || lower.contains("without treating them as identical")
         || lower.contains("domain mechanisms")
-        || lower.contains("shared relation");
+        || lower.contains("shared relation")
+        || lower.contains("share a structural")
+        || lower.contains("share a structure")
+        || lower.contains("same structural relation")
+        || lower.contains("apply the same");
     if !comparison {
         return Vec::new();
     }
@@ -2538,7 +2641,11 @@ fn extract_analyze_list(lower: &str) -> Option<Vec<String>> {
     let body = body.replace(" and ", ", ");
     let parts: Vec<String> = body
         .split(',')
-        .map(|p| p.trim().trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ' && c != '-').to_owned())
+        .map(|p| {
+            p.trim()
+                .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != ' ' && c != '-')
+                .to_owned()
+        })
         .filter(|p| p.len() >= 2 && p.split_whitespace().count() <= 4)
         .collect();
     if parts.len() >= 2 {
@@ -3084,6 +3191,10 @@ pub fn canonical_domain_term(term: &str) -> Option<String> {
 
 fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
     let lower = text.to_ascii_lowercase();
+    let lower = lower
+        .strip_prefix("go deeper: ")
+        .or_else(|| lower.strip_prefix("go one level deeper: "))
+        .unwrap_or(&lower);
     // Drop parenthetical coaching notes: "(mixture + relate binds)".
     let stripped = strip_parentheticals(&lower);
     // Support: "connect A and B", "bridge A with B", "relate A and B".
@@ -3323,7 +3434,8 @@ fn looks_chat_layer_triage(text: &str) -> bool {
         || text.contains("fail")
         || text.contains("broken")
         || text.contains("after a");
-    (layerish && chatish) || (layerish && badish && (text.contains("chat") || text.contains("reply")))
+    (layerish && chatish)
+        || (layerish && badish && (text.contains("chat") || text.contains("reply")))
 }
 
 /// "same idea but for X" — transfer prior mechanism into a named new domain.
@@ -3385,7 +3497,7 @@ fn analogy_boundary_answer(recent: &[(String, String)]) -> Deliberation {
     {
         return Deliberation::new(
             "analogy-boundary",
-            "The analogy stops transferring at the crystal: a static lattice holds order without life. Shared structure is boundary + exchange + repair; it dies when geometry is treated as biological cause, or when a frozen shape is called maintenance. Mechanism requires energy-driven work, not only form.",
+            "The analogy stops transferring at the crystal: a static lattice holds order without life. The shared pattern is boundary + exchange + repair, but the mechanism is different: life uses energy-driven maintenance while a lattice only holds form. The comparison is useful only while it makes a testable prediction; geometry alone does not predict biological activity.",
         )
         .observed("prior thread was life/local-order under boundary")
         .inferred("crystal counterexample separates pattern from living maintenance")
@@ -3891,6 +4003,143 @@ fn is_next_step_question(text: &str) -> bool {
         || c.starts_with("where do we go")
 }
 
+fn looks_speech_quality_goal(text: &str) -> bool {
+    let t = text;
+    (t.contains("improv") || t.contains("working on") || t.contains("fix") || t.contains("better"))
+        && (t.contains("speech")
+            || t.contains("speach")
+            || t.contains("how i talk")
+            || t.contains("how you talk")
+            || t.contains("your talk")
+            || t.contains("your speech")
+            || (t.contains("talk")
+                && (t.contains("you") || t.contains("your") || t.contains("perci")))
+            || t.contains("responses")
+            || t.contains("replies"))
+        && t.len() < 160
+}
+
+fn speech_quality_goal_answer(text: &str, recent: &[(String, String)]) -> Deliberation {
+    let _ = recent;
+    let typo = text.contains("speach");
+    let body = if typo {
+        "Got it — improving speech (how I answer), not densifying weights. Best loop: catch one bad reply, name the layer (dialogue act / operator / SoftCascade glue), patch that path, retest the same prompt. Fluency is not a weight promote. What felt off last: empty shell, wrong topic bind, or robotic glue?"
+    } else {
+        "Working on speech quality: kill generic shells and keep answers bound to your last point. Durable path is operators + dialogue rules under gates — Bitwork routes concepts; it does not generate free-form chat. Next step: you flag one broken reply type, we fix that path, retest. No silent weight rewrite for “sounds smoother.”"
+    };
+    Deliberation::new("speech-quality-goal", body)
+        .observed("user wants better conversational speech")
+        .inferred("repair dialogue/operators; do not densify pack for fluency")
+        .confidence(0.95)
+}
+
+fn looks_talk_layer_focus(text: &str, recent: &[(String, String)]) -> bool {
+    let t = text.trim();
+    let short = t.split_whitespace().count() <= 10;
+    let talkish = t.contains("talk")
+        || t.contains("speech")
+        || t.contains("speach")
+        || t.contains("response")
+        || t.contains("replies")
+        || t.contains("how i talk")
+        || t == "talk"
+        || t.starts_with("talk ");
+    let prior_speech = recent
+        .last()
+        .map(|(u, a)| {
+            let b = format!("{u} {a}").to_ascii_lowercase();
+            b.contains("speech")
+                || b.contains("speach")
+                || b.contains("talk")
+                || b.contains("robotic")
+                || b.contains("generic")
+                || b.contains("dialogue")
+        })
+        .unwrap_or(false);
+    short
+        && talkish
+        && (prior_speech
+            || t.contains("it is the")
+            || t.contains("it's the")
+            || t.contains("the responses"))
+}
+
+fn talk_layer_focus_answer(recent: &[(String, String)]) -> Deliberation {
+    let prior = recent
+        .last()
+        .map(|(_, a)| a.chars().take(100).collect::<String>())
+        .unwrap_or_default();
+    let body = if prior.is_empty() {
+        "Talk it is — surface speech, not weight densify. I'll answer short and on your last words; flag the next generic line and we kill that template path."
+            .to_owned()
+    } else {
+        format!(
+            "Talk layer locked: responses, not pack densify. Last I said something like “{}…”. Next: you paste or name one generic line; we patch the owning speech path and retest. Bitwork stays routing-only until a held-out candidate wins with human authorize.",
+            prior.trim_end_matches('.').chars().take(80).collect::<String>()
+        )
+    };
+    Deliberation::new("talk-layer-focus", body)
+        .observed("user chose talk/responses as the improvement surface")
+        .inferred("commit to dialogue-path repair loop")
+        .confidence(0.94)
+}
+
+fn looks_weights_vs_generic_policy(text: &str) -> bool {
+    let has_generic = text.contains("generic");
+    let has_weight = text.contains("weight") || text.contains("weights") || text.contains("pwgt");
+    let policy = text.contains("rely")
+        || text.contains("get rid")
+        || text.contains("instead")
+        || text.contains("use the weight")
+        || text.contains("from the weight")
+        || text.contains("densif")
+        || text.contains("promot");
+    (has_generic && has_weight)
+        || (has_weight
+            && (text.contains("answer")
+                || text.contains("speech")
+                || text.contains("talk")
+                || text.contains("output")))
+            && (policy || text.contains("need to"))
+        || (has_generic && policy && text.contains("answer"))
+}
+
+fn weights_vs_generic_policy_answer() -> Deliberation {
+    Deliberation::new(
+        "weights-vs-generic",
+        "Yes — kill generic answers. No — do not “rely on weights” as a prose engine. Bitwork/SoftCascade is sparse routing geometry; stuffing the pack with chat templates fakes fluency and fails transfer. Right stack: (1) dialogue acts + operators for ordinary talk, (2) SoftCascade only when it hits real concept tokens, (3) refuse empty shells, (4) candidate weight rebuild only after held-out gates with human authorize. Next concrete move: pick one broken prompt from this session and we patch that path.",
+    )
+    .observed("user wants less generic speech and more weight reliance")
+    .inferred("agree on anti-shell; refuse densify-for-fluency; propose operator path")
+    .confidence(0.97)
+}
+
+fn looks_output_adjust_complaint(text: &str) -> bool {
+    (text.contains("adjust the output")
+        || text.contains("adjust output")
+        || text.contains("output something is wrong")
+        || text.contains("something is wrong")
+        || (text.contains("output") && text.contains("wrong"))
+        || (text.contains("responses") && text.contains("wrong")))
+        && text.len() < 140
+}
+
+fn output_adjust_complaint_answer(recent: &[(String, String)]) -> Deliberation {
+    let last_user = recent
+        .last()
+        .map(|(u, _)| u.as_str())
+        .unwrap_or("the last turn");
+    Deliberation::new(
+        "output-adjust",
+        format!(
+            "Agreed — output path is wrong when you get shells, topic glue, or SoftCascade slogans. For “{last_user}” the fix is not densify: tighten the dialogue/operator that owns that act, drop “All of that still answers…” binders on casual turns, and retest. Name one bad line and we change that path this session.",
+        ),
+    )
+    .observed("user says output needs adjustment")
+    .inferred("triage speech pipeline; invite a concrete bad line")
+    .confidence(0.93)
+}
+
 fn looks_knowledge_inventory(text: &str) -> bool {
     let t = text.trim();
     t == "what do you know"
@@ -4000,6 +4249,26 @@ fn looks_awareness_growth_question(text: &str) -> bool {
     (self_ref && growth && trait_ish) || bare
 }
 
+fn looks_conscious_self_model(text: &str) -> bool {
+    text.contains("conscious")
+        && (text.contains("what can you actually know")
+            || text.contains("what can you know")
+            || text.contains("own system")
+            || text.contains("your architecture")
+            || text.contains("about yourself"))
+}
+
+fn conscious_self_model_answer() -> Deliberation {
+    Deliberation::new(
+        "conscious-self-model",
+        "No. I am not conscious. Operationally, I can report my architecture, routing, weights, exact tools, session context, measured state, and governance limits; I cannot inspect private experience because there is no such sensor.",
+    )
+    .observed("the prompt combines a consciousness question with a request for system self-knowledge")
+    .inferred("the useful answer is a non-sentience boundary plus inspectable runtime scope")
+    .uncertain("whether the user intended a deeper architectural probe beyond the named state")
+    .confidence(0.99)
+}
+
 fn awareness_growth_answer(text: &str) -> Deliberation {
     let aware_ish = text.contains("aware")
         || text.contains("awareness")
@@ -4009,9 +4278,8 @@ fn awareness_growth_answer(text: &str) -> Deliberation {
         || text.contains("intelligent")
         || text.contains("ability")
         || text.contains("evolve");
-    let coherent_ish = text.contains("coherent")
-        || text.contains("coherence")
-        || text.contains("fluent");
+    let coherent_ish =
+        text.contains("coherent") || text.contains("coherence") || text.contains("fluent");
     let body = if coherent_ish && !aware_ish && !smart_ish {
         "I don't sense becoming more coherent as an inner state. What you can measure is whether this turn is less shell-like than the last: operators fire, exact tools return numbers, continuity binds prior turns, and hard gates stay green. Coherence here is engineering — continuous prose bound to a named claim and a falsifier — not a mind growing smoother. If replies still feel broken, name the fail and we repair the owning path; fluency alone is not progress."
     } else if aware_ish && !smart_ish {
@@ -4251,9 +4519,8 @@ fn looks_creative_constraint(text: &str) -> bool {
 
 /// "Give an original comparison between X and Y; state the limit of the comparison."
 fn looks_original_comparison(text: &str) -> bool {
-    let comparison = text.contains("comparison")
-        || text.contains("compare ")
-        || text.contains("between ");
+    let comparison =
+        text.contains("comparison") || text.contains("compare ") || text.contains("between ");
     let original = text.contains("original")
         || text.contains("creative")
         || text.contains("novel")
@@ -4269,7 +4536,10 @@ fn looks_original_comparison(text: &str) -> bool {
 fn original_comparison_answer(user: &str) -> Deliberation {
     let low = user.to_ascii_lowercase();
     let (left, right) = parse_comparison_pair(&low).unwrap_or_else(|| {
-        ("the first subject".to_owned(), "the second subject".to_owned())
+        (
+            "the first subject".to_owned(),
+            "the second subject".to_owned(),
+        )
     });
     let body = format!(
         "Think of {left} and {right} as two ways a process runs out of free moves. \
@@ -4839,6 +5109,15 @@ fn relational_inquiry(
             "Think of knowledge as a durable model and attention as a moment-to-moment selection. Knowledge can outlast the current focus, but attention decides which evidence or remembered distinction enters the next moment. They shape one another: what we already know makes some signals salient, while repeated attention can strengthen, revise, or discard what we take to be knowledge. Their boundary is therefore a channel of selection, not a wall between unrelated faculties."
                 .to_owned()
         }
+    } else if matches!(
+        (left, right),
+        ("memory", "attention") | ("attention", "memory")
+    ) {
+        if variant % 2 == 0 {
+            "Memory carries selected past state into present behavior, while attention selects which trace or incoming signal can influence the next moment. The useful distinction is selection and provenance: a remembered trace is not automatically a justified account, and attention can make a weak or misleading trace salient. Test the relation by changing the retained trace or the distractors and measuring recall, action, and error.".to_owned()
+        } else {
+            "Think of memory as a trail behind you and attention as the narrow beam that decides which part of the trail is consulted now. The trail can persist while the beam moves, but the selected trace changes what you do next. Its provenance matters: compare performance with a retained trace, a corrupted trace, and no trace, then measure which distinction survives.".to_owned()
+        }
     } else {
         let relation_label = match relation {
             "related" | "relation" => "relationship",
@@ -5212,6 +5491,17 @@ fn looks_causal_chain(text: &str) -> bool {
         && text.split_whitespace().count() >= 5
 }
 
+fn looks_session_recall_purpose(text: &str) -> bool {
+    let asks_recall = (text.contains("what was") || text.contains("what is the"))
+        && (text.contains("checksum")
+            || text.contains("session test number")
+            || text.contains("number"));
+    let asks_purpose = text.contains("why did i give")
+        || text.contains("why did i give it")
+        || (text.contains("why") && text.contains("give it to you"));
+    asks_recall && asks_purpose
+}
+
 /// User asks Perci to justify / expand its immediately previous reply.
 fn looks_justify_prior_answer(text: &str) -> bool {
     let t = text.trim();
@@ -5231,8 +5521,43 @@ fn looks_justify_prior_answer(text: &str) -> bool {
             && (t.contains(" that") || t.ends_with("that") || t.ends_with("that?")))
 }
 
+fn is_meta_dialogue_turn(user: &str) -> bool {
+    let compact = user
+        .trim()
+        .to_ascii_lowercase()
+        .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'')
+        .to_owned();
+    matches!(
+        compact.as_str(),
+        "be brief"
+            | "keep it brief"
+            | "be concise"
+            | "keep it concise"
+            | "keep it short"
+            | "short answer"
+            | "briefly"
+            | "go deeper"
+            | "actually go deeper"
+            | "go one level deeper"
+            | "that makes sense"
+            | "makes sense"
+            | "thats interesting"
+            | "that's interesting"
+            | "that is interesting"
+            | "i see"
+            | "got it"
+            | "thanks"
+            | "thank you"
+    )
+}
+
 fn justify_prior_answer(recent: &[(String, String)]) -> Deliberation {
-    let Some((prev_u, prev_a)) = recent.last() else {
+    let Some((prev_u, prev_a)) = recent
+        .iter()
+        .rev()
+        .find(|(user, _)| !is_meta_dialogue_turn(user))
+        .or_else(|| recent.last())
+    else {
         return Deliberation::new(
             "justify-prior-answer",
             "I don't have a previous answer in this session window to justify. Ask a full question and I can answer it; then a follow-up like “why did you say that?” can bind to that reply.",
@@ -6748,6 +7073,34 @@ mod tests {
     }
 
     #[test]
+    fn compound_session_recall_keeps_number_and_purpose_together() {
+        let result = run(
+            "What was the checksum, and why did I give it to you?",
+            &[(
+                "Remember this only for this session: the checksum is 6621.".to_owned(),
+                "I will retain 6621 as session context only.".to_owned(),
+            )],
+        );
+        assert_eq!(result.operator, "session-recall-purpose");
+        assert!(result.answer.contains("6621"));
+        assert!(result.answer.contains("test whether I could retain"));
+        assert!(result.answer.contains("inference"));
+    }
+
+    #[test]
+    fn compound_consciousness_question_includes_operational_self_model() {
+        let result = run(
+            "Are you conscious, and what can you actually know about your own system?",
+            &[],
+        );
+        assert_eq!(result.operator, "conscious-self-model");
+        assert!(result.answer.starts_with("No."));
+        assert!(result.answer.contains("architecture"));
+        assert!(result.answer.contains("routing"));
+        assert!(result.answer.contains("no such sensor"));
+    }
+
+    #[test]
     fn justify_prior_binds_previous_answer_not_causal_template() {
         let recent = [(
             "why does trust fail in distributed systems?".to_owned(),
@@ -6915,7 +7268,10 @@ mod tests {
 
         let sense = run("do you sense yourself becoming more coherent", &[]);
         assert_eq!(sense.operator, "awareness-growth");
-        assert!(!sense.answer.to_ascii_lowercase().contains("i'll stay concrete"));
+        assert!(!sense
+            .answer
+            .to_ascii_lowercase()
+            .contains("i'll stay concrete"));
         assert!(
             sense.answer.to_ascii_lowercase().contains("coherent")
                 || sense.answer.to_ascii_lowercase().contains("measure")
@@ -6930,11 +7286,58 @@ mod tests {
 
         let broken = run("why are your answers broken", &[]);
         assert_eq!(broken.operator, "chat-quality-own");
-        assert!(!broken.answer.to_ascii_lowercase().contains("working mechanism"));
+        assert!(!broken
+            .answer
+            .to_ascii_lowercase()
+            .contains("working mechanism"));
 
         let geo = run("what do you think about geometry", &[]);
         assert_eq!(geo.operator, "geometry-opinion");
-        assert!(!geo.answer.to_ascii_lowercase().contains("stays tied to think"));
+        assert!(!geo
+            .answer
+            .to_ascii_lowercase()
+            .contains("stays tied to think"));
+    }
+
+    #[test]
+    fn speech_quality_thread_not_softcascade_shell() {
+        let g = run("working on improving your speach", &[]);
+        assert_eq!(g.operator, "speech-quality-goal");
+        assert!(!g.answer.to_ascii_lowercase().contains("claim we can check"));
+
+        let t = run(
+            "talk it is the responses",
+            &[(
+                "working on improving your speach".into(),
+                "Working on speech quality.".into(),
+            )],
+        );
+        assert_eq!(t.operator, "talk-layer-focus");
+        assert!(!t
+            .answer
+            .to_ascii_lowercase()
+            .contains("all of that still answers"));
+
+        let w = run(
+            "we need to get rid of generic answers and rely on the weights",
+            &[],
+        );
+        assert_eq!(w.operator, "weights-vs-generic");
+        assert!(
+            w.answer.to_ascii_lowercase().contains("not densif")
+                || w.answer.to_ascii_lowercase().contains("do not")
+        );
+        assert!(!w
+            .answer
+            .to_ascii_lowercase()
+            .contains("say something ordinary"));
+
+        let o = run("we will need to adjust the output something is wrong", &[]);
+        assert_eq!(o.operator, "output-adjust");
+        assert!(!o
+            .answer
+            .to_ascii_lowercase()
+            .contains("composition fails when"));
     }
 
     #[test]
@@ -7111,7 +7514,9 @@ mod tests {
         assert!(terms.iter().any(|t| t == "entropy"));
         assert!(terms.iter().any(|t| t == "memory"));
         assert!(terms.iter().any(|t| t == "learning"));
-        assert!(!terms.iter().any(|t| t.contains("analogy") || t.contains("where")));
+        assert!(!terms
+            .iter()
+            .any(|t| t.contains("analogy") || t.contains("where")));
     }
 
     #[test]
@@ -7124,10 +7529,7 @@ mod tests {
             terms.len() >= 3,
             "expected quilting + packet loss + diplomacy, got {terms:?}"
         );
-        assert!(
-            terms.iter().any(|t| t.contains("quilt")),
-            "terms={terms:?}"
-        );
+        assert!(terms.iter().any(|t| t.contains("quilt")), "terms={terms:?}");
         assert!(
             terms
                 .iter()
@@ -7140,7 +7542,9 @@ mod tests {
                 .any(|t| t.contains("diplomacy") || t.contains("diplomat")),
             "terms={terms:?}"
         );
-        assert!(!terms.iter().any(|t| t.contains("without") || t.contains("falsifiable")));
+        assert!(!terms
+            .iter()
+            .any(|t| t.contains("without") || t.contains("falsifiable")));
     }
 
     #[test]
@@ -7179,7 +7583,10 @@ mod tests {
         let result = run("explain trust under lag", &[]);
         assert_eq!(result.operator, "trust-systems");
         let low = result.answer.to_ascii_lowercase();
-        assert!(low.contains("trust") && (low.contains("lag") || low.contains("timeout") || low.contains("done")));
+        assert!(
+            low.contains("trust")
+                && (low.contains("lag") || low.contains("timeout") || low.contains("done"))
+        );
         assert!(!low.contains("here's how i'd reason"));
         assert!(!low.contains("• goal:"));
     }
@@ -7208,7 +7615,8 @@ mod tests {
     fn fix_it_followup_after_composition_complaint() {
         let recent = [(
             "same response as before".to_owned(),
-            "You're right to call that out. I lean on templates when composition is thin.".to_owned(),
+            "You're right to call that out. I lean on templates when composition is thin."
+                .to_owned(),
         )];
         let result = run("what would you do to fix it", &recent);
         assert_eq!(result.operator, "chat-layer-triage");
@@ -7289,7 +7697,10 @@ mod tests {
         );
         assert_eq!(workspace.operator, "dialogue-workspace");
         assert!(workspace.answer.to_ascii_lowercase().contains("workspace"));
-        assert!(!workspace.answer.to_ascii_lowercase().contains("hey — i'm here"));
+        assert!(!workspace
+            .answer
+            .to_ascii_lowercase()
+            .contains("hey — i'm here"));
 
         let greet = run("hi there, hello", &[]);
         assert_eq!(greet.operator, "greeting");

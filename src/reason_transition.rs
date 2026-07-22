@@ -5,9 +5,7 @@
 //! updates, and explicit halt conditions — never private chain-of-thought.
 
 use crate::semantic_field::{extract_frame, SemanticFrame};
-use crate::thought_plan::{
-    BoundClaim, DiscourseAct, Intent, Relation, ThoughtPlan, Uncertainty,
-};
+use crate::thought_plan::{BoundClaim, DiscourseAct, Intent, Relation, ThoughtPlan, Uncertainty};
 use memmap2::{Mmap, MmapOptions};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
@@ -436,11 +434,13 @@ fn claim_for(frame: &SemanticFrame) -> String {
 
 fn alternative_for(frame: &SemanticFrame) -> String {
     if frame.subject.contains("trust") {
-        "alternative: trust is only latency; reject — latency without audit is hope, not trust".into()
+        "alternative: trust is only latency; reject — latency without audit is hope, not trust"
+            .into()
     } else if frame.subject.contains("boundary") {
         "alternative: maximize coherence without bands; reject — max coherence overfits and fails transfer".into()
     } else if frame.subject.contains("life") {
-        "alternative: life is pure shape; reject — geometry describes contact, not biological cause".into()
+        "alternative: life is pure shape; reject — geometry describes contact, not biological cause"
+            .into()
     } else {
         format!(
             "alternative: {} is merely wording, not a mechanism",
@@ -526,9 +526,8 @@ impl ReasonRun {
             plan.uncertainties.push(Uncertainty { text: u.clone() });
         }
         for b in &state.boundaries {
-            plan.boundaries.push(crate::thought_plan::Constraint {
-                text: b.clone(),
-            });
+            plan.boundaries
+                .push(crate::thought_plan::Constraint { text: b.clone() });
         }
         plan.discourse_acts = vec![
             DiscourseAct::DirectAnswer,
@@ -682,7 +681,14 @@ pub fn build_default_pack(out: impl AsRef<Path>) -> io::Result<usize> {
                 (_, 8) => ReasonOp::CompressConclusion,
                 _ => ReasonOp::Halt,
             };
-            rows.push((goal, cycle, op.to_u8(), 100, 50, if matches!(op, ReasonOp::Halt) { 1 } else { 0 }));
+            rows.push((
+                goal,
+                cycle,
+                op.to_u8(),
+                100,
+                50,
+                if matches!(op, ReasonOp::Halt) { 1 } else { 0 },
+            ));
         }
     }
     write_pack(&rows, out)
@@ -738,7 +744,10 @@ mod tests {
         let plan = run.to_thought_plan(&frame, &state);
         assert!(!plan.surface_answer.is_empty());
         assert!(plan.receipt().contains("reasoning cycles"));
-        assert!(plan.active_packs.iter().any(|p| p.contains("RSN1") || p.contains("SEM1")));
+        assert!(plan
+            .active_packs
+            .iter()
+            .any(|p| p.contains("RSN1") || p.contains("SEM1")));
     }
 
     #[test]
@@ -746,9 +755,7 @@ mod tests {
         let (run, _, _) = run_bounded("Explain boundary bands vs max coherence", 6);
         for s in &run.steps {
             assert!(!s.op.contains(' '));
-            assert!(
-                ReasonOp::from_u8(0).as_str().len() > 0 || !s.op.is_empty()
-            );
+            assert!(ReasonOp::from_u8(0).as_str().len() > 0 || !s.op.is_empty());
         }
         assert!(run.steps.iter().any(|s| s.op == "bind_request"));
     }

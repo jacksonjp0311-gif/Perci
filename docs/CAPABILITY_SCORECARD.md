@@ -1,6 +1,6 @@
 # Perci capability scorecard
 
-_Generated 2026-07-20T13:38:15.163589+00:00_
+_Generated 2026-07-22T14:34:12.698656+00:00_
 
 **Overall status:** `OPERATIONAL_CANDIDATE`
 
@@ -10,34 +10,36 @@ Perci improves when a named capability fails a hardness case, is repaired at the
 
 | Gate | Status | Passed | Cases |
 |------|--------|--------|-------|
-| hardness | PASS | 100 | 100 |
+| hardness | PASS | 136 | 136 |
 | dialogue | PASS | 159 | 159 |
+| observer_context | PASS | 12 | 12 |
 
 ## Capabilities
 
 | ID | Layer | State | Pass rate | Next |
 |----|-------|-------|-----------|------|
-| `cross_domain_synthesis` | operator | green | 20/20 | maintain with harder transfer variants |
-| `relational_inquiry` | operator | green | 11/11 | maintain with harder transfer variants |
-| `transfer_vs_template` | operator | green | 30/30 | maintain with harder transfer variants |
-| `honest_abstention` | critic | green | 12/12 | maintain with harder transfer variants |
-| `followup_binding` | operator | green | 3/3 | maintain with harder transfer variants |
-| `exact_tool_authority` | tool | green | 13/13 | maintain with harder transfer variants |
-| `governed_learning_loop` | pipeline | green | 11/11 | maintain with harder transfer variants |
+| `cross_domain_synthesis` | operator | green | 23/23 | maintain with harder transfer variants |
+| `relational_inquiry` | operator | green | 14/14 | maintain with harder transfer variants |
+| `transfer_vs_template` | operator | green | 34/34 | maintain with harder transfer variants |
+| `honest_abstention` | critic | green | 15/15 | maintain with harder transfer variants |
+| `followup_binding` | operator | green | 8/8 | maintain with harder transfer variants |
+| `exact_tool_authority` | tool | green | 14/14 | maintain with harder transfer variants |
+| `governed_learning_loop` | pipeline | green | 15/15 | maintain with harder transfer variants |
 | `binary_freshness` | pipeline | unmeasured | - | run evaluate_hardness.py |
+| `geometry_speech` | operator | green | 3/3 | maintain with harder transfer variants |
 
 ## Binary freshness
 
 - Status: `live_current_or_newer`
-- Live mtime: 2026-07-20T13:32:56.307781+00:00
-- Release mtime: 2026-07-20T13:31:33.730191+00:00
-- Release ahead (s): -82.6
+- Live mtime: 2026-07-22T14:34:04.563062+00:00
+- Release mtime: 2026-07-22T14:27:01.064626+00:00
+- Release ahead (s): -423.5
 
 ## Learning queue
 
-- Interaction events: 19354
-- Pending review events: 19352
-- Review queue: 1999 (approved=20, folded=20)
+- Interaction events: 21140
+- Pending review events: 21138
+- Review queue: 2420 (approved=20, folded=20)
 
 ## Recommended next
 

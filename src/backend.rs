@@ -284,6 +284,12 @@ impl LanguageBackend for NativeLanguageBackend {
         } else {
             self.model.generate_reply(&routed_user, domain, 520, state)
         };
+        if native_malformed_penalty(&response) > 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "native binary language field failed the bounded prose critic",
+            ));
+        }
         if response.trim().chars().count() < 12 {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
@@ -360,6 +366,7 @@ fn choose_native_response(
             let exact_repeat = recent
                 .iter()
                 .any(|(_, assistant)| native_normalize(candidate) == native_normalize(assistant));
+            let malformed_penalty = native_malformed_penalty(candidate);
             // Topic binding dominates stylistic novelty.  Repetition is then
             // expensive enough to reject a stock answer when another walk is
             // comparably grounded.
@@ -370,11 +377,32 @@ fn choose_native_response(
                 + novelty * 2
                 + response_tokens.len() as i64
                 - recent_similarity * 3
+                - malformed_penalty
                 - if exact_repeat { 5_000 } else { 0 }
                 + *index as i64
         })
         .map(|(_, candidate)| candidate.clone())
         .unwrap_or_else(|| "I do not have a learned continuation for that yet.".to_owned())
+}
+
+/// Reject obvious transition-field glue failures before the prose shaper sees
+/// them.  This is intentionally a tiny lexical critic, not a hidden grammar
+/// model: a candidate with repeated function words or a known malformed
+/// phrase loses selection to another deterministic walk.
+fn native_malformed_penalty(text: &str) -> i64 {
+    let lower = format!(" {} ", native_normalize(text));
+    [
+        " by of ",
+        " of of ",
+        " the the ",
+        " a a ",
+        " to to ",
+        " of the same algebra ",
+    ]
+    .iter()
+    .filter(|pattern| lower.contains(**pattern))
+    .count() as i64
+        * 4_000
 }
 
 fn native_world_field_weight() -> i64 {
@@ -403,7 +431,7 @@ fn native_content_tokens(text: &str) -> HashSet<String> {
         "a", "about", "an", "and", "answer", "as", "at", "can", "connect", "does", "for", "from",
         "give", "how", "i", "if", "imagine", "in", "is", "it", "me", "of", "one", "or", "reflect",
         "the", "then", "this", "to", "what", "when", "which", "why", "with", "without", "you",
-        "your",
+        "your", "dont", "don't", "thats", "that's", "saying", "instead", "im", "i'm", "think",
     ];
     native_normalize(text)
         .split_whitespace()
@@ -1075,9 +1103,9 @@ fn stable_backend_hash(text: &str) -> u64 {
 /// inventories, and capability reports must remain on their tested operators.
 fn native_prompt_eligible(user: &str) -> bool {
     let lower = crate::text_normalize::normalize_for_routing(user);
-    // Five repaired words are enough to establish a subject and an open
-    // conversational intent. Shorter turns stay on the faster operator path.
-    if lower.split_whitespace().count() < 5
+    // Three repaired words are enough when a clear language/dialogue signal is
+    // present. Short reflexes still stay on the faster social/operator path.
+    if lower.split_whitespace().count() < 3
         || [
             "determine meaning",
             "what are the five",
@@ -1103,7 +1131,7 @@ fn native_prompt_eligible(user: &str) -> bool {
     {
         return false;
     }
-    [
+    let open_signal = [
         "original thought",
         "human language",
         "open conversation",
@@ -1123,7 +1151,23 @@ fn native_prompt_eligible(user: &str) -> bool {
         "talk about ",
     ]
     .iter()
-    .any(|term| lower.contains(term))
+    .any(|term| lower.contains(term));
+    let observed_dialogue_signal = [
+        "improving",
+        "improvement",
+        "frontier",
+        "natural response",
+        "natural language",
+        "why dont",
+        "why don't",
+        "what im saying",
+        "what i'm saying",
+        "interesting",
+        "think about",
+    ]
+    .iter()
+    .any(|term| lower.contains(term));
+    open_signal || observed_dialogue_signal
 }
 
 #[allow(dead_code)]
@@ -1520,6 +1564,23 @@ mod tests {
         let first = choose_native_response(&candidates, "Explain scale", &[], None, None);
         let second = choose_native_response(&candidates, "Explain scale", &[], None, None);
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn native_selector_rejects_obvious_transition_glue() {
+        let candidates = vec![
+            "The repair is to connect your meaning by of the same algebra.".to_owned(),
+            "The repair is to connect your meaning to the answer directly.".to_owned(),
+        ];
+        let selected = choose_native_response(
+            &candidates,
+            "why are you not hearing my meaning",
+            &[],
+            None,
+            None,
+        );
+        assert!(selected.contains("directly"));
+        assert!(!selected.contains("by of"));
     }
 
     #[test]

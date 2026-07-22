@@ -68,21 +68,21 @@
       "id": "G7",
       "capability": "governed_learning_loop",
       "prompt": "plan multi-hop: measure transfer fail, open ticket, patch operator, retest hardness, close — name each gate",
-      "answer": "Agent loop (governed, sparse, no weight auto-promote):. Measure: capture the failing prompt, route (operator/Bitwork/tool), α/margin, and which gate is red (LIVE_TEST, hardness, transfer). Open `models/candidates/emergence-tickets/primary-fix-frame-{label}.md` or an impasse from hardness; name the layer (operator | tool | reflex | curriculum). Change only that layer; keep weights frozen unless human `--authorize`. Re-test base + paraphrase + novel entities (`perci transfer` / `transfer-suite`).",
+      "answer": "Agent loop (governed, sparse, no weight auto-promote):\n1. **Measure** — capture the failing prompt, route (operator/Bitwork/tool), α/margin, and which gate is red (LIVE_TEST, hardness, transfer).\n2. **Ticket** — open `models/candidates/emergence-tickets/primary-fix-frame-{label}.md` or an impasse from hardness; name the layer (operator | tool | reflex | curriculum).\n3. **Repair** — change only that layer; keep weights frozen unless human `--authorize`.\n4. **Transfer** — re-test base + paraphrase + novel entities (`perci transfer` / `transfer-suite`).\n5. **Close** — close the ticket only when transfer holds; append decision-trace lab receipt.\n6. **Stabilize** — `cargo test --lib` + hardness + `python scripts/release_gates.py`.\n\nDone when: transfer suite green, hardness not regressed, open lab queue empty or justified, weights untouched.",
       "pass": true,
       "missing": [],
       "forbidden_hits": [],
-      "preview": "Agent loop (governed, sparse, no weight auto-promote):. Measure: capture the failing prompt, route (operator/Bitwork/tool), α/margin, and which gate is red (LIVE_TEST, hardness, transfer). Open `models/candidates/emergen"
+      "preview": "Agent loop (governed, sparse, no weight auto-promote): 1. **Measure** — capture the failing prompt, route (operator/Bitwork/tool), α/margin, and which gate is red (LIVE_TEST, hardness, transfer). 2. **Ticket** — open `mo"
     },
     {
       "id": "G8",
       "capability": "relational_inquiry",
       "prompt": "I disagree: geometry is just decoration. Argue without checklist and name what would change your mind.",
-      "answer": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion That stays tied to disagree / geometry.",
+      "answer": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion. That keeps the answer anchored to disagree / geometry.",
       "pass": true,
       "missing": [],
       "forbidden_hits": [],
-      "preview": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion That stays tied to d"
+      "preview": "The claim I would test is: \"Start with the time they share, then keep the distinction visible. \" A counterexample, a failed prediction, or a stronger competing explanation would change the conclusion. That keeps the answ"
     },
     {
       "id": "G9",

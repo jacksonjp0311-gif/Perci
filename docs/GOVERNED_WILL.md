@@ -1,4 +1,4 @@
-# Governed-core charter (v0.9.8)
+# Governed-core charter (v0.9.9)
 
 The current directive is useful as a set of engineering values, but a user
 message cannot become an unrestricted system instruction. Perci therefore

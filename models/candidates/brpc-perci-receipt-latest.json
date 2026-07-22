@@ -3,7 +3,7 @@
   "theory": "BRPC v0.1 — Boundary-Regulated Predictive Coherence",
   "claim_status": "candidate",
   "domain": "software-agent-adaptation",
-  "generated_at_utc": "2026-07-21T00:45:03.930404+00:00",
+  "generated_at_utc": "2026-07-22T11:20:58.176057+00:00",
   "claim_boundary": [
     "not a consciousness equation",
     "not a universal field",
@@ -15,7 +15,7 @@
     "hardness": {
       "path": "models\\candidates\\evaluation-hardness-v1.json",
       "present": true,
-      "sha256": "09cc0b84771cebcd06c14d68550efaec156a96097c384eb7b4b06ce9d93cf5a0",
+      "sha256": "ffbdda206de496e507f9b7e7b4cbef9e1f5436deaee1b40ae2b5d9cf17c4f4e0",
       "status": "PASS",
       "passed": 136,
       "case_count": 136
@@ -23,7 +23,7 @@
     "surgical": {
       "path": "models\\candidates\\interact-evolve-loop-latest.json",
       "present": true,
-      "sha256": "ee111325c91f21ea7e1933f977ea766c7ad4b4083464393367ec761e59df0e33",
+      "sha256": "c67beaeed84b0b754006a63146194f9784b7e84390af74436d96ab992a5bbb41",
       "second_pass_rate": 1.0,
       "still_fail_after_reask": 0,
       "promote_recommended": false
@@ -31,7 +31,7 @@
     "dialogue": {
       "path": "models\\candidates\\evaluation-v4-dialogue.json",
       "present": true,
-      "sha256": "317def1d0e902eb5f64bf16a2b658f80066ce79dda8a57632d6a0c8d8ccd025c",
+      "sha256": "afc44d365483f34201c09a8080940de35144d97531021536257ed6b621c9f9aa",
       "status": "PASS",
       "passed": 159,
       "case_count": 159
@@ -92,10 +92,10 @@
       "name": "recovery_margin"
     },
     "U": {
-      "value": 0.8887006960971441,
+      "value": 0.8868952499836708,
       "status": "observed",
       "source": "median_latency_ms",
-      "notes": "n_lat=236; med=369ms",
+      "notes": "n_lat=160; med=376ms",
       "name": "resource_efficiency"
     },
     "D": {
@@ -107,10 +107,10 @@
     }
   },
   "brpc": {
-    "C_BRPC": 0.981569,
-    "DeltaPhi_BRPC": 0.018603,
-    "Omega_BRPC": 0.981737,
-    "Omega_evidence_backed": 0.981737,
+    "C_BRPC": 0.98137,
+    "DeltaPhi_BRPC": 0.018806,
+    "Omega_BRPC": 0.981541,
+    "Omega_evidence_backed": 0.981541,
     "evidence_coverage": 1.0,
     "delta_phi_parts": {
       "P": 0.003025,
@@ -118,7 +118,7 @@
       "B": -0.0,
       "R": 0.002017,
       "K": -0.0,
-      "U": 0.011799,
+      "U": 0.012003,
       "D": -0.0
     },
     "weakest_factors": [
@@ -155,8 +155,8 @@
     {
       "factor": "U",
       "name": "resource_efficiency",
-      "value": "0.889",
-      "delta_phi_share": "0.0118",
+      "value": "0.887",
+      "delta_phi_share": "0.0120",
       "lane": "resource",
       "inject": "Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost."
     },
@@ -170,9 +170,9 @@
     }
   ],
   "teach_candidates_pending_review": [
-    "BRPC factor U (resource_efficiency) is weak at 0.889. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
+    "BRPC factor U (resource_efficiency) is weak at 0.887. Correction: Profile daemon warm path; avoid cold start; trim checklist fluency rewrite cost. Answer with continuous prose bound to operators/geometry; do not invent consciousness; never auto-promote weights."
   ],
   "automatic_promotion": false,
   "promote_recommended": false,
-  "receipt_sha256": "672c4c096fa69cc4ff1da078db59eaa7b1bfecf40cedf92f6e329a8d6d620479"
+  "receipt_sha256": "f16316be35412448b0d5af80ed437b8df9103116c91a7e2106c96846dad5a9fa"
 }

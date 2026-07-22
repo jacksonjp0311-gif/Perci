@@ -259,11 +259,7 @@ fn handle_client(
                 // Probe / surgical isolation: clear dialogue history only.
                 match engine.clear_dialogue_history() {
                     Ok(()) => {
-                        writeln!(
-                            writer,
-                            "{}",
-                            json!({"ok": true, "session_reset": true})
-                        )?;
+                        writeln!(writer, "{}", json!({"ok": true, "session_reset": true}))?;
                     }
                     Err(e) => {
                         writeln!(writer, "{}", json!({"ok": false, "error": e.to_string()}))?;
@@ -394,10 +390,7 @@ pub fn ping() -> bool {
 pub fn ping_current() -> bool {
     match request("ping", None) {
         Ok(v) if v.get("ok").and_then(|x| x.as_bool()) == Some(true) => {
-            let remote = v
-                .get("build_id")
-                .and_then(|x| x.as_str())
-                .unwrap_or("");
+            let remote = v.get("build_id").and_then(|x| x.as_str()).unwrap_or("");
             // Older daemons without build_id are treated as stale.
             !remote.is_empty() && remote == crate::branding::build_id()
         }

@@ -893,7 +893,8 @@ pub fn write_json_pretty(path: &Path, value: &impl Serialize) -> io::Result<()> 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let s = serde_json::to_string_pretty(value).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    let s =
+        serde_json::to_string_pretty(value).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     fs::write(path, s + "\n")
 }
 

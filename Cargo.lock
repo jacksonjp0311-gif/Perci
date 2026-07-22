@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "perci"
-version = "0.9.8"
+version = "0.10.3"
 dependencies = [
  "memmap2",
  "serde",

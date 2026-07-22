@@ -1,25 +1,18 @@
 {
   "schema": "perci.evolve-cycle.v1",
-  "started_at_utc": "2026-07-16T22:38:17.371302+00:00",
+  "started_at_utc": "2026-07-22T11:26:29.529150+00:00",
   "binary": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
   "model": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\perci-cognitive-v0.3.pwgt",
   "steps": {
-    "stage": {
-      "exit": 0
-    },
-    "hardness": {
-      "exit": 0,
-      "output": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\evaluation-hardness-v1.json"
-    },
     "scorecard": {
       "exit": 0
     }
   },
   "automatic_promotion": false,
-  "finished_at_utc": "2026-07-16T22:38:19.095339+00:00",
-  "scorecard_overall": "PASS_WITH_STALE_LIVE",
+  "finished_at_utc": "2026-07-22T11:26:29.913126+00:00",
+  "scorecard_overall": "OPERATIONAL_CANDIDATE",
   "recommended_next": [
-    "Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass."
+    "Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl"
   ],
   "promotion_gate": {
     "auto": false,

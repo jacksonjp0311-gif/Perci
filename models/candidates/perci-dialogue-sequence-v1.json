@@ -1,0 +1,28 @@
+{
+  "schema": "perci.dialogue-candidate.v1",
+  "corpus": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-relational-v3.jsonl",
+  "corpus_sha256": "e4fff8c2ae817f349fcafed00f39ef99e3c78e0fd36291a3226e7cb58db7d953",
+  "train_rows": 12,
+  "response_source_only": true,
+  "primer_conditioned": true,
+  "topic_conditioned": true,
+  "prompt_conditioned": true,
+  "context_rows": 12,
+  "primer_count": 5,
+  "intent_primer_counts": {
+    "improvement": 3,
+    "repair": 3,
+    "social": 3,
+    "capability": 3
+  },
+  "order": 4,
+  "byte_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.blng",
+  "byte_field_sha256": "5cdcd1870f71fcc5b2665c4786253dc9341aa47b848274307f2c510560eee2ee",
+  "phrase_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.bphr",
+  "phrase_field_sha256": "5875657a98da7e407097c434189006a1b3df325d62f094a1bc6b2e74d4dbff4b",
+  "phrase_field_bytes": 73998,
+  "trainer_stdout_tail": "native language rebuilt\n  byte output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.blng\n  byte order: 4\n  byte records: 4510\n  byte transitions: 7898\n  byte source bytes: 28932\n  byte file bytes: 320258\n  phrase output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.bphr\n  phrase order: 4\n  phrase vocabulary: 374\n  phrase records: 3769\n  phrase transitions: 4882\n  phrase file bytes: 73998\n  relation output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.brel\n  relation records: 0\n  relation source bytes: 0\n  relation file bytes: 48\n  world output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-sequence-v1.bwm\n  world records: 0\n  world source bytes: 0\n  world file bytes: 64\n",
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Candidate is isolated until fresh-process held-out comparison passes."
+}

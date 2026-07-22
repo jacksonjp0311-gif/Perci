@@ -3,13 +3,13 @@
   "responses_parsed": 12,
   "unique_responses": 12,
   "duplicate_responses": 0,
-  "topic_binding_rate": 0.1667,
+  "topic_binding_rate": 0.25,
   "slot_pair_binding_rate": null,
-  "punctuated_response_rate": 0.9167,
-  "mean_chars": 318.75,
-  "median_chars": 277.0,
-  "min_chars": 88,
-  "max_chars": 604,
+  "punctuated_response_rate": 0.8333,
+  "mean_chars": 341.08,
+  "median_chars": 255.5,
+  "min_chars": 167,
+  "max_chars": 875,
   "families": 7,
   "topics": 12,
   "family_metrics": {
@@ -52,7 +52,7 @@
     "seed": {
       "responses": 6,
       "unique_responses": 6,
-      "topic_binding_rate": 0.3333,
+      "topic_binding_rate": 0.5,
       "slot_pair_binding_rate": null
     }
   }

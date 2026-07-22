@@ -827,9 +827,7 @@ where
             }
         }
         "plan" => {
-            let spec_path = args
-                .next()
-                .ok_or("usage: perci hydra plan <spec.json>")?;
+            let spec_path = args.next().ok_or("usage: perci hydra plan <spec.json>")?;
             let raw = std::fs::read_to_string(&spec_path)?;
             let mut spec: CodeInjectSpec = serde_json::from_str(&raw)?;
             if spec.root == "." {
@@ -890,19 +888,15 @@ where
             }
         }
         other => {
-            return Err(format!(
-                "unknown hydra subcommand: {other} (try: perci hydra help)"
-            )
-            .into());
+            return Err(
+                format!("unknown hydra subcommand: {other} (try: perci hydra help)").into(),
+            );
         }
     }
     Ok(())
 }
 
-fn run_modular_command<I>(
-    command: &str,
-    args: &mut I,
-) -> Result<(), Box<dyn std::error::Error>>
+fn run_modular_command<I>(command: &str, args: &mut I) -> Result<(), Box<dyn std::error::Error>>
 where
     I: Iterator<Item = String>,
 {
@@ -986,10 +980,7 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             } else if let Some(d) = deliberation::try_deliberate(&prompt, &[], &[]) {
                 d.to_thought_plan(&prompt)
             } else {
-                let mut p = perci::thought_plan::ThoughtPlan::empty(
-                    "route-only",
-                    intent,
-                );
+                let mut p = perci::thought_plan::ThoughtPlan::empty("route-only", intent);
                 let route = perci::capability_router::route_prompt(&prompt);
                 p.active_packs = route.active_packs;
                 p.halt_reason = "no substantive operator matched; route only".into();
@@ -1032,7 +1023,10 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             }
             let (run, state, frame) = perci::reason_transition::run_bounded(&prompt, 8);
             println!("frame: {}", frame.summary_line());
-            println!("halt: {} confidence_pm={}", run.halt_reason, run.final_confidence_pm);
+            println!(
+                "halt: {} confidence_pm={}",
+                run.halt_reason, run.final_confidence_pm
+            );
             for s in &run.steps {
                 println!(
                     "  c{} {} gain={}pm conf={}pm — {}",
@@ -1067,13 +1061,21 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             };
             let out = perci::semantic_field::SemanticFieldPack::default_path();
             let n = perci::semantic_field::build_pack(&frames, &out)?;
-            println!("built PERCISEM1 candidate: {} frames → {}", n, out.display());
+            println!(
+                "built PERCISEM1 candidate: {} frames → {}",
+                n,
+                out.display()
+            );
             println!("promotion_status=candidate · never auto-promote");
         }
         "build-rsn" => {
             let out = perci::reason_transition::ReasonTransitionPack::default_path();
             let n = perci::reason_transition::build_default_pack(&out)?;
-            println!("built PERCIRSN1 candidate: {} transitions → {}", n, out.display());
+            println!(
+                "built PERCIRSN1 candidate: {} transitions → {}",
+                n,
+                out.display()
+            );
             println!("promotion_status=candidate · never auto-promote");
         }
         "build-dsc" => {
@@ -1113,20 +1115,15 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
                         .into(),
                 );
             }
-            let (bits, prompt) = if matches!(
-                all[0].as_str(),
-                "1" | "2" | "4" | "1bit" | "2bit" | "4bit"
-            ) {
-                (
-                    perci::language_realize::BitWidth::from_str_loose(&all[0]),
-                    all[1..].join(" "),
-                )
-            } else {
-                (
-                    perci::language_realize::BitWidth::Two,
-                    all.join(" "),
-                )
-            };
+            let (bits, prompt) =
+                if matches!(all[0].as_str(), "1" | "2" | "4" | "1bit" | "2bit" | "4bit") {
+                    (
+                        perci::language_realize::BitWidth::from_str_loose(&all[0]),
+                        all[1..].join(" "),
+                    )
+                } else {
+                    (perci::language_realize::BitWidth::Two, all.join(" "))
+                };
             if prompt.trim().is_empty() {
                 return Err("usage: perci modular realize [1|2|4] <prompt>".into());
             }
@@ -1236,13 +1233,13 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             for f in &report.findings {
                 println!("  finding: {f}");
             }
-            println!(
-                "  trials={} receipt={}",
-                report.trials.len(),
-                out.display()
-            );
+            println!("  trials={} receipt={}", report.trials.len(), out.display());
             // Compact table
-            for t in report.trials.iter().filter(|t| t.depth == 1 || t.depth == depth) {
+            for t in report
+                .trials
+                .iter()
+                .filter(|t| t.depth == 1 || t.depth == depth)
+            {
                 println!(
                     "  {} d{} recon={}pm match={}pm mis={}pm gen={}pm us={}",
                     t.operator,
@@ -1256,10 +1253,9 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             }
         }
         other => {
-            return Err(format!(
-                "unknown modular subcommand: {other} (try: perci modular help)"
-            )
-            .into());
+            return Err(
+                format!("unknown modular subcommand: {other} (try: perci modular help)").into(),
+            );
         }
     }
     Ok(())

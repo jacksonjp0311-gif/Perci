@@ -165,6 +165,21 @@ fn invoke_external(
 /// continuous prose (see `frontier_speech`) so chat feels collaborator-grade without
 /// a transformer or densifying Bitwork.
 pub fn fluent_rewrite(user: &str, seed_body: &str) -> String {
+    // Some turns are already deliberate, direct control answers.  Sending
+    // them through the general arc rewriter can make it re-bind to a stale
+    // topic (for example, prefixing a current answer with the previous
+    // checklist request).  Preserve the controller's answer verbatim for
+    // these high-signal turns; fluency must not outrank conversational state.
+    let normalized = user.to_ascii_lowercase();
+    let direct_turn = (normalized.contains("smooth language")
+        && normalized.contains("understanding"))
+        || normalized.contains("checklist")
+        || normalized.contains("method card")
+        || normalized.contains("are you listening")
+        || normalized.contains("listening to what");
+    if direct_turn {
+        return seed_body.to_owned();
+    }
     if crate::frontier_speech::looks_frontier_turn(user) {
         let arc = crate::frontier_speech::frontier_arc_rewrite(user, seed_body);
         if arc.split_whitespace().count() >= 10 {
@@ -305,7 +320,10 @@ fn collect_content_chunks(seed: &str) -> Vec<String> {
                 };
             }
         }
-        line = line.trim_matches(|c: char| c == '*' || c == '`').trim().to_owned();
+        line = line
+            .trim_matches(|c: char| c == '*' || c == '`')
+            .trim()
+            .to_owned();
         // Drop leftover labels ending with colon only.
         if line.ends_with(':') && line.split_whitespace().count() <= 5 {
             continue;
@@ -460,8 +478,7 @@ fn soft_open(user: &str, task: &str, body: &str) -> String {
 /// Whether this turn should invoke the language path (after operators/tools).
 pub fn should_invoke_language(user: &str) -> bool {
     let t = user.to_ascii_lowercase();
-    let compact = t
-        .trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
+    let compact = t.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
     // Keep pure social micro-turns on dialogue-act paths.
     if matches!(
         compact,
@@ -583,6 +600,19 @@ mod tests {
                 || low.contains("not")
         );
         assert!(!low.contains("weights promoted"));
+    }
+
+    #[test]
+    fn direct_control_turn_does_not_rebind_to_stale_topic() {
+        let seed = "No. Smooth language shows that rendering is fluent; understanding is stronger and means preserving distinctions.";
+        let out = fluent_rewrite(
+            "Stay with this thread: does smooth language mean understanding?",
+            seed,
+        );
+        assert_eq!(out, seed);
+        assert!(!out
+            .to_ascii_lowercase()
+            .starts_with("on don't want checklist"));
     }
 
     #[test]

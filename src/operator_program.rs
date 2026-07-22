@@ -625,6 +625,11 @@ pub fn apply_dialogue_workspace_runtime(
                     .answer
                     .to_ascii_lowercase()
                     .contains("claim to examine"))
+            // Direct style/presence turns intentionally answer the speech act
+            // rather than restating the previous topic.  Letting the
+            // workspace repair them with `On <referent>:` is a stale-context
+            // splice, not useful continuity.
+            || is_direct_control_turn(&user_lower)
             // A first-class answer can still trip the conservative referent
             // critic when the prior turn is a different topic.  Never splice
             // the generic "Keeping ... in view" prefix onto explicit
@@ -652,6 +657,14 @@ pub fn apply_dialogue_workspace_runtime(
     }
     crate::governed_will::apply(user, &mut deliberation);
     deliberation
+}
+
+fn is_direct_control_turn(user_lower: &str) -> bool {
+    (user_lower.contains("smooth language") && user_lower.contains("understanding"))
+        || user_lower.contains("checklist")
+        || user_lower.contains("method card")
+        || user_lower.contains("are you listening")
+        || user_lower.contains("listening to what")
 }
 
 fn answer_has_explicit_turn_binding(answer: &str) -> bool {
@@ -1006,5 +1019,23 @@ mod tests {
                 out.answer
             );
         }
+    }
+
+    #[test]
+    fn direct_style_turn_does_not_get_stale_referent_prefix() {
+        let draft = crate::deliberation::Deliberation::new(
+            "fluid-associative",
+            "No. Smooth language shows that rendering is fluent; understanding is stronger and means preserving distinctions.",
+        );
+        let out = apply_dialogue_workspace_runtime(
+            "Stay with this thread: does smooth language mean understanding?",
+            &[(
+                "I don't want a checklist. Tell me directly what your biggest gap is.".into(),
+                "Understood: I’ll answer in connected prose.".into(),
+            )],
+            draft,
+        );
+        assert!(!out.answer.to_ascii_lowercase().starts_with("on "));
+        assert!(out.answer.to_ascii_lowercase().starts_with("no."));
     }
 }

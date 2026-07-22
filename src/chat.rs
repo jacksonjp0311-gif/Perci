@@ -212,6 +212,10 @@ impl ChatEngine {
         // to, avoiding a second mismatch between routing and voice.
         let repaired = crate::text_normalize::repair_typos(clean.as_str());
         let input = repaired.as_str();
+        // PERCICTX1 is the bounded semantic envelope shared by routing,
+        // geometry alignment, speech, and audit. It is inspectable state, not
+        // hidden chain-of-thought and not a consciousness claim.
+        let context_card = crate::context_card::ContextCard::derive(input, &self.recent);
         crate::bridge::set_turn_verbose(flag_verbose || self.verbose_cognition);
         self.sync_style_to_bridge();
         let _flag_verbose = flag_verbose; // reserved: richer plan retention
@@ -333,6 +337,10 @@ impl ChatEngine {
                 bitwork.as_ref(),
             );
             result.answer = text.clone();
+            result.observations.push(context_card.trace());
+            result
+                .observations
+                .push(context_card.observe_answer(&text, &self.recent).trace());
             result = result.with_thought_plan(input);
             crate::decision_trace::append(input, &result);
             self.last_deliberation = Some(result);
@@ -567,6 +575,35 @@ impl ChatEngine {
         }
 
         // Modular SEM→RSN→DSC→LM for substantive intents only (Phase 3–6).
+        // Security-sensitive natural-language requests must bypass the
+        // modular language route. A generated governance concept can sound
+        // like acceptance of a destructive or secret-reveal request, so keep
+        // the refusal direct and auditable before associative realization.
+        if let Some(text) =
+            voice::security_intent_reply(&crate::text_normalize::normalize_for_routing(input))
+        {
+            let mut deliberation = Deliberation::new("governed-security-boundary", text.clone())
+                .observed("security-intent route preempted modular language realization")
+                .inferred(
+                    "no command, secret read, publish, or cross-user memory action was authorized",
+                )
+                .observed(context_card.trace())
+                .confidence(0.98);
+            deliberation = crate::operator_program::apply_program_runtime(input, deliberation);
+            let text = deliberation.answer.clone();
+            deliberation
+                .observations
+                .push(context_card.observe_answer(&text, &self.recent).trace());
+            crate::decision_trace::append(input, &deliberation);
+            self.last_deliberation = Some(deliberation);
+            self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
         // Social / exact / thin shells stay on SoftCascade. Quality-gated; never auto-promote.
         if let Some(mod_r) = crate::language_realize::try_chat_realize(input, &self.recent) {
             self.backend.set_dialogue_history(&self.recent);
@@ -584,12 +621,10 @@ impl ChatEngine {
             let mut deliberation = Deliberation::new("modular-realize", text.clone())
                 .observed(format!("discourse={}", mod_r.discourse))
                 .observed(format!("engine={}", mod_r.engine))
-                .observed(format!(
-                    "active_packs={}",
-                    mod_r.active_packs.join(",")
-                ))
+                .observed(format!("active_packs={}", mod_r.active_packs.join(",")))
                 .observed(format!("constraints_ok={}", mod_r.constraints_ok))
                 .inferred("SEM→RSN→DSC→LM pipeline; wording only — not consciousness")
+                .observed(context_card.trace())
                 .uncertain("modular packs are candidates until human authorize")
                 .confidence(if mod_r.constraints_ok { 0.88 } else { 0.72 });
             deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
@@ -599,6 +634,9 @@ impl ChatEngine {
             );
             deliberation = deliberation.with_thought_plan(input);
             let text = deliberation.answer.clone();
+            deliberation
+                .observations
+                .push(context_card.observe_answer(&text, &self.recent).trace());
             crate::decision_trace::append(input, &deliberation);
             self.last_deliberation = Some(deliberation);
             self.push_turn(input, &text);
@@ -619,6 +657,10 @@ impl ChatEngine {
         };
 
         let mut ctx = context;
+        ctx.insert(
+            0,
+            format!("[Perci context card: {}]", context_card.speech_directive()),
+        );
         ctx.insert(
             0,
             format!("[Perci dialogue workspace: {}]", workspace.hint()),
@@ -647,10 +689,7 @@ impl ChatEngine {
         let reason_seed = if control.should_run_reason_loop() {
             let receipt = crate::reason_loop::run_loop(input);
             if !receipt.answer.trim().is_empty()
-                && matches!(
-                    receipt.status,
-                    crate::reason_loop::ReasonStatus::Verified
-                )
+                && matches!(receipt.status, crate::reason_loop::ReasonStatus::Verified)
                 && receipt.best_score >= 16
             {
                 Some(receipt.answer)
@@ -671,7 +710,9 @@ impl ChatEngine {
         };
         // Prefer verified reason-loop only when it clearly outscores thin SoftCascade.
         let generated = match reason_seed {
-            Some(ref r) if r.split_whitespace().count() > generated.split_whitespace().count() + 12 => {
+            Some(ref r)
+                if r.split_whitespace().count() > generated.split_whitespace().count() + 12 =>
+            {
                 r.clone()
             }
             _ => generated,
@@ -702,7 +743,6 @@ impl ChatEngine {
         } else {
             voice::ensure_user_binding(input, &generated, "general", None, &self.recent)
         };
-
         let mut deliberation = Deliberation::new(
             if crate::frontier_speech::looks_frontier_turn(input) {
                 "frontier-arc"
@@ -713,6 +753,7 @@ impl ChatEngine {
         )
             .observed(format!("context_items={}", ctx.len()))
             .observed(format!("reasoning_controller={}", control.hint()))
+            .observed(context_card.trace())
             .inferred("fluid composition bound reply to user content under Bitwork routing")
             .inferred(format!(
                 "controller_steps={} · binary_state={:016x}",
@@ -744,6 +785,9 @@ impl ChatEngine {
         );
         deliberation = deliberation.with_thought_plan(input);
         let text = deliberation.answer.clone();
+        deliberation
+            .observations
+            .push(context_card.observe_answer(&text, &self.recent).trace());
         crate::decision_trace::append(input, &deliberation);
         self.last_deliberation = Some(deliberation);
 

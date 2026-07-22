@@ -177,6 +177,11 @@ def main() -> int:
         default=ROOT / "models" / "candidates" / "evaluation-v4-dialogue.json",
     )
     parser.add_argument(
+        "--observer",
+        type=Path,
+        default=ROOT / "models" / "candidates" / "evaluation-context-observer-latest.json",
+    )
+    parser.add_argument(
         "--registry",
         type=Path,
         default=ROOT / "training" / "hardness" / "capabilities.json",
@@ -196,16 +201,24 @@ def main() -> int:
     registry = read_json(args.registry, {"capabilities": []}) or {"capabilities": []}
     hardness = gate_summary(args.hardness)
     dialogue = gate_summary(args.dialogue)
+    observer = gate_summary(args.observer)
     learning = learning_stats()
     binary = binary_freshness()
     caps = capability_status(registry, hardness)
 
     overall = "HOLD"
-    if hardness.get("status") == "PASS" and binary.get("status") in {
+    observer_ok = not observer.get("present") or observer.get("status") == "PASS"
+    if (
+        hardness.get("status") == "PASS"
+        and binary.get("status") in {
         "synced",
         "live_current_or_newer",
-    }:
+        }
+        and observer_ok
+    ):
         overall = "OPERATIONAL_CANDIDATE"
+    elif observer.get("present") and not observer_ok:
+        overall = "OBSERVER_HOLD"
     elif hardness.get("status") == "PASS":
         overall = "PASS_WITH_STALE_LIVE"
     elif hardness.get("present"):
@@ -222,11 +235,12 @@ def main() -> int:
         "gates": {
             "hardness": hardness,
             "dialogue": dialogue,
+            "observer_context": observer,
         },
         "learning": learning,
         "binary_freshness": binary,
         "capabilities": caps,
-        "recommended_next": recommended_next(caps, binary, learning, hardness),
+        "recommended_next": recommended_next(caps, binary, learning, hardness, observer),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(scorecard, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -236,6 +250,7 @@ def main() -> int:
         "overall_status": overall,
         "hardness": hardness.get("status"),
         "dialogue": dialogue.get("status"),
+        "observer": observer.get("status"),
         "binary": binary.get("status"),
         "capabilities": {c["id"]: c["state"] for c in caps},
         "recommended_next": scorecard["recommended_next"],
@@ -245,10 +260,15 @@ def main() -> int:
     return 0 if overall in {"OPERATIONAL_CANDIDATE", "PASS_WITH_STALE_LIVE"} else 1
 
 
-def recommended_next(caps, binary, learning, hardness) -> list[str]:
+def recommended_next(caps, binary, learning, hardness, observer) -> list[str]:
     tips: list[str] = []
     if not hardness.get("present"):
         tips.append("Run: python scripts/evaluate_hardness.py")
+    if not observer.get("present"):
+        tips.append("Run: python scripts/evaluate_context_observer.py")
+    elif observer.get("status") != "PASS":
+        failed = ", ".join(observer.get("failed") or []) or "unknown cases"
+        tips.append(f"Repair context observer cases: {failed}")
     for cap in caps:
         if cap["state"] in {"red", "yellow"}:
             tips.append(
