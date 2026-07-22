@@ -446,7 +446,11 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         && (text.contains("system")
             || text.contains("perci")
             || text.contains("you")
-            || text.contains("your"))
+            || text.contains("your")
+            || text.contains("conversation")
+            || text.contains("dialogue")
+            || text.contains("speech")
+            || text.contains("language"))
     {
         DialogueAct::EvolveSystem
     } else if matches!(
@@ -1224,7 +1228,13 @@ pub fn dialogue_reply(
         }
         DialogueAct::EvolveSystem => {
             let lower = user.to_ascii_lowercase();
-            if lower.contains("silly") || lower.contains("working on") || lower.contains("evolving you") {
+            if lower.contains("conversation")
+                || lower.contains("dialogue")
+                || lower.contains("speech")
+                || lower.contains("language")
+            {
+                "Yes — the conversation layer is the right target. The next repair is to keep the active goal, latest referent, and requested depth in the turn state, then let that state shape the wording before any nearby concept card can take over. I’ll change one owning path, replay the failing exchange plus paraphrases, and keep the weights frozen until the improvement transfers.".to_owned()
+            } else if lower.contains("silly") || lower.contains("working on") || lower.contains("evolving you") {
                 "Yes. Evolving me is real work: catch where I go stiff or wrong, fix the owning layer (dialogue act, operator, SoftCascade, not silent weights), and retest. Right now the useful lever is conversation quality — if a reply feels robotic, call it out and I'll drop the template. What do you want to improve first: how I talk, how I reason, or a hard gate like transfer?".to_owned()
             } else {
                 "Yes. Let's evolve one measurable capability at a time: name the behavior, capture a failing example, repair the responsible layer (operator / speech / tool — not densify Bitwork), then retest before promoting anything. For chat quality, one bad reply + what you wanted is enough. For knowledge, stage a claim for review — never silent weight promote.".to_owned()
@@ -5289,6 +5299,21 @@ mod tests {
     }
 
     #[test]
+    fn conversation_evolution_names_the_active_speech_layer() {
+        let answer = dialogue_reply(
+            DialogueAct::EvolveSystem,
+            "we are evolving the conversation layer",
+            &[],
+            None,
+        )
+        .unwrap()
+        .to_ascii_lowercase();
+        assert!(answer.contains("conversation layer"));
+        assert!(answer.contains("referent") || answer.contains("depth"));
+        assert!(answer.contains("weights") && answer.contains("frozen"));
+    }
+
+    #[test]
     fn synthesis_prompts_are_not_social_frustration() {
         let prompts = [
             "Connect entropy, memory, and learning in one coherent thought.",
@@ -5452,6 +5477,10 @@ mod tests {
         );
         assert_eq!(
             detect_dialogue_act("help me evolve the system perci"),
+            DialogueAct::EvolveSystem
+        );
+        assert_eq!(
+            detect_dialogue_act("we are evolving the conversation layer"),
             DialogueAct::EvolveSystem
         );
         assert_eq!(

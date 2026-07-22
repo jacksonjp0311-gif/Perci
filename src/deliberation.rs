@@ -179,6 +179,12 @@ pub fn try_deliberate(
     // a topic such as "code" or "science" from replacing the operation the
     // person actually requested.
 
+    // When the active thread is a speech repair, bind a next-step question to
+    // that thread instead of returning the generic cross-layer triage card.
+    if looks_conversation_next_step(&text, recent) {
+        return Some(conversation_next_step_answer());
+    }
+
     // Chat-quality triage: after a bad reply, name the owning layer first.
     if looks_chat_layer_triage(&text) {
         return Some(chat_layer_triage_answer(&text));
@@ -3423,6 +3429,47 @@ fn learning_evidence_answer() -> Deliberation {
     .confidence(0.98)
 }
 
+/// A next-step question should inherit the live speech failure when the
+/// recent turns clearly establish one. This is deliberately narrow: a plain
+/// "what should we fix?" outside a speech thread still uses normal triage.
+fn looks_conversation_next_step(text: &str, recent: &[(String, String)]) -> bool {
+    let ask = (text.contains("what should") || text.contains("what do we fix"))
+        && (text.contains("fix")
+            || text.contains("improv")
+            || text.contains("repair")
+            || text.contains("next"))
+        || text == "what should we fix next";
+    if !ask {
+        return false;
+    }
+    recent.iter().rev().take(8).any(|(u, a)| {
+        let low = format!("{u} {a}").to_ascii_lowercase();
+        (low.contains("conversation")
+            || low.contains("dialogue")
+            || low.contains("speech")
+            || low.contains("greeting")
+            || low.contains("robotic")
+            || low.contains("stiff"))
+            && (low.contains("evolv")
+                || low.contains("improv")
+                || low.contains("robotic")
+                || low.contains("smooth")
+                || low.contains("greeting")
+                || low.contains("fix"))
+    })
+}
+
+fn conversation_next_step_answer() -> Deliberation {
+    Deliberation::new(
+        "conversation-next-step",
+        "The next repair is turn ownership: keep the active conversation goal, latest referent, and requested depth in a small state, then let that state shape the wording before nearby topic cards compete. I’ll replay this exact thread plus paraphrases, measure whether the miss disappears, and leave the weights frozen until the change transfers on held-out turns.",
+    )
+    .observed("the live thread contains a conversational speech failure and asks for the next fix")
+    .inferred("continuity and response shaping are the highest-leverage owning layer")
+    .uncertain("which paraphrase will expose the next residual miss")
+    .confidence(0.97)
+}
+
 /// "After a bad chat reply, what layer should we fix first?"
 fn looks_chat_layer_triage(text: &str) -> bool {
     let layerish = text.contains("layer")
@@ -4316,8 +4363,20 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
         for (u, a) in recent.iter().rev().take(8) {
             let low = u.to_ascii_lowercase();
             let ans = a.to_ascii_lowercase();
+            let conversation_target = (low.contains("conversation")
+                || low.contains("dialogue")
+                || low.contains("speech")
+                || low.contains("greeting")
+                || low.contains("robotic"))
+                && (low.contains("evolv")
+                    || low.contains("improv")
+                    || low.contains("smooth")
+                    || low.contains("robotic")
+                    || low.contains("greeting")
+                    || low.contains("fix"));
             if low.contains("improv")
                 || low.contains("your system")
+                || conversation_target
                 || ans.contains("improving perci")
                 || ans.contains("transfer repairs")
                 || ans.contains("bitwork artifact")
@@ -4335,6 +4394,11 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
                 || low.contains("natural thought")
                 || low.contains("cryptic")
                 || low.contains("cyptic")
+                || matches!(
+                    crate::voice::detect_dialogue_act(&low),
+                    crate::voice::DialogueAct::Agreement
+                        | crate::voice::DialogueAct::Acknowledgement
+                )
                 || low.starts_with("thanks")
                 || matches!(
                     low.trim(),
@@ -4346,8 +4410,13 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
             let label = if low.contains("improv")
                 || low.contains("your system")
                 || (low.contains("work") && low.contains("system"))
+                || conversation_target
             {
-                "improving Perci / system evolution".to_owned()
+                if conversation_target && !low.contains("system") {
+                    "improving Perci / conversation quality".to_owned()
+                } else {
+                    "improving Perci / system evolution".to_owned()
+                }
             } else if low.contains("trust")
                 && (low.contains("system")
                     || low.contains("distributed")
@@ -4400,6 +4469,19 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
             themes.join("; ")
         };
         if next_step || improving_system {
+            if thread.contains("conversation quality") {
+                return Deliberation::new(
+                    "session-situation",
+                    "We're tuning Perci's conversation quality. The live problem is making each reply follow the current goal and referent instead of reaching for a generic method card; the next check is this exchange plus paraphrases, with the weights frozen until the repair transfers.",
+                )
+                .observed(format!(
+                    "recent_turns={} next_step={} conversation_quality=true",
+                    recent.len(),
+                    next_step
+                ))
+                .inferred("a speech-quality thread needs a direct status update, not a reusable checklist")
+                .confidence(0.95);
+            }
             // Prefer the earliest substantive claim in the window, not a prior
             // next-step / style-repair answer (those would recurse cryptically).
             let prior = recent.iter().rev().find_map(|(u, a)| {
@@ -7629,6 +7711,53 @@ mod tests {
         let low = result.answer.to_ascii_lowercase();
         assert!(low.contains("dialogue") || low.contains("operator") || low.contains("layer"));
         assert!(!low.contains("remembering everything would bury"));
+    }
+
+    #[test]
+    fn conversation_next_step_stays_bound_to_live_speech_failure() {
+        let recent = [
+            (
+                "we are evolving the conversation layer".to_owned(),
+                "Yes — the conversation layer is the right target.".to_owned(),
+            ),
+            (
+                "the greetings seem robotic".to_owned(),
+                "The issue is fit, not more scripts.".to_owned(),
+            ),
+            (
+                "yes that is what you should do".to_owned(),
+                "Will do.".to_owned(),
+            ),
+        ];
+        let result = run("what should we fix next?", &recent);
+        assert_eq!(result.operator, "conversation-next-step");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("turn ownership"));
+        assert!(low.contains("referent") || low.contains("depth"));
+        assert!(low.contains("weights") && low.contains("held-out"));
+    }
+
+    #[test]
+    fn session_summary_skips_agreement_and_names_conversation_goal() {
+        let recent = [
+            (
+                "we are evolving the conversation layer".to_owned(),
+                "Yes — the conversation layer is the right target.".to_owned(),
+            ),
+            (
+                "the greetings seem robotic".to_owned(),
+                "I was binding your words into a generic method card.".to_owned(),
+            ),
+            (
+                "yes that is what you should do".to_owned(),
+                "Will do.".to_owned(),
+            ),
+        ];
+        let result = run("what are we doing now?", &recent);
+        assert_eq!(result.operator, "session-situation");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("conversation quality") || low.contains("conversation"));
+        assert!(!low.contains("yes that is what you should"));
     }
 
     #[test]
