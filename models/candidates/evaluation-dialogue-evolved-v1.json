@@ -1,0 +1,238 @@
+{
+  "schema": "perci.dialogue-candidate-evaluation.v1",
+  "questions": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v1-heldout.jsonl",
+  "questions_sha256": "71673a98daaafd1de52f2ebba0ac9770ab1ad9dbeb5c1109c394359b7892e614",
+  "phrase_candidate": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bphr",
+  "phrase_candidate_sha256": "e90197a45c908a041e081b8836cfcbcf7e6340a64f79016fd6ac76530299730b",
+  "baseline": {
+    "summary": {
+      "questions_requested": 12,
+      "responses_parsed": 12,
+      "unique_responses": 12,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.5833,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 1.0,
+      "mean_chars": 306,
+      "median_chars": 336.0,
+      "min_chars": 146,
+      "max_chars": 513,
+      "families": 12,
+      "topics": 12,
+      "family_metrics": {
+        "creative": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "depth": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "disagreement": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "emergence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "memory_identity": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "rephrase": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "revision": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "scope": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "test_next": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "typo": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 12,
+      "required_passed": 3,
+      "required_rate": 0.25,
+      "responses": 12
+    }
+  },
+  "candidate": {
+    "summary": {
+      "questions_requested": 12,
+      "responses_parsed": 12,
+      "unique_responses": 12,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.5833,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 1.0,
+      "mean_chars": 330.67,
+      "median_chars": 360.0,
+      "min_chars": 146,
+      "max_chars": 513,
+      "families": 12,
+      "topics": 12,
+      "family_metrics": {
+        "creative": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "depth": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "disagreement": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "emergence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "memory_identity": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "rephrase": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "revision": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "scope": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "test_next": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "typo": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 12,
+      "required_passed": 4,
+      "required_rate": 0.3333,
+      "responses": 12
+    }
+  },
+  "candidate_not_worse": true,
+  "evidence": {
+    "topology": "single_node",
+    "evidence_coverage": 1.0,
+    "execution_evidence_coverage": 1.0,
+    "metrics": {
+      "required_followup_rate": {
+        "declared_weight": 0.45,
+        "observed": true
+      },
+      "topic_binding_rate": {
+        "declared_weight": 0.35,
+        "observed": true
+      },
+      "duplicate_response_rate": {
+        "declared_weight": 0.2,
+        "observed": true
+      }
+    },
+    "proxy_findings": [
+      {
+        "kind": "shared_holdout_fixture",
+        "source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v1-heldout.jsonl",
+        "disclosure": "paired baseline/candidate comparison; not independent evidence"
+      }
+    ],
+    "policy": {
+      "requested": "hold_until_broader_gates",
+      "effective": "hold",
+      "reason": "candidate comparison is descriptive; promotion requires separate human authorization"
+    },
+    "distributed_consensus_claimed": false,
+    "coherence_is_not_truth": true
+  },
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Human authorization and broader gates are still required even when this small held-out set improves."
+}

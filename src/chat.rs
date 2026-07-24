@@ -1,4 +1,5 @@
 use crate::backend::LanguageBackend;
+use crate::binary_dialogue::BinaryDialogueField;
 use crate::cortex::CortexBridge;
 use crate::deliberation::{self, Deliberation};
 use crate::learning::InteractionLearner;
@@ -7,6 +8,7 @@ use crate::personality::Personality;
 use crate::reasoning::{try_solve_arithmetic, try_solve_geometry};
 use crate::reflex::{ReflexRouter, Route};
 use crate::voice::{self, natural_exact};
+use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,6 +35,10 @@ fn preserve_operator_prose(operator: &str) -> bool {
             | "relation-transfer-test"
             | "context-only-audit"
             | "natural-restatement"
+            | "business-decision-support"
+            | "geometry-stability-scope"
+            | "geometry-decoration-challenge"
+            | "awareness-growth"
     )
 }
 
@@ -56,6 +62,9 @@ pub struct ChatEngine {
     learning: Option<InteractionLearner>,
     /// Last bounded cognitive audit; operational trace, never hidden reasoning.
     last_deliberation: Option<Deliberation>,
+    /// Optional mmap-backed reviewed dialogue lattice. It has wording
+    /// authority only and abstains unless operation + semantic overlap pass.
+    dialogue_field: Option<BinaryDialogueField>,
     /// Session flag: richer backend plans for `/think` (never prefixes chat).
     verbose_cognition: bool,
 }
@@ -77,6 +86,7 @@ impl ChatEngine {
             session: None,
             learning: None,
             last_deliberation: None,
+            dialogue_field: BinaryDialogueField::discover().unwrap_or(None),
             verbose_cognition: false,
         }
     }
@@ -489,6 +499,56 @@ impl ChatEngine {
             });
         }
 
+        // Reviewed binary dialogue cases bridge gaps left by first-class
+        // operators. They never outrank an exact or named reasoning path:
+        // operation + semantic overlap grants fallback wording authority, not
+        // authority to replace an owned capability.
+        if let Some(case) = self
+            .dialogue_field
+            .as_ref()
+            .and_then(|field| field.best_reply(input))
+        {
+            let mut deliberation = Deliberation::new("binary-dialogue-lattice", case.response)
+                .observed(format!(
+                    "dialogue_case operation={} score={} shared={}",
+                    case.operation,
+                    case.score_milli,
+                    case.shared_terms.join(",")
+                ))
+                .inferred(
+                    "reviewed response filled an unowned operation under matching semantic overlap",
+                )
+                .uncertain("case retrieval is bounded transfer, not open-ended proof")
+                .confidence((case.score_milli as f64 / 2_400.0).clamp(0.55, 0.96));
+            deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
+                input,
+                &self.recent,
+                deliberation,
+            );
+            deliberation = deliberation.with_thought_plan(input);
+            let text = crate::bridge::envelope_light(
+                input,
+                crate::bridge::CognitionPath::Operator,
+                &["binary-dialogue"],
+                "binary-dialogue-lattice",
+                &deliberation.answer,
+                false,
+            );
+            deliberation.answer = text.clone();
+            deliberation.observations.push(context_card.trace());
+            deliberation
+                .observations
+                .push(context_card.observe_answer(&text, &self.recent).trace());
+            crate::decision_trace::append(input, &deliberation);
+            self.last_deliberation = Some(deliberation);
+            self.push_turn(input, &text);
+            crate::bridge::set_turn_verbose(false);
+            return Ok(ChatResponse {
+                route: Route::Chat,
+                text,
+            });
+        }
+
         // Preserve the established fallback for learning, style, governance,
         // and other dialogue acts that intentionally yield to deliberation.
         // Only the narrow preempted set above must be handled before it.
@@ -851,7 +911,11 @@ impl ChatEngine {
             Some(ref r)
                 if r.split_whitespace().count() > generated.split_whitespace().count() + 12 =>
             {
-                r.clone()
+                if reason_seed_preserves_turn(input, r, &generated) {
+                    r.clone()
+                } else {
+                    generated
+                }
             }
             _ => generated,
         };
@@ -1022,6 +1086,56 @@ impl ChatEngine {
         context.dedup();
         Ok(context)
     }
+}
+
+/// A reason loop may be internally well-formed yet belong to the wrong
+/// semantic neighborhood. It can replace a fluent draft only when it preserves
+/// at least as much of the user's subject and does not import an unrelated
+/// specialist vocabulary. This closes the "verified but wrong question" gap.
+fn reason_seed_preserves_turn(user: &str, reason: &str, draft: &str) -> bool {
+    fn content(text: &str) -> HashSet<String> {
+        const STOP: &[&str] = &[
+            "what", "why", "how", "does", "that", "this", "with", "from", "into", "about", "your",
+            "you", "the", "and", "for", "are", "was", "were", "have", "has", "help", "give",
+            "tell", "explain", "one", "more", "would", "could", "should",
+        ];
+        crate::text_normalize::repair_typos(text)
+            .split_whitespace()
+            .map(|word| {
+                word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric())
+                    .to_ascii_lowercase()
+            })
+            .filter(|word| word.len() >= 4 && !STOP.contains(&word.as_str()))
+            .collect()
+    }
+    let topics = content(user);
+    if topics.is_empty() {
+        return false;
+    }
+    let reason_words = content(reason);
+    let draft_words = content(draft);
+    let reason_hits = topics.intersection(&reason_words).count();
+    let draft_hits = topics.intersection(&draft_words).count();
+    if reason_hits == 0 || reason_hits < draft_hits {
+        return false;
+    }
+
+    let user_lower = user.to_ascii_lowercase();
+    let reason_lower = reason.to_ascii_lowercase();
+    let technical_user = [
+        "code", "compile", "command", "debug", "error", "path", "rust", "test",
+    ]
+    .iter()
+    .any(|term| user_lower.contains(term));
+    let imported_technical = [
+        "hard error",
+        "failing command",
+        "smallest command",
+        "environmental (path, version)",
+    ]
+    .iter()
+    .any(|term| reason_lower.contains(term));
+    !imported_technical || technical_user
 }
 
 fn should_load_context(input: &str) -> bool {
@@ -1203,5 +1317,34 @@ mod tests {
         assert!(should_load_context(
             "How should I debug a Rust ownership error?"
         ));
+    }
+
+    #[test]
+    fn reason_seed_cannot_import_code_into_memory_question() {
+        assert!(!reason_seed_preserves_turn(
+            "How does memory help identity survive change?",
+            "Memory matters. Reproduce with the smallest command and read the first hard error.",
+            "Memory supports identity by carrying continuity across change.",
+        ));
+    }
+
+    #[test]
+    fn reason_seed_may_deepen_the_same_semantic_neighborhood() {
+        assert!(reason_seed_preserves_turn(
+            "Why does memory support identity?",
+            "Memory supports identity because retained traces connect earlier and later states.",
+            "Memory and identity are related.",
+        ));
+    }
+
+    #[test]
+    fn grounded_question_frame_operators_keep_prose_ownership() {
+        for operator in [
+            "business-decision-support",
+            "geometry-stability-scope",
+            "awareness-growth",
+        ] {
+            assert!(preserve_operator_prose(operator), "{operator}");
+        }
     }
 }

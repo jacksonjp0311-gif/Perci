@@ -1,3 +1,4 @@
+use crate::binary_dialogue::BinaryDialogueField;
 use crate::binary_language::BinaryLanguageModel;
 use crate::binary_phrase::BinaryPhraseModel;
 use crate::binary_relation::BinaryRelationField;
@@ -261,7 +262,7 @@ impl LanguageBackend for NativeLanguageBackend {
             // distance from the recent dialogue.  This is still integer-only
             // inference; the selector is a transparent anti-collapse gate,
             // not a hidden language model.
-            let candidates = (0..6)
+            let candidates = (0..16)
                 .map(|variant| {
                     let variant_state =
                         state ^ (variant as u64 + 1).wrapping_mul(0xd6e8_feb8_6659_fd93);
@@ -348,6 +349,7 @@ fn choose_native_response(
             let response_tokens = native_content_tokens(candidate);
             let user_tokens = native_content_tokens(user);
             let topic_hits = response_tokens.intersection(&user_tokens).count() as i64;
+            let operation_fit = native_operation_fit(candidate, user);
             let novelty = native_bigram_count(candidate) as i64;
             let relation_novelty = native_relation_novelty(candidate, user, recent);
             // Keep the learned field as a tie-breaker. Dense co-occurrence
@@ -363,6 +365,11 @@ fn choose_native_response(
                 .map(|(_, assistant)| native_jaccard_milli(candidate, assistant))
                 .max()
                 .unwrap_or(0);
+            let template_similarity = recent
+                .iter()
+                .map(|(_, assistant)| native_template_similarity_milli(candidate, assistant))
+                .max()
+                .unwrap_or(0);
             let exact_repeat = recent
                 .iter()
                 .any(|(_, assistant)| native_normalize(candidate) == native_normalize(assistant));
@@ -372,13 +379,23 @@ fn choose_native_response(
             // comparably grounded.
             topic_hits * 140
                 + relation_novelty * native_relation_weight()
+                + operation_fit * 80
                 + learned_relation * native_relation_field_weight()
                 + world_consistency * native_world_field_weight()
                 + novelty * 2
                 + response_tokens.len() as i64
-                - recent_similarity * 3
+                - if recent_similarity >= 700 {
+                    recent_similarity * 12
+                } else {
+                    0
+                }
+                - if template_similarity >= 850 {
+                    template_similarity * 18
+                } else {
+                    0
+                }
                 - malformed_penalty
-                - if exact_repeat { 5_000 } else { 0 }
+                - if exact_repeat { 8_000 } else { 0 }
                 + *index as i64
         })
         .map(|(_, candidate)| candidate.clone())
@@ -508,6 +525,70 @@ fn native_topic_relations(text: &str, topics: &HashSet<String>) -> HashSet<Strin
 fn native_jaccard_milli(left: &str, right: &str) -> i64 {
     let left = native_content_tokens(left);
     let right = native_content_tokens(right);
+    let union = left.union(&right).count();
+    if union == 0 {
+        0
+    } else {
+        (left.intersection(&right).count() * 1_000 / union) as i64
+    }
+}
+
+/// Score whether a candidate performs the user's requested discourse act.
+/// This is intentionally bounded and lexical: it prevents novelty from
+/// winning when the user asked for a mechanism, comparison, plan, or refusal.
+fn native_operation_fit(candidate: &str, user: &str) -> i64 {
+    let prompt = native_normalize(user);
+    let answer = native_normalize(candidate);
+    let markers: &[&str] = if prompt.contains("why ")
+        || prompt.starts_with("why")
+        || prompt.contains("explain")
+        || prompt.contains("how does")
+    {
+        &["because", "mechanism", "means", "works", "cause"]
+    } else if prompt.contains("compare") || prompt.contains("difference") {
+        &["difference", "whereas", "both", "unlike", "tradeoff"]
+    } else if prompt.contains("next") || prompt.contains("plan") || prompt.contains("what should") {
+        &["next", "step", "first", "then", "test", "check"]
+    } else if prompt.contains("connect") || prompt.contains("shared") {
+        &["shared", "relation", "connect", "structure", "bridge"]
+    } else if prompt.contains("unknown")
+        || prompt.contains("invent")
+        || prompt.contains("what do you know")
+    {
+        &["unknown", "cannot", "infer", "evidence", "limit"]
+    } else if prompt.contains("imagine") || prompt.contains("original") {
+        &["image", "imagine", "metaphor", "pattern", "could"]
+    } else {
+        &[]
+    };
+    markers
+        .iter()
+        .filter(|marker| answer.contains(**marker))
+        .count()
+        .min(4) as i64
+}
+
+/// Compare discourse shape after replacing content words with one placeholder.
+/// This catches “same answer, different nouns” collapse while allowing a
+/// genuinely new mechanism to reuse ordinary English connective tissue.
+fn native_template_similarity_milli(left: &str, right: &str) -> i64 {
+    fn shape(text: &str) -> HashSet<String> {
+        let content = native_content_tokens(text);
+        native_normalize(text)
+            .split_whitespace()
+            .enumerate()
+            .map(|(index, token)| {
+                let atom = if content.contains(token) {
+                    "<content>".to_owned()
+                } else {
+                    token.to_owned()
+                };
+                format!("{index}:{atom}")
+            })
+            .collect()
+    }
+    let left = shape(left);
+    let right = shape(right);
     let union = left.union(&right).count();
     if union == 0 {
         0
@@ -882,6 +963,13 @@ impl CompositeBackend {
         }
         if let Some(native) = native.as_ref() {
             names.push(native.name().to_owned());
+        }
+        if let Ok(Some(dialogue)) = BinaryDialogueField::discover() {
+            names.push(format!(
+                "dialogue lattice | {} cases | {:.1} KiB mapped",
+                dialogue.record_count(),
+                dialogue.file_bytes() as f64 / 1024.0
+            ));
         }
         if local_model.is_some() {
             names.push("local HTTP model (opt-in)".to_owned());

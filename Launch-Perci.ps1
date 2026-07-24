@@ -536,6 +536,26 @@ try {
     & $Exe chat
     exit $LASTEXITCODE
 }
+catch {
+    # Do not let a build/runtime exception make a double-clicked console vanish.
+    # Preserve the exact error for diagnosis and leave the message visible when
+    # launched interactively; piped/automated launches still return exit 1.
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("perci-launch-error-{0}.log" -f $stamp)
+    $errorText = ($_ | Out-String).Trim()
+    try {
+        Set-Content -LiteralPath $errorPath -Value $errorText -Encoding utf8
+    } catch {}
+    try {
+        Write-Host ''
+        Write-BloodLine '  *  Perci launch failed — the console was kept open for diagnosis.' Red
+        Write-BloodLine ("  *  Error log: {0}" -f $errorPath) DarkYellow
+        if (-not [Console]::IsInputRedirected) {
+            [void](Read-Host '  Press Enter to close')
+        }
+    } catch {}
+    exit 1
+}
 finally {
     Pop-Location
 }

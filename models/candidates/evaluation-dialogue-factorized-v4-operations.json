@@ -1,0 +1,252 @@
+{
+  "schema": "perci.dialogue-candidate-evaluation.v1",
+  "questions": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-operations-v2-heldout.jsonl",
+  "questions_sha256": "78e36ebfdb2733250a2752ae88109602cd804ca214b2bf60d7a0435c7cc0360c",
+  "phrase_candidate": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v4.bphr",
+  "phrase_candidate_sha256": "dd26bab7c0ac002965bf5ae4a576896d5e788c6851ca757b8ea5d0b65c1a4926",
+  "dialogue_candidate": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v4.bdlg",
+  "dialogue_candidate_sha256": "a776fedd4547730d5d08e09c452d16f687081be41add014a1ef286baa4937c20",
+  "baseline": {
+    "summary": {
+      "questions_requested": 24,
+      "responses_parsed": 24,
+      "unique_responses": 24,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.625,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 0.9167,
+      "mean_chars": 361.38,
+      "median_chars": 250.5,
+      "min_chars": 151,
+      "max_chars": 1358,
+      "families": 13,
+      "topics": 23,
+      "family_metrics": {
+        "answer": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "challenge": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "clarify": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "compare": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "connect": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "create": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "deepen": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "explain": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "plan": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "repair": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "test": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 24,
+      "required_passed": 6,
+      "required_rate": 0.25,
+      "responses": 24
+    }
+  },
+  "candidate": {
+    "summary": {
+      "questions_requested": 24,
+      "responses_parsed": 24,
+      "unique_responses": 24,
+      "duplicate_responses": 0,
+      "topic_binding_rate": 0.5833,
+      "slot_pair_binding_rate": null,
+      "punctuated_response_rate": 1.0,
+      "mean_chars": 219.96,
+      "median_chars": 211.0,
+      "min_chars": 150,
+      "max_chars": 321,
+      "families": 13,
+      "topics": 23,
+      "family_metrics": {
+        "answer": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "challenge": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "clarify": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "compare": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "connect": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "create": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "deepen": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "evidence": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "explain": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 1.0,
+          "slot_pair_binding_rate": null
+        },
+        "learning": {
+          "responses": 1,
+          "unique_responses": 1,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "plan": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        },
+        "repair": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.0,
+          "slot_pair_binding_rate": null
+        },
+        "test": {
+          "responses": 2,
+          "unique_responses": 2,
+          "topic_binding_rate": 0.5,
+          "slot_pair_binding_rate": null
+        }
+      }
+    },
+    "required": {
+      "required_cases": 24,
+      "required_passed": 13,
+      "required_rate": 0.5417,
+      "responses": 24
+    }
+  },
+  "candidate_not_worse": false,
+  "evidence": {
+    "topology": "single_node",
+    "evidence_coverage": 1.0,
+    "execution_evidence_coverage": 1.0,
+    "metrics": {
+      "required_followup_rate": {
+        "declared_weight": 0.45,
+        "observed": true
+      },
+      "topic_binding_rate": {
+        "declared_weight": 0.35,
+        "observed": true
+      },
+      "duplicate_response_rate": {
+        "declared_weight": 0.2,
+        "observed": true
+      }
+    },
+    "proxy_findings": [
+      {
+        "kind": "shared_holdout_fixture",
+        "source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-operations-v2-heldout.jsonl",
+        "disclosure": "paired baseline/candidate comparison; not independent evidence"
+      }
+    ],
+    "policy": {
+      "requested": "hold_until_broader_gates",
+      "effective": "hold",
+      "reason": "candidate comparison is descriptive; promotion requires separate human authorization"
+    },
+    "distributed_consensus_claimed": false,
+    "coherence_is_not_truth": true
+  },
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Human authorization and broader gates are still required even when this small held-out set improves."
+}

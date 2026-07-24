@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.10.3-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.11.2-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -85,11 +85,11 @@ Chat stays clean. Inspect with `/think`, `/field`, `/trace`. Style with `/concis
 
 ## Measured status (keep this current)
 
-Snapshot from sealed receipts on **v0.10.3** (2026-07-22). Re-run gates after material changes; do not treat this table as forever-true without receipts.
+Snapshot from sealed receipts on **v0.11.2** (2026-07-23). Re-run gates after material changes; do not treat this table as forever-true without receipts.
 
 | Gate | Result | How to refresh |
 |------|--------|----------------|
-| **Hardness pack** | **136 / 136 PASS** | `python scripts/evaluate_hardness.py` |
+| **Hardness pack** | **139 / 139 PASS** | `python scripts/evaluate_hardness.py` |
 | **Dialogue regression** | **159 / 159 PASS** | `python scripts/evaluate_dialogue_v4.py` |
 | **Transfer suite** | **16 / 16** + SoftCascade **7 / 7** | `perci transfer-suite` |
 | **BRPC control receipt** | \(C \approx 0.90\), **H7 within_band** | `python scripts/brpc_perci_receipt.py` |
@@ -98,25 +98,26 @@ Snapshot from sealed receipts on **v0.10.3** (2026-07-22). Re-run gates after ma
 | **Latest BRPC candidate** | **C=0.98137**, **U=0.887**, no promotion | `models/candidates/brpc-perci-receipt-latest.json` |
 | **Security/dialogue assessment** | **S1–S7 findings documented**; 7/7 sensitive live probes explicitly bounded; no default-path execution demonstrated | [`docs/SECURITY_ASSESSMENT_20260722.md`](docs/SECURITY_ASSESSMENT_20260722.md) |
 | **PERCICTX1 observer gate** | **12 / 12 PASS**; mean observer score **0.919**, geometry alignment **1.000** | `python scripts/evaluate_context_observer.py` · [`docs/PERCICTX1_CONTEXT_CARD.md`](docs/PERCICTX1_CONTEXT_CARD.md) |
-| **Runtime package** | **5 / 5 LFS artifacts verified**; active PERCIW03 and native language fields sealed | `python scripts/verify_package.py` · [`models/PACKAGE_MANIFEST.json`](models/PACKAGE_MANIFEST.json) |
+| **Runtime package** | **6 / 6 LFS artifacts verified**; active PERCIW03 and native language fields sealed | `python scripts/verify_package.py` · [`models/PACKAGE_MANIFEST.json`](models/PACKAGE_MANIFEST.json) |
 | **Weight promote** | **never automatic** | human `--authorize` only |
 
 Packaged runtime artifacts (Git LFS):
 
 | Property | Value |
 |----------|------:|
-| Software | **v0.10.3** (`Cargo.toml` · badge auto-stamped) |
+| Software | **v0.11.2** (`Cargo.toml` · badge auto-stamped) |
 | Format | **PERCIW03** |
 | Size | ~**200 MiB** (209,710,296 bytes) |
 | Prototypes | **403,163** |
 | Concepts | **124** |
 | Activation | **4,096** bits · integer AND/POPCOUNT hot path |
-| Native language | **PERCLNG1** (+ optional phrase / relation / world fields) |
+| Native language | **PERCLNG1 + PERCPHR1 + PERCDLG1** |
 | Low-bit sidecar | **PERCLBW1** (experimental, assessed separately) |
 
 The complete runtime package is versioned through Git LFS: the active PERCIW03
 pack, PERCIW02 fallback, PERCIW01 legacy baseline, PERCLNG1 native language
-field, and PERCPHR1 phrase field. `models/PACKAGE_MANIFEST.json` seals each
+field, PERCPHR1 phrase field, and PERCDLG1 dialogue lattice.
+`models/PACKAGE_MANIFEST.json` seals each
 artifact's format, byte length, SHA-256, and role. A fresh clone should install
 Git LFS and pull the payloads before launching:
 
@@ -290,14 +291,15 @@ dialogue, governance, memory, and language to use different payloads.
 The observer proxy is:
 
 \[
-Q_{observer}=H(S,F,V,G)(1-P_{over}),
+Q_{dialogue}=H(F,T,O,V,G,U)(1-P_{over})N,
 \]
 
-where (S) is fluency, (F) is context fidelity, (V) is next-action
-viability, (G) is geometry-line alignment, and (P_{over}) penalizes repeated
-or over-smoothed prose. The harmonic mean prevents one impressive dimension
-from hiding a weak one. This is an engineering proxy, not a claim that a scalar
-proves understanding.
+where (F) is fluency, (T) is topic fidelity, (O) is operation fit, (V) is
+next-action viability, (G) is geometry-line alignment, (U) is uncertainty
+calibration, (P_{over}) penalizes repeated or over-smoothed prose, and (N) is
+progression beyond the prior answer. The harmonic mean prevents one impressive
+dimension from hiding a weak one. This is an engineering proxy, not a claim
+that a scalar proves understanding.
 
 Geometry lines make the relation explicit without exposing internal scaffolding
 in ordinary speech:
@@ -313,6 +315,104 @@ preserves the load-bearing relation, while Frontier Arc and the native sequence
 field decide how to say it. A smoother answer that loses the relation, evidence,
 or uncertainty remains a regression. Details and acceptance tests live in
 [`docs/PERCICTX1_CONTEXT_CARD.md`](docs/PERCICTX1_CONTEXT_CARD.md).
+
+### 2026-07-23 breakthrough — factorized language and PERCDLG1 (v0.11.1)
+
+The next failure was structural. Phrase training stored prompts and answers as
+nearby prose, but did not preserve *which answer belonged to which request*.
+Inference then flattened local wording, discourse operation, subject, and
+continuity into one short n-gram history. That can produce grammatical text
+which answers the wrong question.
+
+Perci now keeps four sparse histories and mixes their integer next-token votes:
+
+\[
+\operatorname{score}(w)=
+\sum_{e\in\{\mathrm{syntax,operation,topic,continuity}\}}\lambda_e
+\sum_{d=1}^{D}d^2q_{e,d}(w).
+\]
+
+The phrase trainer also consumes reviewed user/assistant pairs instead of
+silently treating them as unrelated documents. A separate 21,878-byte mmap
+field, **PERCDLG1**, preserves 80 reviewed dialogue pairs as:
+
+```text
+operation byte × 256-bit semantic signature × prompt → response
+```
+
+PERCDLG1 is a precision lane, not a universal answer table. It requires the
+same dialogue operation and explicit subject overlap, rejects unsafe/exact/OOD
+turns, and abstains when context is weak or referential. Operators, tools, live
+context, and SoftCascade remain authoritative outside that narrow region.
+
+| Independent gate | Active v0.11.0 | PERCDLG1 v0.11.1 | Result |
+|------------------|---------------:|-----------------:|--------|
+| Operation requirements (24 held out) | 6/24 | **14/24** | +8 |
+| Topic fidelity (24 held out) | 0.625 | **0.708** | improved |
+| Continuity requirements (12 held out) | 3/12 | **4/12** | +1, no topic loss |
+| Fresh broad probe (100, offset 7300) | 70 unique / 0.63 topic | **71 unique / 0.64 topic** | no measured regression |
+
+Receipts:
+[`operation gate`](models/candidates/evaluation-dialogue-lattice-v8-operations.json),
+[`continuity gate`](models/candidates/evaluation-dialogue-lattice-v8-continuity.json),
+[`active broad baseline`](models/candidates/native-probe-v0.11.1-broad-active-summary.json),
+and [`PERCDLG1 broad result`](models/candidates/native-probe-v0.11.1-lattice-v8-broad-summary.json).
+
+The enlarged phrase candidate did **not** pass the fresh broad probe and was
+not promoted. Only the additive dialogue lattice is active. These measurements
+show better bounded operation transfer; they do not establish frontier parity,
+autonomous learning, consciousness, or open-ended generation. The next
+bottleneck is compositional realization: synthesizing a new answer from
+multiple retrieved semantic cards rather than selecting one reviewed response.
+
+### 2026-07-23 threshold evolution — coherence interlock (v0.11.2)
+
+A live replay exposed three different failures behind the same symptom:
+“coherence threshold” received a stock scaffold, a business decision received
+a consciousness card, and a geometry superlative received Bitwork prose. The
+repair is a typed question frame:
+
+\[
+F_q=(subjects,\ operation,\ criterion,\ scope),
+\qquad
+C_{turn}=B_{subject}\,B_{operation}\,A_{authority}.
+\]
+
+Each factor is a gate, not a compensating score. A fluent response cannot make
+up for losing the subject; subject overlap cannot make up for answering the
+wrong operation; and a learned retrieval cannot overrule an owned operator.
+The runtime order is now:
+
+```text
+exact tools / governed boundaries
+  → first-class reasoning operators
+  → reviewed PERCDLG1 fallback
+  → open associative generation
+  → question-frame critic and bounded repair
+```
+
+The first broad run was deliberately rejected at **131/139**: PERCDLG1 was
+running before established operators and occasionally replaced them with a
+surface-similar reviewed answer. Reordering authority recovered six cases. Two
+remaining stale-context precedence failures were repaired, then an overly broad
+superlative frame was narrowed after it regressed abstract reasoning. Final
+release receipts:
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **458/458 PASS** |
+| Dialogue regression | **159/159 PASS** |
+| Hardness, including H137–H139 | **139/139 PASS** |
+| Live replay | coherence, business, and geometry failures repaired |
+
+Receipts:
+[`dialogue`](models/candidates/dialogue-v0.11.1-question-frame-v2.json) and
+[`hardness`](models/candidates/hardness-v0.11.1-question-frame-v5.json).
+The receipt filenames preserve the candidate lineage evaluated immediately
+before the branding-only v0.11.2 stamp.
+
+This is a measurable coherence interlock, not proof of global coherence,
+frontier parity, autonomous weight learning, awareness, or sentience.
 
 ### 2026-07-22 follow-up — observer gate and relation repair
 
@@ -362,8 +462,26 @@ One chart — detail lives in git commits and `docs/`, not repeated essays.
 | **0.10.0** | **Learned sequence generator** | Intent-conditioned PERCPHR1 walks, typo/acknowledgement routing, topic-filler exclusion, malformed-transition critic, and isolated relational candidate evaluation | Active weights held; candidate not worse, not promoted |
 | **0.10.2** | **Context-card observer geometry** | PERCICTX1 semantic envelope, geometry lines, harmonic observer metric, and speech directive integration | 409 unit tests; 159 dialogue |
 | **0.10.3** | **Observer-gated relation repair** | Held-out PERCICTX1 observer gate, depth-preserving relational routing, counterexample and smallest-bridge operators, paraphrase/transfer frame activation | 409 unit tests; 159 dialogue; observer **12/12** |
+| **0.10.4** | **Dialogue bridge + live build identity** | Context-aware fragment follow-ups, paraphrase transfer repairs, natural response audits, and branch-aware build stamping so the running binary cannot report an older commit | Re-run dialogue and release gates |
+| **0.10.5** | **Semantic-fit dialogue gate** | Known-topic turns now reject stock fallback speech and receive a contextual next-operation repair; genuinely out-of-distribution prompts retain explicit abstention | Re-run dialogue, OOD, and release gates |
+| **0.10.6** | **Operation-aware information binding** | Semantic repairs now distinguish next-step, explanation, elaboration, and evidence requests, binding the response to topic × operation instead of one fallback sentence | Re-run operation matrix and transfer gates |
+| **0.10.7** | **Progression gate** | Repeated answers now trigger a new operation-specific layer instead of silently echoing the previous response; explicit repeat requests remain intact | Re-run repetition and continuity gates |
+| **0.10.8** | **Thread-aware self-model binding** | Meta questions such as “what do you know?” no longer replace the active topic with filler words; operational self-description remains grounded in the live thread | Re-run self-model and continuity probes |
+| **0.11.0** | **Observer-aligned candidate evolution** | Six-factor dialogue observer, progression penalty, 16-walk native beam, operation-aware selection, template anti-collapse, 100/1,000-probe receipts, and isolated candidate training | Production promotion remains held until broad independent gates win |
+| **0.11.1** | **Factorized dialogue lattice** | Paired dialogue supervision, factorized phrase experts, and a 21 KiB PERCDLG1 operation × subject precision lane with abstention | Operation **6/24 → 14/24**; continuity **3/12 → 4/12**; fresh broad probe did not regress |
+| **0.11.2** | **Coherence interlock** | Typed question frames, subject/operation answer contracts, operator-first authority, scoped ambiguity, and stale-context precedence repair | **458** tests; dialogue **159/159**; hardness **139/139** |
 
-When you cut a real crate bump (e.g. 0.9.9 / 0.10.3): edit `Cargo.toml`, rebuild (badge stamps), update **this chart + Measured status**, re-run release gates.
+### Governed 100-question probe
+
+Run `powershell -ExecutionPolicy Bypass -File scripts/run_100_probe.ps1` to
+exercise the local release binary across dialogue, reasoning, geometry, memory,
+uncertainty, and low-bit architecture. Add `-Speak` for optional Windows speech
+output. Each prompt, response, latency, and review state is written to
+`artifacts/evolution/probe-100.jsonl`; the harness never promotes weights
+automatically. Score the failures, then feed the reviewed curriculum through
+the candidate rebuild and held-out gate.
+
+When you cut a real crate bump: edit `Cargo.toml`, rebuild (badge stamps), update **this chart + Measured status**, and re-run release gates.
 
 ---
 
@@ -517,6 +635,7 @@ models/perci-cognitive-v0.2.pwgt        # compact fallback, Git LFS
 models/perci-cognitive-v0.1.pwgt        # legacy baseline, Git LFS
 models/perci-language-v0.1.blng         # native sequence field, Git LFS
 models/perci-language-v0.2.bphr         # native phrase field, Git LFS
+models/perci-dialogue-v0.1.bdlg         # PERCDLG1 reviewed dialogue lattice, Git LFS
 models/PACKAGE_MANIFEST.json            # hashes, sizes, formats, roles
 ```
 
@@ -632,5 +751,5 @@ See [`docs/LOCAL_AGI_ROADMAP.md`](docs/LOCAL_AGI_ROADMAP.md).
 <p align="center">
   <img src="assets/icons/perci-darkblood-mark.jpg" width="72" height="72" alt="Perci">
   <br>
-  <sub>PERCI · dark-blood · governed sparse cognition · v0.10.3</sub>
+  <sub>PERCI · dark-blood · governed sparse cognition · v0.11.2</sub>
 </p>

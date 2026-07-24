@@ -1,6 +1,6 @@
 {
   "schema": "perci.package-manifest.v1",
-  "package_version": "0.10.3",
+  "package_version": "0.11.2",
   "lfs_required": true,
   "description": "Runtime weights and native language fields required for a complete Perci checkout.",
   "artifacts": [
@@ -42,6 +42,14 @@
       "format": "PERCPHR1",
       "bytes": 466862,
       "sha256": "a9009e6698632421c2c4b94ecb66a905b4e5908632cef85700701124d2d5e973",
+      "tracked_with": "git-lfs"
+    },
+    {
+      "path": "models/perci-dialogue-v0.1.bdlg",
+      "kind": "operation_conditioned_dialogue_lattice",
+      "format": "PERCDLG1",
+      "bytes": 21878,
+      "sha256": "9b4b1884ae9362d9c2705aa725c7a495393610d6f166b83be0986f1750fcfbb8",
       "tracked_with": "git-lfs"
     }
   ],

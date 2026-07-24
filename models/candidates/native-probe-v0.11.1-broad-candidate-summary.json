@@ -1,0 +1,137 @@
+{
+  "questions_requested": 100,
+  "responses_parsed": 100,
+  "unique_responses": 60,
+  "duplicate_responses": 40,
+  "topic_binding_rate": 0.52,
+  "slot_pair_binding_rate": null,
+  "punctuated_response_rate": 0.94,
+  "mean_chars": 449.24,
+  "median_chars": 333.5,
+  "min_chars": 183,
+  "max_chars": 881,
+  "families": 20,
+  "topics": 48,
+  "family_metrics": {
+    "0": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "1": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "10": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "11": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "12": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "13": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 0.8,
+      "slot_pair_binding_rate": null
+    },
+    "14": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    },
+    "15": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "16": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    },
+    "17": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "18": {
+      "responses": 5,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.4,
+      "slot_pair_binding_rate": null
+    },
+    "19": {
+      "responses": 5,
+      "unique_responses": 3,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    },
+    "2": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "3": {
+      "responses": 5,
+      "unique_responses": 5,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "4": {
+      "responses": 5,
+      "unique_responses": 3,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    },
+    "5": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "6": {
+      "responses": 5,
+      "unique_responses": 3,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "7": {
+      "responses": 5,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    },
+    "8": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "9": {
+      "responses": 5,
+      "unique_responses": 1,
+      "topic_binding_rate": 0.2,
+      "slot_pair_binding_rate": null
+    }
+  }
+}

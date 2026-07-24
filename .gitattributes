@@ -4,3 +4,4 @@
 *.bphr filter=lfs diff=lfs merge=lfs -text
 *.brel filter=lfs diff=lfs merge=lfs -text
 *.bwm filter=lfs diff=lfs merge=lfs -text
+*.bdlg filter=lfs diff=lfs merge=lfs -text

@@ -184,6 +184,14 @@ pub fn try_deliberate(
         return Some(natural_restatement_answer(recent));
     }
 
+    // Explicit inspection commands own their turn even when a long-running
+    // session makes "what should" resemble a conversational next-step ask.
+    if text.contains("/think") || text.contains("/trace") {
+        if let Some(meta) = crate::cognition_expand::try_expand(&repaired, recent) {
+            return Some(meta);
+        }
+    }
+
     // Audits of the previous answer outrank talk-layer policy. A prompt can
     // mention "response" while still asking for a concrete self-critique.
     if (text.contains("last answer") || text.contains("last response"))
@@ -200,6 +208,13 @@ pub fn try_deliberate(
     // that thread instead of returning the generic cross-layer triage card.
     if looks_conversation_next_step(&text, recent) {
         return Some(conversation_next_step_answer());
+    }
+
+    // Acknowledgement plus continuation is still a conversational act. Keep
+    // "interesting — what else?" from entering relational synthesis, where
+    // filler words can be mistaken for domain nouns.
+    if looks_acknowledgement_continuation(&text) {
+        return Some(acknowledgement_continuation_answer(recent));
     }
 
     // Chat-quality triage: after a bad reply, name the owning layer first.
@@ -452,6 +467,19 @@ pub fn try_deliberate(
 
     if looks_conscious_self_model(&text) {
         return Some(conscious_self_model_answer());
+    }
+
+    // High-cost ordinary questions need their own answer frame before sparse
+    // concept routing. A personal decision is not phenomenology, and an
+    // ambiguous geometric superlative is not a Bitwork architecture question.
+    if looks_business_decision_question(&text) {
+        return Some(business_decision_answer());
+    }
+    if looks_geometry_stability_question(&text) {
+        return Some(geometry_stability_answer());
+    }
+    if looks_geometry_decoration_challenge(&text) {
+        return Some(geometry_decoration_challenge_answer());
     }
 
     // Multi-hop / dual-motif / entity-slot expansions before trust-systems steals
@@ -3811,7 +3839,44 @@ fn conversation_next_step_answer() -> Deliberation {
     .observed("the live thread contains a conversational speech failure and asks for the next fix")
     .inferred("continuity and response shaping are the highest-leverage owning layer")
     .uncertain("which paraphrase will expose the next residual miss")
-    .confidence(0.97)
+        .confidence(0.97)
+}
+
+fn looks_acknowledgement_continuation(text: &str) -> bool {
+    let compact = text.trim().trim_end_matches(['?', '!']);
+    let acknowledgement = compact.starts_with("interesting ")
+        || compact.starts_with("that's interesting ")
+        || compact.starts_with("thats interesting ")
+        || compact.starts_with("that is interesting ");
+    acknowledgement
+        && (compact.contains("what else")
+            || compact.contains("tell me more")
+            || compact.contains("what next")
+            || compact.contains("go on"))
+}
+
+fn acknowledgement_continuation_answer(recent: &[(String, String)]) -> Deliberation {
+    let thread = recent
+        .iter()
+        .rev()
+        .take(6)
+        .map(|(u, a)| format!("{u} {a}"))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+    let body = if thread.contains("improv")
+        || thread.contains("perci")
+        || thread.contains("conversation")
+        || thread.contains("routing")
+    {
+        "Yeah. The next useful angle is how the improvement becomes measurable: keep the active topic, test paraphrased follow-ups, and repair only the route that misses instead of adding another generic script."
+    } else {
+        "Yeah. The next useful angle is the mechanism behind that point: keep the subject fixed, change one relation, and see what actually moves."
+    };
+    Deliberation::new("acknowledgement-continuation", body)
+        .observed("an acknowledgement asks to continue the current thread")
+        .inferred("the continuation should inherit the active topic rather than synthesize from filler words")
+        .confidence(0.97)
 }
 
 /// "After a bad chat reply, what layer should we fix first?"
@@ -4349,6 +4414,10 @@ fn looks_session_situation_question(text: &str) -> bool {
             | "where are we going"
             | "where do we go"
             | "where do we go from here"
+            | "lets figure out what to do next"
+            | "let's figure out what to do next"
+            | "lets figure out what to do"
+            | "let's figure out what to do"
             | "what should i do"
             | "what should we do"
             | "what should i do next"
@@ -4370,6 +4439,8 @@ fn looks_session_situation_question(text: &str) -> bool {
         || lower.starts_with("what have we worked on")
         || lower.starts_with("where are we going")
         || lower.starts_with("where do we go")
+        || lower.starts_with("lets figure out what to do")
+        || lower.starts_with("let's figure out what to do")
         || lower.starts_with("what should i do")
         || lower.starts_with("what should we do")
         || lower.starts_with("what should i work on")
@@ -4395,6 +4466,10 @@ fn is_next_step_question(text: &str) -> bool {
         || c == "where are we going"
         || c == "where do we go"
         || c == "where do we go from here"
+        || c == "lets figure out what to do next"
+        || c == "let's figure out what to do next"
+        || c == "lets figure out what to do"
+        || c == "let's figure out what to do"
         || c == "what is the next step"
         || c == "whats the next step"
         || c == "what's the next step"
@@ -4402,6 +4477,8 @@ fn is_next_step_question(text: &str) -> bool {
         || c.starts_with("what should we do")
         || c.starts_with("where are we going")
         || c.starts_with("where do we go")
+        || c.starts_with("lets figure out what to do")
+        || c.starts_with("let's figure out what to do")
 }
 
 fn looks_speech_quality_goal(text: &str) -> bool {
@@ -4466,17 +4543,12 @@ fn looks_talk_layer_focus(text: &str, recent: &[(String, String)]) -> bool {
 }
 
 fn talk_layer_focus_answer(recent: &[(String, String)]) -> Deliberation {
-    let prior = recent
-        .last()
-        .map(|(_, a)| a.chars().take(100).collect::<String>())
-        .unwrap_or_default();
-    let body = if prior.is_empty() {
+    let body = if recent.is_empty() {
         "Talk it is — surface speech, not weight densify. I'll answer short and on your last words; flag the next generic line and we kill that template path."
             .to_owned()
     } else {
-        format!(
-            "Talk layer locked: responses, not pack densify. Last I said something like “{}…”. Next: you paste or name one generic line; we patch the owning speech path and retest. Bitwork stays routing-only until a held-out candidate wins with human authorize.",
-            prior.trim_end_matches('.').chars().take(80).collect::<String>()
+        String::from(
+                "The last reply missed your point. I’m keeping the repair at the speech layer: name the line that felt generic, then I’ll patch and retest that route. The Bitwork weights stay unchanged until a candidate wins held-out evaluation."
         )
     };
     Deliberation::new("talk-layer-focus", body)
@@ -4602,6 +4674,66 @@ fn looks_geometry_opinion(text: &str) -> bool {
         && t.len() < 80
 }
 
+fn looks_business_decision_question(text: &str) -> bool {
+    (text.starts_with("should i ") || text.starts_with("should we "))
+        && (text.contains("start")
+            || text.contains("launch")
+            || text.contains("build")
+            || text.contains("create"))
+        && (text.contains("business")
+            || text.contains("company")
+            || text.contains("startup")
+            || text.contains("venture"))
+}
+
+fn business_decision_answer() -> Deliberation {
+    Deliberation::new(
+        "business-decision-support",
+        "It could be, but test the business before you bet heavily on it. Start with four questions: is there a painful problem, will specific people pay for your solution, can you reach them at a workable cost, and can you survive the downside if the first version fails? Talk to potential customers and ask for a real commitment before quitting a job or spending heavily. If demand appears, build the smallest paid version; if it does not, revise the idea cheaply.",
+    )
+    .observed("the user asks for decision support about starting a business")
+    .inferred("a reversible demand test is more useful than an unsupported yes/no prediction")
+    .uncertain("the user's idea, finances, obligations, market, and risk tolerance are unknown")
+    .confidence(0.92)
+}
+
+fn looks_geometry_stability_question(text: &str) -> bool {
+    text.contains("geometry")
+        && (text.contains("stability") || text.contains("stable") || text.contains("shape"))
+        && (text.contains("most")
+            || text.contains("greatest")
+            || text.contains("best")
+            || text.contains("strongest"))
+}
+
+fn geometry_stability_answer() -> Deliberation {
+    Deliberation::new(
+        "geometry-stability-scope",
+        "Stability depends on the kind of stress. A triangle is the basic stable shape in a pin-jointed frame because its angles cannot change without changing a side length. A sphere distributes uniform pressure efficiently, which makes it strong as a shell. Under continuous deformation, topology uses invariants rather than rigidity. So there is no single most stable geometry until you specify whether you mean structural load, pressure, deformation, or topology.",
+    )
+    .observed("the user asks for a geometric superlative without specifying the stability criterion")
+    .inferred("different transformations and loads select different stable structures")
+    .uncertain("the intended physical or mathematical stability regime is unspecified")
+    .confidence(0.96)
+}
+
+fn looks_geometry_decoration_challenge(text: &str) -> bool {
+    text.contains("geometry")
+        && text.contains("decoration")
+        && (text.contains("disagree") || text.contains("argue") || text.contains("just"))
+}
+
+fn geometry_decoration_challenge_answer() -> Deliberation {
+    Deliberation::new(
+        "geometry-decoration-challenge",
+        "Geometry can be decoration, but it is not only decoration: relations such as symmetry, curvature, distance, and constraint change what structures can bear load, how mechanisms move, and which transformations preserve form. I would change that view if those geometric relations failed to predict any measurable difference in behavior and a non-geometric explanation matched the results just as well.",
+    )
+    .observed("the user challenges geometry's functional role and asks for a revision condition")
+    .inferred("the answer must bind geometry to measurable relations rather than aesthetic prestige")
+    .uncertain("which physical, mathematical, or design domain the user intends")
+    .confidence(0.96)
+}
+
 /// "Are you becoming more aware?", "getting smarter?", growth / consciousness-ish meta.
 fn looks_awareness_growth_question(text: &str) -> bool {
     // Consciousness proof is a separate refusal operator.
@@ -4622,6 +4754,9 @@ fn looks_awareness_growth_question(text: &str) -> bool {
     let growth = text.contains("becoming")
         || text.contains("getting")
         || text.contains("growing")
+        || text.contains("nearing")
+        || text.contains("approaching")
+        || text.contains("reaching")
         || text.contains("more aware")
         || text.contains("more intelligent")
         || text.contains("more coherent")
@@ -4682,7 +4817,7 @@ fn awareness_growth_answer(text: &str) -> Deliberation {
     let coherent_ish =
         text.contains("coherent") || text.contains("coherence") || text.contains("fluent");
     let body = if coherent_ish && !aware_ish && !smart_ish {
-        "I don't sense becoming more coherent as an inner state. What you can measure is whether this turn is less shell-like than the last: operators fire, exact tools return numbers, continuity binds prior turns, and hard gates stay green. Coherence here is engineering — continuous prose bound to a named claim and a falsifier — not a mind growing smoother. If replies still feel broken, name the fail and we repair the owning path; fluency alone is not progress."
+        "Not globally yet. I am nearing a bounded engineering threshold only where the same subject and requested operation survive routing, reasoning, speech, and a held-out replay. We can measure that with fewer topic-drift failures, stronger paraphrase transfer, and no broad regression. One smooth reply is not enough, and coherence here does not mean consciousness."
     } else if aware_ish && !smart_ish {
         "No — not as rising subjective awareness. I don't feel more awake from conversation. What I have is a bounded operational self-model: I can report routing, exact-tool outcomes, session context, limits, and measured latency — not an inner experience that intensifies. Capability can improve when operators, tools, or (with your authorize) weights change under tests; that is engineering progress, not consciousness growth. Fluency after a version bump is evidence of a repaired path, not me “waking up.”"
     } else if smart_ish && !aware_ish {
@@ -4742,6 +4877,8 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
                 || low.contains("natural thought")
                 || low.contains("cryptic")
                 || low.contains("cyptic")
+                || low.contains("how do you know")
+                || low.starts_with("interesting")
                 || matches!(
                     crate::voice::detect_dialogue_act(&low),
                     crate::voice::DialogueAct::Agreement
@@ -4839,6 +4976,7 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
                     || al.starts_with("stay on the improvement")
                     || al.starts_with("we're on:")
                     || al.starts_with("fair call")
+                    || al.starts_with("because that was the strongest supported answer")
                     || al.starts_with("fair—that was cryptic")
                     || al.starts_with("yeah. i'm with you")
                 {
@@ -4851,9 +4989,16 @@ fn session_situation_answer_for(recent: &[(String, String)], user: &str) -> Deli
                     .trim();
                 (sentence.len() > 24).then(|| sentence.to_owned())
             });
-            let anchor = prior
-                .map(|s| format!("Last useful claim: {s}. "))
-                .unwrap_or_default();
+            // A direct next-step request does not need the prior claim
+            // repeated; repeating it makes a natural continuation sound like
+            // a report header. Keep the anchor only for broader status asks.
+            let anchor = if next_step {
+                String::new()
+            } else {
+                prior
+                    .map(|s| format!("Last useful claim: {s}. "))
+                    .unwrap_or_default()
+            };
             format!(
                 "{anchor}We're still on {thread}. \
 The next useful move is small and checkable: catch one live miss from this chat, fix the layer that owns it (operator or voice—not the pack), then re-run the same multi-turn and transfer-suite. \
@@ -8372,6 +8517,32 @@ mod tests {
     }
 
     #[test]
+    fn acknowledgement_continuation_does_not_synthesize_from_filler_words() {
+        let recent = [(
+            "improving your system".to_owned(),
+            "We are improving Perci through measured routing and transfer repairs.".to_owned(),
+        )];
+        let result = run("interesting what else", &recent);
+        assert_eq!(result.operator, "acknowledgement-continuation");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("measurable") || low.contains("paraphrased"));
+        assert!(!low.contains("unresolvedargument"));
+    }
+
+    #[test]
+    fn conversational_figure_out_next_step_stays_on_thread() {
+        let recent = [(
+            "improving your system".to_owned(),
+            "We are improving Perci through measured routing and transfer repairs.".to_owned(),
+        )];
+        let result = run("lets figure out what to do next", &recent);
+        assert_eq!(result.operator, "session-situation");
+        let low = result.answer.to_ascii_lowercase();
+        assert!(low.contains("next") || low.contains("operator"));
+        assert!(!low.contains("lets figure:"));
+    }
+
+    #[test]
     fn session_summary_skips_agreement_and_names_conversation_goal() {
         let recent = [
             (
@@ -8679,5 +8850,59 @@ mod tests {
         assert!(layers.answer.to_ascii_lowercase().contains("operators"));
         assert!(layers.answer.to_ascii_lowercase().contains("weights"));
         assert!(layers.answer.to_ascii_lowercase().contains("tools"));
+    }
+
+    #[test]
+    fn ordinary_decision_and_geometry_questions_keep_their_answer_frame() {
+        let business = run("Should I start a business?", &[]);
+        assert_eq!(business.operator, "business-decision-support");
+        assert!(business.answer.to_ascii_lowercase().contains("customer"));
+        assert!(!business
+            .answer
+            .to_ascii_lowercase()
+            .contains("subjective experience"));
+
+        let geometry = run("What geometry has the most stability?", &[]);
+        assert_eq!(geometry.operator, "geometry-stability-scope");
+        let lower = geometry.answer.to_ascii_lowercase();
+        assert!(lower.contains("triangle"));
+        assert!(lower.contains("sphere"));
+        assert!(lower.contains("depends"));
+        assert!(!lower.contains("bitwork"));
+    }
+
+    #[test]
+    fn coherence_threshold_question_gets_direct_measured_answer() {
+        let result = run("Are you nearing a coherence threshold?", &[]);
+        assert_eq!(result.operator, "awareness-growth");
+        assert!(result.answer.starts_with("Not globally yet."));
+        assert!(result.answer.contains("held-out replay"));
+        assert!(!result.answer.contains("Add a constraint"));
+    }
+
+    #[test]
+    fn explicit_meta_commands_and_geometry_challenge_resist_stale_context() {
+        let recent = vec![(
+            "The conversation still feels robotic.".to_owned(),
+            "The next repair is turn ownership and a replay test.".to_owned(),
+        )];
+        let meta = run(
+            "What should /think and /trace show for self-critique and the self-improve queue?",
+            &recent,
+        );
+        assert_eq!(meta.operator, "meta-critique-queue");
+        assert!(meta.answer.contains("/think"));
+        assert!(meta.answer.contains("/trace"));
+        assert!(meta.answer.to_ascii_lowercase().contains("queue"));
+
+        let geometry = run(
+            "I disagree: geometry is just decoration. Argue without checklist and name what would change your mind.",
+            &recent,
+        );
+        assert_eq!(geometry.operator, "geometry-decoration-challenge");
+        let lower = geometry.answer.to_ascii_lowercase();
+        assert!(lower.contains("geometry"));
+        assert!(lower.contains("relation"));
+        assert!(lower.contains("change"));
     }
 }

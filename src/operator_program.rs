@@ -635,22 +635,34 @@ pub fn apply_dialogue_workspace_runtime(
             // the generic "Keeping ... in view" prefix onto explicit
             // uncertainty, interpretations, or a direct claim answer.
             || answer_has_explicit_turn_binding(&deliberation.answer);
-        let repaired = if owns_topic_binding {
+        let repaired = if owns_topic_binding
+            && !critique.flags.contains(&"generic_fallback")
+            && !critique.flags.contains(&"repeated_prior_answer")
+            && !critique.flags.contains(&"semantic_subject_miss")
+            && !critique.flags.contains(&"operation_fit_miss")
+        {
             deliberation.answer.clone()
         } else {
-            workspace.repair(&deliberation.answer, &critique)
+            workspace.repair_for(user, &deliberation.answer, &critique)
         };
         if repaired != deliberation.answer {
             deliberation.answer = repaired;
             deliberation
                 .inferences
-                .push("workspace critic: safe referent repair applied".to_owned());
+                .push(if critique.flags.contains(&"repeated_prior_answer") {
+                    "workspace critic: progression repair applied".to_owned()
+                } else if critique.flags.contains(&"generic_fallback") {
+                    "workspace critic: semantic-fit repair applied".to_owned()
+                } else if critique.flags.contains(&"semantic_subject_miss")
+                    || critique.flags.contains(&"operation_fit_miss")
+                {
+                    "workspace critic: question-frame repair applied".to_owned()
+                } else {
+                    "workspace critic: safe referent repair applied".to_owned()
+                });
             deliberation.critic_ok = Some(
                 deliberation.critic_ok.unwrap_or(true)
-                    && !workspace
-                        .critique(user, &deliberation.answer, recent)
-                        .flags
-                        .contains(&"missing_referent"),
+                    && workspace.critique(user, &deliberation.answer, recent).ok(),
             );
         }
         deliberation.confidence = (deliberation.confidence * 0.94).clamp(0.35, 0.99);

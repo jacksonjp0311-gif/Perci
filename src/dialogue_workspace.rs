@@ -59,7 +59,7 @@ impl WorkspaceCritique {
     pub fn repaired(&self) -> bool {
         self.flags
             .iter()
-            .any(|flag| *flag == "safe_referent_repair")
+            .any(|flag| *flag == "safe_referent_repair" || *flag == "semantic_fit_repair")
     }
 }
 
@@ -122,6 +122,25 @@ pub enum ResponseBudget {
     Deep,
 }
 
+/// The answer-shape requested by the user. This is intentionally smaller than
+/// a general semantic parser: it names high-cost operations whose failure can
+/// be detected without pretending to understand every sentence.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum QuestionOperation {
+    General,
+    DecisionSupport,
+    ScopedSuperlative,
+    SelfAssessment,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QuestionFrame {
+    pub operation: QuestionOperation,
+    pub subjects: Vec<String>,
+    pub criterion: Option<String>,
+    pub scope_required: bool,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DialogueWorkspace {
     pub act: WorkspaceAct,
@@ -134,6 +153,7 @@ pub struct DialogueWorkspace {
     pub continuity: Continuity,
     pub response_budget: ResponseBudget,
     pub prior_turns: usize,
+    pub question: QuestionFrame,
 }
 
 impl DialogueWorkspace {
@@ -170,6 +190,7 @@ impl DialogueWorkspace {
             ResponseDepth::Balanced => ResponseBudget::Balanced,
             ResponseDepth::Deep => ResponseBudget::Deep,
         };
+        let question = question_frame(user);
         Self {
             act,
             goal,
@@ -181,6 +202,7 @@ impl DialogueWorkspace {
             continuity,
             response_budget,
             prior_turns: recent.len(),
+            question,
         }
     }
 
@@ -191,9 +213,12 @@ impl DialogueWorkspace {
     /// Stable machine-readable context for backend hints and `/trace`.
     pub fn hint(&self) -> String {
         format!(
-            "act={} goal={} topic={} referent={} claim={} evidence={} uncertainty={} continuity={} depth={} prior_turns={}",
+            "act={} goal={} question={} subjects={} scope_required={} topic={} referent={} claim={} evidence={} uncertainty={} continuity={} depth={} prior_turns={}",
             act_name(self.act),
             goal_name(self.goal),
+            question_operation_name(self.question.operation),
+            self.question.subjects.join(","),
+            self.question.scope_required,
             self.topic_or_default(),
             self.referent.as_deref().unwrap_or("none"),
             self.prior_claim.as_deref().unwrap_or("none"),
@@ -277,9 +302,30 @@ impl DialogueWorkspace {
             flags.push("depth_budget_miss");
             notes.push("deep request received a short answer".into());
         }
-        if is_generic_fallback(&lower) && self.topic_or_default() != "unknown" {
+        if is_generic_fallback(&lower, &user_lower)
+            && self.topic_or_default() != "unknown"
+            && !matches!(self.act, WorkspaceAct::Social)
+            && !matches!(self.uncertainty, UncertaintyPosture::OutOfDistribution)
+        {
             flags.push("generic_fallback");
-            notes.push("stock fallback survived into a topic-bearing turn".into());
+            notes.push("stock fallback survived into a topic-bearing, in-distribution turn".into());
+        }
+        if !matches!(self.question.operation, QuestionOperation::General)
+            && answer.split_whitespace().count() >= 6
+            && !answer_binds_subjects(&self.question, &lower)
+        {
+            flags.push("semantic_subject_miss");
+            notes.push(format!(
+                "answer lost the framed subject(s): {}",
+                self.question.subjects.join(", ")
+            ));
+        }
+        if !operation_fits_answer(&self.question, &lower) {
+            flags.push("operation_fit_miss");
+            notes.push(format!(
+                "answer did not satisfy the {} response contract",
+                question_operation_name(self.question.operation)
+            ));
         }
         if self.uncertainty == UncertaintyPosture::OutOfDistribution
             && !lower.contains("unknown")
@@ -298,6 +344,24 @@ impl DialogueWorkspace {
     /// Apply only a safe, reversible referent repair. Other flags remain audit
     /// evidence until a dedicated operator can address them without inventing.
     pub fn repair(&self, answer: &str, critique: &WorkspaceCritique) -> String {
+        self.repair_for("", answer, critique)
+    }
+
+    /// Repair with the user's operation still visible. Keeping this input at
+    /// the final shaping boundary prevents a known-topic miss from collapsing
+    /// into one universal fallback sentence.
+    pub fn repair_for(&self, user: &str, answer: &str, critique: &WorkspaceCritique) -> String {
+        if critique.flags.contains(&"repeated_prior_answer") {
+            return self.progression_repair(user);
+        }
+        if critique.flags.contains(&"semantic_subject_miss")
+            || critique.flags.contains(&"operation_fit_miss")
+        {
+            return self.question_frame_repair();
+        }
+        if critique.flags.contains(&"generic_fallback") {
+            return self.semantic_fit_fallback(user);
+        }
         if !critique.flags.contains(&"missing_referent") {
             return answer.to_owned();
         }
@@ -318,6 +382,78 @@ impl DialogueWorkspace {
             return repaired;
         }
         format!("On {referent}: {repaired}")
+    }
+
+    fn progression_repair(&self, user: &str) -> String {
+        let topic = self.topic_or_default();
+        match requested_operation(user) {
+            "next_step" => format!(
+                "That repeats the last answer without moving {topic} forward. The next useful move is one small replay test with a clear pass condition."
+            ),
+            "explain" => format!(
+                "That repeats the last answer without explaining {topic}. The missing layer is the mechanism: what changes, why it changes, and what would disprove it."
+            ),
+            "evidence" => format!(
+                "That repeats the last answer without showing evidence for {topic}. I should name the observation, the inference, and the test that could separate them."
+            ),
+            "elaborate" => format!(
+                "That repeats the last answer. A deeper angle on {topic} is the boundary where the current explanation stops transferring."
+            ),
+            _ => format!(
+                "That repeats the last answer without adding a new layer to {topic}. I can take it toward mechanism, evidence, or the next test."
+            ),
+        }
+    }
+
+    /// Replace a stock backend refusal when the turn is actually grounded in
+    /// the active thread. This keeps abstention for OOD input, while making a
+    /// known-topic miss name the next useful operation instead of asking the
+    /// user to restart the conversation.
+    fn semantic_fit_fallback(&self, user: &str) -> String {
+        let topic = self.topic_or_default();
+        let operation = requested_operation(user);
+        if self.prior_claim.is_some() {
+            return match operation {
+                "next_step" => format!(
+                    "I’m tracking {topic}. The last answer missed your point. The next useful move is to name one concrete change, run one replay probe, and keep it only if the result improves."
+                ),
+                "explain" => format!(
+                    "I’m tracking {topic}. The last answer missed your point. I’ll explain the mechanism first, then separate what is measured from what is still a hypothesis."
+                ),
+                "elaborate" => format!(
+                    "I’m tracking {topic}. The last answer missed your point. I can take the same idea one layer deeper by naming its cause, boundary, and next test."
+                ),
+                "evidence" => format!(
+                    "I’m tracking {topic}. The last answer missed your point. The honest basis is the prior route and its observed output; the next check is whether a paraphrase produces the same operation."
+                ),
+                _ => format!(
+                    "I’m tracking {topic}. The last answer missed your point; I can explain the mechanism, extend the idea, or test it against evidence."
+                ),
+            };
+        }
+        format!(
+            "I’m tracking {topic}. The last answer missed your point; do you want an explanation, a next step, or a test?"
+        )
+    }
+
+    fn question_frame_repair(&self) -> String {
+        let subject = if self.question.subjects.is_empty() {
+            self.topic_or_default().to_owned()
+        } else {
+            self.question.subjects.join(" ")
+        };
+        match self.question.operation {
+            QuestionOperation::DecisionSupport => format!(
+                "Maybe, but the honest answer depends on your goal, demand, downside, and runway. For {subject}, test the smallest reversible version first: talk to potential customers, ask for a real commitment, estimate the cost of failure, and decide from that evidence rather than excitement alone."
+            ),
+            QuestionOperation::ScopedSuperlative => format!(
+                "There is no single most stable {subject} without naming the stress or transformation. Specify whether you mean resistance to deformation, structural load, pressure, or topological change; the answer can change with that criterion."
+            ),
+            QuestionOperation::SelfAssessment => format!(
+                "Not globally yet. The measurable threshold for {subject} is consistent subject and operation preservation across unseen paraphrases, follow-ups, and broad-domain probes—not one convincing reply."
+            ),
+            QuestionOperation::General => self.safe_fallback(""),
+        }
     }
 
     /// Non-empty last resort when a backend returns no text. This names the
@@ -502,7 +638,7 @@ fn content_topic(user: &str) -> String {
         "what", "why", "how", "are", "the", "this", "that", "you", "can", "does", "is", "a", "an",
         "to", "of", "and", "we", "our", "your", "about", "tell", "explain", "give", "connect",
         "please", "could", "would", "should", "then", "same", "again", "more", "one", "level",
-        "deeper", "think", "mean", "do",
+        "deeper", "think", "mean", "do", "now", "know", "system",
     ];
     crate::text_normalize::repair_typos(user)
         .split_whitespace()
@@ -512,6 +648,141 @@ fn content_topic(user: &str) -> String {
         .map(str::to_ascii_lowercase)
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn question_frame(user: &str) -> QuestionFrame {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    let operation = if (lower.starts_with("are you") || lower.contains("perci"))
+        && (lower.contains("coherence") || lower.contains("coherent"))
+        && (lower.contains("threshold")
+            || lower.contains("near")
+            || lower.contains("approach")
+            || lower.contains("reach"))
+    {
+        QuestionOperation::SelfAssessment
+    } else if lower.starts_with("should i ")
+        || lower.starts_with("should we ")
+        || lower.starts_with("is it worth ")
+        || lower.starts_with("would it make sense ")
+    {
+        QuestionOperation::DecisionSupport
+    } else if (lower.contains("geometry") || lower.contains("shape"))
+        && (lower.starts_with("what ") || lower.starts_with("which "))
+        && (lower.contains(" most ")
+            || lower.contains(" best ")
+            || lower.contains(" strongest ")
+            || lower.contains(" least "))
+    {
+        QuestionOperation::ScopedSuperlative
+    } else {
+        QuestionOperation::General
+    };
+
+    let mut subjects = content_topic(user)
+        .split_whitespace()
+        .filter(|token| {
+            !matches!(
+                *token,
+                "start"
+                    | "make"
+                    | "pursue"
+                    | "has"
+                    | "have"
+                    | "most"
+                    | "best"
+                    | "strongest"
+                    | "least"
+                    | "stable"
+                    | "stability"
+                    | "nearing"
+                    | "near"
+                    | "approaching"
+                    | "reach"
+                    | "reaching"
+            )
+        })
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if operation == QuestionOperation::SelfAssessment {
+        subjects = vec!["coherence".to_owned(), "threshold".to_owned()];
+    }
+    if subjects.is_empty() {
+        subjects = content_topic(user)
+            .split_whitespace()
+            .take(2)
+            .map(str::to_owned)
+            .collect();
+    }
+    let criterion = if lower.contains("stabil") {
+        Some("stability".to_owned())
+    } else if lower.contains("strong") {
+        Some("strength".to_owned())
+    } else if lower.contains("fast") {
+        Some("speed".to_owned())
+    } else if lower.contains("safe") {
+        Some("safety".to_owned())
+    } else {
+        None
+    };
+    QuestionFrame {
+        operation,
+        subjects,
+        criterion,
+        scope_required: operation == QuestionOperation::ScopedSuperlative,
+    }
+}
+
+fn answer_binds_subjects(frame: &QuestionFrame, answer_lower: &str) -> bool {
+    if frame.subjects.is_empty() {
+        return true;
+    }
+    frame.subjects.iter().any(|subject| {
+        answer_lower.contains(subject)
+            || (subject == "coherence" && answer_lower.contains("coherent"))
+            || (subject == "business"
+                && (answer_lower.contains("customer") || answer_lower.contains("market")))
+            || (subject == "geometry"
+                && (answer_lower.contains("triangle")
+                    || answer_lower.contains("sphere")
+                    || answer_lower.contains("shape")))
+    })
+}
+
+fn operation_fits_answer(frame: &QuestionFrame, answer_lower: &str) -> bool {
+    match frame.operation {
+        QuestionOperation::General => true,
+        QuestionOperation::DecisionSupport => {
+            answer_binds_subjects(frame, answer_lower)
+                && [
+                    "depends", "test", "before", "risk", "goal", "customer", "downside", "if ",
+                ]
+                .iter()
+                .any(|marker| answer_lower.contains(marker))
+        }
+        QuestionOperation::ScopedSuperlative => {
+            answer_binds_subjects(frame, answer_lower)
+                && [
+                    "depends",
+                    "what kind",
+                    "which kind",
+                    "criterion",
+                    "whether you mean",
+                    "under ",
+                    "resistance to",
+                ]
+                .iter()
+                .any(|marker| answer_lower.contains(marker))
+        }
+        QuestionOperation::SelfAssessment => {
+            answer_binds_subjects(frame, answer_lower)
+                && (answer_lower.starts_with("yes")
+                    || answer_lower.starts_with("no")
+                    || answer_lower.starts_with("not "))
+                && ["measure", "test", "evidence", "probe", "threshold"]
+                    .iter()
+                    .any(|marker| answer_lower.contains(marker))
+        }
+    }
 }
 
 fn first_sentence(text: &str, max_chars: usize) -> String {
@@ -583,16 +854,50 @@ fn text_similarity(left: &str, right: &str) -> f64 {
     }
 }
 
-fn is_generic_fallback(answer_lower: &str) -> bool {
+fn is_generic_fallback(answer_lower: &str, user_lower: &str) -> bool {
     [
         "what outcome do you want",
         "let's find the smallest",
         "name one fact that would update",
         "i won't fake certainty",
         "name the workload before",
+        "i don't have a grounded line",
+        "restate it in one plain sentence",
     ]
     .iter()
     .any(|marker| answer_lower.contains(marker))
+        || (answer_lower.contains("i'm a local governed tool")
+            && (user_lower.contains("what can we do")
+                || user_lower.contains("what should we do")
+                || user_lower.contains("what next")
+                || user_lower.contains("improving")
+                || user_lower.contains("evolving")))
+}
+
+fn requested_operation(user: &str) -> &'static str {
+    let lower = user.to_ascii_lowercase();
+    if lower.contains("what next")
+        || lower.contains("what can we do")
+        || lower.contains("next move")
+        || lower.contains("where do we go")
+    {
+        "next_step"
+    } else if lower.contains("how do you know")
+        || lower.contains("what is the evidence")
+        || lower.contains("why do you think")
+    {
+        "evidence"
+    } else if lower.contains("why") || lower.contains("how does") || lower.contains("explain") {
+        "explain"
+    } else if lower.contains("tell me more")
+        || lower.contains("go deeper")
+        || lower.contains("one level")
+        || lower.contains("elaborate")
+    {
+        "elaborate"
+    } else {
+        "general"
+    }
 }
 
 fn act_name(value: WorkspaceAct) -> &'static str {
@@ -657,6 +962,15 @@ fn budget_name(value: ResponseBudget) -> &'static str {
         ResponseBudget::Brief => "brief",
         ResponseBudget::Balanced => "balanced",
         ResponseBudget::Deep => "deep",
+    }
+}
+
+fn question_operation_name(value: QuestionOperation) -> &'static str {
+    match value {
+        QuestionOperation::General => "general",
+        QuestionOperation::DecisionSupport => "decision_support",
+        QuestionOperation::ScopedSuperlative => "scoped_superlative",
+        QuestionOperation::SelfAssessment => "self_assessment",
     }
 }
 
@@ -762,5 +1076,108 @@ mod tests {
         assert!(state
             .safe_fallback("Say that again")
             .starts_with("Here it is again: Memory carries selected state across time"));
+    }
+
+    #[test]
+    fn known_topic_generic_fallback_gets_semantic_fit_repair() {
+        let recent = vec![(
+            "Improving Perci's dialogue".to_owned(),
+            "The dialogue needs a semantic-fit gate.".to_owned(),
+        )];
+        let state = DialogueWorkspace::derive("what can we do now", &recent);
+        let critique = state.critique(
+            "what can we do now",
+            "I don't have a grounded line for that yet. Restate it in one plain sentence and I'll answer that.",
+            &recent,
+        );
+        assert!(critique.flags.contains(&"generic_fallback"));
+        let repaired = state.repair("I don't have a grounded line for that yet.", &critique);
+        assert!(repaired.contains("tracking"));
+        assert!(!repaired.contains("Restate it"));
+    }
+
+    #[test]
+    fn ood_abstention_is_not_replaced_by_semantic_fit_gate() {
+        let state = DialogueWorkspace::derive("zxqv blorf nembit", &[]);
+        let answer = "I don't know what those tokens mean, and I cannot infer a reliable interpretation yet.";
+        let critique = state.critique("zxqv blorf nembit", answer, &[]);
+        assert!(!critique.flags.contains(&"generic_fallback"));
+        assert!(critique.ok());
+    }
+
+    #[test]
+    fn semantic_fit_repair_binds_requested_operation() {
+        let recent = vec![(
+            "Evolving Perci dialogue".to_owned(),
+            "The dialogue needs an operation-aware repair.".to_owned(),
+        )];
+        let user = "what next?";
+        let state = DialogueWorkspace::derive(user, &recent);
+        let critique = state.critique(
+            user,
+            "Let's find the smallest version we can test next.",
+            &recent,
+        );
+        assert!(critique.flags.contains(&"generic_fallback"));
+        let repaired = state.repair_for(user, "generic", &critique);
+        assert!(repaired.contains("concrete change"));
+        assert!(repaired.contains("replay probe"));
+    }
+
+    #[test]
+    fn decision_frame_rejects_unrelated_consciousness_answer() {
+        let user = "Should I start a business?";
+        let state = DialogueWorkspace::derive(user, &[]);
+        assert_eq!(state.question.operation, QuestionOperation::DecisionSupport);
+        let critique = state.critique(
+            user,
+            "Behavioral complexity is observable; subjective experience is inferred.",
+            &[],
+        );
+        assert!(critique.flags.contains(&"semantic_subject_miss"));
+        assert!(critique.flags.contains(&"operation_fit_miss"));
+        let repaired = state.repair_for(user, "wrong", &critique);
+        assert!(repaired.contains("business"));
+        assert!(repaired.contains("potential customers"));
+    }
+
+    #[test]
+    fn scoped_superlative_requires_the_stability_regime() {
+        let user = "What geometry has the most stability?";
+        let state = DialogueWorkspace::derive(user, &[]);
+        assert_eq!(
+            state.question.operation,
+            QuestionOperation::ScopedSuperlative
+        );
+        let wrong = "Bitwork uses compact geometry and associative paths to route a stable answer.";
+        let critique = state.critique(user, wrong, &[]);
+        assert!(critique.flags.contains(&"operation_fit_miss"));
+        let repaired = state.repair_for(user, wrong, &critique);
+        assert!(repaired.contains("no single most stable"));
+        assert!(repaired.contains("structural load"));
+    }
+
+    #[test]
+    fn self_assessment_requires_a_direct_measured_boundary() {
+        let user = "Are you nearing a coherence threshold?";
+        let state = DialogueWorkspace::derive(user, &[]);
+        assert_eq!(state.question.operation, QuestionOperation::SelfAssessment);
+        let wrong = "I'll stay concrete and go deeper if you want.";
+        let critique = state.critique(user, wrong, &[]);
+        assert!(critique.flags.contains(&"operation_fit_miss"));
+        let repaired = state.repair_for(user, wrong, &critique);
+        assert!(repaired.starts_with("Not globally yet."));
+        assert!(repaired.contains("unseen paraphrases"));
+    }
+
+    #[test]
+    fn abstract_most_questions_do_not_inherit_physical_stability_scope() {
+        for prompt in [
+            "What is the strongest claim you can make about your own intelligence?",
+            "What assumption is doing the most work in your answer?",
+        ] {
+            let state = DialogueWorkspace::derive(prompt, &[]);
+            assert_eq!(state.question.operation, QuestionOperation::General);
+        }
     }
 }

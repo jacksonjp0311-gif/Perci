@@ -1,0 +1,28 @@
+{
+  "schema": "perci.dialogue-candidate.v1",
+  "corpus": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v1.jsonl",
+  "corpus_sha256": "d862ff3a832932af36d3054ccaff7747c05db1f7fe8576d66c55f6b193f27d07",
+  "train_rows": 24,
+  "response_source_only": true,
+  "primer_conditioned": true,
+  "topic_conditioned": true,
+  "prompt_conditioned": true,
+  "context_rows": 24,
+  "primer_count": 5,
+  "intent_primer_counts": {
+    "improvement": 3,
+    "repair": 3,
+    "social": 3,
+    "capability": 3
+  },
+  "order": 4,
+  "byte_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bphr",
+  "byte_field_sha256": "e90197a45c908a041e081b8836cfcbcf7e6340a64f79016fd6ac76530299730b",
+  "phrase_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bphr",
+  "phrase_field_sha256": "e90197a45c908a041e081b8836cfcbcf7e6340a64f79016fd6ac76530299730b",
+  "phrase_field_bytes": 95108,
+  "trainer_stdout_tail": "native language rebuilt\n  byte output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bphr\n  byte order: 4\n  byte records: 4856\n  byte transitions: 8838\n  byte source bytes: 37151\n  byte file bytes: 344824\n  phrase output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bphr\n  phrase order: 4\n  phrase vocabulary: 417\n  phrase records: 4840\n  phrase transitions: 6442\n  phrase file bytes: 95108\n  relation output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.brel\n  relation records: 0\n  relation source bytes: 0\n  relation file bytes: 48\n  world output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-evolved-v1.bwm\n  world records: 0\n  world source bytes: 0\n  world file bytes: 64\n",
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Candidate is isolated until fresh-process held-out comparison passes."
+}

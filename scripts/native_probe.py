@@ -218,6 +218,11 @@ def main() -> int:
         help="evaluate an isolated PERCPHR1 candidate without replacing active weights",
     )
     parser.add_argument(
+        "--dialogue-weights",
+        type=Path,
+        help="evaluate an isolated PERCDLG1 dialogue lattice",
+    )
+    parser.add_argument(
         "--world-weights",
         type=Path,
         help="evaluate an isolated PERCIWM1 typed world-model candidate",
@@ -243,6 +248,8 @@ def main() -> int:
     env["NO_COLOR"] = "1"
     if args.phrase_weights:
         env["PERCI_PHRASE_WEIGHTS"] = str(args.phrase_weights.resolve())
+    if args.dialogue_weights:
+        env["PERCI_DIALOGUE_WEIGHTS"] = str(args.dialogue_weights.resolve())
     if args.world_weights:
         env["PERCI_WORLD_WEIGHTS"] = str(args.world_weights.resolve())
     raw_path = out.with_suffix(".transcript.txt")

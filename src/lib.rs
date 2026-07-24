@@ -15,6 +15,7 @@
 pub mod agent;
 pub mod auto_repairs;
 pub mod backend;
+pub mod binary_dialogue;
 pub mod binary_language;
 pub mod binary_phrase;
 pub mod binary_relation;

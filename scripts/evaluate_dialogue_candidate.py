@@ -30,6 +30,7 @@ def run_probe(
     questions: Path,
     tag: str,
     phrase: Path | None,
+    dialogue: Path | None,
     count: int,
 ) -> tuple[dict[str, object], Path]:
     transcript = ROOT / "models" / "candidates" / f"native-probe-{tag}.jsonl"
@@ -50,6 +51,8 @@ def run_probe(
     ]
     if phrase is not None:
         command.extend(["--phrase-weights", str(phrase)])
+    if dialogue is not None:
+        command.extend(["--dialogue-weights", str(dialogue)])
     result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
     if result.returncode != 0:
         print(result.stdout, file=sys.stderr)
@@ -147,21 +150,31 @@ def main() -> int:
         type=Path,
         default=ROOT / "training" / "dialogue-continuity-v1-heldout.jsonl",
     )
-    parser.add_argument("--phrase-weights", type=Path, required=True)
+    parser.add_argument("--phrase-weights", type=Path)
+    parser.add_argument("--dialogue-weights", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     questions = args.questions.resolve()
-    phrase = args.phrase_weights.resolve()
-    if not phrase.is_file():
+    phrase = args.phrase_weights.resolve() if args.phrase_weights else None
+    dialogue = args.dialogue_weights.resolve() if args.dialogue_weights else None
+    if phrase is None and dialogue is None:
+        raise SystemExit("provide --phrase-weights and/or --dialogue-weights")
+    if phrase is not None and not phrase.is_file():
         raise SystemExit(f"missing phrase candidate: {phrase}")
+    if dialogue is not None and not dialogue.is_file():
+        raise SystemExit(f"missing dialogue candidate: {dialogue}")
     rows = load_questions(questions)
     count = len(rows)
     tag_prefix = questions.stem.replace("-heldout", "")
+    if dialogue is None and phrase is not None:
+        inferred = phrase.with_suffix(".bdlg")
+        if inferred.is_file():
+            dialogue = inferred
     baseline_summary, baseline_transcript = run_probe(
-        questions, f"{tag_prefix}-active", None, count
+        questions, f"{tag_prefix}-active", None, None, count
     )
     candidate_summary, candidate_transcript = run_probe(
-        questions, f"{tag_prefix}-candidate", phrase, count
+        questions, f"{tag_prefix}-candidate", phrase, dialogue, count
     )
     baseline_expected = expected_metrics(baseline_transcript, rows)
     candidate_expected = expected_metrics(candidate_transcript, rows)
@@ -178,8 +191,10 @@ def main() -> int:
         "schema": "perci.dialogue-candidate-evaluation.v1",
         "questions": str(questions),
         "questions_sha256": sha256(questions),
-        "phrase_candidate": str(phrase),
-        "phrase_candidate_sha256": sha256(phrase),
+        "phrase_candidate": str(phrase) if phrase else None,
+        "phrase_candidate_sha256": sha256(phrase) if phrase else None,
+        "dialogue_candidate": str(dialogue) if dialogue else None,
+        "dialogue_candidate_sha256": sha256(dialogue) if dialogue else None,
         "baseline": {"summary": baseline_summary, "required": baseline_expected},
         "candidate": {"summary": candidate_summary, "required": candidate_expected},
         "candidate_not_worse": candidate_not_worse,

@@ -42,6 +42,14 @@ IDs. This is why the field can compose readable phrases without pretending to
 be a transformer. The current candidate is roughly 0.5 MiB and is intentionally
 small enough to retrain during an experiment.
 
+The active `models/perci-dialogue-v0.1.bdlg` field adds a separate
+operation-conditioned precision lane. Its `PERCDLG1` records preserve reviewed
+prompt/response pairing, a discourse-operation byte, and a 256-bit semantic
+signature. Retrieval requires both the same operation and explicit subject
+overlap; weak, referential, exact, sensitive, and out-of-distribution matches
+abstain. The field is 21,878 bytes with 80 reviewed cases. It does not replace
+PERCLNG1 or PERCPHR1 and it never changes itself during chat.
+
 The optional `models/perci-world-v0.1.bwm` (`PERCIWM1`) field adds typed edges:
 hashed subject, relation, and object, plus domain, polarity, confidence, and
 evidence bins. It is loaded with mmap and contributes only a bounded reranking
@@ -58,8 +66,9 @@ subjective memory or consciousness.
 
 The authorized runtime payloads are tracked with Git LFS rather than ordinary
 Git blobs. The package contains the active PERCIW03 field, the PERCIW02 compact
-fallback, the PERCIW01 legacy baseline, and the native PERCLNG1/PERCPHR1
-language fields. `models/PACKAGE_MANIFEST.json` is the authoritative inventory:
+fallback, the PERCIW01 legacy baseline, and the native
+PERCLNG1/PERCPHR1/PERCDLG1 language fields. `models/PACKAGE_MANIFEST.json` is
+the authoritative inventory:
 it records each format magic, byte length, SHA-256, and runtime role.
 
 Restore the complete package after cloning:
@@ -80,7 +89,9 @@ governed weight policy.
 
 The active pack is `models/perci-cognitive-v0.3.pwgt` (`PERCIW03`): 209,710,296
 bytes (199.995 MiB), 403,163 unique 4,096-bit prototypes, 16 domains, and 124
-weight-resident concepts. Runtime software is **v0.10.3** (soft attention,
+weight-resident concepts. Runtime software is **v0.11.2** (observer-aligned,
+operation-aware, factorized dialogue,
+anti-collapse semantic-fit gating,
 dual residual stream, VSA composition, Willshaw concept HVs, session CTX bind).
 See [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md),
 [`docs/BITWORK_MATH_PATH.md`](docs/BITWORK_MATH_PATH.md), and

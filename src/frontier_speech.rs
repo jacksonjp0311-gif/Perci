@@ -197,6 +197,11 @@ pub fn frontier_arc_rewrite(user: &str, seed: &str) -> String {
                 | "fluent"
                 | "natural"
                 | "smooth"
+                | "answer"
+                | "enough"
+                | "response"
+                | "difference"
+                | "point"
         );
     if bound_ok {
         // Prefer replacing last sentence add rather than dumping.

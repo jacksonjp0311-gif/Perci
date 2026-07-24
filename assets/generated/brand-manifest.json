@@ -1,9 +1,9 @@
 {
   "name": "Perci",
   "theme": "dark-blood",
-  "version": "0.10.3",
-  "build_id": "0.10.3+639fc092",
-  "git_rev": "639fc092",
+  "version": "0.11.2",
+  "build_id": "0.11.2+8b82272b-dirty",
+  "git_rev": "8b82272b",
   "mark": "assets/icons/perci-darkblood-mark.svg",
   "badge": "assets/generated/perci-darkblood-badge.svg",
   "mark_raster": "assets/icons/perci-darkblood-mark.jpg",

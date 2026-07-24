@@ -96,12 +96,17 @@ def stage(source: Path, queue_path: Path) -> int:
     return 0
 
 
-def fold(queue_path: Path, inject_path: Path) -> int:
+def fold(queue_path: Path, inject_path: Path, accept_suggested: bool = False) -> int:
     queue = read_json(queue_path, {"candidates": []})
     inject = read_json(inject_path, {})
     folded = 0
     for row in queue.get("candidates", []):
         label = row.get("label")
+        if accept_suggested and row.get("approved") and not label:
+            suggested = str(row.get("suggested_label", "general"))
+            if suggested in LABELS:
+                row["label"] = suggested
+                label = suggested
         prompt = str(row.get("prompt", "")).strip()
         if not row.get("approved") or label not in LABELS or not prompt:
             continue
@@ -123,8 +128,17 @@ def main() -> int:
     parser.add_argument("--queue", type=Path, default=ROOT / "training/adaptive/interaction-review.json")
     parser.add_argument("--inject", type=Path, default=ROOT / "training/adaptive/inject_prompts.json")
     parser.add_argument("--fold-approved", action="store_true")
+    parser.add_argument(
+        "--accept-suggested",
+        action="store_true",
+        help="for already-approved rows only, use the bounded suggested label",
+    )
     args = parser.parse_args()
-    return fold(args.queue, args.inject) if args.fold_approved else stage(args.source, args.queue)
+    return (
+        fold(args.queue, args.inject, args.accept_suggested)
+        if args.fold_approved
+        else stage(args.source, args.queue)
+    )
 
 
 if __name__ == "__main__":

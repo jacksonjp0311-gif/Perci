@@ -204,6 +204,7 @@ impl BinaryPhraseModel {
     ) -> String {
         let topic = humanize_topic(&salient_topic(user));
         let intent = salient_intent(user);
+        let operation = dialogue_operation(user);
         state ^= stable_hash(user.as_bytes());
         if state == 0 {
             state = 1;
@@ -267,7 +268,8 @@ impl BinaryPhraseModel {
             },
         };
         let primer = primers[(state as usize) % primers.len()];
-        let mut history = vec![self.id_for("<unk>"); self.order];
+        let unknown = self.id_for("<unk>");
+        let mut history = vec![unknown; self.order];
         let mut output = Vec::new();
         for token in tokenize(primer) {
             if token == "<topic>" {
@@ -289,20 +291,51 @@ impl BinaryPhraseModel {
                 output.push(token);
             }
         }
+        // Keep discourse operation, semantic topic, and conversational
+        // continuity as separate experts. Appending raw context to one history
+        // used to erase the operation primer and made prompt/answer learning
+        // impossible. The factorized histories preserve each signal and mix
+        // their threshold-coded votes during generation.
+        let mut operation_history = vec![unknown; self.order];
+        history_shift(
+            &mut operation_history,
+            self.id_for(&format!("<op:{operation}>")),
+        );
+        let mut topic_history = vec![unknown; self.order];
+        for token in tokenize(&salient_topic(user)) {
+            history_shift(&mut topic_history, self.id_for(&token));
+        }
+        history_shift(&mut topic_history, self.id_for("<answer>"));
+        let mut continuity_history = vec![unknown; self.order];
         if let Some(context) = context {
-            // Keep only the tail: it is the most likely place for the current
-            // turn and the immediately preceding referent, and it prevents a
-            // long session from crowding out the active primer.
+            // The tail carries the nearest referent, but it is only one expert;
+            // it can no longer overwrite the requested discourse operation.
             let context_tokens = tokenize(context);
-            let start = context_tokens.len().saturating_sub(24);
+            let start = context_tokens.len().saturating_sub(18);
             for token in &context_tokens[start..] {
-                history_shift(&mut history, self.id_for(token));
+                history_shift(&mut continuity_history, self.id_for(token));
             }
+            history_shift(&mut continuity_history, self.id_for("<context>"));
         }
         let target = max_chars.clamp(120, 1200);
         let mut generated_tokens = 0usize;
+        let operation_weight = self
+            .ids
+            .contains_key(&format!("<op:{operation}>"))
+            .then_some(8)
+            .unwrap_or(0);
+        let topic_weight = self.ids.contains_key("<answer>").then_some(7).unwrap_or(0);
+        let continuity_weight = self.ids.contains_key("<context>").then_some(3).unwrap_or(0);
         for _ in 0..MAX_GENERATION_TOKENS {
-            let Some(next) = self.next_token(&history, &mut state, generated_tokens) else {
+            let expert_histories = [
+                (&history[..], 5i32),
+                (&operation_history[..], operation_weight),
+                (&topic_history[..], topic_weight),
+                (&continuity_history[..], continuity_weight),
+            ];
+            let Some(next) =
+                self.next_token_factorized(&expert_histories, &mut state, generated_tokens)
+            else {
                 break;
             };
             let token = self
@@ -314,6 +347,9 @@ impl BinaryPhraseModel {
                 break;
             }
             history_shift(&mut history, next);
+            history_shift(&mut operation_history, next);
+            history_shift(&mut topic_history, next);
+            history_shift(&mut continuity_history, next);
             output.push(token.to_owned());
             generated_tokens += 1;
             let rendered = render_tokens(&output, &topic);
@@ -341,32 +377,61 @@ impl BinaryPhraseModel {
             .unwrap_or(0)
     }
 
-    fn next_token(&self, history: &[u16], state: &mut u64, generated_tokens: usize) -> Option<u16> {
+    /// Mix several sparse binary transition experts without converting the
+    /// field into a dense neural runtime. Each expert contributes
+    /// `depth² × bit-plane magnitude × declared weight`; the result is an
+    /// inspectable product-of-contexts approximation:
+    ///
+    /// score(token) = Σ_e λ_e Σ_d d² q_e,d(token)
+    ///
+    /// Operation, topic, local syntax, and recent continuity therefore retain
+    /// independent influence instead of being destructively flattened into one
+    /// four-token history.
+    fn next_token_factorized(
+        &self,
+        histories: &[(&[u16], i32)],
+        state: &mut u64,
+        generated_tokens: usize,
+    ) -> Option<u16> {
         let mut scores: HashMap<u16, i32> = HashMap::new();
-        for depth in 1..=self.order.min(history.len()) {
-            let mut key = RecordKey {
-                depth: depth as u8,
-                context: [0; MAX_ORDER],
-            };
-            key.context[MAX_ORDER - depth..].copy_from_slice(&history[history.len() - depth..]);
-            for (id, bits) in self.lookup(&key)? {
-                if id == self.id_for("<unk>") {
-                    continue;
+        for (history, expert_weight) in histories {
+            if *expert_weight <= 0 {
+                continue;
+            }
+            for depth in 1..=self.order.min(history.len()) {
+                let mut key = RecordKey {
+                    depth: depth as u8,
+                    context: [0; MAX_ORDER],
+                };
+                key.context[MAX_ORDER - depth..].copy_from_slice(&history[history.len() - depth..]);
+                for (id, bits) in self.lookup(&key)? {
+                    if id == self.id_for("<unk>")
+                        || self
+                            .vocabulary
+                            .get(id as usize)
+                            .map(|token| is_hidden_control(token))
+                            .unwrap_or(false)
+                    {
+                        continue;
+                    }
+                    if generated_tokens < 3
+                        && self
+                            .vocabulary
+                            .get(id as usize)
+                            .map(|token| {
+                                matches!(token.as_str(), "." | "," | "?" | "!" | ":" | ";")
+                            })
+                            .unwrap_or(false)
+                    {
+                        continue;
+                    }
+                    let level = (0..4)
+                        .filter(|plane| bits & (1 << plane) != 0)
+                        .map(|plane| 1 << plane)
+                        .sum::<i32>();
+                    *scores.entry(id).or_default() +=
+                        (depth * depth) as i32 * level * *expert_weight;
                 }
-                if generated_tokens < 3
-                    && self
-                        .vocabulary
-                        .get(id as usize)
-                        .map(|token| matches!(token.as_str(), "." | "," | "?" | "!" | ":" | ";"))
-                        .unwrap_or(false)
-                {
-                    continue;
-                }
-                let level = (0..4)
-                    .filter(|plane| bits & (1 << plane) != 0)
-                    .map(|plane| 1 << plane)
-                    .sum::<i32>();
-                *scores.entry(id).or_default() += (depth * depth) as i32 * level;
             }
         }
         // An unseen multi-word context should not terminate the response.  A
@@ -493,6 +558,47 @@ impl BinaryPhraseTrainer {
             tokens.push("<eos>".to_owned());
             self.documents.push(tokens);
         }
+    }
+
+    /// Preserve the supervision that ordinary prose training discards: a
+    /// reviewed prompt is paired with its reviewed answer. Three sparse views
+    /// are recorded so inference can factor operation, topic, and ordinary
+    /// syntax without storing a dense model or copying the prompt into output.
+    pub fn train_dialogue_pair(&mut self, prompt: &str, response: &str) {
+        let response = response.trim();
+        if !looks_like_prose(response) {
+            return;
+        }
+        let operation = dialogue_operation(prompt);
+        let topic = salient_topic(prompt);
+        let response_tokens = {
+            let mut tokens = tokenize(response);
+            tokens.retain(|token| !token.chars().all(|ch| ch.is_ascii_digit()));
+            if !matches!(tokens.last().map(String::as_str), Some("." | "?" | "!")) {
+                tokens.push(".".to_owned());
+            }
+            tokens.push("<eos>".to_owned());
+            tokens
+        };
+        if response_tokens.len() <= 1 {
+            return;
+        }
+        self.source_bytes = self
+            .source_bytes
+            .saturating_add((prompt.len() + response.len()) as u64);
+
+        let mut operation_view = vec![format!("<op:{operation}>")];
+        operation_view.extend(response_tokens.clone());
+        self.documents.push(operation_view);
+
+        let mut topic_view = tokenize(&topic);
+        topic_view.push("<answer>".to_owned());
+        topic_view.extend(response_tokens.clone());
+        self.documents.push(topic_view);
+
+        let mut combined_view = vec![format!("<op:{operation}>"), "<answer>".to_owned()];
+        combined_view.extend(response_tokens);
+        self.documents.push(combined_view);
     }
 
     pub fn train_file(&mut self, path: &Path) -> io::Result<()> {
@@ -695,14 +801,31 @@ fn train_json_value(trainer: &mut BinaryPhraseTrainer, value: &serde_json::Value
     match value {
         serde_json::Value::Object(map) => {
             if let Some(messages) = map.get("messages").and_then(|value| value.as_array()) {
+                let mut pending_user: Option<&str> = None;
                 for item in messages {
                     if let Some(content) = item.get("content").and_then(|value| value.as_str()) {
-                        trainer.train_text(content);
+                        match item.get("role").and_then(|value| value.as_str()) {
+                            Some("user") => pending_user = Some(content),
+                            Some("assistant") if pending_user.is_some() => {
+                                trainer.train_dialogue_pair(
+                                    pending_user.take().unwrap_or_default(),
+                                    content,
+                                );
+                                trainer.train_text(content);
+                            }
+                            _ => trainer.train_text(content),
+                        }
                     }
                 }
             }
+            let prompt = map.get("prompt").and_then(|value| value.as_str());
+            let response = ["response", "assistant", "answer"]
+                .iter()
+                .find_map(|key| map.get(*key).and_then(|value| value.as_str()));
+            if let (Some(prompt), Some(response)) = (prompt, response) {
+                trainer.train_dialogue_pair(prompt, response);
+            }
             for key in [
-                "prompt",
                 "response",
                 "assistant",
                 "text",
@@ -821,7 +944,7 @@ fn history_shift(history: &mut [u16], value: u16) {
 fn render_tokens(tokens: &[String], topic: &str) -> String {
     let mut out = String::new();
     for token in tokens {
-        if token == "<intent>" {
+        if is_hidden_control(token) {
             continue;
         }
         if token == "<topic>" {
@@ -843,6 +966,10 @@ fn render_tokens(tokens: &[String], topic: &str) -> String {
         result.replace_range(0..first.len_utf8(), &upper);
     }
     result
+}
+
+fn is_hidden_control(token: &str) -> bool {
+    token == "<intent>" || token == "<answer>" || token == "<context>" || token.starts_with("<op:")
 }
 
 /// Small, inspectable intent vocabulary used to condition native continuation.
@@ -922,6 +1049,85 @@ fn salient_intent(user: &str) -> &'static str {
         "evidence"
     } else {
         "general"
+    }
+}
+
+/// Coarser than the public dialogue-act catalog by design. These values are
+/// binary training controls: they describe what an answer must *do*, not the
+/// subject it discusses.
+fn dialogue_operation(user: &str) -> &'static str {
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    if lower.contains("compare")
+        || lower.contains("difference")
+        || lower.contains("unlike")
+        || lower.contains("versus")
+    {
+        "compare"
+    } else if lower.contains("connect")
+        || lower.contains("shared structure")
+        || lower.contains("relationship between")
+    {
+        "connect"
+    } else if lower.contains("what next")
+        || lower.contains("next move")
+        || lower.contains("what should")
+        || lower.contains("plan")
+    {
+        "plan"
+    } else if lower.contains("counterexample")
+        || lower.contains("falsif")
+        || lower.contains("what would change")
+        || lower.contains("test this")
+    {
+        "test"
+    } else if lower.contains("why")
+        || lower.contains("explain")
+        || lower.contains("how does")
+        || lower.contains("how do ")
+    {
+        "explain"
+    } else if lower.contains("go deeper")
+        || lower.contains("one level deeper")
+        || lower.contains("elaborate")
+        || lower.contains("tell me more")
+    {
+        "deepen"
+    } else if lower.contains("creative")
+        || lower.contains("original")
+        || lower.contains("imagine")
+        || lower.contains("fresh")
+    {
+        "create"
+    } else if lower.contains("evidence")
+        || lower.contains("proof")
+        || lower.contains("how do you know")
+        || lower.contains("trust the result")
+    {
+        "evidence"
+    } else if lower.contains("dont agree")
+        || lower.contains("don't agree")
+        || lower.contains("seems wrong")
+        || lower.contains("conclusion follows")
+    {
+        "challenge"
+    } else if lower.contains("rephrase")
+        || lower.contains("differently")
+        || lower.contains("plain language")
+        || lower.contains("what do you mean")
+    {
+        "clarify"
+    } else if lower.contains("learn") || lower.contains("remember") || lower.contains("teach") {
+        "learn"
+    } else if lower.contains("improv") || lower.contains("evolv") || lower.contains("repair") {
+        "repair"
+    } else if lower.trim() == "interesting"
+        || lower.trim() == "wow"
+        || lower.starts_with("hello")
+        || lower.starts_with("hi ")
+    {
+        "social"
+    } else {
+        "answer"
     }
 }
 
@@ -1196,7 +1402,11 @@ mod tests {
             }),
         );
         assert!(trainer.source_bytes > 0);
-        assert_eq!(trainer.documents.len(), 2);
+        assert_eq!(trainer.documents.len(), 4);
+        assert!(trainer
+            .documents
+            .iter()
+            .any(|document| document.first().map(String::as_str) == Some("<op:answer>")));
     }
 
     #[test]

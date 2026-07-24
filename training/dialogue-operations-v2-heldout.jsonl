@@ -1,0 +1,24 @@
+{"id":"op2-h-001","split":"heldout","family":"explain","topic":"boundary","prompt":"Why does a cell need a boundary to keep living?","required":["boundary","exchange"]}
+{"id":"op2-h-002","split":"heldout","family":"explain","topic":"fluency","prompt":"How can a sentence sound fluent and still miss my question?","required":["fluent","question"]}
+{"id":"op2-h-003","split":"heldout","family":"compare","topic":"attention","prompt":"What separates attention from memory?","required":["attention","memory"]}
+{"id":"op2-h-004","split":"heldout","family":"compare","topic":"truth","prompt":"What is the difference between being coherent and being true?","required":["coherent","true"]}
+{"id":"op2-h-005","split":"heldout","family":"connect","topic":"music","prompt":"Relate music to code without pretending they use the same mechanism.","required":["music","code"]}
+{"id":"op2-h-006","split":"heldout","family":"connect","topic":"promises","prompt":"How are promises, evidence, and trust connected?","required":["promise","trust"]}
+{"id":"op2-h-007","split":"heldout","family":"plan","topic":"dialogue","prompt":"What is our next practical step for making dialogue better?","required":["test","paraphrase"]}
+{"id":"op2-h-008","split":"heldout","family":"plan","topic":"route","prompt":"Perci chose the wrong route. What should happen next?","required":["route","retest"]}
+{"id":"op2-h-009","split":"heldout","family":"test","topic":"context","prompt":"Design a small test for conversational context.","required":["referent","topic"]}
+{"id":"op2-h-010","split":"heldout","family":"test","topic":"preset","prompt":"How can we tell recombination from a stored preset?","required":["held-out","preset"]}
+{"id":"op2-h-011","split":"heldout","family":"evidence","topic":"candidate","prompt":"What would actually prove the new candidate improved?","required":["candidate","held-out"]}
+{"id":"op2-h-012","split":"heldout","family":"evidence","topic":"benchmark","prompt":"When should I believe a benchmark score?","required":["reproducible","failure"]}
+{"id":"op2-h-013","split":"heldout","family":"clarify","topic":"awareness","prompt":"What exactly are you calling operational awareness?","required":["runtime","subjective"]}
+{"id":"op2-h-014","split":"heldout","family":"clarify","topic":"language","prompt":"No, I mean your language generator rather than Bitwork routing.","required":["language","routing"]}
+{"id":"op2-h-015","split":"heldout","family":"deepen","topic":"learning","prompt":"Go beneath the surface definition of learning.","required":["representation","transfer"]}
+{"id":"op2-h-016","split":"heldout","family":"deepen","topic":"semantic","prompt":"Take semantic fit one layer further without repeating the definition.","required":["operation","referent"]}
+{"id":"op2-h-017","split":"heldout","family":"create","topic":"memory","prompt":"Give me a new metaphor for how memory changes with use.","required":["memory","path"]}
+{"id":"op2-h-018","split":"heldout","family":"create","topic":"silence","prompt":"Say something original about silence inside conversation.","required":["silence","meaning"]}
+{"id":"op2-h-019","split":"heldout","family":"challenge","topic":"evidence","prompt":"I think you claimed more than your evidence supports.","required":["evidence","claim"]}
+{"id":"op2-h-020","split":"heldout","family":"learning","topic":"learning","prompt":"Does talking with me alter your durable knowledge right away?","required":["session","evaluation"]}
+{"id":"op2-h-021","split":"heldout","family":"repair","topic":"generic","prompt":"That was another generic shell instead of an answer.","required":["specific","question"]}
+{"id":"op2-h-022","split":"heldout","family":"repair","topic":"robotic","prompt":"You sound like a procedure manual. Talk normally.","required":["plain","point"]}
+{"id":"op2-h-023","split":"heldout","family":"answer","topic":"geometry","prompt":"How can dialogue preserve geometry?","required":["relation","wording"]}
+{"id":"op2-h-024","split":"heldout","family":"answer","topic":"progression","prompt":"What does conversational progression measure?","required":["adds","repeat"]}

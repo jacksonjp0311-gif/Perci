@@ -1,0 +1,95 @@
+{
+  "questions_requested": 24,
+  "responses_parsed": 24,
+  "unique_responses": 24,
+  "duplicate_responses": 0,
+  "topic_binding_rate": 0.7083,
+  "slot_pair_binding_rate": null,
+  "punctuated_response_rate": 0.9583,
+  "mean_chars": 315.12,
+  "median_chars": 217.0,
+  "min_chars": 150,
+  "max_chars": 1358,
+  "families": 13,
+  "topics": 23,
+  "family_metrics": {
+    "answer": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "challenge": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "clarify": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    },
+    "compare": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "connect": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "create": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    },
+    "deepen": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    },
+    "evidence": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    },
+    "explain": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "learning": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "plan": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.5,
+      "slot_pair_binding_rate": null
+    },
+    "repair": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 0.0,
+      "slot_pair_binding_rate": null
+    },
+    "test": {
+      "responses": 2,
+      "unique_responses": 2,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    }
+  }
+}

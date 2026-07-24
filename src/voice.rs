@@ -185,6 +185,9 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("what did you mean by that")
         || text.contains("what do you mean by that")
         || text.contains("what was that supposed to mean")
+        || text.contains("how do you know that")
+        || text.contains("how do you know this")
+        || compact == "how do you know"
         || matches!(
             compact,
             "what do you mean"
@@ -841,10 +844,26 @@ pub fn dialogue_reply(
                     "what does that mean",
                 ],
             );
+            let how_know_request = user_lower_contains_any(
+                user,
+                &["how do you know that", "how do you know this", "how do you know"],
+            );
             // A meta instruction such as "go deeper" is not the claim being
             // explained. Prefer the most recent substantive answer so a
             // causal follow-up stays attached to the idea under discussion.
-            let previous = last_substantive_turn(recent).or_else(|| recent.last());
+            let previous = if how_know_request {
+                recent
+                    .iter()
+                    .rev()
+                    .find(|(previous_user, previous_answer)| {
+                        !is_non_substantive_turn(previous_user)
+                            && previous_answer.split_whitespace().count() >= 6
+                    })
+                    .or_else(|| last_substantive_turn(recent))
+                    .or_else(|| recent.last())
+            } else {
+                last_substantive_turn(recent).or_else(|| recent.last())
+            };
             if let Some((previous_user, previous_answer)) = previous {
                 let lower = previous_answer.to_ascii_lowercase();
                 if laugh_request {
@@ -880,9 +899,20 @@ pub fn dialogue_reply(
                         "I don't hold it as a private belief. I chose that answer to \"{previous_user}\" because geometry gives us explicit relations and life gives us active maintenance; boundary is the shared structural axis. The analogy is useful because it preserves that relation, but it stops before claiming that a shape is alive or that geometry causes life."
                     )
                 } else {
+                    let claim = if how_know_request {
+                        let trimmed = previous_answer.trim();
+                        let substantive = trimmed
+                            .strip_prefix("Yeah. ")
+                            .or_else(|| trimmed.strip_prefix("Yeah — "))
+                            .or_else(|| trimmed.strip_prefix("Yeah —"))
+                            .unwrap_or(trimmed);
+                        first_sentence(substantive, 140)
+                    } else {
+                        first_sentence(previous_answer, 140)
+                    };
                     format!(
                         "Because that was the strongest supported answer I had for \"{previous_user}\": \"{}\". I treat it as a testable working claim, not a private belief: the test is whether evidence supports it, and a counterexample, failed prediction, or better explanation would make me revise the answer.",
-                        first_sentence(previous_answer, 140)
+                        claim
                     )
                 }
             } else {
@@ -4608,6 +4638,28 @@ mod tests {
         assert!(lower.contains("wasn't laughing") || lower.contains("was not laughing"));
         assert!(lower.contains("wording") || lower.contains("dismissive"));
         assert!(!lower.contains("causal chain"));
+    }
+
+    #[test]
+    fn how_do_you_know_binds_to_the_previous_answer() {
+        assert_eq!(
+            detect_dialogue_act("how do you know that"),
+            DialogueAct::ExplainPrevious
+        );
+        let reply = dialogue_reply(
+            detect_dialogue_act("how do you know that"),
+            "how do you know that",
+            &[(
+                "what is the active route?".into(),
+                "The active route is dialogue continuity.".into(),
+            )],
+            None,
+        )
+        .unwrap();
+        let lower = reply.to_ascii_lowercase();
+        assert!(lower.contains("supported") || lower.contains("testable"));
+        assert!(!lower.contains("\"yeah.\""));
+        assert!(!lower.contains("grounded line"));
     }
 
     #[test]

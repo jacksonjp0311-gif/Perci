@@ -1,94 +1,88 @@
 {
-  "questions_requested": 24,
-  "responses_parsed": 24,
-  "unique_responses": 24,
+  "questions_requested": 12,
+  "responses_parsed": 12,
+  "unique_responses": 12,
   "duplicate_responses": 0,
-  "topic_binding_rate": 0.2917,
+  "topic_binding_rate": 0.5833,
   "slot_pair_binding_rate": null,
   "punctuated_response_rate": 1.0,
-  "mean_chars": 280.75,
-  "median_chars": 289.5,
-  "min_chars": 93,
-  "max_chars": 468,
-  "families": 13,
-  "topics": 21,
+  "mean_chars": 306,
+  "median_chars": 336.0,
+  "min_chars": 146,
+  "max_chars": 513,
+  "families": 12,
+  "topics": 12,
   "family_metrics": {
-    "followup_creative": {
-      "responses": 1,
-      "unique_responses": 1,
-      "topic_binding_rate": 0.0,
-      "slot_pair_binding_rate": null
-    },
-    "followup_depth": {
-      "responses": 1,
-      "unique_responses": 1,
-      "topic_binding_rate": 0.0,
-      "slot_pair_binding_rate": null
-    },
-    "followup_disagreement": {
+    "creative": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 1.0,
       "slot_pair_binding_rate": null
     },
-    "followup_emergence": {
+    "depth": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "disagreement": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "emergence": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 0.0,
       "slot_pair_binding_rate": null
     },
-    "followup_learning": {
+    "evidence": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 0.0,
       "slot_pair_binding_rate": null
     },
-    "followup_rephrase": {
+    "learning": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 0.0,
       "slot_pair_binding_rate": null
     },
-    "followup_revision": {
+    "memory_identity": {
+      "responses": 1,
+      "unique_responses": 1,
+      "topic_binding_rate": 1.0,
+      "slot_pair_binding_rate": null
+    },
+    "rephrase": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 0.0,
       "slot_pair_binding_rate": null
     },
-    "followup_scope": {
+    "revision": {
       "responses": 1,
       "unique_responses": 1,
       "topic_binding_rate": 0.0,
       "slot_pair_binding_rate": null
     },
-    "followup_style": {
+    "scope": {
       "responses": 1,
       "unique_responses": 1,
-      "topic_binding_rate": 0.0,
+      "topic_binding_rate": 1.0,
       "slot_pair_binding_rate": null
     },
-    "followup_test": {
+    "test_next": {
       "responses": 1,
       "unique_responses": 1,
-      "topic_binding_rate": 0.0,
+      "topic_binding_rate": 1.0,
       "slot_pair_binding_rate": null
     },
-    "followup_typo": {
+    "typo": {
       "responses": 1,
       "unique_responses": 1,
-      "topic_binding_rate": 0.0,
-      "slot_pair_binding_rate": null
-    },
-    "followup_why": {
-      "responses": 1,
-      "unique_responses": 1,
-      "topic_binding_rate": 0.0,
-      "slot_pair_binding_rate": null
-    },
-    "seed": {
-      "responses": 12,
-      "unique_responses": 12,
-      "topic_binding_rate": 0.5,
+      "topic_binding_rate": 1.0,
       "slot_pair_binding_rate": null
     }
   }

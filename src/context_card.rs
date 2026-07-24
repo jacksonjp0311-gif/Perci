@@ -42,6 +42,9 @@ pub struct ObserverMetrics {
     pub context_fidelity: f64,
     pub viability: f64,
     pub geometry_alignment: f64,
+    pub operation_fit: f64,
+    pub uncertainty_calibration: f64,
+    pub progression_gain: f64,
     pub observer_score: f64,
     pub oversmoothing_penalty: f64,
     pub repair_cost: f64,
@@ -50,11 +53,14 @@ pub struct ObserverMetrics {
 impl ObserverMetrics {
     pub fn trace(&self) -> String {
         format!(
-            "observer_metrics fluency={:.3} fidelity={:.3} viability={:.3} geometry={:.3} score={:.3} oversmooth={:.3} repair={:.3}",
+            "observer_metrics fluency={:.3} fidelity={:.3} operation={:.3} viability={:.3} geometry={:.3} uncertainty={:.3} progression={:.3} score={:.3} oversmooth={:.3} repair={:.3}",
             self.fluency,
             self.context_fidelity,
+            self.operation_fit,
             self.viability,
             self.geometry_alignment,
+            self.uncertainty_calibration,
+            self.progression_gain,
             self.observer_score,
             self.oversmoothing_penalty,
             self.repair_cost
@@ -152,6 +158,9 @@ impl ContextCard {
                 context_fidelity: 0.0,
                 viability: 0.0,
                 geometry_alignment: 0.0,
+                operation_fit: 0.0,
+                uncertainty_calibration: 0.0,
+                progression_gain: 0.0,
                 observer_score: 0.0,
                 oversmoothing_penalty: 1.0,
                 repair_cost: 1.0,
@@ -214,6 +223,30 @@ impl ContextCard {
             _ => 0.78,
         };
 
+        let operation_fit = operation_fit(self, &lower);
+        let uncertainty_calibration = if self.uncertainty == "out_of_distribution" {
+            if lower.contains("unknown") || lower.contains("cannot") || lower.contains("infer") {
+                1.0
+            } else {
+                0.2
+            }
+        } else if lower.contains("certainly") && self.evidence == "none" {
+            0.45
+        } else {
+            0.85
+        };
+        let progression_gain = if recent.is_empty() {
+            1.0
+        } else if repeated_prior {
+            0.05
+        } else {
+            (1.0 - token_overlap(
+                recent.last().map(|(_, prior)| prior.as_str()).unwrap_or(""),
+                answer,
+            ))
+            .clamp(0.0, 1.0)
+        };
+
         let geometry_alignment = self
             .relation
             .as_ref()
@@ -248,15 +281,24 @@ impl ContextCard {
             0.0
         };
         let repair_cost = clamp01(1.0 - context_fidelity + oversmoothing_penalty);
-        let observer_score =
-            harmonic_mean(&[fluency, context_fidelity, viability, geometry_alignment])
-                * (1.0 - oversmoothing_penalty);
+        let observer_score = harmonic_mean(&[
+            fluency,
+            context_fidelity,
+            operation_fit,
+            viability,
+            geometry_alignment,
+            uncertainty_calibration,
+        ]) * (1.0 - oversmoothing_penalty)
+            * progression_gain;
 
         ObserverMetrics {
             fluency,
             context_fidelity,
             viability,
             geometry_alignment,
+            operation_fit,
+            uncertainty_calibration,
+            progression_gain,
             observer_score: clamp01(observer_score),
             oversmoothing_penalty,
             repair_cost,
@@ -369,6 +411,24 @@ fn harmonic_mean(values: &[f64]) -> f64 {
         return 0.0;
     }
     values.len() as f64 / values.iter().map(|value| 1.0 / value).sum::<f64>()
+}
+
+fn operation_fit(card: &ContextCard, answer: &str) -> f64 {
+    let markers: &[&str] = match card.goal.as_str() {
+        "explain" => &["because", "mechanism", "means", "works", "how"],
+        "evaluate" => &["evidence", "test", "measure", "would show", "uncertain"],
+        "plan" => &["next", "step", "first", "then", "check"],
+        "repair" => &["missed", "repair", "change", "fix", "instead"],
+        "create" => &["imagine", "combine", "design", "could", "pattern"],
+        "learn" => &["remember", "learn", "teach", "retain", "evidence"],
+        "social" => &["hey", "yeah", "glad", "here", "with you"],
+        _ => &["is", "can", "means", "because"],
+    };
+    let hits = markers
+        .iter()
+        .filter(|marker| answer.contains(**marker))
+        .count();
+    clamp01(0.45 + 0.14 * hits.min(4) as f64)
 }
 
 fn clamp01(value: f64) -> f64 {

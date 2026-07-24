@@ -1,0 +1,39 @@
+{
+  "schema": "perci.dialogue-candidate.v2",
+  "corpora": [
+    {
+      "path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-continuity-v1.jsonl",
+      "sha256": "d862ff3a832932af36d3054ccaff7747c05db1f7fe8576d66c55f6b193f27d07"
+    },
+    {
+      "path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-operations-v2.jsonl",
+      "sha256": "9b54f123298ed9160320061c753ff4051b3f8f0087b661d4a8b1070d9010ced7"
+    }
+  ],
+  "train_rows": 80,
+  "repo_curriculum_included": true,
+  "repo_curriculum_files": 67,
+  "repo_curriculum_source_bytes": 201984,
+  "response_source_only": true,
+  "paired_supervision": true,
+  "factorized_controls": [
+    "operation",
+    "topic",
+    "local_syntax"
+  ],
+  "primer_conditioned": false,
+  "topic_conditioned": true,
+  "prompt_conditioned": false,
+  "context_rows": 0,
+  "primer_count": 0,
+  "order": 4,
+  "byte_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.blng",
+  "byte_field_sha256": "f2f00d3eabd55b413bdb55faef1debc22955b9940a470d964481783eeffabc57",
+  "phrase_field": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.bphr",
+  "phrase_field_sha256": "dd26bab7c0ac002965bf5ae4a576896d5e788c6851ca757b8ea5d0b65c1a4926",
+  "phrase_field_bytes": 905230,
+  "trainer_stdout_tail": "native language rebuilt\n  byte output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.blng\n  byte order: 4\n  byte records: 48389\n  byte transitions: 102744\n  byte source bytes: 167050\n  byte file bytes: 3435667\n  phrase output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.bphr\n  phrase order: 4\n  phrase vocabulary: 3073\n  phrase records: 46065\n  phrase transitions: 62406\n  phrase file bytes: 905230\n  relation output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.brel\n  relation records: 5124\n  relation source bytes: 18006\n  relation file bytes: 102528\n  world output: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-factorized-v3.bwm\n  world records: 2485\n  world source bytes: 18006\n  world file bytes: 79584\n",
+  "promotion": "HOLD",
+  "promote_recommended": false,
+  "reason": "Candidate is isolated until fresh-process held-out comparison passes."
+}

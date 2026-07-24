@@ -15,9 +15,12 @@ fn main() {
     let _ = fs::create_dir_all(&gen_dir);
 
     // Git short rev (best-effort) so banners prove which source the binary was built from.
-    // Rerun when HEAD moves so Launch-Perci rebuilds pick up the new identity automatically.
-    let git_head = manifest_dir.join(".git").join("HEAD");
-    println!("cargo:rerun-if-changed={}", git_head.display());
+    // A branch commit changes refs/heads/<branch>, not .git/HEAD itself. Watch both
+    // the symbolic HEAD and the resolved ref so an ordinary `git commit` cannot
+    // leave Launch-Perci serving a binary stamped with an older commit.
+    for path in git_identity_paths(&manifest_dir) {
+        println!("cargo:rerun-if-changed={}", path.display());
+    }
     let rev = git_short_rev(&manifest_dir);
     let dirty = git_dirty(&manifest_dir);
     let build_id = if rev.is_empty() {
@@ -76,13 +79,62 @@ fn git_short_rev(repo: &std::path::Path) -> String {
     }
 }
 
+fn git_identity_paths(repo: &std::path::Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let git_dir = std::process::Command::new("git")
+        .args(["rev-parse", "--path-format=absolute", "--git-dir"])
+        .current_dir(repo)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| PathBuf::from(String::from_utf8_lossy(&output.stdout).trim()));
+
+    let Some(git_dir) = git_dir else {
+        return paths;
+    };
+
+    let head = git_dir.join("HEAD");
+    paths.push(head);
+
+    if let Ok(output) = std::process::Command::new("git")
+        .args(["symbolic-ref", "--quiet", "HEAD"])
+        .current_dir(repo)
+        .output()
+    {
+        if output.status.success() {
+            let ref_name = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            if !ref_name.is_empty() {
+                paths.push(git_dir.join(ref_name));
+            }
+        }
+    }
+
+    // The index changes when the worktree becomes dirty, which also affects the
+    // `-dirty` portion of the build identity.
+    paths.push(git_dir.join("index"));
+    paths
+}
+
 fn git_dirty(repo: &std::path::Path) -> bool {
     let output = std::process::Command::new("git")
         .args(["status", "--porcelain"])
         .current_dir(repo)
         .output();
     match output {
-        Ok(o) if o.status.success() => !String::from_utf8_lossy(&o.stdout).trim().is_empty(),
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .any(|line| {
+                // The build rewrites these derived assets by design. They must
+                // not turn an otherwise clean source tree into a `-dirty`
+                // identity, while any real source/configuration change still
+                // remains visible.
+                let mut paths = line.get(3..).unwrap_or(line).split(" -> ");
+                paths.any(|path| {
+                    let normalized = path.trim().replace('\\', "/");
+                    !normalized.starts_with("assets/generated/")
+                })
+            }),
         _ => false,
     }
 }
