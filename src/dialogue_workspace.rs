@@ -166,10 +166,14 @@ impl DialogueWorkspace {
             .last()
             .map(|(previous, _)| content_topic(previous))
             .unwrap_or_default();
-        let prior_claim = recent
-            .last()
-            .map(|(_, answer)| first_sentence(answer, 180))
-            .filter(|claim| !claim.is_empty());
+        let prior_claim = if matches!(continuity, Continuity::NewThread) {
+            None
+        } else {
+            recent
+                .last()
+                .map(|(_, answer)| first_sentence(answer, 180))
+                .filter(|claim| !claim.is_empty())
+        };
         let topic = if current_topic.is_empty() {
             prior_topic.clone()
         } else {
@@ -515,6 +519,7 @@ fn workspace_act(act: DialogueAct, user: &str, recent: &[(String, String)]) -> W
         DialogueAct::LearningMeta | DialogueAct::LearningSpeed | DialogueAct::FeedbackLearning => {
             WorkspaceAct::Learn
         }
+        DialogueAct::AutomationQuestion => WorkspaceAct::FollowUp,
         DialogueAct::None
             if !recent.is_empty() && continuity_for(user, recent) != Continuity::NewThread =>
         {
@@ -554,6 +559,7 @@ fn workspace_goal(act: DialogueAct, user: &str) -> WorkspaceGoal {
         DialogueAct::LearningMeta | DialogueAct::LearningSpeed | DialogueAct::FeedbackLearning => {
             WorkspaceGoal::Learn
         }
+        DialogueAct::AutomationQuestion => WorkspaceGoal::Explain,
         DialogueAct::Acknowledgement | DialogueAct::Agreement | DialogueAct::PositiveFeedback => {
             WorkspaceGoal::Social
         }
@@ -566,7 +572,11 @@ fn continuity_for(user: &str, recent: &[(String, String)]) -> Continuity {
     if recent.is_empty() {
         return Continuity::NewThread;
     }
-    let lower = user.to_ascii_lowercase();
+    let lower = crate::text_normalize::normalize_for_routing(user);
+    let bare = lower
+        .trim()
+        .trim_end_matches(|ch: char| matches!(ch, '?' | '!' | '.'));
+    let dialogue_act = voice::detect_dialogue_act(user);
     if lower.split_whitespace().any(|word| {
         matches!(
             word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric()),
@@ -574,10 +584,57 @@ fn continuity_for(user: &str, recent: &[(String, String)]) -> Continuity {
         )
     }) || lower.trim() == "why?"
         || lower.trim() == "and then?"
+        || [
+            "what next",
+            "what else",
+            "and what else",
+            "keep going",
+            "continue",
+            "tell me more",
+            "go deeper",
+            "one level deeper",
+        ]
+        .iter()
+        .any(|marker| bare == *marker || bare.starts_with(&format!("{marker} ")))
+        || matches!(
+            dialogue_act,
+            DialogueAct::ExplainPrevious
+                | DialogueAct::ElaboratePrevious
+                | DialogueAct::PronounResolution
+                | DialogueAct::ContextRecall
+        )
     {
         Continuity::Referential
-    } else {
+    } else if matches!(
+        dialogue_act,
+        DialogueAct::Agreement
+            | DialogueAct::Acknowledgement
+            | DialogueAct::PositiveFeedback
+            | DialogueAct::Feedback
+            | DialogueAct::RepetitionComplaint
+            | DialogueAct::ResponseFailure
+            | DialogueAct::StyleRepair
+    ) {
         Continuity::Threaded
+    } else {
+        let current = content_topic(user)
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect::<HashSet<_>>();
+        let previous = recent
+            .last()
+            .map(|(prior, _)| {
+                content_topic(prior)
+                    .split_whitespace()
+                    .map(str::to_owned)
+                    .collect::<HashSet<_>>()
+            })
+            .unwrap_or_default();
+        if !current.is_empty() && !current.is_disjoint(&previous) {
+            Continuity::Threaded
+        } else {
+            Continuity::NewThread
+        }
     }
 }
 
@@ -660,10 +717,16 @@ fn question_frame(user: &str) -> QuestionFrame {
             || lower.contains("reach"))
     {
         QuestionOperation::SelfAssessment
-    } else if lower.starts_with("should i ")
+    } else if (lower.starts_with("should i ")
         || lower.starts_with("should we ")
         || lower.starts_with("is it worth ")
-        || lower.starts_with("would it make sense ")
+        || lower.starts_with("would it make sense "))
+        && [
+            "business", "company", "startup", "product", "service", "career", "job", "invest",
+            "purchase", "buy ", "quit ", "launch ",
+        ]
+        .iter()
+        .any(|marker| lower.contains(marker))
     {
         QuestionOperation::DecisionSupport
     } else if (lower.contains("geometry") || lower.contains("shape"))
@@ -1003,6 +1066,34 @@ mod tests {
     }
 
     #[test]
+    fn independent_subject_change_starts_a_new_thread() {
+        let recent = vec![(
+            "What is the difference between memory and learning?".to_owned(),
+            "Memory retains state; learning changes future performance.".to_owned(),
+        )];
+        let state = DialogueWorkspace::derive("Why rotate activation outliers?", &recent);
+        assert_eq!(state.continuity, Continuity::NewThread);
+        assert!(state.prior_claim.is_none());
+        assert!(!state.is_follow_up());
+    }
+
+    #[test]
+    fn shared_subject_and_explicit_continuation_preserve_thread() {
+        let recent = vec![(
+            "How should the system test paraphrase transfer?".to_owned(),
+            "Use held-out surface forms with the same relation.".to_owned(),
+        )];
+        let shared =
+            DialogueWorkspace::derive("What would make paraphrase transfer fail?", &recent);
+        assert_eq!(shared.continuity, Continuity::Threaded);
+        assert!(shared.prior_claim.is_some());
+
+        let deeper = DialogueWorkspace::derive("Go deeper", &recent);
+        assert_eq!(deeper.continuity, Continuity::Referential);
+        assert!(deeper.prior_claim.is_some());
+    }
+
+    #[test]
     fn workspace_abstains_on_unknown_tokens() {
         let state = DialogueWorkspace::derive("zxqv blorf nembit — what does this mean?", &[]);
         assert_eq!(state.uncertainty, UncertaintyPosture::OutOfDistribution);
@@ -1139,6 +1230,13 @@ mod tests {
         let repaired = state.repair_for(user, "wrong", &critique);
         assert!(repaired.contains("business"));
         assert!(repaired.contains("potential customers"));
+    }
+
+    #[test]
+    fn epistemic_should_question_is_not_business_decision_support() {
+        let state =
+            DialogueWorkspace::derive("Should I trust an answer because it sounds natural?", &[]);
+        assert_eq!(state.question.operation, QuestionOperation::General);
     }
 
     #[test]

@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.11.2-8b0000?style=for-the-badge">
+  <img alt="Software" src="https://img.shields.io/badge/software-v0.11.6-8b0000?style=for-the-badge">
   <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
   <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
   <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
@@ -85,11 +85,11 @@ Chat stays clean. Inspect with `/think`, `/field`, `/trace`. Style with `/concis
 
 ## Measured status (keep this current)
 
-Snapshot from sealed receipts on **v0.11.2** (2026-07-23). Re-run gates after material changes; do not treat this table as forever-true without receipts.
+Snapshot from sealed receipts on **v0.11.7** (2026-08-20). Re-run gates after material changes; do not treat this table as forever-true without receipts.
 
 | Gate | Result | How to refresh |
 |------|--------|----------------|
-| **Hardness pack** | **139 / 139 PASS** | `python scripts/evaluate_hardness.py` |
+| **Hardness pack** | **176 / 176 PASS** | `python scripts/evaluate_hardness.py` |
 | **Dialogue regression** | **159 / 159 PASS** | `python scripts/evaluate_dialogue_v4.py` |
 | **Transfer suite** | **16 / 16** + SoftCascade **7 / 7** | `perci transfer-suite` |
 | **BRPC control receipt** | \(C \approx 0.90\), **H7 within_band** | `python scripts/brpc_perci_receipt.py` |
@@ -105,7 +105,7 @@ Packaged runtime artifacts (Git LFS):
 
 | Property | Value |
 |----------|------:|
-| Software | **v0.11.2** (`Cargo.toml` · badge auto-stamped) |
+| Software | **v0.11.6** (`Cargo.toml` · badge auto-stamped) |
 | Format | **PERCIW03** |
 | Size | ~**200 MiB** (209,710,296 bytes) |
 | Prototypes | **403,163** |
@@ -365,6 +365,312 @@ autonomous learning, consciousness, or open-ended generation. The next
 bottleneck is compositional realization: synthesizing a new answer from
 multiple retrieved semantic cards rather than selecting one reviewed response.
 
+### 2026-07-26 typed semantic self-model (v0.11.5)
+
+The v0.11.4 relation field could execute explicit propositions, but the
+100-question broad probe exposed a different bottleneck: when no specialist
+operator owned a technical explanation, Bitwork found a broad neighborhood and
+the speech layer filled the missing proposition structure with generic cards.
+The baseline contained generic-shell markers in **63/100** answers
+(95 total marker hits) and took 146.2 seconds.
+
+`PERCISMF1` (`src/self_model_field.rs`) adds a compact semantic self-model. Each
+card stores four distinct roles:
+
+\[
+K_i=(D_i,M_i,B_i,T_i),
+\]
+
+where \(D\) is definition, \(M\) mechanism, \(B\) boundary, and \(T\) a
+discriminating test. The renderer selects roles from the requested operation:
+definition, explanation, comparison, or test. It therefore composes from typed
+knowledge instead of mapping whole prompts to reviewed answers.
+
+This iteration also tightened adjacent fields:
+
+- dialogue history enters the active field only after an explicit referent,
+  continuation act, or meaningful subject overlap;
+- `PERCIREL2` now transfers across relation paraphrases such as `relies on`,
+  `needs`, `leads to`, `blocks`, and `protects`, plus intervention forms such
+  as `breaks`, `degrades`, and `is unavailable`;
+- invariant selection now uses the full multi-hop affected closure, preventing
+  an upstream dependency from being mislabeled invariant;
+- quoted requests such as “What is a good response to ‘tell me more’?” are
+  interpreted as dialogue examples rather than performed as live dialogue
+  acts.
+
+The final full replay reduced shell-contaminated broad-probe answers from
+**63/100 to 0/100**, marker hits from **95 to 0**, and runtime from **146.2 to
+68.0 seconds**.
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **482/482 PASS** |
+| Broad dialogue probe | **100/100 clean** under the declared marker audit |
+| Dialogue regression | **159/159 PASS** |
+| Hardness, including H151–H161 | **161/161 PASS** |
+
+Receipts:
+[`broad comparison`](models/candidates/probe-100-v0.11.5-summary.json),
+[`dialogue`](models/candidates/dialogue-v0.11.5-self-model-v2.json), and
+[`hardness`](models/candidates/hardness-v0.11.5-self-model-v3.json).
+The rejected intermediate hardness receipts
+([`156/161`](models/candidates/hardness-v0.11.5-self-model-v1.json) and
+[`160/161`](models/candidates/hardness-v0.11.5-self-model-v2.json)) remain
+available as evidence of the repair path.
+
+This is an operational self-model, not subjective self-awareness. It describes
+declared runtime behavior and gives Perci proposition structure it can explain
+and test.
+
+### 2026-07-27 live referent coherence (v0.11.6)
+
+The v0.11.5 broad probe removed declared generic-shell markers from isolated
+questions, but a live conversation exposed a narrower failure: Perci could
+answer each topic separately while losing the *operation applied to the prior
+turn*. “Do you notice a change?” was treated as a general association,
+“Is your language generation improving?” as cross-domain synthesis, and
+“Is this automated?” lost its learning referent.
+
+v0.11.6 adds typed progress and automation acts at the pre-generation boundary:
+
+\[
+\operatorname{TurnMeaning}
+=
+(\operatorname{subject},
+\operatorname{operation},
+\operatorname{referent},
+\operatorname{authority}).
+\]
+
+The prior turn enters the response field only when the current operation
+requires it. Progress questions compare behavior, automation questions inherit
+the active process, scoped memory questions remain scoped, and Cortex access
+questions lead with the capability boundary instead of internal ticket
+telemetry. Explicit reasoning criticism now asks which relation failed rather
+than producing a malformed “I’m tracking…” binder.
+
+The first broad gate correctly rejected an over-wide style preemption:
+**165/167 HOLD**. Narrowing ownership to explicit reasoning criticism restored
+the two stolen transfer and epistemic-trust cases.
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **485/485 PASS** |
+| Dialogue regression | **159/159 PASS** |
+| Hardness, including H162–H167 | **167/167 PASS** |
+
+Receipts:
+[`rejected hardness candidate`](models/candidates/hardness-v0.11.6-live-coherence-v1.json),
+[`final hardness`](models/candidates/hardness-v0.11.6-live-coherence-v3.json),
+and
+[`dialogue`](models/candidates/dialogue-v0.11.6-live-coherence-v2.json).
+
+This is improved multi-turn proposition binding, not evidence of consciousness
+or unrestricted intelligence.
+
+### 2026-08-20 open relation transfer (v0.11.7)
+
+v0.11.6 could execute an explicit graph, but only when the prompt used the
+current infix table (`depends on`, `relies on`, `needs`). Unseen nouns plus
+slightly different syntax fell through to SoftCascade. v0.11.7 keeps
+`PERCIREL2` closed-world and fail-closed; it widens extraction, not the act
+table.
+
+Added lemma and syntax patterns:
+
+- `hinges on` / `rests on` / `is grounded in` / `is based on` → `DependsOn`
+- `without X, Y` → `Y Requires X`
+- `X is required for Y` / `X is preserved by Y` → subject/object flip
+- `if X is present, Y can…` → `X Enables Y` (status `is` edges are not premises)
+- interventions: `drops`, `is gone`, `is missing`
+- a short follow-up (`what still holds?`, `and if X fails too?`) reuses the
+  prior graph instead of restating premises
+
+The first hardness candidate was **174/176 HOLD**: consecutive relation
+programs share a sentence skeleton, and the workspace repeat critic collapsed
+H170. The repair preserves `relation-field-counterfactual` answers; it does
+not add a dialogue act. Ordinary “what is the relationship between…?” still
+does not execute.
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **494/494 PASS** |
+| Hardness, including H168–H176 | **176/176 PASS** |
+| Dialogue regression | **159/159 PASS** |
+| Weight promote | **HOLD** (PERCIW03 unchanged) |
+
+Receipts:
+[`rejected hardness candidate`](models/candidates/hardness-v0.11.7-relation-transfer-v1.json),
+[`final hardness`](models/candidates/hardness-v0.11.7-relation-transfer-v2.json),
+and
+[`dialogue`](models/candidates/dialogue-v0.11.7-relation-transfer-v1.json).
+
+This is still bounded extraction over supplied premises, not learned
+open-domain NLU. The next bottleneck is composing answers from retrieved
+relation cards when the prompt never states the edges.
+
+### 2026-07-26 executable relation field (v0.11.4)
+
+v0.11.3 could select a composition that preserved several concepts, but the
+relations were still mostly descriptive. v0.11.4 adds `PERCIREL2`
+(`src/relation_field.rs`): a transient, typed proposition graph that can execute
+local counterfactuals without loading another model.
+
+\[
+G=(V,E^+,E^-),\qquad
+e=(subject,\ relation,\ object,\ polarity).
+\]
+
+Supported relations include `depends_on`, `requires`, `supports`, `enables`,
+`causes`, `prevents`, `preserves`, `constrains`, `changes`, `implies`, and
+`is_a`. Given an intervention on node \(x\), affected state propagates only
+along declared edge direction:
+
+\[
+A_0=\{x\},
+\]
+
+\[
+A_{t+1}=A_t
+\cup\{s:(s,\mathrm{depends\_on},o)\land o\in A_t\}
+\cup\{o:(s,r,o)\land s\in A_t\land r\in R_{\rightarrow}\}.
+\]
+
+Here \(R_{\rightarrow}\) contains forward support pathways such as `causes`,
+`enables`, `supports`, `prevents`, `preserves`, and `implies`. Edges outside the
+closure remain invariant. If the intervention touches no supplied edge, Perci
+reports that no conclusion follows instead of inventing a causal bridge.
+Positive and negative versions of the same edge create explicit contradiction
+tension rather than being averaged into fluent prose.
+
+The engineering “resonance” score is:
+
+\[
+\rho_{\mathrm{rel}}
+=
+H(C_{\mathrm{nodes}},C_{\mathrm{edges}},F_{\mathrm{operation}})
+\cdot \exp(-\tau_{\mathrm{contradiction}}),
+\]
+
+where \(H\) is the harmonic mean. When a relational program is active,
+PERCICOMP1 adds \(0.10\rho_{\mathrm{rel}}\) to candidate ranking and rejects
+surface candidates below the relational threshold. “Resonance” therefore
+means alignment among named nodes, typed edges, and the requested operation. It
+is not a biological frequency, subjective state, consciousness, or proof of a
+mind.
+
+The live repair loop demonstrated:
+
+- one-hop dependency failure with an unrelated invariant;
+- two-hop `evidence → verification → trust` propagation;
+- no-path refusal for an unrelated latency intervention;
+- signed contradiction disclosure;
+- localized removal of a checksum preservation path.
+
+The first expanded release gate was intentionally held at **149/150** because
+the response repeated a forbidden global-collapse phrase while negating it.
+The repaired wording states the positive invariant instead: affected edges lose
+support; unrelated premises remain intact.
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **471/471 PASS** |
+| Dialogue regression | **159/159 PASS** |
+| Hardness, including H146–H150 | **150/150 PASS** |
+| Rejected intermediate hardness | **149/150 HOLD** retained |
+
+Receipts:
+[`dialogue`](models/candidates/dialogue-v0.11.4-relation-v1.json),
+[`final hardness`](models/candidates/hardness-v0.11.4-relation-v2.json), and
+[`rejected hardness`](models/candidates/hardness-v0.11.4-relation-v1.json).
+
+This moves Perci from coherent expression toward executable coherent
+reasoning. The field remains closed over supplied premises; it does not silently
+convert linguistic associations into external facts.
+
+### 2026-07-26 compositional coherence beam (v0.11.3)
+
+Perci previously had the necessary pieces in separate lanes: Bitwork concept
+mixtures, typed question frames, discourse roles, a fluent rewrite, and the
+PERCICTX1 observer metric. The missing operation was selection across those
+pieces. The first acceptable sentence could end a turn before another candidate
+preserved the subject or relation more faithfully.
+
+`PERCICOMP1` (`src/coherent_compose.rs`) adds a bounded composition beam for the
+open associative lane:
+
+```text
+intent + dialogue context + question frame
+  + compatible Bitwork semantic cards
+  → claim / mechanism / boundary micro-plan
+  → alternate surface realizations
+  → PERCICTX1 observer score + question-frame critique
+  → best valid candidate or abstention
+```
+
+Cards may compose only when they retain a specific user subject and share a
+content relation, or when an explicit cross-domain request supplies the bridge.
+Generic tokens such as `system` cannot create an edge. The interlock is:
+
+\[
+\Gamma_{ij}
+=
+\mathbf{1}[\text{specific shared relation}]
+\;\lor\;
+\mathbf{1}[\text{explicit bridge}\land c_i\!\sim u\land c_j\!\sim u],
+\]
+
+\[
+S(y)
+=
+Q_{\mathrm{observer}}(y)
++0.12B_{\mathrm{subject}}
++0.08B_{\mathrm{relation}}
+-0.07\,|\mathrm{critic\ flags}|.
+\]
+
+`Q_observer` remains the harmonic six-factor metric, so fluency cannot
+compensate for lost context, wrong operation, weak viability, broken geometry,
+or uncalibrated uncertainty. Hard failures (`semantic_subject_miss`,
+`operation_fit_miss`, OOD without abstention) remove a candidate rather than
+merely lowering its average.
+
+The live loop exposed and repaired five adjacent ownership gaps: fluency versus
+accuracy, retrieval versus composition, natural language versus epistemic
+trust, memory-driven identity change, and three-way map/promise/checksum
+composition. A punctuated synthesis replay also found an instruction-tail
+parser defect (`without pretending…` became pseudo-domains); the parser now
+cuts that tail before domain extraction.
+
+Authority remains:
+
+```text
+exact tools / governed boundaries
+  → first-class reasoning operators
+  → reviewed PERCDLG1 fallback
+  → bounded PERCICOMP1 proposal + open associative candidates
+  → observer beam
+  → question-frame critic and repair
+```
+
+| Gate | Result |
+|------|-------:|
+| Rust library tests | **464/464 PASS** |
+| Dialogue regression | **159/159 PASS** |
+| Hardness, including H140–H145 | **145/145 PASS** |
+| Package verification | six active artifacts hash-verified |
+| Live replay | six original composition failures repaired |
+
+Receipts:
+[`dialogue`](models/candidates/dialogue-v0.11.3-composition-v2.json) and
+[`hardness`](models/candidates/hardness-v0.11.3-composition-v2.json).
+
+This is movement toward an engineering coherence threshold: better
+relation-sensitive composition under measured gates. It is not proof of global
+understanding, frontier parity, autonomous weight learning, awareness, or
+sentience.
+
 ### 2026-07-23 threshold evolution — coherence interlock (v0.11.2)
 
 A live replay exposed three different failures behind the same symptom:
@@ -470,6 +776,10 @@ One chart — detail lives in git commits and `docs/`, not repeated essays.
 | **0.11.0** | **Observer-aligned candidate evolution** | Six-factor dialogue observer, progression penalty, 16-walk native beam, operation-aware selection, template anti-collapse, 100/1,000-probe receipts, and isolated candidate training | Production promotion remains held until broad independent gates win |
 | **0.11.1** | **Factorized dialogue lattice** | Paired dialogue supervision, factorized phrase experts, and a 21 KiB PERCDLG1 operation × subject precision lane with abstention | Operation **6/24 → 14/24**; continuity **3/12 → 4/12**; fresh broad probe did not regress |
 | **0.11.2** | **Coherence interlock** | Typed question frames, subject/operation answer contracts, operator-first authority, scoped ambiguity, and stale-context precedence repair | **458** tests; dialogue **159/159**; hardness **139/139** |
+| **0.11.3** | **Compositional coherence beam** | PERCICOMP1 relation-gated semantic cards, observer-ranked realizations, hard subject/operation rejection, and five adjacent ownership repairs | **464** tests; dialogue **159/159**; hardness **145/145** |
+| **0.11.4** | **Executable relation field** | PERCIREL2 signed typed edges, local interventions, multi-hop dependency propagation, no-path refusal, and relation-resonance candidate gating | **471** tests; dialogue **159/159**; hardness **150/150** |
+| **0.11.5** | **Typed semantic self-model** | PERCISMF1 definition/mechanism/boundary/test cards, topic-reset geometry, quoted-act interpretation, relation paraphrase transfer, and closure-correct invariants | **482** tests; broad **100/100** clean; dialogue **159/159**; hardness **161/161** |
+| **0.11.6** | **Live referent coherence** | Typed progress and automation operations, scoped knowledge inventory, direct Cortex capability boundary, and narrow reasoning-feedback ownership | **485** tests; dialogue **159/159**; hardness **167/167** |
 
 ### Governed 100-question probe
 
@@ -751,5 +1061,5 @@ See [`docs/LOCAL_AGI_ROADMAP.md`](docs/LOCAL_AGI_ROADMAP.md).
 <p align="center">
   <img src="assets/icons/perci-darkblood-mark.jpg" width="72" height="72" alt="Perci">
   <br>
-  <sub>PERCI · dark-blood · governed sparse cognition · v0.11.2</sub>
+  <sub>PERCI · dark-blood · governed sparse cognition · v0.11.6</sub>
 </p>

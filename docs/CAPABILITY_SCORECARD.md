@@ -1,8 +1,8 @@
 # Perci capability scorecard
 
-_Generated 2026-07-22T14:34:12.698656+00:00_
+_Generated 2026-08-21T04:32:07.343253+00:00_
 
-**Overall status:** `OPERATIONAL_CANDIDATE`
+**Overall status:** `PASS_WITH_STALE_LIVE`
 
 Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.
 
@@ -10,7 +10,7 @@ Perci improves when a named capability fails a hardness case, is repaired at the
 
 | Gate | Status | Passed | Cases |
 |------|--------|--------|-------|
-| hardness | PASS | 136 | 136 |
+| hardness | PASS | 176 | 176 |
 | dialogue | PASS | 159 | 159 |
 | observer_context | PASS | 12 | 12 |
 
@@ -27,20 +27,21 @@ Perci improves when a named capability fails a hardness case, is repaired at the
 | `governed_learning_loop` | pipeline | green | 15/15 | maintain with harder transfer variants |
 | `binary_freshness` | pipeline | unmeasured | - | run evaluate_hardness.py |
 | `geometry_speech` | operator | green | 3/3 | maintain with harder transfer variants |
+| `open_relation_transfer` | operator | green | 9/9 | maintain with harder transfer variants |
 
 ## Binary freshness
 
-- Status: `live_current_or_newer`
-- Live mtime: 2026-07-22T14:34:04.563062+00:00
-- Release mtime: 2026-07-22T14:27:01.064626+00:00
-- Release ahead (s): -423.5
+- Status: `stale_live`
+- Live mtime: 2026-08-10T13:59:04.219955+00:00
+- Release mtime: 2026-08-21T04:28:21.769120+00:00
+- Release ahead (s): 916157.5
 
 ## Learning queue
 
-- Interaction events: 21140
-- Pending review events: 21138
-- Review queue: 2420 (approved=20, folded=20)
+- Interaction events: 24428
+- Pending review events: 24426
+- Review queue: 2626 (approved=20, folded=20)
 
 ## Recommended next
 
-- Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl
+- Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass.

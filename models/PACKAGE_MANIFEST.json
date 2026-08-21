@@ -1,6 +1,6 @@
 {
   "schema": "perci.package-manifest.v1",
-  "package_version": "0.11.2",
+  "package_version": "0.11.6",
   "lfs_required": true,
   "description": "Runtime weights and native language fields required for a complete Perci checkout.",
   "artifacts": [

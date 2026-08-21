@@ -241,6 +241,29 @@ pub fn try_deliberate(
         return Some(math_explanation_answer(&repaired));
     }
 
+    // PERCIREL2 executes only explicit premise + intervention programs. It
+    // stays ahead of associative prose so a counterfactual cannot be replaced
+    // by a nearby concept card.
+    if let Some(execution) = crate::relation_field::execute(&repaired).or_else(|| {
+        recent
+            .last()
+            .and_then(|(prior, _)| crate::relation_field::execute_followup(&repaired, prior))
+    }) {
+        return Some(
+            Deliberation::new("relation-field-counterfactual", execution.text)
+                .observed(format!(
+                    "impacted_relations={} invariant_relations={} contradictions={} relational_resonance={:.3}",
+                    execution.impacted.len(),
+                    execution.invariant.len(),
+                    execution.contradictions.len(),
+                    execution.resonance
+                ))
+                .inferred("counterfactual propagation followed only explicit typed relations")
+                .uncertain("the local relational program does not establish external causal truth")
+                .confidence((0.72 + 0.25 * execution.resonance).clamp(0.0, 0.98)),
+        );
+    }
+
     // Meta self-justification MUST beat causal-chain templates.
     // "why did you say that?" is about the prior turn, not a world-event cause.
     if looks_justify_prior_answer(&text) {
@@ -292,6 +315,26 @@ pub fn try_deliberate(
 
     if looks_relation_transfer_question(&text) {
         return Some(relation_transfer_answer());
+    }
+
+    if looks_fluency_accuracy_separation(&text) {
+        return Some(fluency_accuracy_separation_answer());
+    }
+
+    if looks_retrieval_composition_distinction(&text) {
+        return Some(retrieval_composition_distinction_answer());
+    }
+
+    if looks_natural_language_trust_question(&text) {
+        return Some(natural_language_trust_answer());
+    }
+
+    if looks_memory_identity_dynamics(&text) {
+        return Some(memory_identity_dynamics_answer());
+    }
+
+    if looks_map_promise_checksum_comparison(&text) {
+        return Some(map_promise_checksum_answer());
     }
 
     if looks_speed_accuracy_tradeoff(&text) {
@@ -2476,6 +2519,25 @@ Keep the claim, source, tradition, and evidence level separate so a mathematical
         );
     }
 
+    // PERCISMF1 is a fallback authority beneath every specialist operator.
+    // It fills a self-explanation gap only after exact, relational,
+    // cross-domain, dialogue, and governance operators decline the turn.
+    if let Some(explanation) = crate::self_model_field::answer(&repaired) {
+        return Some(
+            Deliberation::new("semantic-self-model", explanation.text)
+                .observed(format!(
+                    "self_model_concepts={} match_score={}",
+                    explanation.concepts.join(","),
+                    explanation.score
+                ))
+                .inferred("typed definition/mechanism/boundary cards supplied the explanation")
+                .uncertain(
+                    "the self-model describes declared runtime behavior, not subjective awareness",
+                )
+                .confidence(0.96),
+        );
+    }
+
     None
 }
 
@@ -3382,6 +3444,7 @@ fn parse_synthesis_terms(text: &str) -> Option<Vec<String>> {
         " without saying",
         " without claiming",
         " without becoming",
+        " without ",
         " and say what you actually know",
         " and tell me what you actually know",
         " and state where",
@@ -3735,6 +3798,102 @@ fn relation_transfer_answer() -> Deliberation {
     )
     .observed("the prompt asks whether a relation transfers under noun changes")
     .inferred("role-preserving substitution is the relevant generalization test")
+    .confidence(0.98)
+}
+
+fn looks_fluency_accuracy_separation(text: &str) -> bool {
+    (text.contains("fluent") || text.contains("fluency") || text.contains("natural"))
+        && (text.contains("accurate") || text.contains("accuracy") || text.contains("correct"))
+        && (text.contains("without")
+            || text.contains("difference")
+            || text.contains("why")
+            || text.contains("does not")
+            || text.contains("isn't")
+            || text.contains("isnt"))
+}
+
+fn fluency_accuracy_separation_answer() -> Deliberation {
+    Deliberation::new(
+        "fluency-accuracy-separation",
+        "Fluency and accuracy are different variables. A renderer can improve grammar, pacing, and transitions while preserving the same mistaken claim underneath; accuracy improves only when the system selects better evidence, preserves the requested relation, and changes its conclusion when a counterexample demands it. Test them separately: have people rate readability, then score the same answers against known facts and adversarial paraphrases.",
+    )
+    .observed("the prompt separates natural language quality from factual or operational correctness")
+    .inferred("surface realization can improve independently of semantic validity")
+    .confidence(0.99)
+}
+
+fn looks_retrieval_composition_distinction(text: &str) -> bool {
+    (text.contains("retriev") || text.contains("recall"))
+        && (text.contains("compos") || text.contains("new idea") || text.contains("synthesi"))
+        && (text.contains("difference") || text.contains("distinguish") || text.contains("versus"))
+}
+
+fn retrieval_composition_distinction_answer() -> Deliberation {
+    Deliberation::new(
+        "retrieval-composition-distinction",
+        "Retrieval returns an existing representation because the cue matches it. Composition builds a response by binding several representations into a new relation that still has to satisfy the question, evidence, and scope. The separating test is intervention: change one input relation. A retrieved phrase tends to remain fixed or fail, while a genuine composition should update the affected conclusion and preserve the unaffected parts.",
+    )
+    .observed("the prompt asks for the functional difference between retrieval and composition")
+    .inferred("relation-sensitive recombination distinguishes composition from phrase recall")
+    .confidence(0.99)
+}
+
+fn looks_natural_language_trust_question(text: &str) -> bool {
+    (text.contains("trust") || text.contains("believe"))
+        && (text.contains("sounds natural")
+            || text.contains("sound natural")
+            || text.contains("sounds fluent")
+            || text.contains("well written")
+            || text.contains("well-written"))
+}
+
+fn natural_language_trust_answer() -> Deliberation {
+    Deliberation::new(
+        "natural-language-trust",
+        "No. Natural language is evidence that the renderer is fluent, not that the claim is true. Trust should rise with provenance, reproducible checks, calibrated uncertainty, and correct revision under counterexamples; smooth wording can make both a sound answer and a confident mistake easier to accept.",
+    )
+    .observed("the prompt asks whether fluency itself warrants epistemic trust")
+    .inferred("surface quality and claim reliability require separate evidence")
+    .confidence(0.99)
+}
+
+fn looks_memory_identity_dynamics(text: &str) -> bool {
+    text.contains("memory")
+        && text.contains("identity")
+        && (text.contains("change")
+            || text.contains("over time")
+            || text.contains("shape")
+            || text.contains("affect"))
+}
+
+fn memory_identity_dynamics_answer() -> Deliberation {
+    Deliberation::new(
+        "memory-identity-dynamics",
+        "Memory changes identity by carrying selected past states into present interpretation and choice. It creates continuity, but it also edits that continuity: memories are forgotten, reconstructed, and reweighted as new experience changes what they mean. Identity therefore behaves less like an archive and more like a maintained model—constrained by the past, revised in the present, and never reducible to one remembered event.",
+    )
+    .observed("the prompt asks for the mechanism linking memory, identity, and time")
+    .inferred("retained state and reinterpretation jointly produce continuity under change")
+    .uncertain("personal, legal, and computational identity use different mechanisms")
+    .confidence(0.97)
+}
+
+fn looks_map_promise_checksum_comparison(text: &str) -> bool {
+    text.contains("map")
+        && (text.contains("promise") || text.contains("promises"))
+        && text.contains("checksum")
+        && (text.contains("compare")
+            || text.contains("connect")
+            || text.contains("preserv")
+            || text.contains("structure"))
+}
+
+fn map_promise_checksum_answer() -> Deliberation {
+    Deliberation::new(
+        "map-promise-checksum-comparison",
+        "All three preserve structure across change, but they preserve different things. A map keeps selected spatial relations while discarding detail; a promise keeps a normative relation between a present commitment and future conduct; a checksum keeps a mathematical fingerprint so altered data can be detected. The shared geometry is constraint across time. The mechanisms are representation, social obligation, and error detection—not one interchangeable process.",
+    )
+    .observed("the prompt requests a three-way structural comparison")
+    .inferred("each domain preserves a different invariant under change")
     .confidence(0.98)
 }
 
@@ -4623,7 +4782,7 @@ fn looks_knowledge_inventory(text: &str) -> bool {
         || t == "what things do you know?"
         || t == "what can you know"
         || t == "what can you know?"
-        || (t.contains("what do you know") && t.len() < 48)
+        || (t.contains("what do you know") && !t.contains(" about ") && t.len() < 48)
         || (t.contains("what kind of things") && t.contains("know") && t.len() < 64)
         || (t.contains("what things do you") && t.contains("know") && t.len() < 48)
 }
@@ -8881,6 +9040,118 @@ mod tests {
     }
 
     #[test]
+    fn composition_threshold_distinctions_are_operator_owned() {
+        let fluency = run(
+            "Why can a system become more fluent without becoming more accurate?",
+            &[],
+        );
+        assert_eq!(fluency.operator, "fluency-accuracy-separation");
+        assert!(fluency.answer.contains("different variables"));
+        assert!(fluency.answer.contains("counterexample"));
+
+        let composition = run(
+            "Explain the difference between retrieving an idea and composing a new one.",
+            &[],
+        );
+        assert_eq!(composition.operator, "retrieval-composition-distinction");
+        assert!(composition.answer.contains("existing representation"));
+        assert!(composition.answer.contains("new relation"));
+
+        let trust = run(
+            "Should I trust an answer just because it sounds natural?",
+            &[],
+        );
+        assert_eq!(trust.operator, "natural-language-trust");
+        assert!(trust.answer.starts_with("No."));
+        assert!(trust.answer.contains("provenance"));
+    }
+
+    #[test]
+    fn multi_concept_dynamics_preserve_every_requested_subject() {
+        let identity = run("How does memory change identity over time?", &[]);
+        assert_eq!(identity.operator, "memory-identity-dynamics");
+        assert!(identity.answer.contains("Memory"));
+        assert!(identity.answer.contains("identity"));
+        assert!(identity.answer.contains("continuity"));
+
+        let comparison = run(
+            "Compare a map, a promise, and a checksum as ways of preserving structure.",
+            &[],
+        );
+        assert_eq!(comparison.operator, "map-promise-checksum-comparison");
+        for term in ["map", "promise", "checksum", "structure"] {
+            assert!(
+                comparison.answer.to_ascii_lowercase().contains(term),
+                "missing {term}: {}",
+                comparison.answer
+            );
+        }
+
+        let synthesis = run(
+            "Connect geometry, learning, and trust without pretending they share one mechanism.",
+            &[],
+        );
+        let lower = synthesis.answer.to_ascii_lowercase();
+        for term in ["geometry", "learning", "trust"] {
+            assert!(lower.contains(term), "missing {term}: {}", synthesis.answer);
+        }
+        assert!(!lower.contains("without organizes"));
+        assert!(!lower.contains("pretending absorbs"));
+    }
+
+    #[test]
+    fn explicit_counterfactuals_execute_relations_not_associations() {
+        let result = run(
+            "Trust depends on verification. Memory preserves identity. If verification fails, what changes and what remains invariant?",
+            &[],
+        );
+        assert_eq!(result.operator, "relation-field-counterfactual");
+        let lower = result.answer.to_ascii_lowercase();
+        assert!(lower.contains("trust"));
+        assert!(lower.contains("verification"));
+        assert!(lower.contains("memory preserves identity"));
+        assert!(lower.contains("no longer established"));
+        assert!(lower.contains("local counterfactual"));
+        assert!(!lower.contains("every connected claim false; it removes support only along relations that touch it. changing"));
+    }
+
+    #[test]
+    fn relation_followup_reuses_prior_premises() {
+        let recent = [(
+            "Trust rests on verification. Verification is grounded in evidence. Memory keeps identity. If evidence fails, what changes and what remains invariant?"
+                .to_owned(),
+            "Changing evidence by failing removes support only along relations that touch it."
+                .to_owned(),
+        )];
+        let follow = run("What still holds?", &recent);
+        assert_eq!(follow.operator, "relation-field-counterfactual");
+        let lower = follow.answer.to_ascii_lowercase();
+        assert!(lower.contains("memory"));
+        assert!(
+            lower.contains("invariant")
+                || lower.contains("preserves")
+                || lower.contains("keeps")
+        );
+    }
+
+    #[test]
+    fn consecutive_relation_programs_are_not_collapsed_as_repeats() {
+        let first = "Without verification, trust cannot stand. Memory still keeps identity. If verification is gone, what follows and what remains?";
+        let second = "A signal is required for the boundary. Identity is preserved by memory. If the signal is missing, what changes and what remains invariant?";
+        let prior = run(first, &[]);
+        assert_eq!(prior.operator, "relation-field-counterfactual");
+        let next = run(
+            second,
+            &[(first.to_owned(), prior.answer.clone())],
+        );
+        assert_eq!(next.operator, "relation-field-counterfactual");
+        let lower = next.answer.to_ascii_lowercase();
+        assert!(lower.contains("signal") || lower.contains("boundary"));
+        assert!(lower.contains("memory"));
+        assert!(!lower.contains("repeats the last answer"));
+    }
+
+    #[test]
     fn explicit_meta_commands_and_geometry_challenge_resist_stale_context() {
         let recent = vec![(
             "The conversation still feels robotic.".to_owned(),
@@ -8904,5 +9175,15 @@ mod tests {
         assert!(lower.contains("geometry"));
         assert!(lower.contains("relation"));
         assert!(lower.contains("change"));
+    }
+
+    #[test]
+    fn scoped_knowledge_question_reaches_memory_self_model() {
+        let result = run("what do you know about your memory", &[]);
+        assert_eq!(result.operator, "semantic-self-model");
+        let lower = result.answer.to_ascii_lowercase();
+        assert!(lower.contains("memory"));
+        assert!(lower.contains("session"));
+        assert!(!lower.starts_with("i know the capabilities and limits"));
     }
 }

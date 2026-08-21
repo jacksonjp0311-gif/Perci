@@ -89,9 +89,11 @@ governed weight policy.
 
 The active pack is `models/perci-cognitive-v0.3.pwgt` (`PERCIW03`): 209,710,296
 bytes (199.995 MiB), 403,163 unique 4,096-bit prototypes, 16 domains, and 124
-weight-resident concepts. Runtime software is **v0.11.2** (observer-aligned,
+weight-resident concepts. Runtime software is **v0.11.7** (observer-aligned,
 operation-aware, factorized dialogue,
-anti-collapse semantic-fit gating,
+anti-collapse semantic-fit gating, bounded compositional beam,
+executable relation field and counterfactual propagation,
+typed multi-turn progress and automation referents,
 dual residual stream, VSA composition, Willshaw concept HVs, session CTX bind).
 See [`docs/TRANSFORMER_BRIDGE.md`](docs/TRANSFORMER_BRIDGE.md),
 [`docs/BITWORK_MATH_PATH.md`](docs/BITWORK_MATH_PATH.md), and

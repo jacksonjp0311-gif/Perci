@@ -1,0 +1,46 @@
+{
+  "schema": "perci.broad-probe-comparison.v1",
+  "version": "0.11.5",
+  "evaluated_at_local_date": "2026-07-26",
+  "marker_policy": {
+    "description": "Count an answer when it contains any declared generic-shell or unrelated stock-card marker.",
+    "markers": [
+      "I'll stay concrete",
+      "That is the cleanest answer",
+      "That keeps the answer anchored",
+      "What's the claim we can check",
+      "Carrying that thread forward",
+      "I'm tracking",
+      "Back to your question",
+      "I don't have a grounded line",
+      "death gives living choices",
+      "Behavioral complexity is observable",
+      "meaning can be neither purely discovered"
+    ]
+  },
+  "baseline": {
+    "version": "0.11.4",
+    "questions": 100,
+    "shell_contaminated_answers": 63,
+    "marker_hits": 95,
+    "elapsed_seconds": 146.2,
+    "manifest_sha256": "33e1463fabced3c757d780ffa4804cb20ec0e52923fcba50da396aa481af2133",
+    "transcript_sha256": "061eca93ad7a57d46f65f1e2a1a59788bff8ddc8750d379d652ff9b2223ff4c7"
+  },
+  "candidate": {
+    "version": "0.11.5",
+    "questions": 100,
+    "shell_contaminated_answers": 0,
+    "marker_hits": 0,
+    "elapsed_seconds": 68.0,
+    "manifest_sha256": "215b98a924969dce90f5ba153812527a6f5c7e6e82ab418856a1ba2d1de71d41",
+    "transcript_sha256": "819150ea7943792a81d0f665a0ea189efb1014c0d8251a3ccd68e81ade6f17a3",
+    "runtime_sha256": "65d573d10e81ba55a6d6c1f27637b8f5b92240525848280a58b44202bb6b21e5"
+  },
+  "automatic_promotion": false,
+  "limitations": [
+    "The marker audit measures known shell contamination, not general intelligence.",
+    "The 100 questions emphasize Perci self-model and dialogue engineering.",
+    "Independent dialogue and hardness receipts remain required."
+  ]
+}

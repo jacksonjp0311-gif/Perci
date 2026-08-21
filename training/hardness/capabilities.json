@@ -218,6 +218,35 @@
         "consciousness_from_mass",
         "max_coherence_worship"
       ]
+    },
+    {
+      "id": "open_relation_transfer",
+      "name": "Open-domain relation transfer",
+      "description": "Extract typed subject-relation-object graphs from paraphrased wording and unseen nouns, then execute a named intervention without adding a new dialogue act.",
+      "primary_layer": "operator",
+      "hardness_ids": [
+        "H168",
+        "H169",
+        "H170",
+        "H171",
+        "H172",
+        "H173",
+        "H174",
+        "H175",
+        "H176"
+      ],
+      "success_criteria": [
+        "preserves novel entity names",
+        "propagates only along extracted edges",
+        "refuses a causal bridge when the intervention is disconnected",
+        "does not execute ordinary relational questions"
+      ],
+      "failure_modes": [
+        "cue_table_miss",
+        "invented_causal_bridge",
+        "stolen_relational_inquiry",
+        "generic_shell"
+      ]
     }
   ]
 }

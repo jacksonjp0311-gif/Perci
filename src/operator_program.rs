@@ -635,11 +635,16 @@ pub fn apply_dialogue_workspace_runtime(
             // the generic "Keeping ... in view" prefix onto explicit
             // uncertainty, interpretations, or a direct claim answer.
             || answer_has_explicit_turn_binding(&deliberation.answer);
-        let repaired = if owns_topic_binding
-            && !critique.flags.contains(&"generic_fallback")
-            && !critique.flags.contains(&"repeated_prior_answer")
-            && !critique.flags.contains(&"semantic_subject_miss")
-            && !critique.flags.contains(&"operation_fit_miss")
+        // Closed-world relation programs share a sentence skeleton
+        // ("Changing X by Y removes support..."). Consecutive graphs must
+        // not be collapsed by the repeat critic; the premises changed.
+        let preserve_relation_program = deliberation.operator == "relation-field-counterfactual";
+        let repaired = if preserve_relation_program
+            || (owns_topic_binding
+                && !critique.flags.contains(&"generic_fallback")
+                && !critique.flags.contains(&"repeated_prior_answer")
+                && !critique.flags.contains(&"semantic_subject_miss")
+                && !critique.flags.contains(&"operation_fit_miss"))
         {
             deliberation.answer.clone()
         } else {

@@ -730,6 +730,21 @@ fn looks_ledger_memory(text: &str) -> bool {
 }
 
 fn ledger_memory_answer(user: &str) -> Deliberation {
+    let lower = user.to_ascii_lowercase();
+    if lower.contains("cortex")
+        && (lower.contains("can you access")
+            || lower.contains("do you access")
+            || lower.contains("are you connected")
+            || lower.contains("can you read"))
+    {
+        return Deliberation::new(
+            "ledger-memory-integrate",
+            "Yes—when Cortex is attached, I can retrieve its governed memory records through the runtime. That is selective access to stored cards, not unrestricted awareness of every record, and Cortex cannot authorize weight changes.",
+        )
+        .observed("user asked whether Cortex memory is accessible")
+        .inferred("answer capability directly before describing the memory architecture")
+        .confidence(0.96);
+    }
     let open = emergence::list_open_tickets();
     let closed = emergence::list_closed_tickets();
     let resolved = emergence::resolved_primary_labels();
@@ -1514,5 +1529,15 @@ mod tests {
     fn governance_does_not_steal_superintelligence_bound() {
         // Superintelligence pedagogy stays in deliberation::superintelligence-bound.
         assert!(try_expand("Is Perci a superintelligence or on the path to AGI?", &[]).is_none());
+    }
+
+    #[test]
+    fn cortex_access_question_leads_with_capability() {
+        let d = try_expand("can you access the cortex memory", &[]).expect("cortex access");
+        assert_eq!(d.operator, "ledger-memory-integrate");
+        let lower = d.answer.to_ascii_lowercase();
+        assert!(lower.starts_with("yes"));
+        assert!(lower.contains("selective"));
+        assert!(!lower.contains("open="));
     }
 }

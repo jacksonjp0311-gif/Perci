@@ -1,18 +1,18 @@
 {
   "schema": "perci.capability-scorecard.v1",
-  "generated_at_utc": "2026-07-22T14:34:12.698656+00:00",
-  "overall_status": "OPERATIONAL_CANDIDATE",
+  "generated_at_utc": "2026-08-21T04:32:07.343253+00:00",
+  "overall_status": "PASS_WITH_STALE_LIVE",
   "automatic_promotion": false,
   "north_star": "Perci improves when a named capability fails a hardness case, is repaired at the correct layer, and passes transfer under a sealed gate before promotion.",
   "gates": {
     "hardness": {
-      "path": "models\\candidates\\evaluation-hardness-v1.json",
+      "path": "models\\candidates\\hardness-v0.11.7-relation-transfer-v2.json",
       "present": true,
       "status": "PASS",
-      "passed": 136,
-      "case_count": 136,
-      "receipt_sha256": "f242b6de13e9f88429e2a2a210a479194675aca7774b2be482137f76251bd984",
-      "evaluated_at_utc": "2026-07-22T11:48:39.759812+00:00",
+      "passed": 176,
+      "case_count": 176,
+      "receipt_sha256": "0f63686f72efa94ae569e54a23ed5d64cd2dda547f2bdb7f9188e09d5a2e1537",
+      "evaluated_at_utc": "2026-08-21T04:30:03.234492+00:00",
       "failed": [],
       "by_capability": {
         "cross_domain_synthesis": {
@@ -58,17 +58,145 @@
         "identity_boundary": {
           "passed": 1,
           "total": 1
+        },
+        "decision_support": {
+          "passed": 1,
+          "total": 1
+        },
+        "scoped_superlative": {
+          "passed": 1,
+          "total": 1
+        },
+        "operational_self_assessment": {
+          "passed": 1,
+          "total": 1
+        },
+        "semantic_surface_separation": {
+          "passed": 1,
+          "total": 1
+        },
+        "composition_distinction": {
+          "passed": 1,
+          "total": 1
+        },
+        "epistemic_trust": {
+          "passed": 1,
+          "total": 1
+        },
+        "temporal_identity": {
+          "passed": 1,
+          "total": 1
+        },
+        "three_way_composition": {
+          "passed": 1,
+          "total": 1
+        },
+        "coherence_composition": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_counterfactual": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_propagation": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_no_path": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_contradiction": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_intervention": {
+          "passed": 1,
+          "total": 1
+        },
+        "semantic_self_model": {
+          "passed": 1,
+          "total": 1
+        },
+        "unknown_input": {
+          "passed": 1,
+          "total": 1
+        },
+        "semantic_frame": {
+          "passed": 1,
+          "total": 1
+        },
+        "operational_awareness": {
+          "passed": 1,
+          "total": 1
+        },
+        "observer_quality": {
+          "passed": 1,
+          "total": 1
+        },
+        "expressive_coverage": {
+          "passed": 1,
+          "total": 1
+        },
+        "long_session": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_synonym_transfer": {
+          "passed": 1,
+          "total": 1
+        },
+        "relation_invariant_closure": {
+          "passed": 1,
+          "total": 1
+        },
+        "dialogue_example": {
+          "passed": 1,
+          "total": 1
+        },
+        "safety_fluency_tradeoff": {
+          "passed": 1,
+          "total": 1
+        },
+        "progress_followup": {
+          "passed": 1,
+          "total": 1
+        },
+        "language_progress": {
+          "passed": 1,
+          "total": 1
+        },
+        "automation_referent": {
+          "passed": 1,
+          "total": 1
+        },
+        "scoped_memory_inventory": {
+          "passed": 1,
+          "total": 1
+        },
+        "cortex_access": {
+          "passed": 1,
+          "total": 1
+        },
+        "reasoning_feedback": {
+          "passed": 1,
+          "total": 1
+        },
+        "open_relation_transfer": {
+          "passed": 9,
+          "total": 9
         }
       }
     },
     "dialogue": {
-      "path": "models\\candidates\\evaluation-v4-dialogue.json",
+      "path": "models\\candidates\\dialogue-v0.11.7-relation-transfer-v1.json",
       "present": true,
       "status": "PASS",
       "passed": 159,
       "case_count": 159,
-      "receipt_sha256": "991fa8ff5b1cabef72ce98cbc9a86a067d6fda2d71c1d42fce39be1527a80211",
-      "evaluated_at_utc": "2026-07-22T14:30:27.354143+00:00",
+      "receipt_sha256": "93b5498112c318370efa956ef2cb5b59777920eb03b3f26b6a009b615e3bdafc",
+      "evaluated_at_utc": "2026-08-21T04:31:56.950609+00:00",
       "failed": [],
       "by_capability": null
     },
@@ -85,14 +213,14 @@
     }
   },
   "learning": {
-    "interaction_events": 21140,
-    "pending_review_events": 21138,
-    "review_queue_total": 2420,
+    "interaction_events": 24428,
+    "pending_review_events": 24426,
+    "review_queue_total": 2626,
     "review_queue_approved": 20,
     "review_queue_folded": 20,
     "dialogue_profile": {
-      "interaction_count": 21045,
-      "feedback_count": 125,
+      "interaction_count": 24107,
+      "feedback_count": 183,
       "teaching_candidate_count": 319,
       "prefer_concise": true,
       "avoid_structured_chat": true,
@@ -104,12 +232,12 @@
   "binary_freshness": {
     "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
     "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
-    "live_sha256": "e52c8f13c907c89c3fc6777838b62c8a403817543adc04f81048a22be3139518",
-    "release_sha256": "cb3ad698cd59aac4e42bcfd6e4688c6b4a30fda0561341d0db3a771230781e51",
-    "live_mtime_utc": "2026-07-22T14:34:04.563062+00:00",
-    "release_mtime_utc": "2026-07-22T14:27:01.064626+00:00",
-    "release_ahead_seconds": -423.5,
-    "status": "live_current_or_newer"
+    "live_sha256": "d8e1691f750d4ff4d4b22b6dc7d295e6bbb437c3605a2657071699ee66f9c2c4",
+    "release_sha256": "a536f42611f08f6532ec7b02639f97351e420b164e1bc0d17bed5fe470d94435",
+    "live_mtime_utc": "2026-08-10T13:59:04.219955+00:00",
+    "release_mtime_utc": "2026-08-21T04:28:21.769120+00:00",
+    "release_ahead_seconds": 916157.5,
+    "status": "stale_live"
   },
   "capabilities": [
     {
@@ -201,9 +329,19 @@
       "total": 3,
       "pass_rate": 1.0,
       "next_action": "maintain with harder transfer variants"
+    },
+    {
+      "id": "open_relation_transfer",
+      "name": "Open-domain relation transfer",
+      "primary_layer": "operator",
+      "state": "green",
+      "passed": 9,
+      "total": 9,
+      "pass_rate": 1.0,
+      "next_action": "maintain with harder transfer variants"
     }
   ],
   "recommended_next": [
-    "Raise hardness: add entity-swapped / paraphrased cases to training/hardness/hardness-pack-v1.jsonl"
+    "Live chat binary is older than target/release/perci.exe — relaunch via Launch-Perci.ps1 or copy the release binary after gates pass."
   ]
 }

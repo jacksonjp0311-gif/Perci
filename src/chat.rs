@@ -39,7 +39,22 @@ fn preserve_operator_prose(operator: &str) -> bool {
             | "geometry-stability-scope"
             | "geometry-decoration-challenge"
             | "awareness-growth"
+            | "fluency-accuracy-separation"
+            | "retrieval-composition-distinction"
+            | "natural-language-trust"
+            | "memory-identity-dynamics"
+            | "map-promise-checksum-comparison"
+            | "relation-field-counterfactual"
+            | "semantic-self-model"
     )
+}
+
+fn looks_formal_proof_request(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    lower.contains("formal proof")
+        || lower
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .any(|word| matches!(word, "prove" | "proof" | "theorem"))
 }
 
 #[derive(Debug)]
@@ -341,7 +356,9 @@ impl ChatEngine {
             voice::DialogueAct::ConversationReview
             | voice::DialogueAct::LearningReflection
             | voice::DialogueAct::Agreement
-            | voice::DialogueAct::CapabilityQuestion => true,
+            | voice::DialogueAct::CapabilityQuestion
+            | voice::DialogueAct::ChangeSinceLast
+            | voice::DialogueAct::AutomationQuestion => true,
             voice::DialogueAct::ExplainPrevious => {
                 lower_dialogue.contains("why did you laugh")
                     || lower_dialogue.contains("why were you laughing")
@@ -350,8 +367,11 @@ impl ChatEngine {
                     || lower_dialogue.contains("why did you answer like that")
                     || lower_dialogue.contains("why did you reply like that")
             }
-            voice::DialogueAct::ImprovementDistinction => {
-                lower_dialogue.contains("answer") || lower_dialogue.contains("reply")
+            voice::DialogueAct::ImprovementDistinction => true,
+            voice::DialogueAct::StyleRepair => {
+                lower_dialogue.contains("thinking seems off")
+                    || lower_dialogue.contains("reasoning seems off")
+                    || lower_dialogue.contains("thought process seems off")
             }
             voice::DialogueAct::Acknowledgement => {
                 (lower_dialogue.contains("whoa")
@@ -593,10 +613,7 @@ impl ChatEngine {
 
         // Formal proof fabric path only (exact arithmetic still handled below with richer receipts).
         let lower_in = input.to_ascii_lowercase();
-        if lower_in.contains("prove")
-            || lower_in.contains("theorem")
-            || lower_in.contains("formal proof")
-        {
+        if looks_formal_proof_request(&lower_in) {
             if let Some(proof) = crate::orchestrate::try_proof_or_exact(input) {
                 self.backend.set_dialogue_history(&self.recent);
                 let bitwork = self.backend.probe_cognition(input);
@@ -848,6 +865,15 @@ impl ChatEngine {
         // Derive a small, inspectable turn record once so context collection and
         // response generation agree on the active act, referent, and depth.
         let workspace = crate::dialogue_workspace::DialogueWorkspace::derive(input, &self.recent);
+        // A session is not one endlessly threaded topic. Keep prior dialogue
+        // available only when the workspace found an explicit referent,
+        // continuation act, or meaningful subject overlap. This prevents an
+        // unrelated prior concept card from contaminating a fresh question.
+        let active_recent = if workspace.is_follow_up() {
+            self.recent.clone()
+        } else {
+            Vec::new()
+        };
         let context = if should_load_context(input) {
             self.collect_context(input, 4, context_budget(input))?
         } else {
@@ -863,9 +889,8 @@ impl ChatEngine {
             0,
             format!("[Perci dialogue workspace: {}]", workspace.hint()),
         );
-        if !self.recent.is_empty() {
-            let hist = self
-                .recent
+        if !active_recent.is_empty() {
+            let hist = active_recent
                 .iter()
                 .rev()
                 .take(3)
@@ -876,9 +901,21 @@ impl ChatEngine {
             ctx.insert(0, format!("[Recent dialogue] {hist}"));
         }
 
-        self.backend.set_dialogue_history(&self.recent);
-        let control =
-            crate::reasoning_controller::derive(input, &self.recent, None, "fluid-associative");
+        self.backend.set_dialogue_history(&active_recent);
+        // PERCICOMP1 reads the same Bitwork field as the open backend, but does
+        // not get authority from similarity alone. It may propose a candidate
+        // only when at least two concept cards preserve the turn's subject and
+        // share (or explicitly bridge) a relation.
+        let open_match = self.backend.probe_cognition(input);
+        let composition = open_match.as_ref().and_then(|matched| {
+            crate::coherent_compose::compose_from_match(input, &active_recent, matched)
+        });
+        let control = crate::reasoning_controller::derive(
+            input,
+            &active_recent,
+            open_match.as_ref(),
+            "fluid-associative",
+        );
         // Power move: deep controller modes + multipartite reason candidates first.
         // Emergent behavior we mine: contested SoftCascade mass + residual hops are
         // more useful when scored as reason-loop candidates, then spoken as frontier arc.
@@ -919,7 +956,7 @@ impl ChatEngine {
             }
             _ => generated,
         };
-        let shaped = voice::shape_for_conversation(&generated, input, &self.recent);
+        let shaped = voice::shape_for_conversation(&generated, input, &active_recent);
         let shaped_empty = shaped.trim().is_empty();
         let generated = if shaped_empty {
             workspace.safe_fallback(input)
@@ -933,6 +970,35 @@ impl ChatEngine {
         } else {
             generated
         };
+        // Realization beam: the current fluent path, a role-aware frontier
+        // rewrite, and (when geometry supports it) a multi-card composition
+        // compete under the same observer and question-frame contract. This
+        // replaces "first acceptable sentence wins" without weakening named
+        // operators, exact tools, or governance boundaries.
+        let frontier = crate::frontier_speech::frontier_arc_rewrite(input, &generated);
+        let mut candidates = vec![
+            ("fluid-associative", generated.clone()),
+            ("frontier-role-rewrite", frontier),
+        ];
+        if let Some(candidate) = composition.as_ref() {
+            candidates.push(("bitwork-composition", candidate.text.clone()));
+        }
+        let selected = crate::coherent_compose::select_best(input, &active_recent, candidates);
+        let selected_source = selected
+            .as_ref()
+            .map(|candidate| candidate.source)
+            .unwrap_or("fluid-associative");
+        let selected_score = selected
+            .as_ref()
+            .map(|candidate| candidate.score)
+            .unwrap_or(0.0);
+        let selected_cards = selected
+            .as_ref()
+            .map(|candidate| candidate.cards_used)
+            .unwrap_or(0);
+        let generated = selected
+            .map(|candidate| candidate.text)
+            .unwrap_or(generated);
         // Style + anti-generic: fluid binding survives learned compression.
         let text = if let Some(learner) = &self.learning {
             let styled = voice::apply_learned_style(
@@ -941,9 +1007,9 @@ impl ChatEngine {
                 learner.profile().avoid_structured_chat,
             );
             let aligned = voice::apply_profile_alignment(&styled, input, learner.profile());
-            voice::ensure_user_binding(input, &aligned, "general", None, &self.recent)
+            voice::ensure_user_binding(input, &aligned, "general", None, &active_recent)
         } else {
-            voice::ensure_user_binding(input, &generated, "general", None, &self.recent)
+            voice::ensure_user_binding(input, &generated, "general", None, &active_recent)
         };
         let mut deliberation = Deliberation::new(
             if crate::frontier_speech::looks_frontier_turn(input) {
@@ -955,8 +1021,13 @@ impl ChatEngine {
         )
             .observed(format!("context_items={}", ctx.len()))
             .observed(format!("reasoning_controller={}", control.hint()))
+            .observed(format!(
+                "composition_beam source={selected_source} score={selected_score:.3} cards={selected_cards}"
+            ))
             .observed(context_card.trace())
-            .inferred("fluid composition bound reply to user content under Bitwork routing")
+            .inferred(
+                "bounded composition beam ranked intent, context, concept, and relation preserving candidates",
+            )
             .inferred(format!(
                 "controller_steps={} · binary_state={:016x}",
                 control.steps.join("→"),
@@ -982,7 +1053,7 @@ impl ChatEngine {
         }
         deliberation = crate::operator_program::apply_dialogue_workspace_runtime(
             input,
-            &self.recent,
+            &active_recent,
             deliberation,
         );
         deliberation = deliberation.with_thought_plan(input);
@@ -1286,6 +1357,15 @@ pub fn help_text() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn improve_is_not_mistaken_for_formal_proof() {
+        assert!(!looks_formal_proof_request(
+            "Why does low latency improve interaction without proving answer quality?"
+        ));
+        assert!(looks_formal_proof_request("Prove the theorem."));
+        assert!(looks_formal_proof_request("Give a formal proof."));
+    }
 
     #[test]
     fn recall_prefix_is_removed() {

@@ -140,6 +140,7 @@ pub enum DialogueAct {
     LearningSpeed,
     MemoryTeachingDistinction,
     CommandlessLearning,
+    AutomationQuestion,
     Feedback,
     Agreement,
     Acknowledgement,
@@ -322,6 +323,9 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
         || text.contains("why so robotic")
         || text.contains("sound like a robot")
         || text.contains("sounds robotic")
+        || text.contains("thinking seems off")
+        || text.contains("reasoning seems off")
+        || text.contains("thought process seems off")
         || text.contains("template")
         || text.contains("cryptic")
         || text.contains("cyptic") // common typo for "cryptic"
@@ -474,6 +478,35 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
             || text.contains("how"))
     {
         DialogueAct::CompactModelQuestion
+    } else if text.contains("do you notice a change")
+        || text.contains("have you noticed a change")
+        || text.contains("do you notice any change")
+        || text.contains("notice any difference")
+        || text.contains("can you tell a difference")
+    {
+        DialogueAct::ChangeSinceLast
+    } else if (text.contains("improving") || text.contains("getting better"))
+        && (text.contains("answer")
+            || text.contains("reply")
+            || text.contains("language generation")
+            || text.contains("conversation")
+            || text.contains("dialogue")
+            || text.contains("speech"))
+    {
+        DialogueAct::ImprovementDistinction
+    } else if matches!(
+        compact,
+        "is this automated"
+            | "is that automated"
+            | "is it automated"
+            | "is this automatic"
+            | "is that automatic"
+            | "does this happen automatically"
+            | "does that happen automatically"
+    ) || ((text.contains("learn") || text.contains("learning"))
+        && (text.contains("automatic") || text.contains("automated")))
+    {
+        DialogueAct::AutomationQuestion
     } else if (text.contains("evolve") || text.contains("improve") || text.contains("evolving"))
         && (text.contains("system")
             || text.contains("perci")
@@ -1013,7 +1046,10 @@ pub fn dialogue_reply(
             }
         }
         DialogueAct::ChangeSinceLast => {
-            if let Some(profile) = profile {
+            let lower = user.to_ascii_lowercase();
+            if lower.contains("chat") || lower.contains("reply") {
+                "Yes. That reply stayed on your actual goal and gave a concrete improvement loop instead of drifting into an unrelated concept. That is a local improvement; I would still test several ambiguous follow-ups before calling it stable.".to_owned()
+            } else if let Some(profile) = profile {
                 format!("I can't prove a before-and-after change from conversation alone. What I can verify now is that my dialogue learner has recorded {} {}, {} {}, and {} {}; my active weights are unchanged unless a separately evaluated model was promoted.", profile.interaction_count, plural(profile.interaction_count, "interaction", "interactions"), profile.feedback_count, plural(profile.feedback_count, "feedback signal", "feedback signals"), profile.teaching_candidate_count, plural(profile.teaching_candidate_count, "teaching candidate", "teaching candidates"))
             } else {
                 "I can't verify what changed since the last conversation from dialogue alone. I would need a prior runtime or model receipt to compare against the current one.".to_owned()
@@ -1046,7 +1082,13 @@ pub fn dialogue_reply(
         }
         DialogueAct::ImprovementDistinction => {
             let lower = user.to_ascii_lowercase();
-            if lower.contains("answer") || lower.contains("reply") {
+            if lower.contains("language")
+                || lower.contains("conversation")
+                || lower.contains("dialogue")
+                || lower.contains("speech")
+            {
+                "Yes, on measured prompts—but unevenly. My language path is better at direct self-explanations and clean topic resets; ambiguous follow-ups can still be misrouted. So the supported claim is local improvement, not general fluency yet.".to_owned()
+            } else if lower.contains("answer") || lower.contains("reply") {
                 "Not consistently yet. Some targeted turns are smoother, but this transcript contains a real regression: a simple question about answer quality came back malformed. So the honest read is local improvement with unresolved dialogue failures—not broad improvement. The next fix is to route quality checks directly and score them on held-out follow-ups.".to_owned()
             } else {
                 "Changing only means my state or behavior became different. Improving requires evidence that the change performs better on relevant tests without unacceptable regressions. So I can measure adaptation immediately, but I should claim improvement only after comparison.".to_owned()
@@ -1108,7 +1150,12 @@ pub fn dialogue_reply(
                 .last()
                 .map(|(_, answer)| first_sentence(answer, 160))
                 .filter(|s| !s.trim().is_empty());
-            if lower.contains("more naturally") || lower.contains("explain it naturally") {
+            if lower.contains("thinking seems off")
+                || lower.contains("reasoning seems off")
+                || lower.contains("thought process seems off")
+            {
+                "Fair. Which part feels off—the conclusion, the connection to your question, or the wording? Point to the line and I’ll trace that turn instead of guessing.".to_owned()
+            } else if lower.contains("more naturally") || lower.contains("explain it naturally") {
                 prior_plain
                     .map(|claim| {
                         let ending = if claim.ends_with(['.', '!', '?']) {
@@ -1489,6 +1536,28 @@ pub fn dialogue_reply(
         }
         DialogueAct::CommandlessLearning => {
             "Agreed—you should not have to speak in commands. Natural language is now the primary path: say “I want you to learn that ...” and I'll stage the claim, explain its status, and keep it separate from trusted memory and active weights. `/teach` remains only as a transparent shortcut for scripts and inspection.".to_owned()
+        }
+        DialogueAct::AutomationQuestion => {
+            if recent_user_mentions(
+                recent,
+                &[
+                    "learning",
+                    "learn from",
+                    "teach",
+                    "memory",
+                    "durable",
+                    "weights",
+                ],
+            ) {
+                "Partly. Session context and interaction logging happen automatically. Durable facts and production weights do not: they are staged, evaluated, and explicitly promoted so a mistaken conversation cannot silently rewrite the system.".to_owned()
+            } else if recent_user_mentions(
+                recent,
+                &["improve", "evolve", "test", "probe", "repair"],
+            ) {
+                "Partly. Probes and evidence capture can run automatically; choosing and promoting a code or weight change remains gated by tests and explicit authorization.".to_owned()
+            } else {
+                "Some parts can be automated, but I need the process you mean. Session context, evaluation, memory, and weight promotion have different authority boundaries.".to_owned()
+            }
         }
         DialogueAct::Feedback => {
             let lower = user.to_ascii_lowercase();
@@ -6175,5 +6244,51 @@ mod tests {
     fn weave_skips_empty() {
         let g = weave_guidance(&["[Pack: x] Reproduce the behavior then patch.".into()], 2);
         assert_eq!(g.len(), 1);
+    }
+
+    #[test]
+    fn live_progress_and_automation_followups_are_typed() {
+        assert_eq!(
+            detect_dialogue_act("chat reply...do you notice a change"),
+            DialogueAct::ChangeSinceLast
+        );
+        assert_eq!(
+            detect_dialogue_act("is your language generation improving?"),
+            DialogueAct::ImprovementDistinction
+        );
+        assert_eq!(
+            detect_dialogue_act("is this automated?"),
+            DialogueAct::AutomationQuestion
+        );
+        assert_eq!(
+            detect_dialogue_act("your thinking seems off"),
+            DialogueAct::StyleRepair
+        );
+
+        let recent = vec![(
+            "are you learning?".to_owned(),
+            "Learning is bounded and evaluated.".to_owned(),
+        )];
+        let answer = dialogue_reply(
+            DialogueAct::AutomationQuestion,
+            "is this automated?",
+            &recent,
+            None,
+        )
+        .expect("automation answer");
+        let lower = answer.to_ascii_lowercase();
+        assert!(lower.starts_with("partly"));
+        assert!(lower.contains("session context"));
+        assert!(lower.contains("production weights"));
+
+        let repair = dialogue_reply(
+            DialogueAct::StyleRepair,
+            "your thinking seems off",
+            &recent,
+            None,
+        )
+        .expect("reasoning repair");
+        assert!(repair.starts_with("Fair."));
+        assert!(repair.contains("trace that turn"));
     }
 }
