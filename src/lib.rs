@@ -13,6 +13,7 @@
 //! Perci orchestrates; specialized engines perform specialized work.
 
 pub mod agent;
+pub mod agentsearch;
 pub mod answer_gate;
 pub mod auto_repairs;
 pub mod backend;
@@ -26,6 +27,7 @@ pub mod branding;
 pub mod bridge;
 pub mod capability_router;
 pub mod chat;
+pub mod cited_memory;
 pub mod cognition_expand;
 pub mod cognitive;
 pub mod coherent_compose;

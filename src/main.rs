@@ -82,6 +82,16 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    // Cited memory (append-only journal + AgentSearch evidence); no weights needed.
+    if matches!(command.as_str(), "memory" | "mem") {
+        let rest: Vec<String> = args.collect();
+        let code = perci::cited_memory::run_cli(&rest)?;
+        if code != 0 {
+            std::process::exit(code);
+        }
+        return Ok(());
+    }
+
     // Identity only — no pack load. Launch-Perci and scripts use this to prove build.
     if matches!(
         command.as_str(),

@@ -93,7 +93,8 @@ impl MemoryStore {
     }
 }
 
-fn parse_record(line: &str) -> Option<MemoryRecord> {
+/// Parse one journal line (JSON record or legacy escaped text).
+pub fn parse_record(line: &str) -> Option<MemoryRecord> {
     if line.trim().is_empty() {
         return None;
     }
@@ -112,7 +113,8 @@ fn parse_record(line: &str) -> Option<MemoryRecord> {
     })
 }
 
-fn search_terms(query: &str) -> Vec<String> {
+/// Lower-cased query terms without recall/memory filler words.
+pub fn search_terms(query: &str) -> Vec<String> {
     const STOP_WORDS: &[&str] = &[
         "recall", "remember", "memory", "search", "find", "the", "that", "what", "did", "you",
     ];
