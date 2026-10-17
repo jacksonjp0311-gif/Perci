@@ -5,3 +5,14 @@
 *.brel filter=lfs diff=lfs merge=lfs -text
 *.bwm filter=lfs diff=lfs merge=lfs -text
 *.bdlg filter=lfs diff=lfs merge=lfs -text
+# Source text is UTF-8 with LF endings everywhere (prevents CRLF/encoding drift
+# such as the π/√ mojibake). Windows scripts keep CRLF.
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
