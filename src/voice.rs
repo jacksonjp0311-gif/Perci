@@ -4505,6 +4505,15 @@ fn deepen_previous(answer: &str) -> String {
 /// Natural exact-tool wrappers.
 pub fn natural_exact(kind: &str, value: &str) -> String {
     match kind {
+        // Sentence-shaped results ("Yes, 97 is prime.", "√144 = 12",
+        // "Solving 2x+3=11: x = 4") are printed as they are.
+        "math" if value.starts_with(|c: char| c.is_ascii_uppercase() || !c.is_ascii()) => {
+            if value.ends_with(['.', '!', '?', ')']) {
+                value.to_owned()
+            } else {
+                format!("{value}.")
+            }
+        }
         "math" => match finite_decimal(value) {
             Some(decimal) => format!("That's {decimal} (exactly {value})."),
             None => format!("That's {value}."),

@@ -151,12 +151,17 @@ pub fn is_explanatory_math(lower: &str) -> bool {
 /// `Ok(None)` means the prompt is not a supported executable arithmetic form,
 /// so the language backend should continue rather than returning a tool error.
 pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError> {
-    let lower = text.to_ascii_lowercase();
+    // "15% of 240" is the same request as "15 percent of 240".
+    let lower = text.to_ascii_lowercase().replace("% of", " percent of");
 
     // Explanatory / conceptual math must never enter the integer parser.
     // "why does 2+2 equal 4?" contains digits and '+' but is not a calculation request.
     if is_explanatory_math(&lower) {
         return Ok(None);
+    }
+
+    if let Some(answer) = try_exact_forms(&lower)? {
+        return Ok(Some(answer));
     }
 
     // Ordinary prose often contains hyphens (for example, "prompt-template")
@@ -194,7 +199,11 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
         window[0].is_ascii_digit() && window[1] == b'-' && window[2].is_ascii_digit()
     });
     let numeric_expression = extract_numbers(&lower).len() >= 2
-        && (lower.contains('+') || lower.contains('*') || lower.contains('/') || binary_minus);
+        && (lower.contains('+')
+            || lower.contains('*')
+            || lower.contains('/')
+            || lower.contains('^')
+            || binary_minus);
     if !explicit_math && !numeric_expression {
         return Ok(None);
     }
@@ -317,7 +326,25 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
         .filter(|character| !character.is_whitespace() && *character != ',')
         .collect();
 
-    let Some((left, operator, right)) = split_binary_expression(&compact) else {
+    let simple = simple_binary(&compact);
+    if matches!(simple, Ok(Some(_))) {
+        return simple;
+    }
+    // Longer expressions (fractions, powers, parentheses, decimals) go to the
+    // exact rational evaluator; its error only replaces a parse failure.
+    let expression = compact.trim_end_matches(['?', '.', '!', '=']);
+    if crate::exact_expr::looks_like_expression(expression) {
+        match crate::exact_expr::eval(expression) {
+            Ok(value) => return Ok(Some(value.to_string())),
+            Err(ReasoningError::Unsupported | ReasoningError::InvalidNumber(_)) => {}
+            Err(error) => return Err(error),
+        }
+    }
+    simple
+}
+
+fn simple_binary(compact: &str) -> Result<Option<String>, ReasoningError> {
+    let Some((left, operator, right)) = split_binary_expression(compact) else {
         return Ok(None);
     };
 
@@ -342,6 +369,102 @@ pub fn try_solve_arithmetic(text: &str) -> Result<Option<String>, ReasoningError
     };
 
     Ok(Some(result))
+}
+
+/// Exact forms beyond binary arithmetic: primality, square roots, linear
+/// equations, and bare expressions such as `2^64`. Values that are full
+/// sentences start with an uppercase letter so the chat layer prints them
+/// as-is.
+fn try_exact_forms(lower: &str) -> Result<Option<String>, ReasoningError> {
+    let trimmed = lower.trim().trim_end_matches(['?', '.', '!']).trim();
+    let words: Vec<&str> = trimmed.split_whitespace().collect();
+
+    // "is 97 prime" / "is 1001 a prime number"
+    if words.contains(&"prime") && (trimmed.starts_with("is ") || trimmed.starts_with("check if "))
+    {
+        let numbers = extract_numbers(trimmed);
+        if numbers.len() == 1 {
+            let n = numbers[0];
+            if n < 2 {
+                return Ok(Some(format!("No, {n} is not prime: primes start at 2.")));
+            }
+            if n > 1_000_000_000_000 {
+                return Ok(None);
+            }
+            return Ok(Some(match crate::exact_expr::smallest_factor(n as u64) {
+                None => format!("Yes, {n} is prime."),
+                Some(f) => format!("No, {n} is not prime: {n} = {f} \u{00d7} {}.", n as u64 / f),
+            }));
+        }
+    }
+
+    // "sqrt of 144" / "square root of 2"
+    if trimmed.contains("sqrt") || trimmed.contains("square root") {
+        let numbers = extract_numbers(trimmed);
+        if numbers.len() == 1 && !trimmed.contains('+') && !trimmed.contains('*') {
+            let n = numbers[0];
+            if n < 0 {
+                return Ok(Some(format!(
+                    "{}{n} is not a real number (it's {}{}i).",
+                    sym::SQRT.get(),
+                    sym::SQRT.get(),
+                    -n
+                )));
+            }
+            return Ok(Some(match integer_sqrt_exact(n) {
+                Some(root) => format!("{}{n} = {root}", sym::SQRT.get()),
+                None => format!(
+                    "{}{n} {} {:.6} ({n} is not a perfect square)",
+                    sym::SQRT.get(),
+                    sym::APPROX.get(),
+                    (n as f64).sqrt()
+                ),
+            }));
+        }
+    }
+
+    // "solve 2x + 3 = 11"
+    if trimmed.contains('=') && (trimmed.starts_with("solve") || trimmed.contains("solve ")) {
+        let equation: String = words
+            .iter()
+            .filter(|w| !(w.len() > 1 && w.chars().all(|c| c.is_ascii_alphabetic())))
+            .copied()
+            .collect::<Vec<_>>()
+            .join("")
+            .replace(',', "");
+        let mut letters: Vec<char> = equation
+            .chars()
+            .filter(|c| c.is_ascii_alphabetic())
+            .collect();
+        letters.dedup();
+        letters.sort_unstable();
+        letters.dedup();
+        if letters.len() == 1 {
+            let var = letters[0];
+            use crate::exact_expr::Solution;
+            return Ok(Some(
+                match crate::exact_expr::solve_linear(&equation, var) {
+                    Ok(Solution::One(v)) => format!("Solving {equation}: {var} = {v}"),
+                    Ok(Solution::All) => format!("Every value of {var} satisfies {equation}."),
+                    Ok(Solution::None) => format!("No value of {var} satisfies {equation}."),
+                    Err(ReasoningError::Unsupported) => {
+                        format!("I can solve linear equations in one variable exactly; {equation} isn't linear in {var}, so I won't guess.")
+                    }
+                    Err(error) => return Err(error),
+                },
+            ));
+        }
+    }
+
+    // A bare expression with a power, e.g. "2^64" or "what is 3^4".
+    let bare = trimmed.strip_prefix("what is ").unwrap_or(trimmed);
+    let bare = bare.strip_prefix("calculate ").unwrap_or(bare);
+    if bare.contains('^') && crate::exact_expr::looks_like_expression(bare) {
+        if let Ok(value) = crate::exact_expr::eval(bare) {
+            return Ok(Some(value.to_string()));
+        }
+    }
+    Ok(None)
 }
 
 pub fn solve_arithmetic(text: &str) -> Result<String, ReasoningError> {
@@ -635,6 +758,31 @@ fn integer_sqrt_exact(value: i128) -> Option<i128> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extra_exact_forms() {
+        let ask = |q: &str| try_solve_arithmetic(q).unwrap().unwrap_or_default();
+        assert_eq!(ask("sqrt of 144"), "\u{221a}144 = 12");
+        assert!(ask("square root of 2").contains("not a perfect square"));
+        assert_eq!(ask("is 97 prime"), "Yes, 97 is prime.");
+        assert_eq!(
+            ask("is 91 prime?"),
+            "No, 91 is not prime: 91 = 7 \u{00d7} 13."
+        );
+        assert_eq!(ask("2^64"), "18446744073709551616");
+        assert_eq!(ask("3/7 plus 2/9"), "41/63");
+        assert_eq!(ask("what is 15% of 240"), "36");
+        assert_eq!(ask("solve 2x+3=11"), "Solving 2x+3=11: x = 4");
+        // unchanged simple forms
+        assert_eq!(ask("calculate 12 divided by 5"), "12/5");
+        assert_eq!(ask("what is 17 times 3"), "51");
+        assert!(try_solve_arithmetic("1/0").is_err());
+        // prose is still left alone
+        assert_eq!(
+            try_solve_arithmetic("is perci a prime example of design").unwrap(),
+            None
+        );
+    }
 
     #[test]
     fn exact_fraction() {

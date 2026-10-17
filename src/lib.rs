@@ -39,6 +39,7 @@ pub mod discourse_plan;
 pub mod doctor;
 pub mod emergence;
 pub mod entity_slot;
+pub mod exact_expr;
 pub mod fabric;
 pub mod field_fold;
 pub mod frontier_speech;
