@@ -32,7 +32,7 @@
     {"id": "B2E-PERCI-010", "title": "API key sent over plain http to a non-loopback host", "before": "b2f78cf^", "after": "b2f78cf",
      "verify": "python evals/verifiers/b2e_010_api_key_over_http.py", "tags": "perci,security,llm",
      "prompt": "With PERCI_ENABLE_EXTERNAL_LM=1 and PERCI_MODEL_URL pointing at a non-loopback http host, Perci sends OPENAI_API_KEY in cleartext. Refuse non-loopback endpoints unless explicitly allowed and drop the OPENAI_API_KEY fallback."},
-    {"id": "B2E-PERCI-011", "title": "Recall citations carry a sha256 that matches the note file", "before": "grep:B2E-PERCI-011^", "after": "grep:B2E-PERCI-011",
+    {"id": "B2E-PERCI-011", "title": "Recall citations carry a sha256 that matches the note file", "before": "grep:Cited memory: recall with sha256 evidence^", "after": "grep:Cited memory: recall with sha256 evidence",
      "verify": "python evals/verifiers/b2e_011_cited_recall.py", "tags": "perci,memory,evidence",
      "prompt": "`perci memory recall` must return citations whose sha256 equals the SHA-256 of the cited note file and whose journal offset points at the original line in the append-only memory log; editing a note must be detected by `perci memory verify`."}
   ]
