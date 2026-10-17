@@ -306,7 +306,11 @@ pub fn to_text(r: &Report) -> String {
     out
 }
 
-// ─── SHA-256 (small, dependency-free; used only by --deep) ────────────────────
+// ─── SHA-256 (small, dependency-free; weight-pack verification, receipts) ─────
+//
+// Scalar rounds everywhere, plus the x86-64 SHA extensions (SHA-NI) when the
+// CPU has them (runtime-detected; ~5x faster on large packs). Both paths are
+// checked against each other in the tests.
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -390,11 +394,24 @@ impl Sha256 {
                 self.buf.clear();
             }
         }
-        let mut chunks = data.chunks_exact(64);
-        for chunk in &mut chunks {
+        let full = data.len() - data.len() % 64;
+        self.blocks(&data[..full]);
+        self.buf.extend_from_slice(&data[full..]);
+    }
+
+    /// Compress whole 64-byte blocks.
+    fn blocks(&mut self, data: &[u8]) {
+        #[cfg(target_arch = "x86_64")]
+        {
+            if shani::available() {
+                // SAFETY: the CPU supports the required features (checked above).
+                unsafe { shani::digest_blocks(&mut self.h, data) };
+                return;
+            }
+        }
+        for chunk in data.chunks_exact(64) {
             self.block(chunk);
         }
-        self.buf.extend_from_slice(chunks.remainder());
     }
 
     fn finish(mut self) -> String {
@@ -408,6 +425,108 @@ impl Sha256 {
         self.update(&pad);
         self.len = len;
         self.h.iter().map(|v| format!("{v:08x}")).collect()
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+mod shani {
+    use super::K;
+    use std::arch::x86_64::*;
+
+    pub fn available() -> bool {
+        std::is_x86_feature_detected!("sha")
+            && std::is_x86_feature_detected!("sse2")
+            && std::is_x86_feature_detected!("ssse3")
+            && std::is_x86_feature_detected!("sse4.1")
+    }
+
+    #[inline(always)]
+    unsafe fn k4(i: usize) -> __m128i {
+        _mm_set_epi32(
+            K[4 * i + 3] as i32,
+            K[4 * i + 2] as i32,
+            K[4 * i + 1] as i32,
+            K[4 * i] as i32,
+        )
+    }
+
+    #[inline(always)]
+    unsafe fn schedule(v0: __m128i, v1: __m128i, v2: __m128i, v3: __m128i) -> __m128i {
+        let t1 = _mm_sha256msg1_epu32(v0, v1);
+        let t2 = _mm_alignr_epi8(v3, v2, 4);
+        let t3 = _mm_add_epi32(t1, t2);
+        _mm_sha256msg2_epu32(t3, v3)
+    }
+
+    macro_rules! rounds4 {
+        ($abef:ident, $cdgh:ident, $rest:expr, $i:expr) => {{
+            let t1 = _mm_add_epi32($rest, k4($i));
+            $cdgh = _mm_sha256rnds2_epu32($cdgh, $abef, t1);
+            let t2 = _mm_shuffle_epi32(t1, 0x0E);
+            $abef = _mm_sha256rnds2_epu32($abef, $cdgh, t2);
+        }};
+    }
+
+    macro_rules! schedule_rounds4 {
+        ($abef:ident, $cdgh:ident, $w0:expr, $w1:expr, $w2:expr, $w3:expr, $w4:expr, $i:expr) => {{
+            $w4 = schedule($w0, $w1, $w2, $w3);
+            rounds4!($abef, $cdgh, $w4, $i);
+        }};
+    }
+
+    /// `data.len()` must be a multiple of 64.
+    #[target_feature(enable = "sha,sse2,ssse3,sse4.1")]
+    pub unsafe fn digest_blocks(state: &mut [u32; 8], data: &[u8]) {
+        let mask = _mm_set_epi64x(
+            0x0C0D_0E0F_0809_0A0Bu64 as i64,
+            0x0405_0607_0001_0203u64 as i64,
+        );
+        let state_ptr = state.as_ptr() as *const __m128i;
+        let dcba = _mm_loadu_si128(state_ptr);
+        let efgh = _mm_loadu_si128(state_ptr.add(1));
+        let cdab = _mm_shuffle_epi32(dcba, 0xB1);
+        let efgh = _mm_shuffle_epi32(efgh, 0x1B);
+        let mut abef = _mm_alignr_epi8(cdab, efgh, 8);
+        let mut cdgh = _mm_blend_epi16(efgh, cdab, 0xF0);
+
+        for block in data.chunks_exact(64) {
+            let abef_save = abef;
+            let cdgh_save = cdgh;
+            let p = block.as_ptr() as *const __m128i;
+            let mut w0 = _mm_shuffle_epi8(_mm_loadu_si128(p), mask);
+            let mut w1 = _mm_shuffle_epi8(_mm_loadu_si128(p.add(1)), mask);
+            let mut w2 = _mm_shuffle_epi8(_mm_loadu_si128(p.add(2)), mask);
+            let mut w3 = _mm_shuffle_epi8(_mm_loadu_si128(p.add(3)), mask);
+            let mut w4;
+
+            rounds4!(abef, cdgh, w0, 0);
+            rounds4!(abef, cdgh, w1, 1);
+            rounds4!(abef, cdgh, w2, 2);
+            rounds4!(abef, cdgh, w3, 3);
+            schedule_rounds4!(abef, cdgh, w0, w1, w2, w3, w4, 4);
+            schedule_rounds4!(abef, cdgh, w1, w2, w3, w4, w0, 5);
+            schedule_rounds4!(abef, cdgh, w2, w3, w4, w0, w1, 6);
+            schedule_rounds4!(abef, cdgh, w3, w4, w0, w1, w2, 7);
+            schedule_rounds4!(abef, cdgh, w4, w0, w1, w2, w3, 8);
+            schedule_rounds4!(abef, cdgh, w0, w1, w2, w3, w4, 9);
+            schedule_rounds4!(abef, cdgh, w1, w2, w3, w4, w0, 10);
+            schedule_rounds4!(abef, cdgh, w2, w3, w4, w0, w1, 11);
+            schedule_rounds4!(abef, cdgh, w3, w4, w0, w1, w2, 12);
+            schedule_rounds4!(abef, cdgh, w4, w0, w1, w2, w3, 13);
+            schedule_rounds4!(abef, cdgh, w0, w1, w2, w3, w4, 14);
+            schedule_rounds4!(abef, cdgh, w1, w2, w3, w4, w0, 15);
+
+            abef = _mm_add_epi32(abef, abef_save);
+            cdgh = _mm_add_epi32(cdgh, cdgh_save);
+        }
+
+        let feba = _mm_shuffle_epi32(abef, 0x1B);
+        let dchg = _mm_shuffle_epi32(cdgh, 0xB1);
+        let dcba = _mm_blend_epi16(feba, dchg, 0xF0);
+        let hgef = _mm_alignr_epi8(dchg, feba, 8);
+        let out = state.as_mut_ptr() as *mut __m128i;
+        _mm_storeu_si128(out, dcba);
+        _mm_storeu_si128(out.add(1), hgef);
     }
 }
 
@@ -434,6 +553,25 @@ pub fn sha256_file(path: &Path) -> io::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sha256_accelerated_matches_scalar() {
+        let data: Vec<u8> = (0..70_001u32)
+            .map(|i| (i.wrapping_mul(2654435761) >> 13) as u8)
+            .collect();
+        for len in [0usize, 1, 55, 56, 63, 64, 65, 127, 128, 1000, 70_001] {
+            let fast = sha256_hex(&data[..len]);
+            let mut s = Sha256::new();
+            // Scalar path only: feed whole blocks through `block`.
+            let full = len - len % 64;
+            s.len = len as u64;
+            for chunk in data[..full].chunks_exact(64) {
+                s.block(chunk);
+            }
+            s.buf.extend_from_slice(&data[full..len]);
+            assert_eq!(fast, s.finish(), "len {len}");
+        }
+    }
 
     #[test]
     fn sha256_known_vectors() {
