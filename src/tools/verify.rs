@@ -138,26 +138,25 @@ pub fn evidence_check(items: &[Value], root: Option<&str>) -> Check {
         }
         evidence.push(ev);
         checked += 1;
+        let at = if reference.starts_with("memory:") {
+            String::new()
+        } else {
+            line.map(|l| format!(":{l}")).unwrap_or_default()
+        };
         match super::recall::verify_citation(&path, line, sha) {
             Ok(Some(true)) => {}
             Ok(Some(false)) => {
                 status = status.worst(Status::Fail);
                 reasons.push(Reason::new(
                     "EVIDENCE_CHANGED",
-                    format!(
-                        "{reference}{} no longer matches the cited sha256",
-                        line.map(|l| format!(":{l}")).unwrap_or_default()
-                    ),
+                    format!("{reference}{at} no longer matches the cited sha256"),
                 ));
             }
             Ok(None) => {
                 status = status.worst(Status::Fail);
                 reasons.push(Reason::new(
                     "EVIDENCE_MISSING",
-                    format!(
-                        "{reference}{} does not exist",
-                        line.map(|l| format!(":{l}")).unwrap_or_default()
-                    ),
+                    format!("{reference}{at} does not exist"),
                 ));
             }
             Err(e) => {

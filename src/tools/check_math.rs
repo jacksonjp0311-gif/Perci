@@ -332,6 +332,7 @@ fn judge(span: [usize; 2], lhs: &str, claimed_text: &str, approx: bool) -> Claim
             Computed::Undefined { .. } => "left side divides by zero".into(),
             Computed::Irrational { .. } => "irrational value; not compared".into(),
             Computed::TooLarge => "exceeds exact range".into(),
+            Computed::Ambiguous { why, .. } => format!("ambiguous: {why}"),
             _ => "left side not understood".into(),
         };
         return claim;

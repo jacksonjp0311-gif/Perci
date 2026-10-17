@@ -75,6 +75,11 @@ pub enum Computed {
     Undefined { normalized: String },
     /// Overflow of the i128 range.
     TooLarge,
+    /// Notation with two readings, e.g. `3/4 / 1/2`: abstain, don't pick one.
+    Ambiguous {
+        normalized: String,
+        why: &'static str,
+    },
     /// Not understood.
     Unparsed,
 }
@@ -175,6 +180,9 @@ impl Computed {
                 "the expression divides by zero",
             ))
             .evidence(ev),
+            Computed::Ambiguous { normalized, why } => {
+                Outcome::abstain("AMBIGUOUS", format!("{normalized}: {why}"))
+            }
             Computed::TooLarge => Outcome::abstain(
                 "OVERFLOW",
                 "result exceeds the exact 128-bit range; refusing to round",
@@ -408,6 +416,12 @@ pub fn compute(expr: &str) -> Computed {
 
     // Plain expression (including a lone number).
     if exact_expr_ok(&compact) {
+        if chained_division(&compact) {
+            return Computed::Ambiguous {
+                normalized: compact,
+                why: "two divisions in one product (a/b/c or a/b / c/d) read differently by people and by precedence rules; add parentheses",
+            };
+        }
         return match exact_expr::eval(&compact) {
             Ok(value) => Computed::Value {
                 value,
@@ -429,6 +443,45 @@ pub fn compute(expr: &str) -> Computed {
         Ok(Some(answer)) => Computed::Phrase { answer },
         _ => Computed::Unparsed,
     }
+}
+
+/// True when two `/` operators follow each other in one product chain
+/// (same parenthesis depth, no `+`, `-` or `*` between them): `a/b/c`,
+/// `a/b / c/d`. `a/b * c/d` reads the same under every convention.
+pub fn chained_division(s: &str) -> bool {
+    let mut stack = vec![0u32];
+    let mut prev: Option<char> = None;
+    for c in s.chars() {
+        match c {
+            '(' => stack.push(0),
+            ')' => {
+                if stack.len() > 1 {
+                    stack.pop();
+                }
+            }
+            '+' | '-' if prev.is_some_and(|p| p.is_ascii_digit() || p == ')' || p == '.') => {
+                if let Some(top) = stack.last_mut() {
+                    *top = 0;
+                }
+            }
+            '*' => {
+                if let Some(top) = stack.last_mut() {
+                    *top = 0;
+                }
+            }
+            '/' => {
+                if let Some(top) = stack.last_mut() {
+                    *top += 1;
+                    if *top >= 2 {
+                        return true;
+                    }
+                }
+            }
+            _ => {}
+        }
+        prev = Some(c);
+    }
+    false
 }
 
 fn exact_expr_ok(s: &str) -> bool {
@@ -730,6 +783,16 @@ mod tests {
             Computed::Unparsed
         ));
         assert!(matches!(compute("what is love"), Computed::Unparsed));
+        // Two readings: abstain instead of guessing (held-out seed 20261017 found these).
+        assert!(matches!(
+            compute("15/24 / 16/13"),
+            Computed::Ambiguous { .. }
+        ));
+        assert!(matches!(compute("1/2/3"), Computed::Ambiguous { .. }));
+        assert!(!chained_division("19/28*30/17"));
+        assert!(!chained_division("2^3/4"));
+        assert_eq!(v("(15/24) / (16/13)"), "65/128");
+        assert_eq!(v("3/7 + 2/9 - 1/3"), "20/63");
     }
 
     #[test]
