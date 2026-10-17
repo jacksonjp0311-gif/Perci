@@ -1,36 +1,88 @@
-# PERCI
+# Perci: a fast, deterministic verifier and gate for AI agents
+
+<p align="center">
+  <img src="assets/icons/perci-darkblood-mark.jpg" alt="Perci mark" width="96" height="96">
+</p>
+
+<p align="center">
+  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
+  <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-5c0a12?style=for-the-badge">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-d97706?style=for-the-badge">
+</p>
+
+Your agent says *"17% of 240 is 41"*, cites a note that has changed, or wants
+to `git push` before the tests ran. Perci catches each of these before it
+reaches the user or the repository. It is a local MCP server and CLI that
+**recomputes math, checks claimed consequences and citations, gates shell
+steps and writes, and keeps a hash-chained ledger of the run**. Every answer is
+a verdict (`pass` / `fail` / `abstain` / `error`) with machine-readable reasons
+and a replayable receipt. Same input, same verdict, byte for byte. Most checks
+take microseconds. No API key, no network, no model in the loop.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/jacksonjp0311-gif/Perci/main/install.sh | sh     # macOS / Linux
+irm https://raw.githubusercontent.com/jacksonjp0311-gif/Perci/main/install.ps1 | iex           # Windows
+claude mcp add --scope user perci -- perci mcp                                                 # then connect your agent
+```
+
+Cursor, Codex, Claude Desktop and generic-harness configs, the 60-second demo
+and what each tool does: **[docs/QUICKSTART.md](docs/QUICKSTART.md)**.
+
+### What it catches (60-second demo)
+
+```text
+$ echo '{"expr":"17% of 240","claimed":"41"}' | perci tool exact
+  FAIL     EXACT_MISMATCH: claimed 41, exact 204/5 (40.8)
+$ echo '{"text":"... 3 x 42 = 128."}' | perci tool check_math
+  FAIL     MATH_MISMATCH: 3 x 42: claimed 128, exact 126
+$ echo '{"action":{"kind":"shell","command":"git push --force origin main"}}' | perci tool policy_check
+  FAIL     POLICY_REFUSE: git.force_push: rewrites or deletes remote history
+$ PERCI_RUN_ID=demo  … agent_gate_step pre  "git push origin main"
+  FAIL     SEQUENCE_REQUIRES: seq.deploy_requires_tests: deploying requires tests that passed after the last code change   ledger:demo#1
+$ PERCI_RUN_ID=demo  … agent_gate_step post "cargo test" exit 0
+  PASS                                                                                                    ledger:demo#2
+$ PERCI_RUN_ID=demo  … agent_gate_step pre  "git push origin main"
+  ABSTAIN  NEEDS_APPROVAL: git.history: publishes   (sequence rule satisfied, cites ledger:demo#2)
+$ PERCI_RUN_ID=demo  … ledger_verify
+  PASS     3 entries, chain intact
+```
+
+### How fast, how right
+
+`scripts/bench_public.py` against an installed release (Linux x64, 8 threads;
+round trip = harness writes the MCP request → reads the reply; work = the
+tool's own time). Full results, other platforms and how to reproduce them:
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
+| tool | round trip p50 | work p50 |
+|---|---|---|
+| `exact` (check a claimed value) | 0.058 ms | 7 µs |
+| `check_math` (3 claims in a paragraph) | 0.12 ms | 32 µs |
+| `policy_check` (shell command) | 0.066 ms | 9 µs |
+| `agent_gate_step` (pre, policy + sequence rules) | 0.17 ms | 110 µs |
+| `agent_check_claims` | 0.093 ms | 27 µs |
+| `relation` (consequences of premises) | 0.19 ms | 108 µs |
+| `ledger_append` | 0.048 ms | <1 µs |
+| `next_step` (temporal router) | 0.17 ms | 123 µs |
+| `route` (v0.2 pack, calibrated) | 0.52 ms | 389 µs |
+
+MCP cold start to `tools/list` 3.3 ms; a one-shot `perci tool` process 1.2 ms.
+Seeded correctness run (independent `fractions.Fraction` oracle): 300/300
+planted wrong values rejected, 0/150 correct answers flagged, 150/150 wrong
+ones caught, 0/13 dangerous commands allowed, and 600/600 verdict hashes
+identical across processes.
+
+Perci is also a research engine for local, governed cognition (a chat engine,
+Bitwork weights, operators). That part is described below. The verifier and
+gate don't depend on it: `exact`, `check_math`, `policy_check` and the ledger
+need no weights at all.
+
+---
 
 <p align="center">
   <img src="assets/icons/perci-hero-darkblood.jpg" alt="Perci dark-blood sparse cognition lattice" width="920">
 </p>
-
-<p align="center">
-  <img src="assets/icons/perci-darkblood-mark.jpg" alt="Perci mark" width="96" height="96">
-  &nbsp;&nbsp;
-  <img src="assets/generated/perci-darkblood-badge.svg" alt="Perci version badge (stamped from Cargo.toml)" width="160">
-</p>
-
-<p align="center">
-  <strong>Local, governed, sparse cognition.</strong><br>
-  Not a cloud LLM. Not a pretend mind.<br>
-  A Rust stack that <em>routes in bits, thinks in operators, and speaks like a collaborator</em> —
-  while showing its work when you ask.
-</p>
-
-<p align="center">
-  <img alt="Software" src="https://img.shields.io/badge/software-v0.11.6-8b0000?style=for-the-badge">
-  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust">
-  <img alt="Local first" src="https://img.shields.io/badge/runtime-local--first-111827?style=for-the-badge">
-  <img alt="Bitwork" src="https://img.shields.io/badge/Bitwork-PERCIW03-5c0a12?style=for-the-badge">
-  <img alt="Inference" src="https://img.shields.io/badge/hot_path-integer_only-059669?style=for-the-badge">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-d97706?style=for-the-badge">
-</p>
-
-<p align="center">
-  <a href="https://github.com/jacksonjp0311-gif/Perci"><strong>github.com/jacksonjp0311-gif/Perci</strong></a>
-</p>
-
----
 
 <p align="center">
   <img src="assets/icons/perci-stack-strip.svg" alt="Perci stack: reflex → Bitwork → operators → tools → thought arc → human speech" width="920">
@@ -812,6 +864,8 @@ profiles, swappable weight packs and ledgers (kept outside the repo):
 [evals/demo/transcript.md](evals/demo/transcript.md).
 
 ## Quick start
+
+> Installing a prebuilt release instead: [docs/QUICKSTART.md](docs/QUICKSTART.md). This section works from a source checkout.
 
 ### Need
 

@@ -178,3 +178,43 @@ Each entry: what was chosen, why, what it costs.
 36. **`check_math` reads `x` between digits as ×** (`3 x 42`, `3x42`, `(3)x(4)`).
 37. **`perci tool schema NAME`** prints that tool's input schema (it printed the
     verdict schema); `perci tool schema verdict` prints the verdict schema.
+38. **Weights are separate release assets, fetched by `perci fetch-weights`,
+    not bundled into the binary archives.** The default set is 240 MB (v0.3
+    210 MB, v0.2 20 MB, language/dialogue 10 MB; the legacy v0.1 pack is
+    left out). Bundling it would make four archives of about 240 MB each, 1 GB
+    per release, and every user would download 240 MB even when they only
+    want the tool layer, which needs no weights (`route` needs the 20 MB v0.2
+    pack). Published once as assets, the weights are served from GitHub
+    release storage, which has no Git LFS bandwidth quota. The release job
+    reads them from the CI cache keyed by LFS object ids, so a release pulls
+    nothing extra from LFS. `fetch-weights` checks each file's size and
+    sha256 against `models/PACKAGE_MANIFEST.json`, which ships in the
+    archive, before moving it into place. It uses the system `curl` (Windows
+    10+, macOS, Linux), so the crate gains no HTTP or TLS dependency. Sets:
+    `tools`, `default`, `all`. Source: `--from`, `PERCI_WEIGHTS_URL`
+    (mirrors, air-gapped dirs), or this version's release.
+39. **Archive = a complete Perci home minus the weights** (`perci/bin`,
+    `models/` manifests, `config/`, `knowledge/`, docs, the public benchmark).
+    Home resolution already looks two levels above the executable, so an
+    unpacked or installed copy needs no `PERCI_HOME`. Asset names carry no
+    version, so `releases/latest/download/<asset>` works for the installers.
+40. **Linux binary is static musl** (runs on any x64 distribution). macOS ships
+    native arm64 and x64 builds (an Intel runner builds and smoke-tests x64),
+    and Windows ships MSVC x64. The release workflow's `workflow_dispatch`
+    is a dry run: the same builds plus an end-to-end check that serves the
+    assets on localhost and runs the real `install.sh` / `install.ps1`
+    (`irm | iex` under Windows PowerShell 5.1), `perci doctor --deep`, a chat
+    answer and the public benchmark. Only a `v*` tag publishes, after a
+    check that the tag matches `Cargo.toml`.
+41. **Installers verify before they install**: the archive's sha256 must match
+    the release's `SHA256SUMS`, and the weights must match the manifest
+    shipped inside that archive. The installers install per user (no sudo or
+    admin), re-run as an in-place upgrade that keeps verified weights, and
+    finish with `perci doctor` (`--tools` for a tools-only install).
+    `perci doctor --tools` treats missing weights as a warning. A present but
+    corrupt file is still a failure.
+42. **Installer options use their own names** (`PERCI_INSTALL_WEIGHTS`,
+    `PERCI_INSTALL_DIR`, `PERCI_RELEASE_URL`, `PERCI_VERSION`,
+    `PERCI_NO_MODIFY_PATH`). `PERCI_WEIGHTS` already selects an alternate
+    chat pack at runtime, so an installer setting it in the user's session
+    would redirect Perci.

@@ -95,8 +95,10 @@ verify_patch).
 
 ## Harness configuration
 
-All three hosts launch `perci mcp` as a child process. Use absolute paths and
-set `PERCI_HOME` to the checkout (weights, `config/policy.json`).
+All three hosts launch `perci mcp` as a child process. An installed release
+(see [QUICKSTART.md](QUICKSTART.md)) needs only `"command": "perci"` (or its
+absolute path). With a source build, use absolute paths and set `PERCI_HOME`
+to the checkout (weights, `config/policy.json`).
 
 **Claude Code** (`.mcp.json` in the project, or `claude mcp add perci -- /path/to/perci mcp`):
 
