@@ -205,11 +205,7 @@ impl Tool for CheckClaims {
             rows.push(json!({"span": [offset, offset + s.len()], "text": crate::util::text::truncate(s, 200), "kind": kind, "verdict": verdict.as_str(), "note": note}));
         }
         let checked = passed + failed;
-        let coverage_pm = if total == 0 {
-            0
-        } else {
-            checked * 1000 / total
-        };
+        let coverage_pm = (checked * 1000).checked_div(total).unwrap_or(0);
         let status = if failed > 0 {
             Status::Fail
         } else if passed > 0 && coverage_pm >= min_cov_pm {

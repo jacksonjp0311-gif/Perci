@@ -366,9 +366,10 @@ impl Tool for Verify {
                 reasons.push(Reason::new("NOTHING_CHECKABLE", "no math claim, evidence, premises or action to verify; Perci can't vouch for this answer"));
             }
         }
-        let confidence = if checks.iter().any(|c| c.kind == "relation" && c.applicable) {
-            Confidence::Bounded
-        } else if checks.iter().any(|c| c.kind == "evidence" && c.applicable) {
+        let confidence = if checks
+            .iter()
+            .any(|c| matches!(c.kind, "relation" | "evidence") && c.applicable)
+        {
             Confidence::Bounded
         } else {
             Confidence::Exact

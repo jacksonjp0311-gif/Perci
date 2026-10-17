@@ -2,7 +2,7 @@
 //! harnesses call (MCP stdio via `perci mcp`, or one-shot `perci tool`).
 //!
 //! Every tool returns a [`crate::verdict::Verdict`]. Tools never go through
-//! `ChatEngine`, never read or write the chat session, and never touch the
+//! the chat engine, never read or write the chat session, and never touch the
 //! learning log. The only tool that writes memory is `perci.remember` (off by
 //! default); it appends to the journal through [`crate::cited_memory`].
 //!

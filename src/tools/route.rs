@@ -30,7 +30,7 @@ pub struct LoadedPack {
 fn pack_path(name: &str) -> PathBuf {
     match name {
         "v0.1" | "v0.2" | "v0.3" => {
-            crate::paths::asset(&format!("models/perci-cognitive-{name}.pwgt"))
+            crate::paths::asset(format!("models/perci-cognitive-{name}.pwgt"))
         }
         other => PathBuf::from(other),
     }
