@@ -279,7 +279,9 @@ pub fn run_agent(goal: &str, opts: AgentOpts) -> io::Result<AgentReport> {
                 content,
                 note,
             } => {
-                if let Err(err) = assert_writable(rel_path) {
+                if let Err(err) = assert_writable(rel_path)
+                    .and_then(|()| assert_inside_root(&edit_root, rel_path))
+                {
                     report.steps.push(AgentStep {
                         name: "repo.edit".into(),
                         detail: err,
@@ -1527,11 +1529,65 @@ fn repo_root() -> io::Result<PathBuf> {
     ))
 }
 
-fn assert_writable(rel: &str) -> Result<(), String> {
+/// Lexical checks shared by write and script paths: relative, no `..`
+/// component, no drive letter / UNC / NUL.
+fn check_relative_path(rel: &str) -> Result<String, String> {
     let normalized = rel.replace('\\', "/");
-    if normalized.contains("..") {
+    let bytes = normalized.as_bytes();
+    let has_drive = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if normalized.is_empty()
+        || normalized.starts_with('/')
+        || has_drive
+        || normalized.contains('\0')
+    {
+        return Err(format!("path must be relative to the repo: {rel}"));
+    }
+    if normalized.split('/').any(|part| part == "..") || normalized.contains("..") {
         return Err("path escapes repo".into());
     }
+    Ok(normalized.trim_start_matches("./").to_owned())
+}
+
+/// After the lexical checks: the nearest existing ancestor of `root/rel`
+/// must canonicalise to a path inside `root` (blocks symlink/junction escapes).
+fn assert_inside_root(root: &Path, rel: &str) -> Result<(), String> {
+    let root_canon = root
+        .canonicalize()
+        .map_err(|e| format!("repo root {}: {e}", root.display()))?;
+    let mut probe = root.join(rel);
+    loop {
+        if probe.exists() {
+            let canon = probe
+                .canonicalize()
+                .map_err(|e| format!("{}: {e}", probe.display()))?;
+            if !canon.starts_with(&root_canon) {
+                return Err(format!("path resolves outside repo: {rel}"));
+            }
+            return Ok(());
+        }
+        if !probe.pop() {
+            return Ok(());
+        }
+    }
+}
+
+/// `python <script>` is allowed only for an existing `scripts/**/*.py` inside the repo.
+fn python_script_allowed(root: &Path, script: &str) -> Result<(), String> {
+    let normalized = check_relative_path(script)
+        .map_err(|e| format!("python only allowed on scripts/*.py ({e})"))?;
+    if !normalized.starts_with("scripts/") || !normalized.ends_with(".py") {
+        return Err(format!(
+            "python only allowed on scripts/*.py (got {script})"
+        ));
+    }
+    if !root.join(&normalized).is_file() {
+        return Err(format!("python script not found: {normalized}"));
+    }
+    assert_inside_root(root, &normalized)
+}
+
+fn assert_writable(rel: &str) -> Result<(), String> {
+    let normalized = check_relative_path(rel)?;
     for suffix in FORBIDDEN_WRITE_SUFFIXES {
         if normalized.ends_with(suffix) {
             return Err(format!("refusing to write weight artifact: {normalized}"));
@@ -1585,9 +1641,7 @@ fn run_allowlisted(root: &Path, argv: &[String]) -> Result<String, String> {
     if prog == "python" || prog == "python3" {
         // Only scripts under scripts/
         let script = argv.get(1).map(String::as_str).unwrap_or("");
-        if !script.replace('\\', "/").contains("scripts/") {
-            return Err("python only allowed on scripts/*".into());
-        }
+        python_script_allowed(root, script)?;
     }
 
     let mut cmd = Command::new(prog);
@@ -1661,6 +1715,27 @@ mod tests {
         assert!(assert_writable("models/perci-cognitive-v0.3.pwgt").is_err());
         assert!(assert_writable("src/agent.rs").is_ok());
         assert!(assert_writable("models/candidates/foo.json").is_ok());
+        assert!(assert_writable("/etc/passwd").is_err());
+        assert!(assert_writable("C:/Windows/x.rs").is_err());
+        assert!(assert_writable("src/../../x.rs").is_err());
+    }
+
+    #[test]
+    fn python_allowlist_requires_a_real_repo_script() {
+        // S3: the old check accepted any argv[1] *containing* "scripts/".
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert!(python_script_allowed(root, "scripts/archive_candidates.py").is_ok());
+        for bad in [
+            "../../tmp/scripts/x.py",
+            "/tmp/scripts/x.py",
+            "C:\\tmp\\scripts\\x.py",
+            "-c",
+            "notscripts/x.py",
+            "scripts/does-not-exist.py",
+            "scripts/archive_candidates.sh",
+        ] {
+            assert!(python_script_allowed(root, bad).is_err(), "{bad}");
+        }
     }
 
     #[test]
