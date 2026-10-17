@@ -819,7 +819,7 @@ pub fn load(name: &str) -> Result<Loaded, String> {
     weights.set_lexical_priors(priors);
     let mut info = info;
     if info.manifest.calibration.is_none() {
-        info.manifest.calibration = external_calibration(&info);
+        info.manifest.calibration = external_calibration(&info)?;
     }
     Ok(Loaded {
         info,
@@ -865,8 +865,11 @@ pub fn priors_of(m: &Manifest) -> Result<crate::cognitive::LexicalPriors, String
 
 /// Calibration outside the manifest: `config/route-calibration/<name>.json`
 /// for built-ins (committed), `calibration.<name>` in `profile.json` for any
-/// pack (a path, profile-relative).
-fn external_calibration(info: &PackInfo) -> Option<Value> {
+/// pack: a path (profile-relative), or `{"path", "sha256"}` to pin the file.
+/// A pinned file that is missing, invalid or changed is an error for the
+/// pack, never a silent fallback.
+fn external_calibration(info: &PackInfo) -> Result<Option<Value>, String> {
+    let name = &info.manifest.name;
     let read = |p: PathBuf| -> Option<Value> {
         std::fs::read(&p)
             .ok()
@@ -874,19 +877,54 @@ fn external_calibration(info: &PackInfo) -> Option<Value> {
             .filter(|v| v.get("schema").and_then(Value::as_str) == Some(CALIBRATION_SCHEMA))
     };
     let cfg = profile_config();
-    if let Some(p) = cfg
-        .pointer(&format!("/calibration/{}", info.manifest.name))
-        .and_then(Value::as_str)
-    {
-        return read(crate::profile::resolve(p));
+    match cfg.pointer(&format!("/calibration/{name}")) {
+        // `"calibration": {"<pack>": "calibration/x.json"}`
+        Some(Value::String(p)) => return Ok(read(crate::profile::resolve(p))),
+        // `"calibration": {"<pack>": {"path": "calibration/x.json", "sha256": "<hex>"}}`:
+        // a pinned table must exist, be valid and match, or the pack does not load.
+        Some(Value::Object(o)) => {
+            let Some(p) = o.get("path").and_then(Value::as_str) else {
+                return Err(format!(
+                    "pack {name}: profile calibration.{name} needs a \"path\""
+                ));
+            };
+            let path = crate::profile::resolve(p);
+            let Some(pin) = o.get("sha256").and_then(Value::as_str) else {
+                return Ok(read(path));
+            };
+            let bytes = std::fs::read(&path)
+                .map_err(|e| format!("pack {name}: pinned calibration {}: {e}", path.display()))?;
+            let actual = crate::doctor::sha256_hex(&bytes);
+            if !actual.eq_ignore_ascii_case(pin.trim()) {
+                return Err(format!(
+                    "pack {name}: calibration {} was modified (sha256 {actual}, pinned {pin})",
+                    path.display()
+                ));
+            }
+            return serde_json::from_slice::<Value>(&bytes)
+                .ok()
+                .filter(|v| v.get("schema").and_then(Value::as_str) == Some(CALIBRATION_SCHEMA))
+                .map(Some)
+                .ok_or_else(|| {
+                    format!(
+                        "pack {name}: pinned calibration {} is not {CALIBRATION_SCHEMA}",
+                        path.display()
+                    )
+                });
+        }
+        Some(other) if !other.is_null() => {
+            return Err(format!(
+                "pack {name}: profile calibration.{name} must be a path or {{\"path\", \"sha256\"}}"
+            ))
+        }
+        _ => {}
     }
     if info.builtin {
-        return read(crate::paths::asset(format!(
-            "config/route-calibration/{}.json",
-            info.manifest.name
-        )));
+        return Ok(read(crate::paths::asset(format!(
+            "config/route-calibration/{name}.json"
+        ))));
     }
-    None
+    Ok(None)
 }
 
 pub const CALIBRATION_SCHEMA: &str = "perci.route-calibration.v1";
