@@ -67,6 +67,8 @@ pub struct ChatResponse {
 pub struct ChatEngine {
     personality: Personality,
     memory: MemoryStore,
+    /// Cited recall over the same journal (notes + AgentSearch, lazy).
+    cited: crate::cited_memory::CitedMemory,
     router: ReflexRouter,
     backend: Box<dyn LanguageBackend>,
     cortex: Option<CortexBridge>,
@@ -136,9 +138,11 @@ impl ChatEngine {
         backend: Box<dyn LanguageBackend>,
         cortex: Option<CortexBridge>,
     ) -> Self {
+        let cited = crate::cited_memory::CitedMemory::new(memory.path().to_path_buf());
         Self {
             personality,
             memory,
+            cited,
             router: ReflexRouter,
             backend,
             cortex,
@@ -1267,6 +1271,10 @@ impl ChatEngine {
     fn remember(&mut self, input: &str) -> io::Result<ChatResponse> {
         let content = strip_memory_prefix(input);
         self.memory.append_kind("note", content)?;
+        // Derive the note file now so a later recall can cite it (cheap; no Python).
+        if let Err(e) = self.cited.sync() {
+            eprintln!("perci: note saved, but its citation file was not written: {e}");
+        }
 
         let cortex_note = match self.cortex.as_mut() {
             Some(cortex) if cortex.ready() => match cortex.remember("note", content) {
@@ -1287,6 +1295,16 @@ impl ChatEngine {
 
     fn recall(&mut self, input: &str) -> io::Result<ChatResponse> {
         let query = strip_recall_prefix(input);
+        if let Ok(cited) = self.cited.recall(query, 4) {
+            if !cited.hits.is_empty() {
+                let text = format_cited_recall(&cited);
+                self.push_turn(input, &text);
+                return Ok(ChatResponse {
+                    route: Route::MemorySearch,
+                    text,
+                });
+            }
+        }
         let found = self.collect_context(query, 5, 700)?;
 
         let text = if found.is_empty() {
@@ -1334,6 +1352,23 @@ impl ChatEngine {
         context.dedup();
         Ok(context)
     }
+}
+
+/// "You told me …" with a short citation per note. Text is quoted as data.
+fn format_cited_recall(result: &crate::cited_memory::RecallResult) -> String {
+    let mut out = String::from("From your notes:");
+    for hit in &result.hits {
+        out.push_str(&format!(
+            "\n- \"{}\" ({}) [{}]",
+            hit.text.trim(),
+            crate::cited_memory::format_saved_at(hit.created_unix),
+            crate::cited_memory::short_tag(&hit.citation)
+        ));
+    }
+    if !result.complete {
+        out.push_str("\nI may be missing newer notes (the search reported partial coverage).");
+    }
+    out
 }
 
 /// A reason loop may be internally well-formed yet belong to the wrong
