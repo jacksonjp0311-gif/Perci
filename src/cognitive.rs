@@ -43,6 +43,38 @@ pub fn default_weight_path() -> PathBuf {
     crate::paths::asset("models/perci-cognitive-v0.1.pwgt")
 }
 
+/// `PERCI_REQUIRE_WEIGHTS=1` turns "weights missing, skip" into a test failure
+/// (set it in CI jobs that pull LFS so weight tests can never pass vacuously).
+pub fn weights_required() -> bool {
+    std::env::var("PERCI_REQUIRE_WEIGHTS").is_ok_and(|v| v == "1")
+}
+
+/// Decide whether a weight-dependent test can run: `Ok(true)` run,
+/// `Ok(false)` skip, `Err` when weights are required but unusable.
+pub fn weights_test_gate(path: &Path, required: bool) -> Result<bool, String> {
+    let usable = path.is_file() && !crate::paths::is_lfs_pointer(path);
+    if !usable && required {
+        return Err(format!(
+            "weights required (PERCI_REQUIRE_WEIGHTS=1) but {} is missing or an LFS pointer; run git lfs pull",
+            path.display()
+        ));
+    }
+    Ok(usable)
+}
+
+/// For weight-dependent tests: `true` = run. Missing or LFS-pointer weights
+/// skip with a note, or panic when [`weights_required`].
+pub fn weights_available_for_test(path: &Path) -> bool {
+    match weights_test_gate(path, weights_required()) {
+        Ok(true) => true,
+        Ok(false) => {
+            eprintln!("skipping: weights not available at {}", path.display());
+            false
+        }
+        Err(message) => panic!("{message}"),
+    }
+}
+
 #[derive(Clone, Debug)]
 struct LabelInfo {
     name: String,
@@ -2317,9 +2349,25 @@ mod tests {
     }
 
     #[test]
+    fn weight_tests_cannot_pass_vacuously_when_required() {
+        // B2E-PERCI-004: tests silently returned when the pack was missing.
+        let dir = std::env::temp_dir().join(format!("perci-gate-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pointer = dir.join("p.pwgt");
+        std::fs::write(&pointer, "version https://git-lfs.github.com/spec/v1\n").unwrap();
+        let missing = dir.join("none.pwgt");
+        assert_eq!(weights_test_gate(&missing, false), Ok(false));
+        assert!(weights_test_gate(&missing, true).is_err());
+        assert!(weights_test_gate(&pointer, true)
+            .unwrap_err()
+            .contains("git lfs pull"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn classify_returns_mixture_when_weights_present() {
         let path = default_weight_path();
-        if !path.is_file() {
+        if !weights_available_for_test(&path) {
             return;
         }
         let weights = CognitiveWeights::load(&path).expect("load weights");
@@ -2360,7 +2408,7 @@ mod tests {
     #[test]
     fn soft_attention_weights_sum_near_thousand() {
         let path = default_weight_path();
-        if !path.is_file() {
+        if !weights_available_for_test(&path) {
             return;
         }
         let weights = CognitiveWeights::load(&path).expect("load");
@@ -2387,7 +2435,7 @@ mod tests {
     #[test]
     fn classify_hot_path_stays_interactive() {
         let path = default_weight_path();
-        if !path.is_file() {
+        if !weights_available_for_test(&path) {
             return;
         }
         let weights = CognitiveWeights::load(&path).expect("load weights");

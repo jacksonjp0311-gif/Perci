@@ -494,7 +494,7 @@ mod tests {
             .iter()
             .find(|a| a.path.ends_with("perci-cognitive-v0.3.pwgt"))
             .expect("v0.3 listed in manifest");
-        if std::env::var("PERCI_REQUIRE_WEIGHTS").as_deref() == Ok("1") {
+        if crate::cognitive::weights_required() {
             assert_eq!(active.state, ArtifactState::Ok, "{}", active.state.label());
         }
     }
