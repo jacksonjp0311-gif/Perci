@@ -643,11 +643,69 @@ struct HttpEndpoint {
     path: String,
 }
 
+/// True for `localhost`, `127.0.0.0/8` and `::1` (with or without brackets).
+pub fn host_is_loopback(host: &str) -> bool {
+    let h = host.trim().trim_start_matches('[').trim_end_matches(']');
+    if h.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    h.parse::<std::net::IpAddr>()
+        .map(|ip| ip.is_loopback())
+        .unwrap_or(false)
+}
+
+fn remote_lm_allowed() -> bool {
+    env_flag("PERCI_ALLOW_REMOTE_LM")
+}
+
+/// Validate a model URL. The adapter speaks plain HTTP, so only loopback
+/// hosts are accepted unless `allow_remote` (PERCI_ALLOW_REMOTE_LM=1).
+pub fn check_model_url(raw: &str, allow_remote: bool) -> Result<(String, bool), String> {
+    let endpoint = parse_http_endpoint(raw).map_err(|e| e.to_string())?;
+    let loopback = host_is_loopback(&endpoint.host);
+    if !loopback && !allow_remote {
+        return Err(format!(
+            "refused: {} is not a loopback host; the model adapter uses plain HTTP. \
+             Use a local server (127.0.0.1) or set PERCI_ALLOW_REMOTE_LM=1",
+            endpoint.host
+        ));
+    }
+    Ok((endpoint.host, loopback))
+}
+
+/// One-line external LM status for `perci doctor`: (text, refused).
+pub fn external_lm_status() -> (String, bool) {
+    if !env_flag("PERCI_ENABLE_EXTERNAL_LM") {
+        return ("off (PERCI_ENABLE_EXTERNAL_LM not set)".into(), false);
+    }
+    let Some(raw) = env::var("PERCI_MODEL_URL")
+        .or_else(|_| env::var("PERCI_OPENAI_URL"))
+        .ok()
+    else {
+        return ("enabled, but PERCI_MODEL_URL is not set".into(), false);
+    };
+    match check_model_url(&raw, remote_lm_allowed()) {
+        Ok((host, true)) => (format!("enabled · {host} (loopback)"), false),
+        Ok((host, false)) => (
+            format!("enabled · {host} (REMOTE, plain HTTP; no token is sent)"),
+            false,
+        ),
+        Err(e) => (e, true),
+    }
+}
+
 impl LocalModelBackend {
     pub fn from_env() -> Option<Self> {
         let raw = env::var("PERCI_MODEL_URL")
             .or_else(|_| env::var("PERCI_OPENAI_URL"))
             .ok()?;
+        let loopback = match check_model_url(&raw, remote_lm_allowed()) {
+            Ok((_, loopback)) => loopback,
+            Err(e) => {
+                eprintln!("perci: external model disabled: {e}");
+                return None;
+            }
+        };
         let endpoint = parse_http_endpoint(&raw).ok()?;
         let timeout_ms = env::var("PERCI_MODEL_TIMEOUT_MS")
             .ok()
@@ -667,10 +725,18 @@ impl LocalModelBackend {
         Some(Self {
             endpoint,
             model: env::var("PERCI_MODEL_NAME").unwrap_or_else(|_| "phi-4-mini".into()),
+            // Only an explicit PERCI_MODEL_TOKEN, and only to a loopback host:
+            // never fall back to OPENAI_API_KEY, never send a bearer token over
+            // plain HTTP to another machine.
             token: env::var("PERCI_MODEL_TOKEN")
                 .ok()
                 .filter(|v| !v.trim().is_empty())
-                .or_else(|| env::var("OPENAI_API_KEY").ok()),
+                .filter(|_| {
+                    if !loopback {
+                        eprintln!("perci: not sending PERCI_MODEL_TOKEN to a non-loopback host over plain HTTP");
+                    }
+                    loopback
+                }),
             timeout: Duration::from_millis(timeout_ms),
             maximum_tokens,
             temperature,
@@ -729,6 +795,15 @@ impl LanguageBackend for LocalModelBackend {
             .to_socket_addrs()?
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "model host did not resolve"))?;
+        if !addr.ip().is_loopback() && !remote_lm_allowed() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!(
+                    "model host {} resolved to non-loopback {addr}",
+                    self.endpoint.host
+                ),
+            ));
+        }
         let mut stream = TcpStream::connect_timeout(&addr, self.timeout)?;
         stream.set_read_timeout(Some(self.timeout))?;
         stream.set_write_timeout(Some(self.timeout))?;
@@ -1768,5 +1843,33 @@ mod tests {
         .unwrap();
         server.join().unwrap();
         assert_eq!(text, "A local answer.");
+    }
+
+    #[test]
+    fn model_url_must_be_loopback_unless_explicitly_allowed() {
+        // B2E-PERCI-010: OPENAI_API_KEY could be sent over plain http to any host.
+        for ok in [
+            "http://127.0.0.1:11434/api/chat",
+            "http://localhost:8080/v1",
+            "http://[::1]:9000/v1",
+            "http://127.4.5.6:1/v1",
+        ] {
+            assert!(super::check_model_url(ok, false).is_ok(), "{ok}");
+        }
+        for bad in [
+            "http://10.1.2.3:1/v1",
+            "http://api.example.net/v1",
+            "http://192.168.0.20:11434/api/chat",
+        ] {
+            let err = super::check_model_url(bad, false).unwrap_err();
+            assert!(err.contains("not a loopback host"), "{err}");
+            assert_eq!(
+                super::check_model_url(bad, true).map(|(_, lb)| lb),
+                Ok(false)
+            );
+        }
+        assert!(super::check_model_url("https://localhost/v1", false).is_err());
+        assert!(super::host_is_loopback("LOCALHOST"));
+        assert!(!super::host_is_loopback("localhost.evil.example"));
     }
 }

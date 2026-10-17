@@ -188,15 +188,7 @@ pub fn run(deep: bool) -> Report {
         None => "not installed (optional)".to_owned(),
     };
 
-    let external_lm_refused = false;
-    let external_lm = if std::env::var("PERCI_ENABLE_EXTERNAL_LM").as_deref() == Ok("1") {
-        format!(
-            "enabled ({})",
-            std::env::var("PERCI_MODEL_URL").unwrap_or_else(|_| "no PERCI_MODEL_URL".into())
-        )
-    } else {
-        "off".to_owned()
-    };
+    let (external_lm, external_lm_refused) = crate::backend::external_lm_status();
     let tracing = crate::logs::tracing_enabled();
     let logs = dir_logs(&data.join("logs"));
     let python = find_on_path(&["python3", "python", "py"]);
