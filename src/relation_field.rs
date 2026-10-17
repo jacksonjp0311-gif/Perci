@@ -203,6 +203,27 @@ pub fn execute_followup(user: &str, prior_user: &str) -> Option<RelationExecutio
     None
 }
 
+/// Execute an already parsed program (structured tool input path).
+pub fn execute_parsed(program: RelationProgram, text: &str) -> Option<RelationExecution> {
+    execute_program(program, text)
+}
+
+/// Nodes that lose support under the program's intervention, in propagation
+/// order (the intervention target first). Empty without an intervention.
+pub fn affected_nodes(program: &RelationProgram) -> Vec<String> {
+    program
+        .intervention
+        .as_ref()
+        .map(|i| propagate_affected(&program.edges, &i.target))
+        .unwrap_or_default()
+}
+
+/// True when two node phrases share a content word (the field's own notion
+/// of "the same node").
+pub fn same_node(left: &str, right: &str) -> bool {
+    phrase_overlap(left, right)
+}
+
 pub fn looks_relation_continuation(user: &str) -> bool {
     let lower = user.to_ascii_lowercase();
     if lower.split_whitespace().count() > 14
@@ -673,9 +694,38 @@ fn parse_intervention(text: &str) -> Option<Intervention> {
         (" decreases", "decreasing"),
         (" changes", "changing"),
         (" stops", "stopping"),
+        // Plural subjects ("if tests fail") and outage phrasing.
+        (" are removed", "being removed"),
+        (" are disabled", "being disabled"),
+        (" are unavailable", "being unavailable"),
+        (" are missing", "being missing"),
+        (" are gone", "being gone"),
+        (" are lost", "being lost"),
+        (" are deleted", "being deleted"),
+        (" is deleted", "being deleted"),
+        (" is corrupted", "being corrupted"),
+        (" goes down", "going down"),
+        (" go down", "going down"),
+        (" is down", "being down"),
+        (" are down", "being down"),
+        (" times out", "timing out"),
+        (" time out", "timing out"),
+        (" crashes", "crashing"),
+        (" crash", "crashing"),
+        (" fail", "failing"),
+        (" break", "breaking"),
+        (" drop", "dropping"),
+        (" stop", "stopping"),
+        (" degrade", "degrading"),
     ];
     for (marker, change) in markers {
-        let Some(index) = text.find(marker) else {
+        // Whole-word match: " fail" must not match " failure".
+        let Some(index) = text.match_indices(marker).map(|(i, _)| i).find(|&i| {
+            !text[i + marker.len()..]
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphanumeric())
+        }) else {
             continue;
         };
         let prefix = &text[..index];
@@ -881,6 +931,20 @@ mod tests {
             execution.invariant
         );
         assert_eq!(execution.invariant.len(), 1);
+    }
+
+    #[test]
+    fn plural_and_outage_interventions_parse() {
+        let execution = execute(
+            "Deploy depends on build. Build depends on tests. If tests fail, what changes?",
+        )
+        .expect("plural intervention executes");
+        assert_eq!(execution.impacted.len(), 2, "{:?}", execution.impacted);
+        let program =
+            parse_program("The api requires the database. If the database goes down, what breaks?");
+        assert_eq!(program.intervention.unwrap().target, "database");
+        // " fail" must not fire inside "failure".
+        assert!(parse_intervention("a failure mode was seen").is_none());
     }
 
     #[test]
