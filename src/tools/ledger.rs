@@ -392,6 +392,10 @@ pub fn action_step(action: &Value) -> String {
                     super::policy::tokenize(&first)
                 }
             };
+            // Unwrapped the way the policy looks through it (`&`, `.`,
+            // wrappers, `bash -c`, `powershell -File`), so a wrapped command
+            // is recorded as what it runs and sequence rules see it.
+            let argv = super::policy::effective_argv(argv);
             let mut i = 0;
             while i < argv.len()
                 && (super::policy::is_env_assignment(&argv[i])
@@ -455,6 +459,20 @@ pub fn classes_of(policy: &Value, step: &str) -> Vec<String> {
     if step.is_empty() {
         return out;
     }
+    // A PowerShell alias also matches patterns naming its cmdlet
+    // (`shell:del` hits `shell:remove-item`), as in the policy; not the reverse.
+    let aliased = step.strip_prefix("shell:").and_then(|rest| {
+        let (prog, tail) = rest.split_once(' ').unwrap_or((rest, ""));
+        super::policy::powershell_alias(prog).map(|c| {
+            if tail.is_empty() {
+                format!("shell:{c}")
+            } else {
+                format!("shell:{c} {tail}")
+            }
+        })
+    });
+    let matches_pat =
+        |s: &str, p: &str| s == p || (s.starts_with(p) && s[p.len()..].starts_with(' '));
     if let Some(classes) = policy
         .pointer("/sequence/classes")
         .and_then(Value::as_object)
@@ -463,7 +481,8 @@ pub fn classes_of(policy: &Value, step: &str) -> Vec<String> {
             let hit = step == name
                 || pats.as_array().is_some_and(|a| {
                     a.iter().filter_map(Value::as_str).any(|p| {
-                        step == p || (step.starts_with(p) && step[p.len()..].starts_with(' '))
+                        matches_pat(step, p)
+                            || aliased.as_deref().is_some_and(|s| matches_pat(s, p))
                     })
                 });
             if hit {
@@ -1153,5 +1172,31 @@ mod tests {
         assert!(f[0].satisfied, "{}", f[0].detail);
         assert_eq!(f[0].evidence[0].reference, format!("ledger:seq#{}", 4));
         let _ = std::fs::remove_dir_all(l.path.parent().unwrap());
+    }
+
+    #[test]
+    fn steps_unwrap_wrappers_and_aliases_match_cmdlet_patterns() {
+        let step = |c: &str| action_step(&json!({"kind": "shell", "command": c}));
+        assert_eq!(
+            step(r"& .\scripts\stage_release.ps1"),
+            "shell:stage_release.ps1"
+        );
+        assert_eq!(step(r"powershell -File .\a.ps1"), "shell:a.ps1");
+        assert_eq!(step("bash -c 'cargo test --release'"), "shell:cargo test");
+        assert_eq!(
+            step(r"& 'C:\Program Files\Git\bin\git.exe' push"),
+            "shell:git push"
+        );
+        let policy = json!({"sequence": {"classes": {"destructive": ["shell:remove-item"], "unix": ["shell:rm"]}}});
+        assert_eq!(
+            classes_of(&policy, "shell:del"),
+            vec!["destructive".to_owned()]
+        );
+        assert_eq!(
+            classes_of(&policy, &step("ri -Recurse x")),
+            vec!["destructive".to_owned()]
+        );
+        // `rm` keeps its Unix meaning and also matches the cmdlet rule (as in the policy).
+        assert!(classes_of(&policy, "shell:rm").contains(&"unix".to_owned()));
     }
 }

@@ -625,11 +625,7 @@ fn shell_segment(policy: &Value, raw: &str, argv: &[String], depth: usize) -> De
     if depth < 4 {
         if let Some(first) = argv.first().map(|p| program_name(p)) {
             if WRAPPERS.contains(&first.as_str()) {
-                let inner: Vec<String> = argv[1..]
-                    .iter()
-                    .skip_while(|a| a.starts_with('-') || a.contains('='))
-                    .cloned()
-                    .collect();
+                let inner = wrapper_inner(&first, &argv[1..]);
                 if !inner.is_empty() {
                     decision.merge(shell_segment(policy, &inner.join(" "), &inner, depth + 1));
                 }
@@ -652,6 +648,9 @@ fn shell_segment(policy: &Value, raw: &str, argv: &[String], depth: usize) -> De
                         let inner = argv[pos + 1..].join(" ");
                         decision.merge(check_command(policy, &inner, depth + 1));
                     }
+                } else if let Some(inner) = shell_script_argv(&first, &argv[1..]) {
+                    // `powershell -File x.ps1 …`, `bash x.sh …`: the script is the program.
+                    decision.merge(shell_segment(policy, &inner.join(" "), &inner, depth + 1));
                 }
             }
         }
@@ -703,6 +702,147 @@ pub(crate) fn unwrap_call_operator(mut argv: Vec<String>) -> Vec<String> {
             _ => return argv,
         }
     }
+}
+
+/// The command a wrapper runs: its options (and the values of the ones that
+/// take a value, `sudo -u bob`, `nice -n 5`) and env assignments skipped.
+pub(crate) fn wrapper_inner(wrapper: &str, rest: &[String]) -> Vec<String> {
+    let takes_value: &[&str] = match wrapper {
+        "sudo" | "doas" => &["-u", "-g", "-p", "-C", "-D", "-h", "-r", "-t", "-U", "-T"],
+        "env" => &["-u", "-C", "-S", "--unset", "--chdir"],
+        "nice" => &["-n", "--adjustment"],
+        "time" => &["-f", "-o", "--format", "--output"],
+        "xargs" => &["-I", "-n", "-P", "-d", "-a", "-E", "-L", "-s"],
+        _ => &[],
+    };
+    let mut i = 0;
+    while i < rest.len() {
+        let a = &rest[i];
+        if a == "--" {
+            i += 1;
+            break;
+        }
+        if takes_value.contains(&a.as_str()) {
+            i += 2;
+        } else if a.starts_with('-')
+            || is_env_assignment(a)
+            || (wrapper == "runas" && a.starts_with('/'))
+        {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+    rest.get(i..).map(<[String]>::to_vec).unwrap_or_default()
+}
+
+/// PowerShell host parameters that take a value (`-ExecutionPolicy Bypass`).
+const PS_VALUE_PARAMS: &[&str] = &[
+    "executionpolicy",
+    "windowstyle",
+    "version",
+    "configurationname",
+    "inputformat",
+    "outputformat",
+    "psconsolefile",
+    "workingdirectory",
+    "settingsfile",
+    "custompipename",
+];
+
+/// The script a shell runs when it is given one instead of `-c`:
+/// `powershell -NoProfile -ExecutionPolicy Bypass -File x.ps1 a b` → `[x.ps1, a, b]`,
+/// `pwsh x.ps1`, `bash -e x.sh a` → `[x.sh, a]`. `None` for `-c` forms and
+/// interactive shells.
+pub(crate) fn shell_script_argv(shell: &str, rest: &[String]) -> Option<Vec<String>> {
+    let powershell = matches!(shell, "powershell" | "pwsh");
+    let mut i = 0;
+    while i < rest.len() {
+        let a = &rest[i];
+        if powershell {
+            if ps_param_matches(a, "file") {
+                return rest.get(i + 1).map(|_| rest[i + 1..].to_vec());
+            }
+            if ps_param_matches(a, "command") || ps_param_matches(a, "encodedcommand") {
+                return None;
+            }
+            if let Some(p) = a.strip_prefix('-') {
+                let p = p.split(':').next().unwrap_or("").to_lowercase();
+                let takes_value = !p.is_empty()
+                    && !a.contains(':')
+                    && PS_VALUE_PARAMS
+                        .iter()
+                        .any(|v| v.starts_with(&p) && p.len() >= 2);
+                i += if takes_value { 2 } else { 1 };
+                continue;
+            }
+            return Some(rest[i..].to_vec());
+        }
+        if shell == "cmd" {
+            return None;
+        }
+        if a == "-c" || a == "--command" {
+            return None;
+        }
+        if a == "-o" || a == "+o" || a == "--rcfile" || a == "--init-file" {
+            i += 2;
+            continue;
+        }
+        if a.starts_with('-') || a.starts_with('+') {
+            i += 1;
+            continue;
+        }
+        return Some(rest[i..].to_vec());
+    }
+    None
+}
+
+/// The argv of the program a shell segment actually runs, unwrapped the way
+/// the policy looks through it: env assignments, `&` / `.`, wrappers
+/// (`sudo`, `nohup`, …), `bash -c "…"` / `powershell -Command "…"` (first
+/// segment) and `powershell -File x.ps1` / `bash x.sh`. Used for ledger step
+/// names so a wrapped command is recorded as what it runs.
+pub(crate) fn effective_argv(argv: Vec<String>) -> Vec<String> {
+    let mut argv = argv;
+    for _ in 0..6 {
+        argv = argv
+            .into_iter()
+            .skip_while(|a| is_env_assignment(a))
+            .collect();
+        argv = unwrap_call_operator(argv);
+        let Some(first) = argv.first().map(|p| program_name(p)) else {
+            return argv;
+        };
+        if WRAPPERS.contains(&first.as_str()) {
+            let inner = wrapper_inner(&first, &argv[1..]);
+            if inner.is_empty() {
+                return argv;
+            }
+            argv = inner;
+            continue;
+        }
+        if SHELLS.contains(&first.as_str()) {
+            if let Some(pos) = argv.iter().position(|a| {
+                let l = a.to_lowercase();
+                l == "-c" || l == "/c" || ps_param_matches(&l, "command") && l.len() >= 3
+            }) {
+                let inner = argv[pos + 1..].join(" ");
+                let seg = segments(&inner).into_iter().next().unwrap_or_default();
+                let next = tokenize(&seg);
+                if next.is_empty() {
+                    return argv;
+                }
+                argv = next;
+                continue;
+            }
+            if let Some(inner) = shell_script_argv(&first, &argv[1..]) {
+                argv = inner;
+                continue;
+            }
+        }
+        return argv;
+    }
+    argv
 }
 
 pub(crate) fn is_env_assignment(a: &str) -> bool {
