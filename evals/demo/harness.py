@@ -196,6 +196,10 @@ def main():
         f.write(json.dumps({"schema_version": 1, "timestamp_unix": 1760100000, "kind": "note", "text": "the backup drive is in the left desk drawer"}) + "\n")
     env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=tmp, PERCI_TOOLS="all")
     perci = Perci(perci_bin, env)
+    # A host starts the server well before its first question; wait for the
+    # background memory warm-up (note sync + AgentSearch start) so the
+    # transcript shows warm latencies. Not logged, not in receipts.
+    warm = perci.rpc("tools/call", {"name": "recall", "arguments": {"query": "warm up"}})
     model = OllamaModel(a.ollama) if a.ollama else ScriptedModel()
 
     log = [f"# Perci demo transcript", "",
@@ -235,7 +239,11 @@ def main():
             correction = " ".join(r["detail"] for r in v["reasons"])
             if task["id"] == "notes":
                 r = perci.call("recall", {"query": task["question"]})
-                log += [f"**Harness → Perci recall:** {short(r)} → "
+                # perci.recall.v1: cite the journal record (source of truth).
+                for h in r["result"]["hits"]:
+                    h["line"] = h["citation"]["journal_line"]
+                    h["sha256"] = h["citation"]["record_sha256"]
+                log += [f"**Harness → Perci recall:** {short(r).rstrip()} ({r['result']['backend']}) → "
                         + "; ".join(f"line {h['line']}: \"{h['text']}\" sha256 {h['sha256'][:12]}…" for h in r["result"]["hits"]), ""]
                 if r["result"]["hits"]:
                     h = r["result"]["hits"][0]

@@ -7,6 +7,9 @@
 #            weight tests can never pass vacuously) + a release smoke run.
 #            Runs on main, nightly and on demand, not per PR, to save LFS
 #            bandwidth; the weights are cached by their LFS object ids.
+#   tools    Perci-as-a-tool gates without weights: held-out exact/check_math
+#            (0 wrong passes, 0 false fails, replay-identical), demo harness,
+#            MCP latency smoke.
 #   evals    bug2eval validate of every evals/b2e case (before fails, after
 #            passes) with a receipt artifact. main, nightly, on demand.
 name: CI
@@ -191,15 +194,41 @@ jobs:
           path: evals/receipts/ci-b2e.json
           if-no-files-found: ignore
 
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # no LFS: exact/check_math/policy need no weights
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+      - name: Held-out gate (exact + check_math, independent Fraction oracle)
+        run: python3 evals/tools-heldout-v1/run_heldout.py --json tools-heldout.json
+      - name: Demo harness (agent caught on wrong claims)
+        env:
+          PERCI_AGENTSEARCH: "off"
+        run: python3 evals/demo/harness.py --out "$RUNNER_TEMP/demo" && grep -q "MATH_MISMATCH" "$RUNNER_TEMP/demo/transcript.md"
+      - name: MCP latency smoke
+        env:
+          PERCI_AGENTSEARCH: "off"
+        run: python3 scripts/bench_tools.py --n 30 --json tools-bench.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tools-gates
+          path: |
+            tools-heldout.json
+            tools-bench.json
+          if-no-files-found: ignore
+
   ci-ok:
     if: always()
-    needs: [fmt, clippy, test, weights, evals]
+    needs: [fmt, clippy, test, weights, evals, tools]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs passed (skipped weights/evals on PRs are fine)
         shell: bash
         run: |
           echo '${{ toJSON(needs) }}'
-          for r in "${{ needs.fmt.result }}" "${{ needs.clippy.result }}" "${{ needs.test.result }}" "${{ needs.weights.result }}" "${{ needs.evals.result }}"; do
+          for r in "${{ needs.fmt.result }}" "${{ needs.clippy.result }}" "${{ needs.test.result }}" "${{ needs.weights.result }}" "${{ needs.evals.result }}" "${{ needs.tools.result }}"; do
             case "$r" in success|skipped) ;; *) echo "::error::a required job ended as $r"; exit 1;; esac
           done

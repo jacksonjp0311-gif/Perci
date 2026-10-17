@@ -11,6 +11,7 @@ Usage: python3 evals/tools-heldout-v1/run_heldout.py [--seed N] [--n 200] [--per
 Exit code 1 when a gate fails. Standard library only.
 """
 import argparse
+import tempfile
 import json
 import os
 import random
@@ -231,7 +232,8 @@ def main():
     ap.add_argument("--json")
     a = ap.parse_args()
     perci = a.perci if os.path.exists(a.perci) else a.perci + ".exe"
-    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_TOOLS="all")
+    data = tempfile.mkdtemp(prefix="perci-heldout-")
+    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=data, PERCI_TOOLS="all", PERCI_MCP_NO_PREWARM="1")
     ex, cm, h1 = run(perci, env, a.seed, a.n)
     _, _, h2 = run(perci, env, a.seed, a.n)
     replay_ok = h1 == h2
