@@ -21,7 +21,7 @@
 //! entries of the current run by [`check_sequence`]; verdicts cite the
 //! entries they relied on as `ledger:<run_id>#<seq>` evidence.
 
-use super::{arg_str, opt_str, try_arg, with_summary, Ctx, Tool};
+use super::{opt_str, try_arg, with_summary, Ctx, Tool};
 use crate::verdict::{canonical_json, Confidence, Evidence, Outcome, Reason, Status, Verdict};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -709,12 +709,11 @@ impl Tool for LedgerAppend {
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
-            "required": ["step"],
             "properties": {
-                "step": {"type": "string", "description": "Step label or class: tests, deploy, backup, code_change, or an action label such as 'shell:cargo test'."},
+                "step": {"type": "string", "description": "Step label or class: tests, deploy, backup, code_change, or an action label such as 'shell:cargo test'. Omit it to derive the label from `action`."},
                 "status": {"enum": ["pass", "fail", "abstain", "error"], "default": "pass", "description": "Outcome of the step."},
                 "phase": {"type": "string", "description": "e.g. post (the step finished)."},
-                "action": {"type": "object", "description": "Optional action object; its label is used when step is omitted."},
+                "action": {"type": "object", "description": "Action object as given to agent_gate_step ({kind, command|argv|paths}); when step is omitted the step is its label, unwrapped like the policy does (e.g. `& .\\x.ps1` -> shell:x.ps1)."},
                 "note": {"type": "string", "maxLength": 200}
             },
             "additionalProperties": false
@@ -727,7 +726,18 @@ impl Tool for LedgerAppend {
         false
     }
     fn call(&self, ctx: &Ctx, args: &Value) -> Outcome {
-        let step = try_arg!(arg_str(args, "step")).trim().to_owned();
+        let step = match try_arg!(opt_str(args, "step")).map(str::trim) {
+            Some(s) if !s.is_empty() => s.to_owned(),
+            _ => match args.get("action").map(action_step) {
+                Some(s) if !s.is_empty() => s,
+                _ => {
+                    return Outcome::error(
+                        "BAD_ARGS",
+                        "give step (e.g. \"tests\" or \"shell:cargo test\") or an action to derive it from",
+                    )
+                }
+            },
+        };
         let status = try_arg!(opt_str(args, "status")).unwrap_or("pass");
         if !matches!(status, "pass" | "fail" | "abstain" | "error") {
             return Outcome::error("BAD_ARGS", "status must be pass, fail, abstain or error");
