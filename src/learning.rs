@@ -453,7 +453,7 @@ fn bounded(text: &str) -> String {
     text.chars().take(MAX_FIELD_CHARS).collect()
 }
 
-fn looks_sensitive(text: &str) -> bool {
+pub fn looks_sensitive(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     [
         "api key",

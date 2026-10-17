@@ -1,0 +1,70 @@
+//! `perci.status`: health, versions, weight and policy identity.
+
+use super::{Ctx, Tool};
+use crate::verdict::{Confidence, Evidence, Outcome, Status as VStatus};
+use serde_json::{json, Value};
+
+pub struct Status;
+
+impl Tool for Status {
+    fn name(&self) -> &'static str {
+        "perci.status"
+    }
+    fn title(&self) -> &'static str {
+        "Perci health"
+    }
+    fn description(&self) -> &'static str {
+        "Report Perci's version, home and data folders, weight files, policy hash, enabled tools and problems (same data as `perci doctor --json`). deep=true also SHA-256s every weight file (~1 s)."
+    }
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {"deep": {"type": "boolean", "default": false}},
+            "additionalProperties": false
+        })
+    }
+    fn call(&self, ctx: &Ctx, args: &Value) -> Outcome {
+        let deep = args.get("deep").and_then(Value::as_bool).unwrap_or(false);
+        let report = crate::doctor::run(deep);
+        let mut doctor = crate::doctor::to_json(&report);
+        let policy = super::policy::loaded(ctx);
+        let tools: Vec<String> = super::enabled_from_env()
+            .iter()
+            .map(|t| t.name().to_owned())
+            .collect();
+        if let Some(obj) = doctor.as_object_mut() {
+            obj.insert("tools".into(), json!(tools));
+            obj.insert("verdict_schema".into(), json!(crate::verdict::SCHEMA));
+            obj.insert(
+                "policy".into(),
+                json!({"source": policy.source, "sha256": policy.sha256, "valid": policy.policy.is_ok()}),
+            );
+            obj.insert(
+                "recall_backend".into(),
+                json!(super::recall::backend().name()),
+            );
+            obj.insert(
+                "summary".into(),
+                json!(if report.ok() {
+                    "healthy".to_owned()
+                } else {
+                    format!("{} problem(s)", report.problems.len())
+                }),
+            );
+        }
+        Outcome::new(
+            if report.ok() {
+                VStatus::Pass
+            } else {
+                VStatus::Fail
+            },
+            doctor,
+        )
+        .confidence(Confidence::Exact)
+        .evidence(
+            Evidence::new("policy_rule", format!("policy:{}", policy.source))
+                .hashed(policy.sha256.clone()),
+        )
+        .nondeterministic()
+    }
+}

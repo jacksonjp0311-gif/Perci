@@ -78,6 +78,7 @@ pub mod semantic_field;
 pub mod session;
 pub mod text_normalize;
 pub mod thought_plan;
+pub mod tools;
 pub mod util;
 pub mod verdict;
 pub mod voice;

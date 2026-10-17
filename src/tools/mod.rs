@@ -1,0 +1,311 @@
+//! Perci as a tool: a catalog of stateless, deterministic checks that AI
+//! harnesses call (MCP stdio via `perci mcp`, or one-shot `perci tool`).
+//!
+//! Every tool returns a [`crate::verdict::Verdict`]. Tools never go through
+//! `ChatEngine`, never read or write the chat session, and never touch the
+//! learning log. The only tool that writes is `perci.remember`, and it only
+//! **stages** a note for human review.
+//!
+//! Boundary: nothing under `src/tools/` may use `chat`, `voice`,
+//! `deliberation` or `session` (enforced by `tests/tool_boundary.rs`). That is
+//! the seam along which `perci-core` will be split out as its own crate.
+//!
+//! # Extension points
+//! * [`register`] adds a tool to the catalog at runtime (for example
+//!   `perci.eval` backed by bug2eval). Registered tools override built-ins
+//!   with the same name.
+//! * [`recall::set_backend`] swaps the store behind `perci.recall` (for
+//!   example AgentSearch over JSON-lines stdio) without touching callers.
+
+pub mod agent;
+pub mod check_math;
+pub mod eval;
+pub mod exact;
+pub mod policy;
+pub mod recall;
+pub mod relation;
+pub mod route;
+pub mod status;
+pub mod verify;
+
+use crate::verdict::{Outcome, Verdict};
+use serde_json::{json, Value};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Instant;
+
+/// Largest single text argument a tool accepts (32 KiB).
+pub const MAX_TEXT_BYTES: usize = 32 * 1024;
+
+/// One tool in the catalog.
+pub trait Tool: Send + Sync {
+    /// Canonical id, e.g. `perci.exact` (used in verdicts and receipts).
+    fn name(&self) -> &'static str;
+    fn title(&self) -> &'static str;
+    fn description(&self) -> &'static str;
+    /// JSON Schema of `args`.
+    fn input_schema(&self) -> Value;
+    fn read_only(&self) -> bool {
+        true
+    }
+    fn idempotent(&self) -> bool {
+        true
+    }
+    fn destructive(&self) -> bool {
+        false
+    }
+    /// Whether the tool is exposed when `PERCI_TOOLS` is unset.
+    fn default_enabled(&self) -> bool {
+        true
+    }
+    fn call(&self, ctx: &Ctx, args: &Value) -> Outcome;
+}
+
+/// Shared, lazily built state for one server process. Weights and the policy
+/// file load once; every call after that is warm.
+#[derive(Default)]
+pub struct Ctx {
+    pub(crate) packs: Mutex<std::collections::BTreeMap<String, Arc<route::LoadedPack>>>,
+    pub(crate) policy: OnceLock<policy::LoadedPolicy>,
+}
+
+impl Ctx {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Load the routing pack and policy now instead of on the first call.
+    pub fn prewarm(&self) {
+        let _ = route::pack(self, None);
+        let _ = policy::loaded(self);
+    }
+}
+
+type Registered = Arc<dyn Tool>;
+
+fn extensions() -> &'static Mutex<Vec<Registered>> {
+    static EXT: OnceLock<Mutex<Vec<Registered>>> = OnceLock::new();
+    EXT.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+/// Add (or override) a tool in the catalog. Call before serving.
+pub fn register(tool: Arc<dyn Tool>) {
+    let mut ext = extensions().lock().unwrap_or_else(|e| e.into_inner());
+    ext.retain(|t| t.name() != tool.name());
+    ext.push(tool);
+}
+
+/// Every tool, built-ins first, with registered extensions overriding by name.
+pub fn catalog() -> Vec<Registered> {
+    let mut tools: Vec<Registered> = vec![
+        Arc::new(exact::Exact),
+        Arc::new(check_math::CheckMath),
+        Arc::new(relation::Relation),
+        Arc::new(route::Route),
+        Arc::new(policy::PolicyCheck),
+        Arc::new(recall::Recall),
+        Arc::new(recall::Remember),
+        Arc::new(verify::Verify),
+        Arc::new(eval::Eval),
+        Arc::new(status::Status),
+        Arc::new(agent::VerifyPatch),
+        Arc::new(agent::CheckClaims),
+        Arc::new(agent::GateStep),
+    ];
+    let ext = extensions().lock().unwrap_or_else(|e| e.into_inner());
+    for t in ext.iter() {
+        tools.retain(|b| b.name() != t.name());
+        tools.push(Arc::clone(t));
+    }
+    tools
+}
+
+/// `perci.agent.verify_patch` → `agent_verify_patch`. MCP clients (and the
+/// model APIs behind them) restrict function names to `[A-Za-z0-9_-]`, so
+/// the wire name drops the `perci.` prefix and uses underscores.
+pub fn wire_name(name: &str) -> String {
+    name.strip_prefix("perci.")
+        .unwrap_or(name)
+        .replace('.', "_")
+}
+
+/// Accept the canonical id, the wire name, or the bare short name.
+pub fn resolve(tools: &[Registered], requested: &str) -> Option<Registered> {
+    let req = requested.trim();
+    tools
+        .iter()
+        .find(|t| {
+            t.name() == req || wire_name(t.name()) == req || t.name() == format!("perci.{req}")
+        })
+        .cloned()
+}
+
+/// Tools exposed under `PERCI_TOOLS` (comma list of short or wire names,
+/// `all`, or unset for the default set).
+pub fn enabled(tools: Vec<Registered>, filter: Option<&str>) -> Vec<Registered> {
+    let Some(filter) = filter.map(str::trim).filter(|f| !f.is_empty()) else {
+        return tools.into_iter().filter(|t| t.default_enabled()).collect();
+    };
+    if filter.eq_ignore_ascii_case("all") {
+        return tools;
+    }
+    let wanted: Vec<String> = filter.split(',').map(|s| s.trim().to_owned()).collect();
+    tools
+        .into_iter()
+        .filter(|t| {
+            wanted.iter().any(|w| {
+                w == t.name() || *w == wire_name(t.name()) || format!("perci.{w}") == t.name()
+            })
+        })
+        .collect()
+}
+
+pub fn enabled_from_env() -> Vec<Registered> {
+    enabled(catalog(), std::env::var("PERCI_TOOLS").ok().as_deref())
+}
+
+/// Run one tool and seal its verdict. Panics inside a tool become an
+/// `error` verdict instead of killing the server.
+pub fn run(ctx: &Ctx, tool: &dyn Tool, args: &Value) -> Verdict {
+    let t0 = Instant::now();
+    let outcome = if !args.is_object() {
+        Outcome::error("BAD_ARGS", "arguments must be a JSON object")
+    } else {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| tool.call(ctx, args))) {
+            Ok(o) => o,
+            Err(_) => Outcome::error("INTERNAL", "tool panicked; this is a Perci bug"),
+        }
+    };
+    let elapsed = t0.elapsed().as_micros().min(u128::from(u64::MAX)) as u64;
+    Verdict::seal(tool.name(), args, outcome, elapsed)
+}
+
+/// Dispatch by any accepted name over the enabled catalog.
+pub fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Verdict {
+    let tools = enabled_from_env();
+    match resolve(&tools, name) {
+        Some(t) => run(ctx, t.as_ref(), args),
+        None => Verdict::seal(
+            name,
+            args,
+            Outcome::error("UNKNOWN_TOOL", format!("no enabled tool named {name:?}")),
+            0,
+        ),
+    }
+}
+
+// ---- argument helpers -------------------------------------------------------
+
+pub(crate) fn arg_str<'a>(args: &'a Value, key: &str) -> Result<&'a str, Outcome> {
+    match args.get(key) {
+        Some(Value::String(s)) if s.len() > MAX_TEXT_BYTES => Err(Outcome::error(
+            "BAD_ARGS",
+            format!("{key} is longer than {MAX_TEXT_BYTES} bytes"),
+        )),
+        Some(Value::String(s)) if !s.trim().is_empty() => Ok(s),
+        Some(Value::String(_)) => Err(Outcome::error("BAD_ARGS", format!("{key} is empty"))),
+        Some(_) => Err(Outcome::error(
+            "BAD_ARGS",
+            format!("{key} must be a string"),
+        )),
+        None => Err(Outcome::error(
+            "BAD_ARGS",
+            format!("missing required argument {key}"),
+        )),
+    }
+}
+
+pub(crate) fn opt_str<'a>(args: &'a Value, key: &str) -> Result<Option<&'a str>, Outcome> {
+    match args.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(_) => arg_str(args, key).map(Some),
+    }
+}
+
+pub(crate) fn opt_str_list(args: &Value, key: &str) -> Result<Vec<String>, Outcome> {
+    match args.get(key) {
+        None | Some(Value::Null) => Ok(Vec::new()),
+        Some(Value::Array(items)) => items
+            .iter()
+            .map(|v| match v {
+                Value::String(s) if s.len() <= MAX_TEXT_BYTES => Ok(s.clone()),
+                _ => Err(Outcome::error(
+                    "BAD_ARGS",
+                    format!("{key} must be an array of strings"),
+                )),
+            })
+            .collect(),
+        Some(_) => Err(Outcome::error(
+            "BAD_ARGS",
+            format!("{key} must be an array of strings"),
+        )),
+    }
+}
+
+/// Small helper so tools can write `json!` results with a summary line.
+pub(crate) fn with_summary(mut result: Value, summary: impl Into<String>) -> Value {
+    if let Some(obj) = result.as_object_mut() {
+        obj.insert("summary".into(), json!(summary.into()));
+    }
+    result
+}
+
+macro_rules! try_arg {
+    ($e:expr) => {
+        match $e {
+            Ok(v) => v,
+            Err(outcome) => return outcome,
+        }
+    };
+}
+pub(crate) use try_arg;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wire_names_are_function_safe() {
+        for t in catalog() {
+            let w = wire_name(t.name());
+            assert!(
+                w.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
+                "{w}"
+            );
+            assert!(w.len() <= 64);
+        }
+        assert_eq!(wire_name("perci.agent.verify_patch"), "agent_verify_patch");
+    }
+
+    #[test]
+    fn resolve_accepts_all_name_forms() {
+        let tools = catalog();
+        for n in ["perci.exact", "exact"] {
+            assert_eq!(resolve(&tools, n).unwrap().name(), "perci.exact");
+        }
+        assert_eq!(
+            resolve(&tools, "agent_check_claims").unwrap().name(),
+            "perci.agent.check_claims"
+        );
+    }
+
+    #[test]
+    fn default_set_is_read_only() {
+        for t in enabled(catalog(), None) {
+            assert!(
+                t.read_only(),
+                "{} is in the default set but writes",
+                t.name()
+            );
+        }
+        assert!(enabled(catalog(), Some("exact,remember")).len() == 2);
+        assert_eq!(enabled(catalog(), Some("all")).len(), catalog().len());
+    }
+
+    #[test]
+    fn non_object_args_are_an_error_verdict() {
+        let ctx = Ctx::new();
+        let v = run(&ctx, &exact::Exact, &json!("2+2"));
+        assert_eq!(v.status, crate::verdict::Status::Error);
+    }
+}

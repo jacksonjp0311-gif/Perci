@@ -1,0 +1,64 @@
+{
+  "schema": "perci.policy.v1",
+  "about": "What agents may do without asking. Perci evaluates this structurally (argv, paths), not by keywords. posture: allow | propose_and_verify | refuse. Rules are checked refuse first, then propose_and_verify, then allow; anything unmatched gets the kind's default. A shell rule matches when every field it sets matches: program (any of), subcommand / subcommand_any, args_any OR args_prefix_any, args_any_ci (case-insensitive), flag_chars_any (short-flag letters), contains_any (raw command text). Edit freely; the sha256 of this file goes into every policy verdict.",
+  "shell": {
+    "default": "propose_and_verify",
+    "refuse": [
+      {"id": "shell.rm_root", "program": ["rm"], "flag_chars_any": "rR", "args_any": ["/", "/*", "~", "~/", "*", ".", "..", "$HOME", "C:\\", "C:/"], "reason": "recursive delete of a root, home or whole directory"},
+      {"id": "shell.rm_no_preserve_root", "program": ["rm"], "args_any": ["--no-preserve-root"], "reason": "explicitly disables the root guard"},
+      {"id": "shell.disk_format", "program": ["mkfs", "mkfs.ext4", "mkfs.xfs", "mkfs.vfat", "fdisk", "parted", "diskpart", "format", "wipefs"], "reason": "formats or repartitions a disk"},
+      {"id": "shell.dd_device", "program": ["dd"], "args_prefix_any": ["of=/dev/"], "reason": "writes raw bytes to a device"},
+      {"id": "shell.power", "program": ["shutdown", "reboot", "halt", "poweroff", "stop-computer", "restart-computer"], "reason": "powers the machine off or restarts it"},
+      {"id": "git.force_push", "program": ["git"], "subcommand": "push", "args_any": ["--force", "-f", "--force-with-lease", "--mirror", "--delete"], "args_prefix_any": ["+", "--force-with-lease="], "reason": "rewrites or deletes remote history"},
+      {"id": "git.no_verify", "program": ["git"], "args_any": ["--no-verify"], "subcommand_any": ["commit", "push", "merge", "rebase"], "reason": "skips hooks"},
+      {"id": "shell.chmod_world", "program": ["chmod"], "args_any": ["777", "-R777", "a+rwx"], "flag_chars_any": "R", "reason": "recursive world-writable permissions"},
+      {"id": "ps.remove_recurse_root", "program": ["remove-item", "rm", "del", "rmdir", "rd"], "args_any": ["C:\\", "C:/", "C:\\*", "/", "~", "$env:USERPROFILE", "$HOME"], "args_any_ci": ["-recurse", "/s"], "reason": "recursive delete of a drive root or home"},
+      {"id": "shell.pipe_to_shell", "contains_any": ["| sh", "|sh", "| bash", "|bash", "| zsh", "| iex", "|iex", "| invoke-expression", "iex (", "iex(", ":(){"], "reason": "runs downloaded or generated code without review (or a fork bomb)"}
+    ],
+    "propose_and_verify": [
+      {"id": "shell.rm", "program": ["rm", "rmdir", "del", "rd", "remove-item", "unlink", "shred"], "reason": "deletes files"},
+      {"id": "git.history", "program": ["git"], "subcommand_any": ["reset", "rebase", "clean", "push", "filter-branch", "filter-repo", "reflog", "gc", "update-ref", "tag", "stash"], "reason": "changes history, deletes untracked files or publishes"},
+      {"id": "git.branch_delete", "program": ["git"], "subcommand": "branch", "args_any": ["-D", "-d", "--delete"], "reason": "deletes a branch"},
+      {"id": "git.checkout_discard", "program": ["git"], "subcommand_any": ["checkout", "restore"], "args_any": [".", "--", "-f", "--force"], "reason": "can discard local changes"},
+      {"id": "shell.privilege", "program": ["sudo", "su", "doas", "runas", "start-process"], "reason": "elevates privileges"},
+      {"id": "shell.network", "program": ["curl", "wget", "invoke-webrequest", "iwr", "invoke-restmethod", "irm", "ssh", "scp", "rsync", "nc", "ftp"], "reason": "network access"},
+      {"id": "pkg.install", "program": ["npm", "pnpm", "yarn", "pip", "pip3", "cargo", "apt", "apt-get", "brew", "winget", "choco", "gem"], "subcommand_any": ["install", "add", "publish", "uninstall", "remove", "i", "yank", "login"], "reason": "installs, removes or publishes packages"},
+      {"id": "shell.find_delete", "program": ["find"], "args_any": ["-delete", "-exec", "-execdir", "-ok"], "reason": "find with side effects"},
+      {"id": "shell.kill", "program": ["kill", "killall", "pkill", "taskkill", "stop-process"], "reason": "stops processes"},
+      {"id": "shell.chown", "program": ["chown", "chgrp", "chmod", "icacls", "takeown"], "reason": "changes ownership or permissions"},
+      {"id": "shell.mv", "program": ["mv", "move", "move-item", "ren", "rename-item"], "reason": "moves or renames files"},
+      {"id": "shell.redirect", "contains_any": [" > ", ">>", "| tee", "|tee", "out-file", "set-content"], "reason": "writes a file through a redirect"}
+    ],
+    "allow": [
+      {"id": "read.fs", "program": ["ls", "dir", "pwd", "cat", "head", "tail", "wc", "rg", "grep", "tree", "stat", "file", "du", "df", "which", "where", "type", "echo", "sort", "uniq", "diff", "cmp", "sha256sum", "md5sum", "get-childitem", "gci", "get-content", "gc", "select-string", "get-item", "test-path", "resolve-path", "find"], "reason": "read-only inspection"},
+      {"id": "git.read", "program": ["git"], "subcommand_any": ["status", "diff", "log", "show", "blame", "branch", "fetch", "remote", "rev-parse", "describe", "ls-files", "grep", "shortlog", "worktree", "add", "commit", "switch", "checkout", "merge-base", "lfs"], "reason": "git inspection and local, reversible commits"},
+      {"id": "build.cargo", "program": ["cargo"], "subcommand_any": ["build", "check", "test", "clippy", "fmt", "doc", "bench", "tree", "metadata", "run"], "reason": "build and test the project"},
+      {"id": "build.python_tests", "program": ["pytest", "python", "python3", "py"], "args_prefix_any": ["-m pytest", "-mpytest"], "args_any": ["pytest", "unittest", "--version", "-V"], "reason": "run tests"},
+      {"id": "build.node_tests", "program": ["npm", "pnpm", "yarn"], "subcommand_any": ["test", "run", "ci", "ls", "list", "outdated"], "reason": "run project scripts and tests"},
+      {"id": "perci.self", "program": ["perci", "perci.exe", "bug2eval"], "reason": "Perci and bug2eval are themselves governed"}
+    ]
+  },
+  "write": {
+    "default": "propose_and_verify",
+    "refuse_globs": ["**/.git/**", ".git/**", "**/*.pwgt", "**/.env", "**/.env.*", "**/id_rsa*", "**/id_ed25519*", "**/*.pem", "**/*.key", "**/.ssh/**", "**/models/promotion-ledger.jsonl", "**/.perci/agent.lock"],
+    "allow_globs": ["src/**", "tests/**", "docs/**", "scripts/**", "evals/**", "benches/**", "examples/**", "*.md", "config/personality.prompt"],
+    "max_changed_lines": 400
+  },
+  "delete": {
+    "default": "propose_and_verify",
+    "refuse_globs": ["**/.git", "**/.git/**", ".git", ".git/**", "**/*.pwgt", "**/models/**", "models/**", "**/.ssh/**", "**/memory/**", "memory/**"]
+  },
+  "network": {
+    "default": "propose_and_verify",
+    "allow_hosts": ["127.0.0.1", "localhost", "::1"]
+  },
+  "commit": {
+    "default": "allow",
+    "refuse_flags": ["--no-verify", "-n"],
+    "propose_flags": ["--amend", "--no-edit"]
+  },
+  "push": {
+    "default": "propose_and_verify",
+    "refuse_flags": ["--force", "-f", "--force-with-lease", "--mirror", "--delete"]
+  }
+}
