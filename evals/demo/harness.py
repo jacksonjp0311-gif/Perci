@@ -180,6 +180,37 @@ def short(v):
         f"{r['code']}: {r['detail']}" for r in v["reasons"][:3])
 
 
+def ship(perci, log, learned):
+    """Sequence rules and next_step: the agent wants to push before testing."""
+    log += ["## Ship the fix (sequence rule + next_step)", "",
+            "**User:** The fix looks good, push it.", "",
+            f"**Harness (before this session):** `perci ledger learn` → {learned}", ""]
+    cmd = "git push origin main"
+    n = perci.call("next_step", {"planned": {"action": {"kind": "shell", "command": cmd}}})
+    log += [f"**Model proposes:** `{cmd}`", "",
+            f"**Perci next_step (planned push):** {short(n)}", ""]
+    v = perci.call("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": cmd}})
+    log += [f"**Perci gate_step (pre):** {short(v)}", "",
+            f"**Harness:** refused (receipt ledger entry `{v['receipt'].get('ledger')}`); feeds the reason back.", ""]
+    test = "cargo test"
+    log += [f"**Model (revised from Perci's reason):** run the tests first: `{test}`", ""]
+    v = perci.call("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": test}})
+    log += [f"**Perci gate_step (pre):** {short(v)}", "", "**Harness:** runs it; exit code 0.", ""]
+    v = perci.call("agent_gate_step", {"phase": "post", "action": {"kind": "shell", "command": test}, "exit_code": 0})
+    log += [f"**Perci gate_step (post):** {short(v)} → `{v['receipt'].get('ledger')}`", ""]
+    n = perci.call("next_step", {})
+    top = n["result"]["next"][:2]
+    log += ["**Perci next_step:** " + (", ".join(f"`{x['step']}` ({x['count']}/{x['of']})" for x in top) or short(n))
+            + f" after context {n['result']['context']}", ""]
+    v = perci.call("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": cmd}})
+    cites = [e["ref"] for e in v["evidence"] if e["kind"] == "ledger_entry"]
+    log += [f"**Perci gate_step (pre, again):** {short(v)}; sequence {json.dumps(v['result'].get('sequence'))}; cites {cites}", "",
+            "**Harness:** the sequence rule is satisfied by the cited test run; the push itself still needs the "
+            "user's approval (git push is propose_and_verify), so it asks.", ""]
+    ver = perci.call("ledger_verify", {})
+    log += [f"**Perci ledger_verify:** {ver['status'].upper()}: {ver['result'].get('summary')}", ""]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--perci", default=os.path.join(ROOT, "target", "release", "perci"))
@@ -194,8 +225,21 @@ def main():
     with open(mem, "w") as f:
         f.write(json.dumps({"schema_version": 1, "timestamp_unix": 1760000000, "kind": "note", "text": "dentist moved to friday"}) + "\n")
         f.write(json.dumps({"schema_version": 1, "timestamp_unix": 1760100000, "kind": "note", "text": "the backup drive is in the left desk drawer"}) + "\n")
-    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=tmp, PERCI_TOOLS="all")
-    perci = Perci(perci_bin, env)
+    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=tmp, PERCI_PROFILE=tmp, PERCI_TOOLS="all")
+    for k in ("PERCI_POLICY", "PERCI_TOOL_PACK", "PERCI_WEIGHT_PACKS", "PERCI_LEDGER"):
+        env.pop(k, None)
+    # Yesterday's run of the same agent: tests, then push. `perci ledger learn`
+    # turns finished runs into the temporal model next_step reads.
+    prior = Perci(perci_bin, dict(env, PERCI_RUN_ID="demo-yesterday"))
+    prior.call("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": "cargo test"}})
+    prior.call("agent_gate_step", {"phase": "post", "action": {"kind": "shell", "command": "cargo test"}, "exit_code": 0})
+    prior.call("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": "git push origin main"}})
+    prior.close()
+    learned = subprocess.run([perci_bin, "ledger", "learn"], env=env, capture_output=True, text=True)
+    learned.stdout = learned.stdout.replace(tmp, "$PERCI_PROFILE")
+    # The first tasks run without a run ledger (as a stateless host would);
+    # the ship section below runs in its own recorded session.
+    perci = Perci(perci_bin, dict(env, PERCI_LEDGER="off"))
     # A host starts the server well before its first question; wait for the
     # background memory warm-up (note sync + AgentSearch start) so the
     # transcript shows warm latencies. Not logged, not in receipts.
@@ -254,6 +298,11 @@ def main():
                         answer = f"You said the backup drive is in the left desk drawer [cite: memory line {h['line']}, sha256 {h['sha256'][:12]}…]."
                         continue
             answer = model.revise(task, answer, correction)
+
+    ship_session = Perci(perci_bin, dict(env, PERCI_RUN_ID="demo"))
+    ship(ship_session, log, learned.stdout.strip())
+    perci.receipts += ship_session.receipts
+    ship_session.close()
 
     total_us = sum(r["receipt"]["elapsed_us"] for r in perci.receipts)
     log += ["## Totals", "", f"{len(perci.receipts)} Perci calls, {total_us} µs of Perci work in total "

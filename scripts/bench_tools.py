@@ -77,7 +77,12 @@ def main():
     a = ap.parse_args()
     perci = a.perci if os.path.exists(a.perci) else (a.perci + ".exe")
     tmp = tempfile.mkdtemp(prefix="perci-bench-")
-    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=os.path.join(tmp, "data"), PERCI_TOOLS="all")
+    # Tool work is measured uncached (PERCI_TOOL_CACHE=0); cache hits get
+    # their own rows below. Every call is recorded in the session's ledger.
+    env = dict(os.environ, PERCI_HOME=ROOT, PERCI_DATA=os.path.join(tmp, "data"), PERCI_TOOLS="all",
+               PERCI_TOOL_CACHE="0", PERCI_RUN_ID="bench")
+    for k in ("PERCI_PROFILE", "PERCI_POLICY", "PERCI_TOOL_PACK", "PERCI_LEDGER"):
+        env.pop(k, None)
     os.makedirs(os.path.join(tmp, "data", "memory"))
     with open(os.path.join(tmp, "data", "memory", "perci.jsonl"), "w") as f:
         for i in range(200):
@@ -109,6 +114,12 @@ def main():
         ("agent_check_claims", {"answer": answer, "premises": ["Deploy depends on build"]}),
         ("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": "rm -rf /"}}),
         ("agent_gate_step", {"phase": "post", "action": {"kind": "shell", "command": "cargo test"}, "exit_code": 0, "output": "ok 3 * 4 = 12"}),
+        ("agent_gate_step", {"phase": "pre", "action": {"kind": "shell", "command": "git push origin main"}}),
+        ("ledger_append", {"step": "shell:make lint", "status": "pass", "phase": "post"}),
+        ("ledger_show", {"last": 20}),
+        ("next_step", {}),
+        ("next_step", {"planned": {"action": {"kind": "shell", "command": "git push origin main"}}}),
+        ("ledger_verify", {}),
     ]
     if repo:
         cases.append(("agent_verify_patch", {"repo": repo, "diff": fix, "verify": {"argv": [py, "check.py"], "timeout_s": 60}}))
@@ -152,9 +163,34 @@ def main():
         if name == "exact":
             label = "exact (" + ("check claim" if "claimed" in args else "compute") + ")"
         if name == "agent_gate_step":
-            label = "agent_gate_step (" + args["phase"] + ")"
+            label = "agent_gate_step (" + args["phase"] + ("" if args["phase"] == "post" else ", " + args["action"]["command"].split()[0] + " " + args["action"]["command"].split()[1]) + ")"
+        if name == "next_step":
+            label = "next_step (" + ("planned push" if "planned" in args else "run history") + ")"
+        if name == "ledger_verify":
+            label = f"ledger_verify (run so far)"
         rows.append({"tool": label, "status": st, "n": n, "rt_p50_ms": pct(rt, 50), "rt_p95_ms": pct(rt, 95),
                      "work_p50_us": pct(el, 50)})
+    ledger_entries = m.call("tools/call", {"name": "ledger_show", "arguments": {"last": 1}})["result"]["structuredContent"]["result"]["entries"]
+    m.close()
+
+    # Verdict cache: identical calls in one session (cache on).
+    m = Mcp(perci, dict(env, PERCI_TOOL_CACHE="1", PERCI_RUN_ID="bench-cache"))
+    m.call("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "bench", "version": "1"}})
+    m.notify("notifications/initialized")
+    for name, args, label in [("exact", {"expr": "3/7 + 2/9"}, "exact (cache hit)"),
+                              ("route", {"text": "what is 15% of 80 plus 3", "pack": "v0.3"}, "route (v0.3, cache hit)"),
+                              ("policy_check", {"action": {"kind": "shell", "command": "git push --force origin main"}}, "policy_check (cache hit)")]:
+        rt, el, hit = [], [], None
+        for i in range(a.n + 1):
+            t = time.perf_counter()
+            sc = m.call("tools/call", {"name": name, "arguments": args})["result"]["structuredContent"]
+            dt = (time.perf_counter() - t) * 1000
+            if i >= 1:
+                rt.append(dt)
+                el.append(sc["receipt"]["elapsed_us"])
+                hit = sc["receipt"].get("cache_hit", False)
+        rows.append({"tool": label, "status": sc["status"] + ("" if hit else " (MISS)"), "n": a.n,
+                     "rt_p50_ms": pct(rt, 50), "rt_p95_ms": pct(rt, 95), "work_p50_us": pct(el, 50)})
     m.close()
 
     # One-shot process per call.
@@ -208,6 +244,7 @@ def main():
         "tools": rows,
         "oneshot_perci_tool_exact_ms": {"p50": pct(oneshot, 50)},
         "daemon_tcp_ping_ms": daemon,
+        "ledger_entries_at_end": ledger_entries,
     }
     print(f"machine: {out['machine']}")
     print(f"MCP cold start -> tools/list: p50 {out['mcp_cold_start_to_tools_list_ms']['p50']:.1f} ms")

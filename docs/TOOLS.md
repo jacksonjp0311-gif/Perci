@@ -9,7 +9,9 @@ Every call returns a **`perci.verdict.v1`**: `pass` / `fail` / `abstain` /
 ```
 perci mcp                                # MCP server over stdio (JSON-RPC 2.0, one message per line)
 perci tool list                          # enabled tools
-perci tool schema [NAME]                 # input schemas + the verdict schema
+perci tool schema [NAME|verdict]         # a tool's input schema (all tools without NAME), or the verdict schema
+perci packs list | verify | calibrate    # weight packs (docs/PROFILES.md)
+perci ledger verify RUN | learn          # run ledgers and the temporal model
 perci tool exact --json '{"expr":"17% of 240","claimed":"41"}'   # one-shot; also @file or stdin
 perci ask --stateless "what is 3/7 plus 2/9"                     # no session, no learning, byte-identical
 ```
@@ -26,19 +28,50 @@ Wire names (MCP) drop the `perci.` prefix and use `_` (model APIs allow only
 | `exact` | perci.exact | rational arithmetic, %, powers, √, primality, linear equations; checks a `claimed` value (rounding accepted only when it is honest rounding) | on |
 | `check_math` | perci.check_math | finds every `expr = value` claim in free text and recomputes it | on |
 | `relation` | perci.relation | closed-world consequences of premises under an intervention; checks `claimed_impacted` / `claimed_invariant` | on |
-| `route` | perci.route | deterministic route: refuse → exact → relation → recall → llm, plus the Bitwork label (v0.2 pack) | on |
+| `route` | perci.route | deterministic route: refuse → exact → relation → recall → llm, plus the label of any verified PERCIW03 weight pack (its own labels) with calibrated confidence; an `llm` route below the gate abstains | on |
 | `policy_check` | perci.policy_check | structural gate for shell / write / delete / network / commit / push (`config/policy.json`) | on |
 | `recall` | perci.recall | cited memory lookup through `CitedMemory` (AgentSearch, substring fallback); embeds `perci.recall.v1` | on |
 | `verify` | perci.verify | one call: hygiene + math + evidence hashes (file, `memory:N`, or a recall citation) + relation + policy | on |
 | `status` | perci.status | doctor report, enabled tools, policy hash, recall backend | on |
 | `agent_check_claims` | perci.agent.check_claims | splits an answer into claims, says which Perci could check and how | on |
-| `agent_gate_step` | perci.agent.gate_step | `pre`: policy before a step; `post`: exit code, math and hygiene of its output | on |
+| `agent_gate_step` | perci.agent.gate_step | `pre`: policy and sequence rules (against the run ledger) before a step; `post`: exit code, math and hygiene of its output | on |
+| `ledger_append` | perci.ledger_append | records a step the harness ran itself (e.g. tests passed) in the run ledger; gated calls are recorded implicitly | on |
+| `ledger_verify` | perci.ledger_verify | re-hashes a run's chain from disk: edits, reordering, drops, moves; `expect_head` catches truncation | on |
+| `ledger_show` | perci.ledger_show | the last entries of a run, plus whether the chain verifies | on |
+| `next_step` | perci.next_step | temporal router: likely next steps with counts, sequence-rule warnings, cache / repeat-failure hints for a planned call | on |
 | `remember` | perci.remember | appends a note to the journal through `CitedMemory::remember`; refuses secrets | **off** |
 | `agent_verify_patch` | perci.agent.verify_patch | applies a diff in a scratch worktree and runs an allowlisted verifier; the caller's tree is untouched | **off** |
 | `eval` | perci.eval | bug2eval through `perci::b2e`: `validate`, `validate_all`, `run` (needs `PERCI_EVAL_ALLOW_AGENT=1`) | **off** |
 
 `PERCI_TOOLS=all` (or a comma list such as `exact,verify,remember`) changes the
-set. Off-by-default tools write, execute code or take minutes.
+set; without it the profile's `tools.enabled` applies. Off-by-default tools
+write user state, execute code or take minutes (`ledger_append` writes only
+Perci's own append-only run ledger).
+
+### Run ledger, sequence rules, next_step
+
+`perci mcp` records every verdict (except the read-only meta tools
+`ledger_show`, `ledger_verify`, `next_step`, `status`) in a hash-chained ledger
+for the session, `PERCI_PROFILE/ledger/<run>.jsonl` (`PERCI_RUN_ID`, else
+`mcp-<unix>-<pid>`; `PERCI_LEDGER=off` disables). The receipt names the entry
+(`receipt.ledger = "ledger:<run>#<seq>"`). `agent_gate_step` `pre` evaluates
+the policy's sequence rules against the ledger: `git push` before tests passed
+after the last write is refused (`SEQUENCE_REQUIRES`), a destructive delete
+without a backup needs approval, and a satisfied rule cites the entry it
+relied on as `ledger_entry` evidence. Without a run ledger the rule is
+reported as `SEQUENCE_UNCHECKED` (abstain). `next_step` learns integer n-gram
+counts (order 3 with back-off) from verified ledgers (`perci ledger learn`)
+plus the current run, and returns `{step, count, of, permille, outcomes}` rows
+so the suggestion is explainable. Layout and formats: `docs/PROFILES.md`.
+
+### Verdict cache
+
+`exact`, `check_math`, `relation`, `route` and `policy_check` verdicts are
+cached per process by `input_sha256` + output config (4096 entries, FIFO;
+errors are not cached; `PERCI_TOOL_CACHE=0` disables). A hit returns the same
+`output_sha256` with `receipt.cache_hit: true` and the lookup time as
+`elapsed_us`. Profile changes made while a server runs are not seen by cached
+verdicts; restart the server.
 
 ### Status meanings
 
@@ -54,8 +87,9 @@ world: only the premises/notes given) or `heuristic` (keyword policy escalation)
 
 `input_sha256` = sha256 of canonical JSON `{tool, args}`; `output_sha256` =
 sha256 of canonical `{status, result, reasons, evidence}` (sorted keys, floats
-as strings). `elapsed_us`, `config` (the `PERCI_*` variables that affect output)
-and `weights` (pack identity) are recorded but not hashed. `deterministic:
+as strings). `elapsed_us`, `config` (the `PERCI_*` variables that affect output),
+`weights` (verified pack identity `name@version manifest-sha256:…`),
+`cache_hit` and `ledger` (the run-ledger entry) are recorded but not hashed. `deterministic:
 false` marks tools whose output depends on the outside world (remember, eval,
 verify_patch).
 
@@ -91,30 +125,45 @@ None of these configs have been exercised from the real hosts yet (see Known gap
 
 ## Latency (box: Linux, 8 vCPU, release build, Oct 17 2026)
 
-`scripts/bench_tools.py` (n = 200 per tool). Round trip = harness writes the
-request → reads the reply over MCP stdio; work = the tool's own `elapsed_us`.
+`scripts/bench_tools.py` (n = 200 per tool, verdict cache off for the work
+numbers, every call recorded in the run ledger). Round trip = harness writes
+the request → reads the reply over MCP stdio; work = the tool's own
+`elapsed_us`. The ledger rows were measured once the bench run held 3,457
+entries; the small-run column is a 190-entry run (`next_step` and the
+sequence check scale with run length).
 
 | tool | verdict in bench | round trip p50 | p95 | work p50 |
 |---|---|---|---|---|
-| exact (compute) | pass | 0.045 ms | 0.054 ms | 5 µs |
-| exact (check claim) | fail | 0.053 ms | 0.071 ms | 8 µs |
-| check_math | fail | 0.085 ms | 0.124 ms | 24 µs |
-| relation | pass | 0.203 ms | 0.262 ms | 128 µs |
-| route (v0.2, default) | pass | 0.756 ms | 0.918 ms | 672 µs |
-| route (v0.3) | pass | 7.96 ms | 11 ms | 7.65 ms |
-| policy_check | fail | 0.055 ms | 0.080 ms | 6–10 µs |
-| recall, AgentSearch (201 notes, warm) | pass | 1.79 ms | 2.40 ms | 1.56 ms |
-| recall, substring fallback | pass | 0.073 ms | 0.076 ms | 17 µs |
-| remember | pass | 0.243 ms | 0.515 ms | 185 µs |
-| verify (math + relation + policy) | fail | 0.280 ms | 0.348 ms | 189 µs |
-| status | pass | 0.158 ms | 0.200 ms | 58 µs |
-| agent_check_claims | fail | 0.124 ms | 0.144 ms | 49 µs |
-| agent_gate_step (pre / post) | fail / pass | 0.061 / 0.062 ms | 0.069 / 0.074 ms | 10 µs |
-| agent_verify_patch (python verifier) | pass | 185 ms | 185 ms | 185 ms |
-| eval validate B2E-PERCI-001 | pass | 35.4 s (one-shot) | | |
+| exact (compute) | pass | 0.057 ms | 0.075 ms | 5 µs |
+| exact (check claim) | fail | 0.060 ms | 0.070 ms | 7 µs |
+| check_math | fail | 0.101 ms | 0.123 ms | 22 µs |
+| relation | pass | 0.211 ms | 0.252 ms | 117 µs |
+| route (v0.2, default) | abstain (low calibrated confidence) | 0.63 ms | 0.80 ms | 483 µs |
+| route (v0.3) | pass | 2.03 ms | 2.73 ms | 1.78 ms (was 7.65 ms) |
+| policy_check | fail | 0.085 ms | 0.114 ms | 7–11 µs |
+| recall, AgentSearch (201 notes, warm) | pass | 1.54 ms | 2.13 ms | 1.28 ms |
+| remember | pass | 0.273 ms | 0.491 ms | 197 µs |
+| verify (math + relation + policy) | fail | 0.307 ms | 0.483 ms | 192 µs |
+| status | pass | 0.450 ms | 0.603 ms | 257 µs |
+| agent_check_claims | fail | 0.142 ms | 0.199 ms | 57 µs |
+| agent_gate_step pre (`git push`, sequence rule) | abstain | 0.68 ms | 0.85 ms | 541 µs (38 µs at 190 entries) |
+| agent_gate_step post | pass | 0.099 ms | 0.119 ms | 15 µs |
+| ledger_append (append is in the round trip) | pass | 0.077 ms | 0.086 ms | 1 µs |
+| next_step (run history) | pass | 0.33 ms | 0.51 ms | 260 µs (11 µs at 190 entries) |
+| next_step (planned push) | pass | 0.76 ms | 1.03 ms | 640 µs (19 µs at 190 entries) |
+| ledger_verify / ledger_show (re-hash from disk) | pass | 19–20 ms | 22–33 ms | ~5.5 µs per entry (1.1 ms at 190) |
+| exact / route v0.3 / policy_check, cache hit | pass / pass / fail | 0.049–0.066 ms | 0.064–0.105 ms | 3–5 µs |
+| agent_verify_patch (python verifier) | pass | 185 ms | 186 ms | 185 ms |
 
-Other: MCP `ping` 15 µs; cold start → `tools/list` 3.2 ms; one-shot `perci tool
-exact` process 1.1 ms; chat daemon TCP `ping` 18 µs (was 44 ms before
+Route speed (`cargo run --release --example route_bench`, 381 prompts × 3,
+classifier only): v0.3 p50 17.6 → 2.9 ms (p95 32.2 → 4.2 ms), v0.2 p50 0.67 →
+0.31 ms, with an identical output fingerprint (the old scan is kept as
+`PERCI_SCAN=reference` and a test asserts equality). The gain is the domain
+scan running on up to 8 threads (`PERCI_SCAN_THREADS`) with allocation-free
+candidates and a popcnt kernel; single-threaded v0.3 is ~12 ms.
+
+Other: MCP `ping` 16 µs; cold start → `tools/list` 3.2 ms (78 ms in the bench run above, which includes the profile's pack discovery and AgentSearch); one-shot `perci tool
+exact` process 1.1–23 ms; chat daemon TCP `ping` 18 µs (was 44 ms before
 `TCP_NODELAY` + single-write replies). First recall in a fresh data dir pays
 note sync + AgentSearch start (~120 ms); `perci mcp` does that in the
 background at start (`PERCI_MCP_NO_PREWARM=1` disables it). Server-side

@@ -56,9 +56,9 @@ Each entry: what was chosen, why, what it costs.
     `mv`, privilege, network (except localhost), package installs, `--amend`.
     Allow reads, builds and tests, plain commits, and writes under `src/`,
     `tests/`, `docs/`, `scripts/`, `evals/`. Diff budget 400 changed lines.
-13. **Routing uses the v0.2 pack by default** (0.76 ms vs 7.96 ms for v0.3);
-    `PERCI_TOOL_PACK` or `args.pack` selects another. v0.3 hot-loop work (P4/P5)
-    is not done.
+13. **Routing uses the v0.2 pack by default** (0.48 ms vs 1.8 ms for v0.3
+    after the scan work below); `PERCI_TOOL_PACK`, the profile's `tool_pack`
+    or `args.pack` (a pack *name*, never a path) selects another.
 14. **Read-only by default.** `remember`, `agent_verify_patch` and `eval` are
     off unless `PERCI_TOOLS` enables them.
 
@@ -101,3 +101,80 @@ Each entry: what was chosen, why, what it costs.
     scratch tree, runs only allowlisted verifiers (cargo, python, pytest,
     bug2eval) with a ≤ 600 s timeout and `CARGO_NET_OFFLINE=1`, and proves the
     caller's tree is unchanged with `git status` before/after.
+
+## Packs, profiles, ledger, temporal router (second workstream)
+
+23. **Profile = an external directory**, `PERCI_PROFILE`, defaulting to
+    `PERCI_DATA` so existing installs change nothing. Policy overlay, sequence
+    rules, packs, memory journal, ledgers and the temporal model resolve from
+    it; `profile.json` (`perci.profile.v1`) is optional and only names files.
+    A file named there but missing, or present but invalid, is an error; the
+    repo ships generic defaults only (docs/PROFILES.md). `status` warns when the
+    profile sits inside a git checkout.
+24. **Weight packs are verified at every load.** Manifest (`perci.weight-pack.v1`,
+    a `perci.packs.v1` index, or a `perci.pack-manifest.v1` file) → safe paths,
+    hash of every file (the entry hashed from the same mapped bytes that
+    classification reads), labels = categories. Missing, modified or mispinned
+    = `PACK_UNAVAILABLE`; no fallback to another pack, ever. Built-ins are
+    pinned by the committed `models/PACKAGE_MANIFEST.json`. External packs are
+    pinned in `profile.json` (`pins`, optional `require_pins`); signatures are
+    not supported (no crypto dependency) and a `signature` field is reported
+    as unverified. `args.pack` no longer accepts raw paths.
+25. **`PERCI_WEIGHT_PACKS`, not `PERCI_PACKS`**: the latter already names the
+    knowledge-note root (`intel_packs`).
+26. **Hashing cost**: verification hashes the whole pack, so SHA-256 got a
+    runtime-detected SHA-NI path (v0.3: 1.02 s → 0.27 s; v0.2 ≈ 25 ms), and
+    `perci mcp` verifies the default pack beside the request loop so
+    `initialize`/`tools/list` answer at once. No mtime-based skip: that would
+    let a same-size, same-mtime edit through.
+27. **Lexical priors are per pack.** The built-in keyword table (48 points per
+    cue) is tied to the built-in label names; it is `off` by default for every
+    other pack, or a pack supplies its own table. Otherwise a private label
+    that happens to be named `memory` gets boosted.
+28. **Route confidence is calibrated, not the margin.** On 158 held-out cases
+    v0.2 is 64.5% accurate and v0.3 84.1%, and accuracy is not monotonic in
+    the margin (v0.2's 4–8 bucket is worse than its 2–4 bucket; wrong labels
+    up to margin 24). `perci packs calibrate` stores per-bucket counts; the
+    gate uses the Wilson 95% lower bound (default 700‰). An `llm` route below
+    it abstains with `ROUTE_LOW_CONFIDENCE` (the deterministic routes are
+    unaffected). Consequence: with v0.2, most `llm` routes now abstain; that is
+    the honest reading of a 64% label. Uncalibrated packs report
+    `uncalibrated` and gate only on an explicit `min_margin`.
+29. **Ledger**: one hash-chained JSONL per run, `hash = sha256(canonical entry
+    without hash)`, genesis `sha256("perci.ledger.v1|<run>")`. Detects edits,
+    reordering, drops and moves; truncation of the tail only against
+    `expect_head`. A broken ledger is never appended to. MCP records every
+    verdict except the read-only meta tools; one-shot CLI only with
+    `PERCI_RUN_ID`. Single writer per run (no file lock).
+30. **Sequence rules live in the policy** (`sequence.classes` + `rules`) or in
+    the profile's `sequence-rules.json` (`perci.sequence.v1`), and only
+    tighten. Tests count only as `phase: post` with status pass *after the last
+    code change* (a pre-gate is not a test run). Without a ledger the rule is
+    `SEQUENCE_UNCHECKED` (abstain), never silently passed. A sequence file in
+    another schema makes gated steps abstain (`SEQUENCE_RULES_INVALID`) rather
+    than dropping the rules or failing the whole policy.
+31. **`policy_check` stays stateless**; only `agent_gate_step` consults the
+    ledger. That keeps `policy_check` cacheable and replayable.
+32. **Temporal router = integer n-gram** (order 3, back-off, ties by token),
+    learned only from verified ledgers; the current run is a live model
+    updated on each append. Output is counts (`count`, `of`, `permille`,
+    per-step outcomes), so every suggestion is explainable. Marked
+    `deterministic: false` because it depends on history.
+33. **Verdict cache** for exact, check_math, relation, route, policy_check:
+    key = input hash + output config, FIFO 4096, errors not cached, `cache_hit`
+    in the receipt (unhashed), `PERCI_TOOL_CACHE=0` disables. Profile edits
+    during a server's life are not seen by cached verdicts.
+34. **Scan speed with identical results**: allocation-free integer candidates,
+    exact pruning bound, popcnt kernel, domain scan on up to 8 threads. The old
+    loop stays as `PERCI_SCAN=reference`; a test and the `route_bench`
+    fingerprint assert identical output. A smaller "hot index" was tried and
+    gave nothing; pruning fires on only ~3.5% of records, so threads and
+    removing per-record allocation are the gain.
+35. **PowerShell**: `&` / `.` are unwrapped, built-in aliases map one way to
+    their cmdlet (a `remove-item` rule catches `del`, but `rm` rules keep Unix
+    meaning), and long parameters match their abbreviations (`-rec`,
+    `-Recurse:$true`; `:$false` does not count). `-Force` no longer reads as
+    the flag cluster `-F -o -r -c -e`.
+36. **`check_math` reads `x` between digits as ×** (`3 x 42`, `3x42`, `(3)x(4)`).
+37. **`perci tool schema NAME`** prints that tool's input schema (it printed the
+    verdict schema); `perci tool schema verdict` prints the verdict schema.

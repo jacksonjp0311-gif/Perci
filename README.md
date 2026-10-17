@@ -800,12 +800,15 @@ When you cut a real crate bump: edit `Cargo.toml`, rebuild (badge stamps), updat
 `perci mcp` serves Perci's deterministic checks to AI harnesses (Claude Code,
 Codex, Cursor) over MCP stdio: `exact`, `check_math`, `relation`, `route`,
 `policy_check`, `recall`, `verify`, `status`, `agent_check_claims`,
-`agent_gate_step` (plus `remember`, `agent_verify_patch`, `eval` behind
-`PERCI_TOOLS`). Each call returns a `perci.verdict.v1` (pass / fail / abstain,
+`agent_gate_step`, `ledger_append`, `ledger_verify`, `ledger_show`,
+`next_step` (plus `remember`, `agent_verify_patch`, `eval` behind
+`PERCI_TOOLS`). Every MCP session keeps a hash-chained step ledger that
+sequence rules (e.g. deploy only after tests passed) are checked against. Each call returns a `perci.verdict.v1` (pass / fail / abstain,
 reasons, hashed receipt) in well under a millisecond for most tools.
 One-shot: `perci tool exact --json '{"expr":"17% of 240","claimed":"41"}'`.
 Catalog, host configs and latencies: [docs/TOOLS.md](docs/TOOLS.md);
-decisions: [docs/DECISIONS.md](docs/DECISIONS.md); demo transcript:
+profiles, swappable weight packs and ledgers (kept outside the repo):
+[docs/PROFILES.md](docs/PROFILES.md); decisions: [docs/DECISIONS.md](docs/DECISIONS.md); demo transcript:
 [evals/demo/transcript.md](evals/demo/transcript.md).
 
 ## Quick start
