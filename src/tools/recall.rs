@@ -1,157 +1,41 @@
-//! `perci.recall` (cited memory lookup) and `perci.remember` (staged notes).
+//! `perci.recall` (cited memory lookup) and `perci.remember` (append a note).
 //!
-//! Every hit carries the file, 1-based line and the SHA-256 of that line's
-//! exact bytes, so a harness can later prove the note it cited has not been
-//! edited (`perci.verify` with `evidence`). The store behind recall is a
-//! [`RecallBackend`]; the default reads Perci's append-only memory log.
-//! AgentSearch (FTS5 + evidence hashes) plugs in via [`set_backend`].
+//! Both go through [`CitedMemory`] (Track B): the append-only journal is the
+//! source of truth, one immutable note file per record is indexed by
+//! AgentSearch, and recall falls back to a substring scan when AgentSearch is
+//! not available. The tool result embeds the `perci.recall.v1` document (minus
+//! timing, so the output hash is stable); every hit carries a [`Citation`]
+//! that `perci.verify` re-checks against the note file *and* the journal.
 //!
-//! `perci.remember` never writes into memory directly. It appends to
-//! `PERCI_DATA/memory/agent-staged.jsonl` with status `pending_review`;
-//! promotion stays human-only. It is off unless `PERCI_TOOLS` enables it.
+//! `perci.remember` is off unless `PERCI_TOOLS` enables it, refuses anything
+//! that looks like a secret and caps notes at 1200 characters.
 
-use super::{arg_str, try_arg, with_summary, Ctx, Tool};
+use super::{arg_str, opt_str, try_arg, with_summary, Ctx, Tool};
+use crate::cited_memory::{Citation, CitedMemory};
 use crate::verdict::{Confidence, Evidence, Outcome, Reason, Status};
 use serde_json::{json, Value};
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock};
 
-/// One cited hit.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Hit {
-    pub source: String,
-    pub line: u64,
-    pub text: String,
-    pub sha256: String,
-    pub score: u32,
-}
-
-/// A searchable store with stable line-level citations.
-pub trait RecallBackend: Send + Sync {
-    fn name(&self) -> &str;
-    fn search(&self, query: &str, limit: usize) -> io::Result<Vec<Hit>>;
-    /// Identity of the index state (e.g. sha256 of the store) for receipts.
-    fn generation(&self) -> String;
-}
-
-fn backend_slot() -> &'static Mutex<Option<Arc<dyn RecallBackend>>> {
-    static SLOT: OnceLock<Mutex<Option<Arc<dyn RecallBackend>>>> = OnceLock::new();
-    SLOT.get_or_init(|| Mutex::new(None))
-}
-
-/// Replace the recall store (e.g. with an AgentSearch client).
-pub fn set_backend(backend: Arc<dyn RecallBackend>) {
-    *backend_slot().lock().unwrap_or_else(|e| e.into_inner()) = Some(backend);
-}
-
-pub fn backend() -> Arc<dyn RecallBackend> {
-    backend_slot()
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
-        .unwrap_or_else(|| Arc::new(MemoryLog::discover()))
-}
-
+/// The memory journal (`PERCI_MEMORY`, else `PERCI_DATA/memory/perci.jsonl`).
 pub fn memory_path() -> PathBuf {
-    std::env::var_os("PERCI_MEMORY")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| crate::paths::data_file("memory/perci.jsonl"))
-}
-
-pub fn staged_path() -> PathBuf {
-    crate::paths::data_file("memory/agent-staged.jsonl")
-}
-
-/// Default backend: Perci's JSONL memory log, term-overlap scoring.
-pub struct MemoryLog {
-    pub path: PathBuf,
-}
-
-impl MemoryLog {
-    pub fn discover() -> Self {
-        Self {
-            path: memory_path(),
-        }
-    }
-}
-
-const STOP: &[&str] = &[
-    "the", "a", "an", "is", "are", "was", "of", "to", "in", "on", "and", "or", "my", "i", "me",
-    "what", "where", "did", "do", "you", "that", "this", "it", "for", "with", "recall", "remember",
-    "memory", "note", "notes",
-];
-
-fn terms(q: &str) -> Vec<String> {
-    let mut t: Vec<String> = q
-        .to_lowercase()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| w.len() >= 2 && !STOP.contains(w))
-        .map(str::to_owned)
-        .collect();
-    t.sort();
-    t.dedup();
-    t
-}
-
-/// Text of one JSONL memory record (or the raw line for legacy entries).
-fn record_text(line: &str) -> String {
-    serde_json::from_str::<Value>(line)
-        .ok()
-        .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned))
-        .unwrap_or_else(|| line.to_owned())
+    crate::cited_memory::default_journal()
 }
 
 pub fn line_sha256(line: &str) -> String {
     crate::doctor::sha256_hex(line.trim_end_matches(['\r', '\n']).as_bytes())
 }
 
-impl RecallBackend for MemoryLog {
-    fn name(&self) -> &str {
-        "perci-memory-log"
-    }
-    fn search(&self, query: &str, limit: usize) -> io::Result<Vec<Hit>> {
-        let text = match std::fs::read_to_string(&self.path) {
-            Ok(t) => t,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(e) => return Err(e),
-        };
-        let q = terms(query);
-        let mut hits: Vec<Hit> = text
-            .lines()
-            .enumerate()
-            .filter(|(_, l)| !l.trim().is_empty())
-            .filter_map(|(i, l)| {
-                let body = record_text(l);
-                let words = terms(&body);
-                let score = q
-                    .iter()
-                    .filter(|t| {
-                        words
-                            .iter()
-                            .any(|w| w == *t || (t.len() >= 4 && w.starts_with(t.as_str())))
-                    })
-                    .count() as u32;
-                (score > 0).then(|| Hit {
-                    source: self.path.display().to_string(),
-                    line: i as u64 + 1,
-                    text: body,
-                    sha256: line_sha256(l),
-                    score,
-                })
-            })
-            .collect();
-        // Most terms first, then newest (higher line) first: deterministic.
-        hits.sort_by(|a, b| b.score.cmp(&a.score).then(b.line.cmp(&a.line)));
-        hits.truncate(limit);
-        Ok(hits)
-    }
-    fn generation(&self) -> String {
-        match std::fs::read(&self.path) {
-            Ok(b) => format!("sha256:{}", crate::doctor::sha256_hex(&b)),
-            Err(_) => "empty".into(),
-        }
-    }
+/// Verdict evidence for one citation: the journal record (source of truth).
+pub fn citation_evidence(c: &Citation) -> Evidence {
+    Evidence::new("memory_record", format!("memory:{}", c.journal_line))
+        .hashed(c.record_sha256.clone())
+        .line(c.journal_line)
+}
+
+/// Re-check a perci.recall.v1 citation through [`CitedMemory::verify`].
+pub fn verify_cited(ctx: &Ctx, c: &Citation) -> io::Result<crate::cited_memory::VerifyResult> {
+    ctx.memory(|m: &mut CitedMemory| m.verify(c))
 }
 
 /// Re-hash a cited line (or a whole file when `line` is `None`).
@@ -198,48 +82,69 @@ impl Tool for Recall {
             "additionalProperties": false
         })
     }
-    fn call(&self, _ctx: &Ctx, args: &Value) -> Outcome {
+    fn call(&self, ctx: &Ctx, args: &Value) -> Outcome {
         let query = try_arg!(arg_str(args, "query"));
         let limit = args
             .get("limit")
             .and_then(Value::as_u64)
             .unwrap_or(8)
             .clamp(1, 50) as usize;
-        let be = backend();
-        let hits = match be.search(query, limit) {
-            Ok(h) => h,
+        let res = match ctx.memory(|m| m.recall(query, limit)) {
+            Ok(r) => r,
             Err(e) => return Outcome::error("RECALL_FAILED", e.to_string()),
         };
+        let mut doc = serde_json::to_value(&res).unwrap_or(Value::Null);
+        if let Some(obj) = doc.as_object_mut() {
+            // Timing lives in the receipt; keep the hashed result stable.
+            obj.remove("elapsed_us");
+        }
+        let n = res.hits.len();
+        let summary = match (n, res.complete) {
+            (0, true) => "no matching note".to_owned(),
+            (0, false) => "no match found, but the search was partial".to_owned(),
+            (n, _) => format!("{n} cited note(s) via {}", res.backend),
+        };
         let mut outcome = Outcome::new(
-            if hits.is_empty() { Status::Abstain } else { Status::Pass },
-            with_summary(
-                json!({
-                    "backend": be.name(),
-                    "hits": hits.iter().map(|h| json!({
-                        "source": h.source, "line": h.line, "text": h.text, "sha256": h.sha256, "score": h.score
-                    })).collect::<Vec<_>>(),
-                    "complete": true,
-                }),
-                if hits.is_empty() { "no matching note".to_owned() } else { format!("{} cited note(s)", hits.len()) },
-            ),
+            if n == 0 {
+                Status::Abstain
+            } else {
+                Status::Pass
+            },
+            with_summary(doc, summary),
         )
         .confidence(Confidence::Bounded);
-        if hits.is_empty() {
-            outcome = outcome.reason(Reason::new(
-                "NO_MATCH",
-                "nothing in memory matches; do not invent one",
-            ));
+        if n == 0 {
+            outcome = outcome.reason(if res.complete {
+                Reason::new("NO_MATCH", "nothing in memory matches; do not invent one")
+            } else {
+                Reason::new(
+                    "INCOMPLETE",
+                    "the search reported partial coverage, so absence is not proof",
+                )
+            });
         }
-        for h in &hits {
-            outcome = outcome.evidence(
-                Evidence::new("memory_note", h.source.clone())
-                    .hashed(h.sha256.clone())
-                    .line(h.line),
-            );
+        for w in &res.warnings {
+            outcome = outcome.reason(Reason::new("RECALL_WARNING", w.clone()));
         }
-        outcome
-            .weights
-            .insert("recall_index".into(), be.generation());
+        for h in &res.hits {
+            if h.changed_since_index {
+                outcome = outcome.reason(Reason::new(
+                    "NOTE_CHANGED",
+                    format!(
+                        "{} changed after it was indexed; verify before citing",
+                        h.citation.note_path
+                    ),
+                ));
+            }
+            outcome = outcome.evidence(citation_evidence(&h.citation));
+        }
+        let journal_bytes = std::fs::metadata(memory_path())
+            .map(|m| m.len())
+            .unwrap_or(0);
+        outcome.weights.insert(
+            "recall_index".into(),
+            format!("{}; journal_bytes={journal_bytes}", res.backend),
+        );
         outcome
     }
 }
@@ -253,18 +158,18 @@ impl Tool for Remember {
         "perci.remember"
     }
     fn title(&self) -> &'static str {
-        "Stage a note for review"
+        "Remember a note"
     }
     fn description(&self) -> &'static str {
-        "Stage a note for the user to review. Never written into memory directly: it goes to a pending-review file and only the user can promote it. Refuses anything that looks like a secret. Off by default (enable with PERCI_TOOLS)."
+        "Append a note to the user's Perci memory journal and return its citation (journal line, sha256). Refuses anything that looks like a secret; 1200 characters max. Off by default (the operator enables it with PERCI_TOOLS)."
     }
     fn input_schema(&self) -> Value {
         json!({
             "type": "object",
-            "required": ["text", "source"],
+            "required": ["text"],
             "properties": {
                 "text": {"type": "string", "maxLength": MAX_NOTE_CHARS},
-                "source": {"type": "string", "description": "Who is staging it, e.g. \"claude-code session 42\"."},
+                "source": {"type": "string", "description": "Who is writing it, e.g. \"claude-code session 42\" (echoed in the result, not stored)."},
                 "kind": {"enum": ["note", "teach"], "default": "note"}
             },
             "additionalProperties": false
@@ -279,12 +184,15 @@ impl Tool for Remember {
     fn default_enabled(&self) -> bool {
         false
     }
-    fn call(&self, _ctx: &Ctx, args: &Value) -> Outcome {
+    fn call(&self, ctx: &Ctx, args: &Value) -> Outcome {
         let text = try_arg!(arg_str(args, "text")).trim();
-        let source = try_arg!(arg_str(args, "source")).trim();
+        let source = try_arg!(opt_str(args, "source")).unwrap_or("").trim();
         let kind = args.get("kind").and_then(Value::as_str).unwrap_or("note");
         if !matches!(kind, "note" | "teach") {
             return Outcome::error("BAD_ARGS", "kind must be note or teach");
+        }
+        if text.is_empty() {
+            return Outcome::error("BAD_ARGS", "text is empty");
         }
         if text.chars().count() > MAX_NOTE_CHARS {
             return Outcome::fail(json!({"status": "refused_too_long"})).reason(Reason::new(
@@ -298,35 +206,22 @@ impl Tool for Remember {
                 "looks like a credential or secret; not stored",
             ));
         }
-        let path = staged_path();
-        let record = json!({
-            "schema": "perci.staged-note.v1",
-            "ts": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0),
-            "kind": kind,
-            "source": source,
-            "text": text,
-            "status": "pending_review",
-        });
-        let line = record.to_string();
-        let write = (|| -> io::Result<()> {
-            if let Some(dir) = path.parent() {
-                std::fs::create_dir_all(dir)?;
-            }
-            let mut f = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&path)?;
-            f.write_all(format!("{line}\n").as_bytes())
-        })();
-        if let Err(e) = write {
-            return Outcome::error("WRITE_FAILED", e.to_string());
-        }
-        let sha = line_sha256(&line);
+        let receipt = match ctx.memory(|m| m.remember(kind, text)) {
+            Ok(r) => r,
+            Err(e) => return Outcome::error("WRITE_FAILED", e.to_string()),
+        };
+        let ev = citation_evidence(&receipt.citation);
         Outcome::pass(with_summary(
-            json!({"status": "pending_review", "staged_path": path.display().to_string(), "sha256": sha}),
-            "staged for the user's review",
+            json!({
+                "schema": crate::cited_memory::SCHEMA,
+                "status": receipt.status,
+                "kind": kind,
+                "source": source,
+                "citation": receipt.citation,
+            }),
+            format!("stored as memory line {}", receipt.citation.journal_line),
         ))
-        .evidence(Evidence::new("memory_note", path.display().to_string()).hashed(sha))
+        .evidence(ev)
         .nondeterministic()
     }
 }
@@ -335,37 +230,69 @@ impl Tool for Remember {
 mod tests {
     use super::*;
 
-    #[test]
-    fn memory_log_hits_are_cited_and_verifiable() {
-        let dir = std::env::temp_dir().join(format!("perci-recall-{}", std::process::id()));
+    fn temp_ctx(tag: &str) -> (Ctx, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("perci-recall-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("perci.jsonl");
-        std::fs::write(
-            &path,
-            "{\"schema_version\":1,\"timestamp_unix\":1,\"kind\":\"note\",\"text\":\"backup drive is in the left desk drawer\"}\n\
-             {\"schema_version\":1,\"timestamp_unix\":2,\"kind\":\"note\",\"text\":\"dentist on friday\"}\n",
+        let journal = dir.join("perci.jsonl");
+        (
+            Ctx::with_memory(CitedMemory::new(&journal).without_agentsearch()),
+            dir,
         )
-        .unwrap();
-        let log = MemoryLog { path: path.clone() };
-        let hits = log.search("where is my backup drive", 8).unwrap();
+    }
+
+    #[test]
+    fn remember_then_recall_is_cited_and_verifiable() {
+        let (ctx, dir) = temp_ctx("rr");
+        for text in [
+            "backup drive is in the left desk drawer",
+            "dentist on friday",
+        ] {
+            let v = Remember.call(&ctx, &json!({"text": text, "source": "test"}));
+            assert_eq!(v.status, Status::Pass, "{:?}", v.reasons);
+        }
+        let v = Recall.call(&ctx, &json!({"query": "where is my backup drive"}));
+        assert_eq!(v.status, Status::Pass);
+        assert_eq!(v.result["schema"], crate::cited_memory::SCHEMA);
+        assert!(v.result.get("elapsed_us").is_none());
+        let hits = v.result["hits"].as_array().unwrap();
         assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].line, 1);
-        assert!(hits[0].text.contains("left desk drawer"));
+        assert!(hits[0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("left desk drawer"));
+        assert_eq!(v.evidence[0].reference, "memory:1");
+        let citation: Citation = serde_json::from_value(hits[0]["citation"].clone()).unwrap();
+        assert!(verify_cited(&ctx, &citation).unwrap().ok);
         assert_eq!(
-            verify_citation(&path, Some(1), &hits[0].sha256).unwrap(),
+            verify_citation(&memory_path_of(&dir), Some(1), &citation.record_sha256).unwrap(),
             Some(true)
         );
-        // Edit the note: the citation no longer verifies.
-        std::fs::write(&path, "{\"text\":\"backup drive is in the car\"}\n").unwrap();
-        assert_eq!(
-            verify_citation(&path, Some(1), &hits[0].sha256).unwrap(),
-            Some(false)
-        );
-        assert_eq!(
-            verify_citation(&path, Some(9), &hits[0].sha256).unwrap(),
-            None
-        );
-        assert!(log.search("quantum chromodynamics", 8).unwrap().is_empty());
+        // Rewrite the journal: the citation no longer verifies.
+        std::fs::write(
+            memory_path_of(&dir),
+            "{\"text\":\"backup drive is in the car\"}\n",
+        )
+        .unwrap();
+        assert!(!verify_cited(&ctx, &citation).unwrap().ok);
+        let none = Recall.call(&ctx, &json!({"query": "quantum chromodynamics"}));
+        assert_eq!(none.status, Status::Abstain);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn remember_refuses_secrets() {
+        let (ctx, dir) = temp_ctx("sec");
+        let v = Remember.call(
+            &ctx,
+            &json!({"text": "my api key is sk-abcdefghijklmnopqrstuvwxyz123456"}),
+        );
+        assert_eq!(v.status, Status::Fail);
+        assert!(!memory_path_of(&dir).exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    fn memory_path_of(dir: &Path) -> PathBuf {
+        dir.join("perci.jsonl")
     }
 }

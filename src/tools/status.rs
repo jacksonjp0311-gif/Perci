@@ -39,10 +39,13 @@ impl Tool for Status {
                 "policy".into(),
                 json!({"source": policy.source, "sha256": policy.sha256, "valid": policy.policy.is_ok()}),
             );
+            let (backend, why) = ctx.memory_backend();
             obj.insert(
-                "recall_backend".into(),
-                json!(super::recall::backend().name()),
+                "recall".into(),
+                json!({"schema": crate::cited_memory::SCHEMA, "backend": backend, "unavailable": why,
+                       "journal": crate::cited_memory::default_journal().display().to_string()}),
             );
+            obj.insert("eval_schema".into(), json!(crate::b2e::SCHEMA));
             obj.insert(
                 "summary".into(),
                 json!(if report.ok() {

@@ -137,7 +137,15 @@ fn error(id: Value, code: i64, message: &str) -> Value {
 
 /// Serve on the given reader/writer until EOF.
 pub fn serve<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) -> std::io::Result<()> {
-    let mut server = Server::new();
+    serve_with(Server::new(), reader, writer)
+}
+
+/// Serve with a prepared server (e.g. one whose memory is warming up).
+pub fn serve_with<R: BufRead, W: Write>(
+    mut server: Server,
+    reader: &mut R,
+    writer: &mut W,
+) -> std::io::Result<()> {
     server.ctx.prewarm();
     let mut line = String::new();
     loop {
@@ -196,7 +204,16 @@ pub fn run_stdio() -> std::io::Result<()> {
         enabled_from_env().len(),
         crate::verdict::SCHEMA
     );
-    serve(&mut reader, &mut writer)
+    let server = Server::new();
+    // Sync memory notes and start AgentSearch in the background so the first
+    // recall is warm. Derived files only (notes/, agentsearch/ next to the
+    // journal); PERCI_MCP_NO_PREWARM=1 skips it.
+    if server.tools.iter().any(|t| t.name() == "perci.recall")
+        && std::env::var_os("PERCI_MCP_NO_PREWARM").is_none()
+    {
+        server.ctx.prewarm_memory();
+    }
+    serve_with(server, &mut reader, &mut writer)
 }
 
 #[cfg(test)]

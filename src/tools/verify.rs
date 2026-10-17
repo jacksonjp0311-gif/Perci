@@ -89,13 +89,51 @@ pub fn hygiene(answer: &str) -> Check {
 }
 
 /// Check cited evidence: each item's file (or file line) must still hash to
-/// the given sha256. `memory:N` refers to line N of the memory log.
-pub fn evidence_check(items: &[Value], root: Option<&str>) -> Check {
+/// the given sha256. `memory:N` refers to line N of the memory journal. A
+/// `perci.recall.v1` citation (`{"citation": {...}}` or the citation object
+/// itself) is re-checked against both its note file and the journal.
+pub fn evidence_check(ctx: &Ctx, items: &[Value], root: Option<&str>) -> Check {
     let mut reasons = Vec::new();
     let mut evidence = Vec::new();
     let mut status = Status::Pass;
     let mut checked = 0;
     for item in items {
+        let cited = item.get("citation").unwrap_or(item);
+        if cited.get("note_path").is_some() || item.get("citation").is_some() {
+            checked += 1;
+            let citation: crate::cited_memory::Citation =
+                match serde_json::from_value(cited.clone()) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        status = status.worst(Status::Fail);
+                        reasons.push(Reason::new(
+                            "EVIDENCE_MALFORMED",
+                            format!("not a perci.recall.v1 citation ({e})"),
+                        ));
+                        continue;
+                    }
+                };
+            evidence.push(super::recall::citation_evidence(&citation));
+            let at = format!("memory:{}", citation.journal_line);
+            match super::recall::verify_cited(ctx, &citation) {
+                Ok(v) if v.ok => {}
+                Ok(v) => {
+                    status = status.worst(Status::Fail);
+                    let code =
+                        if !v.note_unchanged && std::fs::metadata(&citation.note_path).is_err() {
+                            "EVIDENCE_MISSING"
+                        } else {
+                            "EVIDENCE_CHANGED"
+                        };
+                    reasons.push(Reason::new(code, format!("{at}: {}", v.detail)));
+                }
+                Err(e) => {
+                    status = status.worst(Status::Abstain);
+                    reasons.push(Reason::new("EVIDENCE_UNREADABLE", format!("{at}: {e}")));
+                }
+            }
+            continue;
+        }
         let reference = item.get("ref").and_then(Value::as_str).unwrap_or("").trim();
         let sha = item
             .get("sha256")
@@ -204,10 +242,11 @@ impl Tool for Verify {
                 "answer": {"type": "string"},
                 "question": {"type": "string"},
                 "require": {"type": "array", "items": {"enum": ["math", "evidence", "relation", "policy", "hygiene"]}},
-                "evidence": {"type": "array", "items": {"type": "object", "required": ["ref", "sha256"], "properties": {
+                "evidence": {"type": "array", "items": {"type": "object", "description": "Either {ref, line?, sha256} or a perci.recall.v1 citation as {citation: {...}}.", "properties": {
                     "ref": {"type": "string", "description": "File path (relative to root or PERCI_HOME) or memory:LINE"},
                     "line": {"type": "integer"},
-                    "sha256": {"type": "string"}
+                    "sha256": {"type": "string"},
+                    "citation": {"type": "object", "description": "hits[].citation from recall"}
                 }}},
                 "root": {"type": "string"},
                 "premises": {"type": "array", "items": {"type": "string"}},
@@ -237,7 +276,7 @@ impl Tool for Verify {
             .cloned()
             .unwrap_or_default();
         if !items.is_empty() || require.iter().any(|r| r == "evidence") {
-            checks.push(evidence_check(&items, root));
+            checks.push(evidence_check(ctx, &items, root));
         }
 
         if !premises.is_empty() {

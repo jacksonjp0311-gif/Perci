@@ -3,8 +3,8 @@
 //!
 //! Every tool returns a [`crate::verdict::Verdict`]. Tools never go through
 //! `ChatEngine`, never read or write the chat session, and never touch the
-//! learning log. The only tool that writes is `perci.remember`, and it only
-//! **stages** a note for human review.
+//! learning log. The only tool that writes memory is `perci.remember` (off by
+//! default); it appends to the journal through [`crate::cited_memory`].
 //!
 //! Boundary: nothing under `src/tools/` may use `chat`, `voice`,
 //! `deliberation` or `session` (enforced by `tests/tool_boundary.rs`). That is
@@ -14,8 +14,10 @@
 //! * [`register`] adds a tool to the catalog at runtime (for example
 //!   `perci.eval` backed by bug2eval). Registered tools override built-ins
 //!   with the same name.
-//! * [`recall::set_backend`] swaps the store behind `perci.recall` (for
-//!   example AgentSearch over JSON-lines stdio) without touching callers.
+//! * `perci.recall` / `perci.remember` go through
+//!   [`crate::cited_memory::CitedMemory`] (AgentSearch-backed, substring
+//!   fallback); [`Ctx::with_memory`] injects a different journal.
+//! * `perci.eval` goes through [`crate::b2e`] (bug2eval subprocess).
 
 pub mod agent;
 pub mod check_math;
@@ -67,6 +69,8 @@ pub trait Tool: Send + Sync {
 pub struct Ctx {
     pub(crate) packs: Mutex<std::collections::BTreeMap<String, Arc<route::LoadedPack>>>,
     pub(crate) policy: OnceLock<policy::LoadedPolicy>,
+    /// Cited memory, opened on first use (`CitedMemory::open_default`).
+    memory: Arc<Mutex<Option<crate::cited_memory::CitedMemory>>>,
 }
 
 impl Ctx {
@@ -74,10 +78,49 @@ impl Ctx {
         Self::default()
     }
 
+    /// Use this memory instead of `CitedMemory::open_default()`.
+    pub fn with_memory(memory: crate::cited_memory::CitedMemory) -> Self {
+        let ctx = Self::default();
+        *ctx.memory.lock().unwrap_or_else(|e| e.into_inner()) = Some(memory);
+        ctx
+    }
+
     /// Load the routing pack and policy now instead of on the first call.
     pub fn prewarm(&self) {
         let _ = route::pack(self, None);
         let _ = policy::loaded(self);
+    }
+
+    /// Sync notes and start AgentSearch on a background thread, so the first
+    /// `perci.recall` is warm. A recall issued meanwhile waits for it.
+    pub fn prewarm_memory(&self) {
+        let slot = Arc::clone(&self.memory);
+        std::thread::spawn(move || {
+            let mut guard = slot.lock().unwrap_or_else(|e| e.into_inner());
+            let mem = guard.get_or_insert_with(crate::cited_memory::CitedMemory::open_default);
+            let _ = mem.sync();
+            mem.warm_up();
+        });
+    }
+
+    /// Run `f` on the cited memory, opening it on first use.
+    pub fn memory<R>(&self, f: impl FnOnce(&mut crate::cited_memory::CitedMemory) -> R) -> R {
+        let mut guard = self.memory.lock().unwrap_or_else(|e| e.into_inner());
+        f(guard.get_or_insert_with(crate::cited_memory::CitedMemory::open_default))
+    }
+
+    /// `(backend, why unavailable)` without blocking or starting anything.
+    pub fn memory_backend(&self) -> (String, Option<String>) {
+        match self.memory.try_lock() {
+            Ok(guard) => match guard.as_ref() {
+                Some(m) => (
+                    m.backend_name().to_owned(),
+                    m.unavailable_reason().map(str::to_owned),
+                ),
+                None => ("not started".to_owned(), None),
+            },
+            Err(_) => ("warming up".to_owned(), None),
+        }
     }
 }
 

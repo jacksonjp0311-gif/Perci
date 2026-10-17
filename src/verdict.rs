@@ -102,7 +102,7 @@ impl Reason {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Evidence {
-    /// computation | file | memory_note | policy_rule | b2e_case | heldout_item | step_log
+    /// computation | file | memory_record | memory_note | policy_rule | b2e_case | heldout_item | step_log
     pub kind: String,
     #[serde(rename = "ref")]
     pub reference: String,

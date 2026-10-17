@@ -793,6 +793,8 @@ mod tests {
         assert!(!chained_division("2^3/4"));
         assert_eq!(v("(15/24) / (16/13)"), "65/128");
         assert_eq!(v("3/7 + 2/9 - 1/3"), "20/63");
+        // B2E-PERCI-014: word operator between fractions.
+        assert_eq!(v("3/7 plus 2/9"), "41/63");
     }
 
     #[test]
