@@ -9,7 +9,8 @@
 #            bandwidth; the weights are cached by their LFS object ids.
 #   tools    Perci-as-a-tool gates without weights: held-out exact/check_math
 #            (0 wrong passes, 0 false fails, replay-identical), demo harness,
-#            MCP latency smoke.
+#            MCP latency smoke, public benchmark gates.
+# Releases: .github/workflows/release.yml (v* tag; workflow_dispatch = dry run).
 #   evals    bug2eval validate of every evals/b2e case (before fails, after
 #            passes) with a receipt artifact. main, nightly, on demand.
 name: CI
@@ -211,6 +212,8 @@ jobs:
         env:
           PERCI_AGENTSEARCH: "off"
         run: python3 scripts/bench_tools.py --n 30 --json tools-bench.json
+      - name: Public benchmark gates (no weights; route row skipped)
+        run: python3 scripts/bench_public.py --perci target/release/perci --n 100 --iters 30 --json bench-public.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -218,6 +221,7 @@ jobs:
           path: |
             tools-heldout.json
             tools-bench.json
+            bench-public.json
           if-no-files-found: ignore
 
   ci-ok:
