@@ -9158,7 +9158,7 @@ mod tests {
             second,
         );
         assert_eq!(second.operator, "greeting");
-        let lower = second.answer.to_ascii_lowercase();
+        let lower = crate::util::text::normalize_quotes(&second.answer).to_ascii_lowercase();
         assert!(!lower.contains("repeats the last answer"));
         assert!(!lower.contains("i'm tracking"));
     }

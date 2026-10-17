@@ -98,6 +98,10 @@ const VOCABULARY: &[&str] = &[
 /// Repair known Perci-domain misspellings while preserving punctuation and
 /// whitespace.  The original casing of a token is retained where practical.
 pub fn repair_typos(input: &str) -> String {
+    // Curly quotes (phone keyboards, Word, Perci's own replies) must route the
+    // same as ASCII ones: "what’s" and "what's" are the same question.
+    let input = crate::util::text::normalize_quotes(input);
+    let input = input.as_ref();
     let mut output = String::with_capacity(input.len());
     let mut token = String::new();
 
@@ -284,6 +288,27 @@ mod tests {
         assert_eq!(
             normalize_for_routing("imnproving your system"),
             "improving your system"
+        );
+    }
+
+    #[test]
+    fn curly_apostrophes_route_like_ascii_ones() {
+        // B2E-PERCI-007: "I\u{2019}m" never matched rules written as "i'm".
+        assert_eq!(
+            normalize_for_routing("I\u{2019}m tracking the build"),
+            "i'm tracking the build"
+        );
+        assert_eq!(
+            crate::voice::detect_social("how\u{2019}s it going today"),
+            crate::voice::detect_social("how's it going today")
+        );
+        assert_ne!(
+            crate::voice::detect_social("how\u{2019}s it going today"),
+            crate::voice::SocialKind::None
+        );
+        assert_eq!(
+            crate::voice::detect_dialogue_act("seems like you\u{2019}re stuck again"),
+            crate::voice::detect_dialogue_act("seems like you're stuck again")
         );
     }
 }

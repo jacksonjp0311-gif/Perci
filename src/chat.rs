@@ -132,7 +132,16 @@ impl ChatEngine {
     /// Attach persistent session and preload recent turns.
     pub fn with_session(mut self, store: crate::session::SessionStore) -> Self {
         if let Ok(turns) = store.load_recent() {
-            self.recent = turns;
+            use crate::util::text::normalize_quotes;
+            self.recent = turns
+                .into_iter()
+                .map(|(u, a)| {
+                    (
+                        normalize_quotes(&u).into_owned(),
+                        normalize_quotes(&a).into_owned(),
+                    )
+                })
+                .collect();
         }
         self.session = Some(store);
         self
@@ -1074,8 +1083,13 @@ impl ChatEngine {
 
     fn push_turn(&mut self, user: &str, assistant: &str) {
         let previous = self.recent.last().cloned();
-        self.recent
-            .push((user.trim().to_string(), assistant.trim().to_string()));
+        // Matchers compare against ASCII apostrophes; keep the in-memory view
+        // normalised so "I’m tracking…" in a prior answer is recognised.
+        use crate::util::text::normalize_quotes;
+        self.recent.push((
+            normalize_quotes(user.trim()).into_owned(),
+            normalize_quotes(assistant.trim()).into_owned(),
+        ));
         while self.recent.len() > MAX_TURNS {
             self.recent.remove(0);
         }

@@ -15,6 +15,26 @@ pub fn truncate_untrimmed(s: &str, max: usize) -> String {
     }
 }
 
+/// Map typographic quotes and apostrophes to ASCII so phrase matching sees
+/// `I’m` and `I'm` as the same text.
+pub fn normalize_quotes(s: &str) -> std::borrow::Cow<'_, str> {
+    if !s.contains([
+        '\u{2018}', '\u{2019}', '\u{201a}', '\u{201b}', '\u{2032}', '\u{201c}', '\u{201d}',
+        '\u{201e}', '\u{2033}', '\u{ff07}',
+    ]) {
+        return std::borrow::Cow::Borrowed(s);
+    }
+    std::borrow::Cow::Owned(
+        s.chars()
+            .map(|c| match c {
+                '\u{2018}' | '\u{2019}' | '\u{201a}' | '\u{201b}' | '\u{2032}' | '\u{ff07}' => '\'',
+                '\u{201c}' | '\u{201d}' | '\u{201e}' | '\u{2033}' => '"',
+                other => other,
+            })
+            .collect(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -30,5 +50,17 @@ mod tests {
         assert_eq!(truncate("  é  ", 5), "é");
         assert_eq!(truncate("abcdef", 4), "abc…");
         assert_eq!(truncate_untrimmed(" ab ", 10), " ab ");
+    }
+
+    #[test]
+    fn curly_quotes_become_ascii() {
+        assert_eq!(
+            normalize_quotes("I\u{2019}m \u{201c}here\u{201d}"),
+            "I'm \"here\""
+        );
+        assert!(matches!(
+            normalize_quotes("plain"),
+            std::borrow::Cow::Borrowed(_)
+        ));
     }
 }

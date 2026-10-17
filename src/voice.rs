@@ -148,7 +148,7 @@ pub enum DialogueAct {
 }
 
 pub fn detect_dialogue_act(user: &str) -> DialogueAct {
-    let text = user.trim().to_ascii_lowercase();
+    let text = crate::util::text::normalize_quotes(user.trim()).to_ascii_lowercase();
     let compact = text.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '\'');
     // Bare sensing probes only — do not steal growth questions like
     // "do you sense your cognitive ability growing?"
@@ -1835,7 +1835,7 @@ pub fn detect_affect(user: &str) -> Affect {
 }
 
 pub fn detect_social(user: &str) -> SocialKind {
-    let t = user.trim().to_ascii_lowercase();
+    let t = crate::util::text::normalize_quotes(user.trim()).to_ascii_lowercase();
     let compact: String = t
         .chars()
         .filter(|c| c.is_ascii_alphanumeric() || c.is_whitespace() || *c == '\'')
