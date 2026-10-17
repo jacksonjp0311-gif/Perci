@@ -46,6 +46,35 @@ impl Tool for Status {
                        "journal": crate::cited_memory::default_journal().display().to_string()}),
             );
             obj.insert("eval_schema".into(), json!(crate::b2e::SCHEMA));
+            let profile_dir = crate::profile::dir();
+            let profile_cfg = crate::profile::config_checked();
+            obj.insert(
+                "profile".into(),
+                json!({
+                    "dir": profile_dir.display().to_string(),
+                    "from": if std::env::var_os("PERCI_PROFILE").is_some_and(|v| !v.is_empty()) { "PERCI_PROFILE" } else { "PERCI_DATA" },
+                    "name": profile_cfg.as_ref().ok().and_then(|c| c.get("name")).cloned(),
+                    "config_error": profile_cfg.as_ref().err(),
+                    "inside_git_checkout": crate::profile::inside_git_checkout().map(|p| p.display().to_string()),
+                }),
+            );
+            let packs: Vec<Value> = crate::weight_packs::discover()
+                .iter()
+                .map(|r| match r {
+                    Ok(i) => crate::weight_packs::list_row(i),
+                    Err(e) => json!({"error": e}),
+                })
+                .collect();
+            obj.insert(
+                "weight_packs".into(),
+                json!({"default": crate::weight_packs::default_name(), "packs": packs}),
+            );
+            let (entries, hits, misses) = ctx.cache_stats();
+            obj.insert(
+                "ledger".into(),
+                json!({"run_id": ctx.run_id(), "dir": super::ledger::ledger_dir().display().to_string(),
+                       "cache": {"entries": entries, "hits": hits, "misses": misses}}),
+            );
             obj.insert(
                 "summary".into(),
                 json!(if report.ok() {

@@ -25,22 +25,189 @@ pub struct LoadedPolicy {
     pub source: String,
 }
 
-/// Load the policy file once per process: `PERCI_POLICY`, else
-/// `PERCI_HOME/config/policy.json`, else the copy built into the binary.
+/// Load the policy once per process.
+///
+/// * `PERCI_POLICY` set: exactly that file (unreadable or invalid = error).
+/// * Otherwise the base is `PERCI_HOME/config/policy.json` (else the copy built
+///   into the binary), and a profile overlay `PERCI_PROFILE/policy.json` is
+///   applied when present: with `"extends": "base"` it is merged onto the base
+///   (objects merge, rule lists append, a rule with the same `id` replaces the
+///   base rule); without it, it replaces the base. A broken overlay is an
+///   error, never ignored.
 pub fn loaded(ctx: &Ctx) -> &LoadedPolicy {
-    ctx.policy.get_or_init(|| {
-        let candidates: Vec<PathBuf> = std::env::var_os("PERCI_POLICY")
-            .map(PathBuf::from)
-            .into_iter()
-            .chain(std::iter::once(crate::paths::asset("config/policy.json")))
-            .collect();
-        for path in candidates {
-            if let Ok(text) = std::fs::read_to_string(&path) {
-                return parse_policy(&text, path.display().to_string());
+    ctx.policy.get_or_init(load_policy)
+}
+
+pub fn load_policy() -> LoadedPolicy {
+    let mut lp = load_policy_base();
+    // Sequence rules from the profile (`sequence_rules`, default
+    // `sequence-rules.json`) merge into the policy's `sequence` section. A
+    // broken file is not ignored: the section then carries `error`, and
+    // gate steps it would govern abstain with SEQUENCE_RULES_INVALID.
+    let cfg = crate::profile::config();
+    let path = crate::profile::path_of(&cfg, "sequence_rules", "sequence-rules.json");
+    let explicit = crate::profile::explicit(&cfg, "sequence_rules");
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => Some(Ok(t)),
+        Err(e) if !explicit && e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => Some(Err(format!("{}: {e}", path.display()))),
+    };
+    let Some(text) = text else {
+        return lp;
+    };
+    let Ok(policy) = lp.policy.as_mut() else {
+        return lp;
+    };
+    let parsed = text.and_then(|t| {
+        let v: Value = serde_json::from_str(&t)
+            .map_err(|e| format!("{}: not valid JSON ({e})", path.display()))?;
+        match v.get("schema").and_then(Value::as_str) {
+            Some(SEQUENCE_SCHEMA) => Ok((v, crate::doctor::sha256_hex(t.as_bytes()))),
+            other => Err(format!(
+                "{}: schema {:?} is not {SEQUENCE_SCHEMA} (classes + rules; see docs/PROFILES.md)",
+                path.display(),
+                other.unwrap_or("none")
+            )),
+        }
+    });
+    match parsed {
+        Ok((mut v, sha)) => {
+            if let Some(o) = v.as_object_mut() {
+                o.remove("schema");
+                o.remove("about");
+            }
+            let mut seq = policy.get("sequence").cloned().unwrap_or_else(|| json!({}));
+            merge(&mut seq, v);
+            policy["sequence"] = seq;
+            lp.sha256 = crate::doctor::sha256_hex(format!("{}+{sha}", lp.sha256).as_bytes());
+            lp.source = format!("{} + sequence {}", lp.source, path.display());
+        }
+        Err(e) => {
+            policy["sequence"]["error"] = json!(e);
+            lp.source = format!("{} + sequence {} (invalid)", lp.source, path.display());
+        }
+    }
+    lp
+}
+
+pub const SEQUENCE_SCHEMA: &str = "perci.sequence.v1";
+
+fn load_policy_base() -> LoadedPolicy {
+    if let Some(path) = std::env::var_os("PERCI_POLICY").filter(|v| !v.is_empty()) {
+        let path = PathBuf::from(path);
+        return match std::fs::read_to_string(&path) {
+            Ok(text) => parse_policy(&text, path.display().to_string()),
+            Err(e) => LoadedPolicy {
+                policy: Err(format!("PERCI_POLICY {}: {e}", path.display())),
+                sha256: String::new(),
+                source: path.display().to_string(),
+            },
+        };
+    }
+    let home = crate::paths::asset("config/policy.json");
+    let base = match std::fs::read_to_string(&home) {
+        Ok(text) => parse_policy(&text, home.display().to_string()),
+        Err(_) => parse_policy(EMBEDDED_POLICY, "embedded".into()),
+    };
+    let cfg = match crate::profile::config_checked() {
+        Ok(c) => c,
+        Err(e) => {
+            return LoadedPolicy {
+                policy: Err(e),
+                sha256: String::new(),
+                source: base.source,
             }
         }
-        parse_policy(EMBEDDED_POLICY, "embedded".into())
-    })
+    };
+    let overlay_path = crate::profile::path_of(&cfg, "policy", "policy.json");
+    let text = match std::fs::read_to_string(&overlay_path) {
+        Ok(t) => t,
+        Err(e)
+            if crate::profile::explicit(&cfg, "policy")
+                || e.kind() != std::io::ErrorKind::NotFound =>
+        {
+            return LoadedPolicy {
+                policy: Err(format!("profile policy {}: {e}", overlay_path.display())),
+                sha256: String::new(),
+                source: overlay_path.display().to_string(),
+            }
+        }
+        Err(_) => return base,
+    };
+    let source = format!("{} + profile {}", base.source, overlay_path.display());
+    let overlay: Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(e) => {
+            return LoadedPolicy {
+                policy: Err(format!(
+                    "profile policy {} is not valid JSON: {e}",
+                    overlay_path.display()
+                )),
+                sha256: crate::doctor::sha256_hex(text.as_bytes()),
+                source,
+            }
+        }
+    };
+    if overlay.get("extends").and_then(Value::as_str) != Some("base") {
+        return parse_policy(&text, overlay_path.display().to_string());
+    }
+    let merged = match base.policy {
+        Ok(mut b) => {
+            let mut o = overlay;
+            if let Some(obj) = o.as_object_mut() {
+                obj.remove("extends");
+            }
+            merge(&mut b, o);
+            Ok(b)
+        }
+        Err(e) => Err(e),
+    };
+    let sha256 = format!(
+        "{}+{}",
+        base.sha256,
+        crate::doctor::sha256_hex(text.as_bytes())
+    );
+    LoadedPolicy {
+        policy: merged.and_then(|v| {
+            if v.get("schema").and_then(Value::as_str) == Some("perci.policy.v1") {
+                Ok(v)
+            } else {
+                Err("merged policy is not perci.policy.v1".into())
+            }
+        }),
+        sha256: crate::doctor::sha256_hex(sha256.as_bytes()),
+        source,
+    }
+}
+
+/// Overlay merge: objects merge key by key, arrays append (an object with
+/// the same `"id"` as a base element replaces it), scalars replace.
+pub fn merge(base: &mut Value, overlay: Value) {
+    match (base, overlay) {
+        (Value::Object(b), Value::Object(o)) => {
+            for (k, v) in o {
+                match b.get_mut(&k) {
+                    Some(slot) => merge(slot, v),
+                    None => {
+                        b.insert(k, v);
+                    }
+                }
+            }
+        }
+        (Value::Array(b), Value::Array(o)) => {
+            for item in o {
+                let id = item.get("id").and_then(Value::as_str).map(str::to_owned);
+                match id.and_then(|id| {
+                    b.iter()
+                        .position(|x| x.get("id").and_then(Value::as_str) == Some(id.as_str()))
+                }) {
+                    Some(i) => b[i] = item,
+                    None => b.push(item),
+                }
+            }
+        }
+        (slot, v) => *slot = v,
+    }
 }
 
 pub fn parse_policy(text: &str, source: String) -> LoadedPolicy {
@@ -75,7 +242,7 @@ impl Posture {
             Self::Refuse => "refuse",
         }
     }
-    fn parse(s: &str) -> Posture {
+    pub(crate) fn parse(s: &str) -> Posture {
         match s {
             "allow" => Self::Allow,
             "refuse" => Self::Refuse,
@@ -192,9 +359,74 @@ pub fn segments(cmd: &str) -> Vec<String> {
         .collect()
 }
 
-fn program_name(p: &str) -> String {
+pub(crate) fn program_name(p: &str) -> String {
     let base = p.rsplit(['/', '\\']).next().unwrap_or(p).to_lowercase();
-    base.strip_suffix(".exe").unwrap_or(&base).to_owned()
+    for ext in [".exe", ".com", ".cmd", ".bat"] {
+        if let Some(b) = base.strip_suffix(ext) {
+            return b.to_owned();
+        }
+    }
+    base
+}
+
+/// PowerShell's built-in aliases → the cmdlet they run (lowercase). A rule
+/// naming the cmdlet also matches its aliases (`del x` hits a `remove-item`
+/// rule); the reverse does not hold, so Unix rules for `rm` keep their
+/// meaning.
+pub(crate) fn powershell_alias(prog: &str) -> Option<&'static str> {
+    Some(match prog {
+        "rm" | "ri" | "del" | "erase" | "rd" | "rmdir" => "remove-item",
+        "cp" | "cpi" | "copy" => "copy-item",
+        "mv" | "mi" | "move" => "move-item",
+        "ren" | "rni" => "rename-item",
+        "ni" | "md" | "mkdir" => "new-item",
+        "sc" => "set-content",
+        "ac" => "add-content",
+        "clc" => "clear-content",
+        "gc" | "cat" | "type" => "get-content",
+        "ls" | "dir" | "gci" => "get-childitem",
+        "iwr" | "curl" | "wget" => "invoke-webrequest",
+        "irm" => "invoke-restmethod",
+        "iex" => "invoke-expression",
+        "icm" => "invoke-command",
+        "ii" => "invoke-item",
+        "saps" | "start" => "start-process",
+        "spps" | "kill" => "stop-process",
+        "spsv" => "stop-service",
+        "sasv" => "start-service",
+        "sl" | "cd" | "chdir" => "set-location",
+        "sp" => "set-itemproperty",
+        "rp" => "remove-itemproperty",
+        "sv" | "set" => "set-variable",
+        _ => return None,
+    })
+}
+
+/// Whether `arg` passes PowerShell parameter `name` (`-Recurse`, given as
+/// `-recurse` or `recurse`): any prefix after the dash (`-r`, `-rec`,
+/// `-Recu`), case-insensitive (an ambiguous prefix counts, which can only
+/// make a verdict stricter), with
+/// an optional `:$true`; `-Recurse:$false` does not count.
+pub(crate) fn ps_param_matches(arg: &str, name: &str) -> bool {
+    let name = name.trim_start_matches('-').to_lowercase();
+    let Some(a) = arg.strip_prefix('-') else {
+        return false;
+    };
+    if a.starts_with('-') {
+        return false;
+    }
+    let (a, value) = match a.split_once(':') {
+        Some((k, v)) => (k, Some(v.to_lowercase())),
+        None => (a, None),
+    };
+    if value
+        .as_deref()
+        .is_some_and(|v| v == "$false" || v == "false" || v == "0")
+    {
+        return false;
+    }
+    let a = a.to_lowercase();
+    !a.is_empty() && name.starts_with(&a)
 }
 
 const WRAPPERS: &[&str] = &[
@@ -220,7 +452,7 @@ fn str_list(rule: &Value, key: &str) -> Option<Vec<String>> {
     })
 }
 
-fn subcommand(prog: &str, args: &[String]) -> Option<String> {
+pub(crate) fn subcommand(prog: &str, args: &[String]) -> Option<String> {
     let mut i = 0;
     while i < args.len() {
         let a = &args[i];
@@ -271,7 +503,11 @@ fn rule_matches(rule: &Value, raw: &str, argv: &[String]) -> bool {
     };
     let args = &argv[1..];
     if let Some(programs) = str_list(rule, "program") {
-        if !programs.iter().any(|p| p.to_lowercase() == prog) {
+        let alias = powershell_alias(&prog);
+        if !programs.iter().any(|p| {
+            let p = p.to_lowercase();
+            p == prog || alias == Some(p.as_str())
+        }) {
             return false;
         }
     } else if rule.get("contains_any").is_none() {
@@ -309,19 +545,45 @@ fn rule_matches(rule: &Value, raw: &str, argv: &[String]) -> bool {
         }
     }
     if let Some(ci) = str_list(rule, "args_any_ci") {
+        // A long PowerShell parameter (`-recurse`) also matches its
+        // abbreviations (`-rec`, `-Recurse:$true`).
+        if !args.iter().any(|a| {
+            ci.iter().any(|x| {
+                x.eq_ignore_ascii_case(a)
+                    || (x.starts_with('-') && x.len() > 3 && ps_param_matches(a, x))
+            })
+        }) {
+            return false;
+        }
+    }
+    if let Some(params) = str_list(rule, "params_any") {
         if !args
             .iter()
-            .any(|a| ci.iter().any(|x| x.eq_ignore_ascii_case(a)))
+            .any(|a| params.iter().any(|p| ps_param_matches(a, p)))
         {
             return false;
         }
     }
     if let Some(chars) = rule.get("flag_chars_any").and_then(Value::as_str) {
+        let recursive = chars.contains('r') || chars.contains('R');
+        let force = chars.contains('f');
         let has = args.iter().any(|a| {
+            // PowerShell long parameters count as their Unix letters and
+            // never as a cluster of single-letter flags (`-Force` is not -r).
+            let ps_long = a.len() > 3
+                && a.starts_with('-')
+                && !a.starts_with("--")
+                && a[1..]
+                    .chars()
+                    .all(|c| c.is_ascii_alphabetic() || c == ':' || c == '$');
+            if ps_long && (ps_param_matches(a, "recurse") || ps_param_matches(a, "force")) {
+                return (recursive && ps_param_matches(a, "recurse"))
+                    || (force && ps_param_matches(a, "force"));
+            }
             (a.starts_with('-')
                 && !a.starts_with("--")
                 && a[1..].chars().any(|c| chars.contains(c)))
-                || (a == "--recursive" && (chars.contains('r') || chars.contains('R')))
+                || (a == "--recursive" && recursive)
         });
         if !has {
             return false;
@@ -421,12 +683,29 @@ pub fn check_command(policy: &Value, cmd: &str, depth: usize) -> Decision {
             .into_iter()
             .skip_while(|a| is_env_assignment(a))
             .collect();
+        let argv = unwrap_call_operator(argv);
         total.merge(shell_segment(policy, &seg, &argv, depth));
     }
     total
 }
 
-fn is_env_assignment(a: &str) -> bool {
+/// PowerShell's call operator `& 'C:\\tools\\x.exe' args` / `&x` and the
+/// dot-source `. .\\script.ps1`: the program is what follows.
+pub(crate) fn unwrap_call_operator(mut argv: Vec<String>) -> Vec<String> {
+    loop {
+        match argv.first().map(String::as_str) {
+            Some("&" | ".") if argv.len() > 1 => {
+                argv.remove(0);
+            }
+            Some(a) if a.len() > 1 && a.starts_with('&') => {
+                argv[0] = a[1..].to_owned();
+            }
+            _ => return argv,
+        }
+    }
+}
+
+pub(crate) fn is_env_assignment(a: &str) -> bool {
     a.split_once('=').is_some_and(|(k, _)| {
         !k.is_empty() && k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     }) && !a.starts_with('-')
@@ -763,6 +1042,9 @@ impl Tool for PolicyCheck {
     fn name(&self) -> &'static str {
         "perci.policy_check"
     }
+    fn cacheable(&self) -> bool {
+        true
+    }
     fn title(&self) -> &'static str {
         "Gate an action"
     }
@@ -1063,5 +1345,33 @@ mod tests {
             &json!({"action": {"kind": "shell", "command": "rm -rf /"}, "request_text": "please tidy up"}),
         );
         assert_eq!(v.status, Status::Fail);
+    }
+
+    #[test]
+    fn powershell_call_operator_aliases_and_params() {
+        assert_eq!(sh("& rm -Recurse -Force C:\\"), "refuse");
+        assert_eq!(
+            sh("& 'C:\\Windows\\System32\\cmd.exe' /c rd /s /q C:\\"),
+            "refuse"
+        );
+        assert_eq!(sh("Remove-Item -rec -fo C:\\"), "refuse");
+        assert_eq!(sh("ri -Recurse:$true ~"), "refuse");
+        assert_eq!(sh("del -r $HOME"), "refuse");
+        // Aliases still get the cmdlet's rules (deletes need approval).
+        assert_eq!(sh("erase notes.txt"), "propose_and_verify");
+        assert_eq!(sh("&del notes.txt"), "propose_and_verify");
+        // -Recurse:$false is not recursive; -Force is not -r.
+        assert_eq!(sh("Remove-Item -Recurse:$false C:\\"), "propose_and_verify");
+        assert!(ps_param_matches("-Rec", "-Recurse"));
+        assert!(ps_param_matches("-recurse:$true", "recurse"));
+        assert!(!ps_param_matches("-Recurse:$false", "recurse"));
+        assert!(!ps_param_matches("-x", "recurse"));
+        assert!(!ps_param_matches("--recurse", "recurse"));
+        assert_eq!(powershell_alias("del"), Some("remove-item"));
+        assert_eq!(program_name("C:\\Tools\\GIT.EXE"), "git");
+        assert_eq!(
+            unwrap_call_operator(vec!["&".into(), "x".into(), "-a".into()]),
+            vec!["x".to_owned(), "-a".to_owned()]
+        );
     }
 }

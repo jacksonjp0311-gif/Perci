@@ -215,6 +215,14 @@ pub struct Receipt {
     pub confidence: Confidence,
     #[serde(default)]
     pub elapsed_us: u64,
+    /// Answered from the per-process verdict cache (same input hash and
+    /// config). Not hashed, like `elapsed_us`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cache_hit: bool,
+    /// Ledger entry that recorded this verdict: `ledger:<run_id>#<seq>`.
+    /// Not hashed (it is assigned after sealing).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ledger: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,6 +277,8 @@ impl Verdict {
                 deterministic: outcome.deterministic,
                 confidence: outcome.confidence,
                 elapsed_us,
+                cache_hit: false,
+                ledger: None,
             },
         }
     }
@@ -409,7 +419,9 @@ pub fn json_schema() -> Value {
                     "config": {"type": "object", "additionalProperties": {"type": "string"}},
                     "deterministic": {"type": "boolean"},
                     "confidence": {"enum": ["exact", "bounded", "heuristic"]},
-                    "elapsed_us": {"type": "integer"}
+                    "elapsed_us": {"type": "integer"},
+                    "cache_hit": {"type": "boolean"},
+                    "ledger": {"type": "string", "description": "ledger:<run_id>#<seq> of the entry that recorded this verdict"}
                 }
             }
         }

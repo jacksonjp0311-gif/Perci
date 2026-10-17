@@ -19,6 +19,9 @@ impl Tool for Exact {
     fn name(&self) -> &'static str {
         "perci.exact"
     }
+    fn cacheable(&self) -> bool {
+        true
+    }
     fn title(&self) -> &'static str {
         "Exact math"
     }

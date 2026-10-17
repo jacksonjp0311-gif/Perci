@@ -32,7 +32,7 @@ fn main() -> std::process::ExitCode {
 /// `perci tool list` / `perci tool <name> [--json '<args>' | --json @file | -]`.
 /// Prints the verdict JSON; exit 0 pass, 1 fail, 4 abstain, 3 error, 2 usage.
 fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
-    let usage = "usage: perci tool list | perci tool <name> --json '<args json>' (or --json @file.json, or args on stdin)";
+    let usage = "usage: perci tool list | perci tool schema [<name>|verdict] | perci tool <name> --json '<args json>' (or --json @file.json, or args on stdin)";
     let Some(name) = rest.first() else {
         eprintln!("{usage}");
         return Ok(2);
@@ -43,11 +43,44 @@ fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
         }
         return Ok(0);
     }
-    if name == "schema" {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&perci::verdict::json_schema())?
-        );
+    // `perci tool schema NAME` (or `perci tool NAME --schema`): the tool's
+    // input schema. `perci tool schema` lists every enabled tool's schema;
+    // `perci tool schema verdict` prints the verdict (output) schema.
+    let schema_of = if name == "schema" {
+        Some(rest.get(1).cloned())
+    } else if rest.iter().any(|a| a == "--schema") {
+        Some(Some(name.clone()))
+    } else {
+        None
+    };
+    if let Some(target) = schema_of {
+        let tools = perci::tools::enabled_from_env();
+        let out = match target.as_deref() {
+            Some("verdict") => perci::verdict::json_schema(),
+            Some(t) => {
+                match perci::tools::resolve(&tools, t) {
+                    Some(tool) => serde_json::json!({
+                        "name": perci::tools::wire_name(tool.name()),
+                        "id": tool.name(),
+                        "title": tool.title(),
+                        "description": tool.description(),
+                        "inputSchema": tool.input_schema(),
+                        "outputSchema": "perci tool schema verdict",
+                    }),
+                    None => {
+                        eprintln!("perci tool schema: unknown or disabled tool {t:?} (see perci tool list)");
+                        return Ok(2);
+                    }
+                }
+            }
+            None => serde_json::Value::Object(
+                tools
+                    .iter()
+                    .map(|t| (perci::tools::wire_name(t.name()), t.input_schema()))
+                    .collect(),
+            ),
+        };
+        println!("{}", serde_json::to_string_pretty(&out)?);
         return Ok(0);
     }
     let raw = match rest.iter().position(|a| a == "--json") {
@@ -66,6 +99,7 @@ fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
         }
     };
     let ctx = perci::tools::Ctx::new();
+    ctx.set_run_from_env();
     let verdict = perci::tools::dispatch(&ctx, name, &args);
     let pretty = rest.iter().any(|a| a == "--pretty");
     let value = verdict.to_value();
@@ -123,6 +157,7 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         .into_iter()
         .filter(|a| a != "--no-weights" && a != "--stateless")
         .collect();
+    let argv_rest: Vec<String> = argv.iter().skip(1).cloned().collect();
     let mut args = argv.into_iter();
     let command = args.next().unwrap_or_else(|| "chat".into());
 
@@ -201,6 +236,21 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     if matches!(command.as_str(), "lowbit" | "low-bit" | "bitlayer") {
         return run_lowbit_command(&mut args);
     }
+    // Weight packs: perci packs list | verify | manifest (no chat backend).
+    if command == "packs"
+        && matches!(
+            argv_rest.first().map(String::as_str),
+            Some("list" | "verify" | "manifest" | "calibrate")
+        )
+    {
+        let code = perci::weight_packs::run_cli(&argv_rest);
+        std::process::exit(code);
+    }
+    // Step ledgers and the temporal model: perci ledger list | show | verify | learn.
+    if command == "ledger" {
+        let code = perci::tools::ledger::run_cli(&argv_rest);
+        std::process::exit(code);
+    }
     // Modular cognition: pack route, ThoughtPlan, field-fold experiment (no chat backend).
     if matches!(
         command.as_str(),
@@ -237,9 +287,7 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let personality = load_personality();
-    let memory_path = env::var_os("PERCI_MEMORY")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| perci::paths::data_file("memory/perci.jsonl"));
+    let memory_path = perci::paths::memory_journal();
 
     let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
     let cortex = CortexBridge::discover();

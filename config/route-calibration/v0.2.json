@@ -1,0 +1,60 @@
+{
+  "accuracy_permille": 645,
+  "buckets": [
+    {
+      "correct": 4,
+      "lower_permille": 188,
+      "min_margin": 0,
+      "n": 9
+    },
+    {
+      "correct": 14,
+      "lower_permille": 429,
+      "min_margin": 1,
+      "n": 22
+    },
+    {
+      "correct": 26,
+      "lower_permille": 560,
+      "min_margin": 2,
+      "n": 36
+    },
+    {
+      "correct": 13,
+      "lower_permille": 350,
+      "min_margin": 4,
+      "n": 24
+    },
+    {
+      "correct": 14,
+      "lower_permille": 339,
+      "min_margin": 8,
+      "n": 27
+    },
+    {
+      "correct": 21,
+      "lower_permille": 521,
+      "min_margin": 16,
+      "n": 30
+    },
+    {
+      "correct": 9,
+      "lower_permille": 700,
+      "min_margin": 32,
+      "n": 9
+    },
+    {
+      "correct": 1,
+      "lower_permille": 206,
+      "min_margin": 64,
+      "n": 1
+    }
+  ],
+  "cases": 158,
+  "cases_sha256": "f93115937bbb4c817a32ac0dfc3af01ae2bd4dbdec8a021cdeeaf5d0817f8b8f",
+  "cases_skipped_unknown_label": 0,
+  "max_wrong_margin": 24,
+  "note": "Accuracy of the top label by margin bucket on these held-out cases. Gates use the Wilson 95% lower bound; small buckets are deliberately pessimistic.",
+  "pack": "v0.2@2 manifest-sha256:89c0465818232a7cbcf694b176fe249aaf9c69aa5d4d9b4ba383437e43cdb438",
+  "schema": "perci.route-calibration.v1"
+}

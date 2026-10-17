@@ -171,7 +171,7 @@ impl CitedMemory {
         }
     }
 
-    /// `PERCI_MEMORY`, else `PERCI_DATA/memory/perci.jsonl`.
+    /// `PERCI_MEMORY`, else `PERCI_PROFILE/memory/perci.jsonl` (profile defaults to `PERCI_DATA`).
     pub fn open_default() -> Self {
         Self::new(default_journal())
     }
@@ -557,12 +557,9 @@ impl CitedMemory {
     }
 }
 
-/// `PERCI_MEMORY`, else `PERCI_DATA/memory/perci.jsonl`.
+/// `PERCI_MEMORY`, else `PERCI_PROFILE/memory/perci.jsonl` (profile defaults to `PERCI_DATA`).
 pub fn default_journal() -> PathBuf {
-    std::env::var_os("PERCI_MEMORY")
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| crate::paths::data_file("memory/perci.jsonl"))
+    crate::paths::memory_journal()
 }
 
 /// Short human tag for a citation: `note 000012 · sha256:3fa2c1d4e5f6`.

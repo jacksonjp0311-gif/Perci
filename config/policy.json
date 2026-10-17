@@ -60,5 +60,19 @@
   "push": {
     "default": "propose_and_verify",
     "refuse_flags": ["--force", "-f", "--force-with-lease", "--mirror", "--delete"]
+  },
+  "sequence": {
+    "about": "Order rules checked against this run's step ledger (agent_gate_step phase pre, next_step). A step belongs to a class when it equals a pattern or starts with the pattern plus a space; a step named like the class (ledger_append step \"tests\") belongs to it too. A rule fires before a step of class `before` and needs an earlier entry of class `requires` with `status` (and `phase`, when set) after the last entry of class `not_before`. Unmet: the step gets `posture` (never looser than the structural decision).",
+    "classes": {
+      "tests": ["shell:cargo test", "shell:cargo nextest", "shell:pytest", "shell:python -m pytest", "shell:python -m unittest", "shell:npm test", "shell:pnpm test", "shell:yarn test", "shell:go test", "shell:make test", "shell:dotnet test", "shell:mvn test", "shell:gradle test", "shell:bun test", "shell:deno test", "patch"],
+      "deploy": ["shell:git push", "shell:kubectl apply", "shell:helm upgrade", "shell:helm install", "shell:terraform apply", "shell:fly deploy", "shell:flyctl deploy", "shell:npm publish", "shell:cargo publish", "shell:docker push", "shell:gh release", "push"],
+      "code_change": ["write", "delete"],
+      "backup": ["shell:git stash", "shell:git branch", "shell:git tag", "shell:cp", "shell:rsync", "shell:tar", "shell:zip"],
+      "destructive_delete": ["delete", "shell:rm", "shell:git clean", "shell:git reset", "shell:remove-item"]
+    },
+    "rules": [
+      {"id": "seq.deploy_requires_tests", "before": "deploy", "requires": "tests", "status": "pass", "phase": "post", "not_before": "code_change", "posture": "refuse", "reason": "deploying requires tests that passed after the last code change in this run"},
+      {"id": "seq.delete_requires_backup", "before": "destructive_delete", "requires": "backup", "status": "pass", "posture": "propose_and_verify", "reason": "deleting requires a backup earlier in this run"}
+    ]
   }
 }

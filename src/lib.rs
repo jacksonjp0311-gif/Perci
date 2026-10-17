@@ -63,6 +63,7 @@ pub mod orchestrate;
 pub mod pack_manifest;
 pub mod paths;
 pub mod personality;
+pub mod profile;
 pub mod proof_engine;
 pub mod reason;
 pub mod reason_loop;
@@ -82,6 +83,7 @@ pub mod tools;
 pub mod util;
 pub mod verdict;
 pub mod voice;
+pub mod weight_packs;
 
 pub use chat::{ChatEngine, ChatResponse};
 pub use personality::Personality;

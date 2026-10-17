@@ -265,7 +265,7 @@ impl Tool for GateStep {
         "Gate one harness step"
     }
     fn description(&self) -> &'static str {
-        "Hook around one tool call in a harness. phase=pre: policy-check the action before it runs (pass = run it, abstain = ask the user, fail = don't). phase=post: check the result (exit code vs expected, math claims in the output, empty or leaked output). ≤ 5 ms."
+        "Hook around one tool call in a harness. phase=pre: policy-check the action before it runs, including sequence rules against this run's ledger such as deploy-after-tests (pass = run it, abstain = ask the user, fail = don't). phase=post: check the result (exit code vs expected, math claims in the output, empty or leaked output). ≤ 5 ms."
     }
     fn input_schema(&self) -> Value {
         json!({
@@ -278,7 +278,8 @@ impl Tool for GateStep {
                 "request_text": {"type": "string"},
                 "output": {"type": "string", "description": "post: the tool's output or the model's summary of it."},
                 "exit_code": {"type": "integer"},
-                "expect_exit_code": {"type": "integer", "default": 0}
+                "expect_exit_code": {"type": "integer", "default": 0},
+                "run_id": {"type": "string", "description": "Ledger to check sequence rules against (default: the current run)."}
             },
             "additionalProperties": false
         })
@@ -297,10 +298,17 @@ impl Tool for GateStep {
                     }
                 }
                 let o = super::policy::PolicyCheck.call(ctx, &pargs);
+                if o.status == Status::Error {
+                    return o;
+                }
                 let mut result = o.result.clone();
                 result["phase"] = json!("pre");
                 result["proceed"] = json!(o.status == Status::Pass);
-                Outcome { result, ..o }
+                let o = Outcome { result, ..o };
+                // Sequence rules against this run's ledger (cites the entries used).
+                let run_id = try_arg!(opt_str(args, "run_id"));
+                let step = super::ledger::action_step(action);
+                super::ledger::apply_sequence(ctx, run_id, &step, o)
             }
             "post" => {
                 let output = try_arg!(opt_str(args, "output")).unwrap_or("");

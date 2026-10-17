@@ -15,6 +15,9 @@ impl Tool for Relation {
     fn name(&self) -> &'static str {
         "perci.relation"
     }
+    fn cacheable(&self) -> bool {
+        true
+    }
     fn title(&self) -> &'static str {
         "Closed-world consequences"
     }

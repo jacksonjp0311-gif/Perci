@@ -160,6 +160,36 @@ pub fn data_file(rel: impl AsRef<Path>) -> PathBuf {
     data().join(rel)
 }
 
+/// Profile folder: policy, memory, packs and ledgers for one user or overlay.
+/// `PERCI_PROFILE`, else the data folder itself (so an install without a
+/// profile behaves exactly as before). See docs/PROFILES.md.
+pub fn profile() -> PathBuf {
+    match env::var_os("PERCI_PROFILE").filter(|v| !v.is_empty()) {
+        Some(p) => PathBuf::from(p),
+        None => data(),
+    }
+}
+
+/// `profile()/rel`.
+pub fn profile_file(rel: impl AsRef<Path>) -> PathBuf {
+    profile().join(rel)
+}
+
+/// The memory journal: `PERCI_MEMORY`, else `memory_journal` in the
+/// profile's `profile.json`, else `profile()/memory/perci.jsonl`.
+pub fn memory_journal() -> PathBuf {
+    env::var_os("PERCI_MEMORY")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            crate::profile::path_of(
+                &crate::profile::config(),
+                "memory_journal",
+                "memory/perci.jsonl",
+            )
+        })
+}
+
 /// `data()/logs/name`.
 pub fn log_file(name: &str) -> PathBuf {
     data().join("logs").join(name)

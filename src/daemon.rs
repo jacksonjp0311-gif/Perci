@@ -86,9 +86,7 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or_else(|| crate::paths::asset("config/personality.prompt"));
         Personality::load(path).unwrap_or_else(|_| Personality::default_perci())
     };
-    let memory_path = env::var_os("PERCI_MEMORY")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| crate::paths::data_file("memory/perci.jsonl"));
+    let memory_path = crate::paths::memory_journal();
     let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
     let classifier = {
         let path = crate::cognitive::default_weight_path();

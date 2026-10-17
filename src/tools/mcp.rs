@@ -10,7 +10,7 @@
 //! Requests are handled in order on one thread. Weights and the policy load
 //! once (prewarmed at start), so every call after the first is warm.
 
-use super::{enabled_from_env, resolve, run, wire_name, Ctx};
+use super::{enabled_from_env, resolve, run_recorded, wire_name, Ctx};
 use crate::verdict::Status;
 use serde_json::{json, Value};
 use std::io::{BufRead, Write};
@@ -22,7 +22,7 @@ const MAX_MESSAGE_BYTES: usize = 256 * 1024;
 pub struct Server {
     ctx: Ctx,
     tools: Vec<std::sync::Arc<dyn super::Tool>>,
-    initialized: bool,
+    initialized: std::sync::atomic::AtomicBool,
 }
 
 impl Default for Server {
@@ -36,7 +36,7 @@ impl Server {
         Self {
             ctx: Ctx::new(),
             tools: enabled_from_env(),
-            initialized: false,
+            initialized: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -65,7 +65,7 @@ impl Server {
     }
 
     /// Handle one parsed message. `None` for notifications (no reply).
-    pub fn handle(&mut self, msg: &Value) -> Option<Value> {
+    pub fn handle(&self, msg: &Value) -> Option<Value> {
         let id = msg.get("id").cloned();
         let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
         if msg.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
@@ -74,7 +74,8 @@ impl Server {
         // Notifications carry no id and never get a reply.
         let Some(id) = id else {
             if method == "notifications/initialized" {
-                self.initialized = true;
+                self.initialized
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
             }
             return None;
         };
@@ -96,7 +97,7 @@ impl Server {
                         "protocolVersion": version,
                         "capabilities": {"tools": {"listChanged": false}},
                         "serverInfo": {"name": "perci", "title": "Perci", "version": env!("CARGO_PKG_VERSION")},
-                        "instructions": "Perci is a fast, deterministic checker. Call verify (or check_math) on any answer with numbers before trusting it; policy_check or agent_gate_step before running shell commands or writing files; exact for arithmetic; relation for what-follows-from-these-premises; recall for the user's notes with citations. Every result is a perci.verdict.v1: pass / fail / abstain with reasons and a hashed receipt. On fail, fix what the reasons say. On abstain, Perci could not check it: do not present it as verified."
+                        "instructions": "Perci is a fast, deterministic checker. Call verify (or check_math) on any answer with numbers before trusting it; policy_check or agent_gate_step before running shell commands or writing files; exact for arithmetic; relation for what-follows-from-these-premises; recall for the user's notes with citations. This session's calls are recorded in a hash-chained step ledger: after running tests yourself, report them with agent_gate_step phase post (or ledger_append) so sequence rules such as deploy-after-tests can see them; next_step suggests what usually comes next. Every result is a perci.verdict.v1: pass / fail / abstain with reasons and a hashed receipt. On fail, fix what the reasons say. On abstain, Perci could not check it: do not present it as verified."
                     }),
                 )
             }
@@ -108,7 +109,7 @@ impl Server {
                 match resolve(&self.tools, name) {
                     None => error(id, -32602, &format!("unknown tool: {name}")),
                     Some(tool) => {
-                        let verdict = run(&self.ctx, tool.as_ref(), &args);
+                        let verdict = run_recorded(&self.ctx, tool.as_ref(), &args);
                         ok(
                             id,
                             json!({
@@ -142,11 +143,24 @@ pub fn serve<R: BufRead, W: Write>(reader: &mut R, writer: &mut W) -> std::io::R
 
 /// Serve with a prepared server (e.g. one whose memory is warming up).
 pub fn serve_with<R: BufRead, W: Write>(
-    mut server: Server,
+    server: Server,
     reader: &mut R,
     writer: &mut W,
 ) -> std::io::Result<()> {
-    server.ctx.prewarm();
+    // Verifying the routing pack hashes every byte of it (~65 ms for v0.2),
+    // so do it beside the request loop: `initialize` and `tools/list` answer
+    // at once, and a `route` call waits on the pack lock until it is ready.
+    std::thread::scope(|s| {
+        s.spawn(|| server.ctx.prewarm());
+        serve_loop(&server, reader, writer)
+    })
+}
+
+fn serve_loop<R: BufRead, W: Write>(
+    server: &Server,
+    reader: &mut R,
+    writer: &mut W,
+) -> std::io::Result<()> {
     let mut line = String::new();
     loop {
         line.clear();
@@ -205,6 +219,28 @@ pub fn run_stdio() -> std::io::Result<()> {
         crate::verdict::SCHEMA
     );
     let server = Server::new();
+    // Record every verdict of this session in a hash-chained run ledger:
+    // PERCI_RUN_ID, else a fresh id. PERCI_LEDGER=off disables it.
+    let run = server.ctx.set_run_from_env().or_else(|| {
+        if std::env::var("PERCI_LEDGER").is_ok_and(|v| v == "off" || v == "0") {
+            return None;
+        }
+        let id = format!(
+            "mcp-{}-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+            std::process::id()
+        );
+        server.ctx.set_run(&id).ok().map(|_| id)
+    });
+    if let Some(r) = &run {
+        eprintln!(
+            "perci mcp: run ledger {}",
+            super::ledger::run_path(r).display()
+        );
+    }
     // Sync memory notes and start AgentSearch in the background so the first
     // recall is warm. Derived files only (notes/, agentsearch/ next to the
     // journal); PERCI_MCP_NO_PREWARM=1 skips it.

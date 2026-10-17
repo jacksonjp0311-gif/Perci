@@ -23,12 +23,14 @@ pub mod agent;
 pub mod check_math;
 pub mod eval;
 pub mod exact;
+pub mod ledger;
 pub mod mcp;
 pub mod policy;
 pub mod recall;
 pub mod relation;
 pub mod route;
 pub mod status;
+pub mod temporal;
 pub mod verify;
 
 use crate::verdict::{Outcome, Verdict};
@@ -60,6 +62,11 @@ pub trait Tool: Send + Sync {
     fn default_enabled(&self) -> bool {
         true
     }
+    /// Output depends only on args and the output config, so the verdict
+    /// may be served from the per-process cache.
+    fn cacheable(&self) -> bool {
+        false
+    }
     fn call(&self, ctx: &Ctx, args: &Value) -> Outcome;
 }
 
@@ -71,6 +78,54 @@ pub struct Ctx {
     pub(crate) policy: OnceLock<policy::LoadedPolicy>,
     /// Cited memory, opened on first use (`CitedMemory::open_default`).
     memory: Arc<Mutex<Option<crate::cited_memory::CitedMemory>>>,
+    /// The run this process records verdicts into (see [`ledger`]).
+    run: Mutex<Option<ledger::RunLedger>>,
+    /// Verdicts of deterministic tools by input hash + output config.
+    cache: Mutex<VerdictCache>,
+    /// Learned step-transition model (`perci ledger learn`), loaded once.
+    temporal: OnceLock<(temporal::Model, String)>,
+    /// Transitions of the current run, updated on every append (so
+    /// `next_step` never rebuilds it).
+    live: Mutex<temporal::Model>,
+}
+
+/// Bounded FIFO map of sealed verdicts.
+#[derive(Default)]
+pub struct VerdictCache {
+    map: std::collections::HashMap<String, Verdict>,
+    order: std::collections::VecDeque<String>,
+    pub hits: u64,
+    pub misses: u64,
+}
+
+const CACHE_CAPACITY: usize = 4096;
+
+impl VerdictCache {
+    fn get(&mut self, key: &str) -> Option<Verdict> {
+        let v = self.map.get(key).cloned();
+        if v.is_some() {
+            self.hits += 1;
+        } else {
+            self.misses += 1;
+        }
+        v
+    }
+    fn put(&mut self, key: String, v: Verdict) {
+        if self.map.insert(key.clone(), v).is_none() {
+            self.order.push_back(key);
+            while self.order.len() > CACHE_CAPACITY {
+                if let Some(old) = self.order.pop_front() {
+                    self.map.remove(&old);
+                }
+            }
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 impl Ctx {
@@ -107,6 +162,96 @@ impl Ctx {
     pub fn memory<R>(&self, f: impl FnOnce(&mut crate::cited_memory::CitedMemory) -> R) -> R {
         let mut guard = self.memory.lock().unwrap_or_else(|e| e.into_inner());
         f(guard.get_or_insert_with(crate::cited_memory::CitedMemory::open_default))
+    }
+
+    /// Record into run `run_id` (opened or resumed; an existing ledger is
+    /// verified first and is never appended to if its chain is broken).
+    pub fn set_run(&self, run_id: &str) -> std::io::Result<()> {
+        let l = ledger::RunLedger::open(run_id)?;
+        let mut live = temporal::Model::new();
+        if l.broken.is_none() {
+            for e in &l.entries {
+                live.push(e.token(), &e.status);
+            }
+        }
+        *self.live.lock().unwrap_or_else(|e| e.into_inner()) = live;
+        *self.run.lock().unwrap_or_else(|e| e.into_inner()) = Some(l);
+        Ok(())
+    }
+
+    /// `PERCI_RUN_ID` when set (and `PERCI_LEDGER` is not `off`).
+    pub fn set_run_from_env(&self) -> Option<String> {
+        if std::env::var("PERCI_LEDGER").is_ok_and(|v| v == "off" || v == "0") {
+            return None;
+        }
+        let id = std::env::var("PERCI_RUN_ID")
+            .ok()
+            .filter(|v| !v.trim().is_empty())?;
+        match self.set_run(id.trim()) {
+            Ok(()) => Some(id),
+            Err(e) => {
+                eprintln!("perci: ledger disabled: {e}");
+                None
+            }
+        }
+    }
+
+    pub fn run_id(&self) -> Option<String> {
+        self.run
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(|r| r.run_id.clone())
+    }
+
+    /// Verified entries of `run_id` (default: the current run). `None` when
+    /// there is no such run context or its chain is broken.
+    pub fn ledger_entries(&self, run_id: Option<&str>) -> Option<Vec<ledger::Entry>> {
+        self.with_ledger_entries(run_id, |e| e.to_vec())
+    }
+
+    /// [`Self::ledger_entries`] without copying the current run. `f` runs
+    /// under the ledger lock: it must not call back into the run methods.
+    pub fn with_ledger_entries<R>(
+        &self,
+        run_id: Option<&str>,
+        f: impl FnOnce(&[ledger::Entry]) -> R,
+    ) -> Option<R> {
+        let guard = self.run.lock().unwrap_or_else(|e| e.into_inner());
+        match (run_id, guard.as_ref()) {
+            (None, Some(r)) => r.broken.is_none().then(|| f(&r.entries)),
+            (Some(id), Some(r)) if r.run_id == id => r.broken.is_none().then(|| f(&r.entries)),
+            (Some(id), _) => {
+                drop(guard);
+                ledger::verify_run(id)
+                    .ok()
+                    .filter(|v| v.ok)
+                    .map(|v| f(&v.parsed))
+            }
+            (None, None) => None,
+        }
+    }
+
+    /// Run `f` on the current run's live transition model.
+    pub fn live_model<R>(&self, f: impl FnOnce(&temporal::Model) -> R) -> R {
+        f(&self.live.lock().unwrap_or_else(|e| e.into_inner()))
+    }
+
+    /// Run `f` on the saved temporal model and its sha256.
+    pub fn temporal<R>(&self, f: impl FnOnce(&temporal::Model, &str) -> R) -> R {
+        let (m, sha) = self.temporal.get_or_init(temporal::load_saved);
+        f(m, sha)
+    }
+
+    pub fn cache_contains(&self, input_sha256: &str) -> bool {
+        let c = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        c.map.keys().any(|k| k.starts_with(input_sha256))
+    }
+
+    /// `(entries, hits, misses)` of the verdict cache.
+    pub fn cache_stats(&self) -> (usize, u64, u64) {
+        let c = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        (c.len(), c.hits, c.misses)
     }
 
     /// `(backend, why unavailable)` without blocking or starting anything.
@@ -154,6 +299,10 @@ pub fn catalog() -> Vec<Registered> {
         Arc::new(agent::VerifyPatch),
         Arc::new(agent::CheckClaims),
         Arc::new(agent::GateStep),
+        Arc::new(ledger::LedgerAppend),
+        Arc::new(ledger::LedgerVerify),
+        Arc::new(ledger::LedgerShow),
+        Arc::new(temporal::NextStep),
     ];
     let ext = extensions().lock().unwrap_or_else(|e| e.into_inner());
     for t in ext.iter() {
@@ -203,8 +352,25 @@ pub fn enabled(tools: Vec<Registered>, filter: Option<&str>) -> Vec<Registered> 
         .collect()
 }
 
+/// `PERCI_TOOLS`, else the profile's `tools.enabled` list, else the
+/// default set.
 pub fn enabled_from_env() -> Vec<Registered> {
-    enabled(catalog(), std::env::var("PERCI_TOOLS").ok().as_deref())
+    let from_env = std::env::var("PERCI_TOOLS")
+        .ok()
+        .filter(|v| !v.trim().is_empty());
+    let filter = from_env.or_else(|| {
+        crate::profile::config()
+            .pointer("/tools/enabled")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+            .filter(|s| !s.is_empty())
+    });
+    enabled(catalog(), filter.as_deref())
 }
 
 /// Run one tool and seal its verdict. Panics inside a tool become an
@@ -223,11 +389,100 @@ pub fn run(ctx: &Ctx, tool: &dyn Tool, args: &Value) -> Verdict {
     Verdict::seal(tool.name(), args, outcome, elapsed)
 }
 
+fn cache_enabled() -> bool {
+    !std::env::var("PERCI_TOOL_CACHE").is_ok_and(|v| v == "0" || v == "off")
+}
+
+/// Meta tools that read the ledger are not recorded in it.
+fn recorded(name: &str) -> bool {
+    !matches!(
+        name,
+        "perci.ledger_show" | "perci.ledger_verify" | "perci.next_step" | "perci.status"
+    )
+}
+
+/// [`run`] plus the verdict cache (deterministic tools, same input hash and
+/// output config) and the run ledger (every call is appended when the
+/// context has a run; the receipt then names the entry).
+pub fn run_recorded(ctx: &Ctx, tool: &dyn Tool, args: &Value) -> Verdict {
+    let name = tool.name();
+    let t0 = Instant::now();
+    let key = (tool.cacheable() && cache_enabled() && args.is_object()).then(|| {
+        format!(
+            "{}|{}",
+            crate::verdict::input_hash(name, args),
+            crate::verdict::canonical_json(
+                &serde_json::to_value(crate::verdict::output_config()).unwrap_or(Value::Null)
+            )
+        )
+    });
+    let cached = key
+        .as_ref()
+        .and_then(|k| ctx.cache.lock().unwrap_or_else(|e| e.into_inner()).get(k));
+    let mut verdict = match cached {
+        Some(mut v) => {
+            v.receipt.cache_hit = true;
+            v.receipt.elapsed_us = t0.elapsed().as_micros().min(u128::from(u64::MAX)) as u64;
+            v.receipt.ledger = None;
+            v
+        }
+        None => {
+            let v = run(ctx, tool, args);
+            if let Some(k) = key {
+                if v.status != crate::verdict::Status::Error {
+                    ctx.cache
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .put(k, v.clone());
+                }
+            }
+            v
+        }
+    };
+    if !recorded(name) {
+        return verdict;
+    }
+    let mut guard = ctx.run.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(l) = guard.as_mut() {
+        let (phase, step, status, note) = if name == "perci.ledger_append" {
+            if verdict.status != crate::verdict::Status::Pass {
+                return verdict;
+            }
+            let r = &verdict.result;
+            (
+                r["phase"].as_str().map(str::to_owned),
+                r["step"].as_str().unwrap_or("").to_owned(),
+                r["status"].as_str().unwrap_or("pass").to_owned(),
+                r["note"].as_str().map(str::to_owned),
+            )
+        } else {
+            let (phase, step) = ledger::step_of(name, args);
+            (phase, step, verdict.status.as_str().to_owned(), None)
+        };
+        match l.append(name, phase.as_deref(), &step, &status, &verdict, note) {
+            Ok(e) => {
+                verdict.receipt.ledger = Some(e.reference());
+                let tok = e.token();
+                self_live_push(ctx, tok, &status);
+            }
+            Err(e) => eprintln!("perci: ledger append failed: {e}"),
+        }
+    }
+    verdict
+}
+
+fn self_live_push(ctx: &Ctx, tok: String, status: &str) {
+    ctx.live
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(tok, status);
+}
+
 /// Dispatch by any accepted name over the enabled catalog.
 pub fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Verdict {
     let tools = enabled_from_env();
     match resolve(&tools, name) {
-        Some(t) => run(ctx, t.as_ref(), args),
+        Some(t) => run_recorded(ctx, t.as_ref(), args),
         None => Verdict::seal(
             name,
             args,
@@ -335,12 +590,15 @@ mod tests {
 
     #[test]
     fn default_set_is_read_only() {
+        // The only default write is ledger_append: append-only, to Perci's
+        // own run ledger, never to user files or memory.
         for t in enabled(catalog(), None) {
             assert!(
-                t.read_only(),
+                t.read_only() || t.name() == "perci.ledger_append",
                 "{} is in the default set but writes",
                 t.name()
             );
+            assert!(!t.destructive(), "{} is destructive", t.name());
         }
         assert!(enabled(catalog(), Some("exact,remember")).len() == 2);
         assert_eq!(enabled(catalog(), Some("all")).len(), catalog().len());

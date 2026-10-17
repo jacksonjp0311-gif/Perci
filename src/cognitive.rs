@@ -215,6 +215,49 @@ pub struct CognitiveWeights {
     concepts: Vec<Vec<String>>,
     /// Willshaw-lite: bag-encoded HVs for each concept insight (query-side concept memory).
     concept_hvs: Vec<Vec<[u64; WORDS]>>,
+    /// Keyword priors added to label scores (see [`LexicalPriors`]).
+    priors: LexicalPriors,
+}
+
+/// Keyword priors added to a label's coarse score before the scan. The
+/// built-in table is written for the built-in packs' label names; a pack
+/// with its own labels should use `Off` or its own `Custom` table so an
+/// accidental name match ("memory") does not bias it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum LexicalPriors {
+    /// The built-in table (built-in packs).
+    #[default]
+    Builtin,
+    /// No priors: geometry only.
+    Off,
+    /// `(label, cue phrases, points per matched cue)`; cues are matched as
+    /// whole words against the normalized text.
+    Custom(Vec<(String, Vec<String>, i32)>),
+}
+
+impl LexicalPriors {
+    fn scores<'a>(&'a self, text: &str) -> Vec<(&'a str, i32)> {
+        match self {
+            Self::Builtin => lexical_priors(text),
+            Self::Off => Vec::new(),
+            Self::Custom(groups) => {
+                let padded = format!(" {} ", normalize(text));
+                groups
+                    .iter()
+                    .map(|(label, cues, points)| {
+                        let n = cues
+                            .iter()
+                            .filter(|c| {
+                                let c = normalize(c);
+                                !c.is_empty() && padded.contains(&format!(" {c} "))
+                            })
+                            .count() as i32;
+                        (label.as_str(), n.saturating_mul(*points))
+                    })
+                    .collect()
+            }
+        }
+    }
 }
 
 impl CognitiveWeights {
@@ -357,7 +400,17 @@ impl CognitiveWeights {
             version,
             concepts,
             concept_hvs,
+            priors: LexicalPriors::Builtin,
         })
+    }
+
+    /// Replace the keyword priors (per pack; see [`LexicalPriors`]).
+    pub fn set_lexical_priors(&mut self, priors: LexicalPriors) {
+        self.priors = priors;
+    }
+
+    pub fn lexical_priors(&self) -> &LexicalPriors {
+        &self.priors
     }
 
     /// The original per-record scan, kept verbatim as the reference that
@@ -592,6 +645,16 @@ impl CognitiveWeights {
         Ok(top)
     }
 
+    /// Category labels in pack order.
+    pub fn label_names(&self) -> Vec<String> {
+        self.labels.iter().map(|l| l.name.clone()).collect()
+    }
+
+    /// SHA-256 of the mapped bytes: exactly what classification reads.
+    pub fn sha256(&self) -> String {
+        crate::doctor::sha256_hex(&self.data)
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -677,7 +740,7 @@ impl CognitiveWeights {
 
         let (activation, composition_frame) = encode_with_composition_ctx(&routed_text, context);
         let query_popcount: u32 = activation.iter().map(|word| word.count_ones()).sum();
-        let priors = lexical_priors(&routed_text);
+        let priors = self.priors.scores(&routed_text);
         let mut candidates: Vec<(i32, u32, u32, usize)> = self
             .labels
             .iter()
