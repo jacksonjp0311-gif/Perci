@@ -638,8 +638,13 @@ pub fn apply_dialogue_workspace_runtime(
         // Closed-world relation programs share a sentence skeleton
         // ("Changing X by Y removes support..."). Consecutive graphs must
         // not be collapsed by the repeat critic; the premises changed.
-        let preserve_relation_program = deliberation.operator == "relation-field-counterfactual";
-        let repaired = if preserve_relation_program
+        // Greetings share a short social skeleton across sessions for the
+        // same reason: similar hello lines are not a failed turn.
+        let preserve_owned_answer = matches!(
+            deliberation.operator,
+            "relation-field-counterfactual" | "greeting" | "social-reflex"
+        );
+        let repaired = if preserve_owned_answer
             || (owns_topic_binding
                 && !critique.flags.contains(&"generic_fallback")
                 && !critique.flags.contains(&"repeated_prior_answer")
@@ -1054,5 +1059,19 @@ mod tests {
         );
         assert!(!out.answer.to_ascii_lowercase().starts_with("on "));
         assert!(out.answer.to_ascii_lowercase().starts_with("no."));
+    }
+
+    #[test]
+    fn greeting_answers_are_not_progression_repaired() {
+        let hello = "Hello. I'm Perci. Point me at the next useful step.";
+        let draft = crate::deliberation::Deliberation::new("greeting", hello);
+        let out = apply_dialogue_workspace_runtime(
+            "hello perci",
+            &[("hello perci".into(), hello.into())],
+            draft,
+        );
+        assert_eq!(out.operator, "greeting");
+        assert!(!out.answer.to_ascii_lowercase().contains("repeats the last answer"));
+        assert!(out.answer.contains("Perci"));
     }
 }

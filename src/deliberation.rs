@@ -9152,6 +9152,23 @@ mod tests {
     }
 
     #[test]
+    fn greeting_is_not_collapsed_by_a_similar_prior_hello() {
+        let first = run("hello perci", &[]);
+        assert_eq!(first.operator, "greeting");
+        let recent = [("hello perci".to_owned(), first.answer.clone())];
+        let second = run("hello perci", &recent);
+        let second = crate::operator_program::apply_dialogue_workspace_runtime(
+            "hello perci",
+            &recent,
+            second,
+        );
+        assert_eq!(second.operator, "greeting");
+        let lower = second.answer.to_ascii_lowercase();
+        assert!(!lower.contains("repeats the last answer"));
+        assert!(!lower.contains("i'm tracking"));
+    }
+
+    #[test]
     fn explicit_meta_commands_and_geometry_challenge_resist_stale_context() {
         let recent = vec![(
             "The conversation still feels robotic.".to_owned(),
