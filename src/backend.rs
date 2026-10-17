@@ -27,6 +27,15 @@ pub trait LanguageBackend: Send {
     fn probe_cognition(&self, _user: &str) -> Option<CognitiveMatch> {
         None
     }
+    /// True when the last `generate` answer came from a configured language
+    /// model (local HTTP or external command) rather than Perci's own fields.
+    fn last_answer_from_model(&self) -> bool {
+        false
+    }
+    /// True when a language model is configured for the open path.
+    fn model_configured(&self) -> bool {
+        false
+    }
 }
 
 pub struct CognitiveBackend {
@@ -676,7 +685,10 @@ pub fn check_model_url(raw: &str, allow_remote: bool) -> Result<(String, bool), 
 /// One-line external LM status for `perci doctor`: (text, refused).
 pub fn external_lm_status() -> (String, bool) {
     if !env_flag("PERCI_ENABLE_EXTERNAL_LM") {
-        return ("off (PERCI_ENABLE_EXTERNAL_LM not set)".into(), false);
+        return (
+            "off (to enable: PERCI_ENABLE_EXTERNAL_LM=1 and PERCI_MODEL_URL=http://127.0.0.1:<port>/v1/chat/completions, e.g. Ollama or LM Studio)".into(),
+            false,
+        );
     }
     let Some(raw) = env::var("PERCI_MODEL_URL")
         .or_else(|_| env::var("PERCI_OPENAI_URL"))
@@ -1012,6 +1024,8 @@ pub struct CompositeBackend {
     recent: Vec<(String, String)>,
     /// Typed turn state shared by the native, fallback, and optional adapter paths.
     workspace: DialogueWorkspace,
+    /// The last `generate` answer came from a configured model.
+    last_from_model: bool,
 }
 
 impl CompositeBackend {
@@ -1061,6 +1075,7 @@ impl CompositeBackend {
             backend_name,
             recent: Vec::new(),
             workspace: DialogueWorkspace::derive("", &[]),
+            last_from_model: false,
         })
     }
 
@@ -1075,6 +1090,7 @@ impl CompositeBackend {
 impl LanguageBackend for CompositeBackend {
     fn generate(&mut self, system: &str, context: &[String], user: &str) -> io::Result<String> {
         self.workspace = DialogueWorkspace::derive(user, &self.recent);
+        self.last_from_model = false;
         let matched = self
             .cognitive
             .as_ref()
@@ -1144,6 +1160,7 @@ impl LanguageBackend for CompositeBackend {
         if let Some(local_model) = self.local_model.as_mut() {
             if let Ok(response) = local_model.generate(system, &enriched, user) {
                 if accepted_external_response(&response) {
+                    self.last_from_model = true;
                     return Ok(response);
                 }
             }
@@ -1192,6 +1209,7 @@ impl LanguageBackend for CompositeBackend {
 
             if let Ok(response) = external.generate(system, &enriched, user) {
                 if accepted_external_response(&response) {
+                    self.last_from_model = true;
                     return Ok(response);
                 }
             }
@@ -1213,6 +1231,14 @@ impl LanguageBackend for CompositeBackend {
 
     fn name(&self) -> &str {
         &self.backend_name
+    }
+
+    fn last_answer_from_model(&self) -> bool {
+        self.last_from_model
+    }
+
+    fn model_configured(&self) -> bool {
+        self.local_model.is_some() || self.external.is_some()
     }
 
     fn set_dialogue_history(&mut self, recent: &[(String, String)]) {

@@ -1,3 +1,4 @@
+use crate::answer_gate;
 use crate::backend::LanguageBackend;
 use crate::binary_dialogue::BinaryDialogueField;
 use crate::cortex::CortexBridge;
@@ -82,6 +83,50 @@ pub struct ChatEngine {
     dialogue_field: Option<BinaryDialogueField>,
     /// Session flag: richer backend plans for `/think` (never prefixes chat).
     verbose_cognition: bool,
+    /// Turn recorded by `push_turn` but not yet written to the session file
+    /// and learner: the answer gate may still rewrite it.
+    pending_turn: Option<PendingTurn>,
+}
+
+struct PendingTurn {
+    user: String,
+    assistant: String,
+    previous: Option<(String, String)>,
+}
+
+/// Shown when a turn panics; the session keeps running.
+pub const INTERNAL_ERROR_REPLY: &str = "Something went wrong inside Perci on that message (internal error, logged). The session is still running, so you can try again or rephrase it.";
+
+/// Which answer-gate lane a finished turn belongs to.
+fn draft_source(
+    route: Route,
+    operator: Option<&str>,
+    from_model: bool,
+) -> answer_gate::DraftSource {
+    use answer_gate::DraftSource;
+    match route {
+        Route::Math | Route::Geometry | Route::MemoryWrite | Route::MemorySearch | Route::Help => {
+            DraftSource::Exact
+        }
+        Route::Chat => match operator {
+            Some(
+                "exact-arithmetic"
+                | "exact-arithmetic-error"
+                | "exact-geometry"
+                | "proof-engine"
+                | "social-reflex"
+                | "governed-security-boundary"
+                | "teaching-state-recall"
+                | "governed-teaching-stage",
+            ) => DraftSource::Exact,
+            Some("fluid-associative" | "frontier-arc" | "modular-realize") if from_model => {
+                DraftSource::Model
+            }
+            Some("fluid-associative" | "frontier-arc" | "modular-realize") => DraftSource::Open,
+            Some(_) => DraftSource::Operator,
+            None => DraftSource::Exact,
+        },
+    }
 }
 
 impl ChatEngine {
@@ -103,6 +148,7 @@ impl ChatEngine {
             last_deliberation: None,
             dialogue_field: BinaryDialogueField::discover().unwrap_or(None),
             verbose_cognition: false,
+            pending_turn: None,
         }
     }
 
@@ -259,7 +305,124 @@ impl ChatEngine {
             .unwrap_or_else(|| "not found".to_owned())
     }
 
+    /// Answer one turn.
+    ///
+    /// Each turn runs inside `catch_unwind`, so a bug in one handler returns
+    /// an internal-error reply instead of ending the session (soak A5). The
+    /// draft then passes the answer gate (no filler, meta deflections or
+    /// leaked scaffolding) before it is persisted.
     pub fn respond(&mut self, input: &str) -> io::Result<ChatResponse> {
+        let previous = self.recent.last().cloned();
+        self.pending_turn = None;
+        let outcome =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.respond_inner(input)));
+        let mut response = match outcome {
+            Ok(Ok(response)) => response,
+            Ok(Err(error)) => {
+                self.flush_pending_turn();
+                return Err(error);
+            }
+            Err(payload) => {
+                let what = payload
+                    .downcast_ref::<&str>()
+                    .map(|s| (*s).to_owned())
+                    .or_else(|| payload.downcast_ref::<String>().cloned())
+                    .unwrap_or_else(|| "unknown panic".to_owned());
+                let line = serde_json::json!({
+                    "ts": SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0),
+                    "input": crate::util::text::truncate(input, 200),
+                    "panic": what,
+                })
+                .to_string();
+                let _ = crate::logs::append_bounded(&crate::paths::log_file("panic.jsonl"), &line);
+                crate::bridge::set_turn_verbose(false);
+                self.pending_turn = None;
+                self.last_deliberation = Some(
+                    Deliberation::new("internal-error", INTERNAL_ERROR_REPLY.to_owned())
+                        .observed(format!("panic: {what}"))
+                        .confidence(0.0),
+                );
+                return Ok(ChatResponse {
+                    route: Route::Chat,
+                    text: INTERNAL_ERROR_REPLY.to_owned(),
+                });
+            }
+        };
+        self.apply_answer_gate(input, previous.as_ref(), &mut response);
+        self.flush_pending_turn();
+        Ok(response)
+    }
+
+    fn apply_answer_gate(
+        &mut self,
+        raw_input: &str,
+        previous: Option<&(String, String)>,
+        response: &mut ChatResponse,
+    ) {
+        let (_, clean) = crate::bridge::strip_cognition_flags(raw_input);
+        let input = crate::text_normalize::repair_typos(clean.as_str());
+        let operator = self.last_deliberation.as_ref().map(|d| d.operator);
+        let source = draft_source(
+            response.route,
+            operator,
+            self.backend.last_answer_from_model(),
+        );
+        let notes = if source == answer_gate::DraftSource::Exact {
+            Vec::new()
+        } else {
+            let question = answer_gate::effective_question(&input, previous);
+            let candidates = self.memory.search(question, 8).unwrap_or_default();
+            answer_gate::relevant_notes(question, &candidates)
+        };
+        let verdict = answer_gate::review(answer_gate::Turn {
+            input: &input,
+            draft: &response.text,
+            source,
+            previous,
+            notes: &notes,
+            model_configured: self.backend.model_configured(),
+        });
+        let (text, reason) = match verdict {
+            answer_gate::Verdict::Keep(text) => (text, None),
+            answer_gate::Verdict::Replace { text, reason } => (text, Some(reason)),
+        };
+        if text == response.text {
+            return;
+        }
+        response.text = text.clone();
+        if let Some(pending) = self.pending_turn.as_mut() {
+            pending.assistant = text.clone();
+            if let Some(last) = self.recent.last_mut() {
+                last.1 = crate::util::text::normalize_quotes(text.trim()).into_owned();
+            }
+        }
+        if let Some(deliberation) = self.last_deliberation.as_mut() {
+            deliberation.answer = text;
+            deliberation.observations.push(
+                reason
+                    .unwrap_or("answer gate: stripped internal hints / filler")
+                    .to_owned(),
+            );
+        }
+    }
+
+    fn flush_pending_turn(&mut self) {
+        let Some(turn) = self.pending_turn.take() else {
+            return;
+        };
+        if let Some(store) = &self.session {
+            let _ = store.append(&turn.user, &turn.assistant);
+        }
+        if let Some(learner) = &mut self.learning {
+            let _ = learner.observe(&turn.user, &turn.assistant, turn.previous.as_ref());
+        }
+    }
+
+    fn respond_inner(&mut self, input: &str) -> io::Result<ChatResponse> {
+        #[cfg(test)]
+        if input == tests::PANIC_PROBE {
+            panic!("test panic probe");
+        }
         self.last_deliberation = None;
         // Flags only request deeper **backend** storage for /think — never chat prefixes.
         let (flag_verbose, clean) = crate::bridge::strip_cognition_flags(input);
@@ -1093,12 +1256,12 @@ impl ChatEngine {
         while self.recent.len() > MAX_TURNS {
             self.recent.remove(0);
         }
-        if let Some(store) = &self.session {
-            let _ = store.append(user, assistant);
-        }
-        if let Some(learner) = &mut self.learning {
-            let _ = learner.observe(user, assistant, previous.as_ref());
-        }
+        // Persisted by `respond` after the answer gate has had its say.
+        self.pending_turn = Some(PendingTurn {
+            user: user.to_owned(),
+            assistant: assistant.to_owned(),
+            previous,
+        });
     }
 
     fn remember(&mut self, input: &str) -> io::Result<ChatResponse> {
@@ -1371,6 +1534,88 @@ pub fn help_text() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    pub(super) const PANIC_PROBE: &str = "\u{0}perci-test-panic";
+
+    fn engine() -> ChatEngine {
+        let n = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let mem = std::env::temp_dir().join(format!("perci_chat_test_{n}.jsonl"));
+        ChatEngine::new(
+            Personality::default_perci(),
+            MemoryStore::new(mem),
+            Box::new(crate::backend::DeterministicBackend),
+            None,
+        )
+    }
+
+    #[test]
+    fn a_panicking_turn_does_not_end_the_session() {
+        // Soak A5: one bad turn must not kill the chat loop.
+        let mut chat = engine();
+        let out = chat.respond(PANIC_PROBE).unwrap();
+        assert_eq!(out.text, INTERNAL_ERROR_REPLY);
+        let next = chat.respond("calculate 6 times 7").unwrap();
+        assert!(next.text.contains("42"), "{}", next.text);
+    }
+
+    // Held-out prompts: none of these strings appear in Perci's rule tables
+    // (checked with `rg -F` when the test was written).
+    #[test]
+    fn real_questions_get_substantive_or_honest_answers() {
+        let mut chat = engine();
+        for (prompt, must_contain) in [
+            ("why is my server not answering requests", "curl -v"),
+            ("plan a migration to postgres", "rollback"),
+            ("how does a hash map work", "perci doctor"),
+            ("explain rust lifetimes", "perci doctor"),
+            ("what is 15% of 240", "36"),
+            ("solve 2x+3=11", "x = 4"),
+        ] {
+            let out = chat.respond(prompt).unwrap().text;
+            assert!(out.contains(must_contain), "{prompt}: {out}");
+            let lower = out.to_ascii_lowercase();
+            for bad in [
+                "repeats the last answer",
+                "[perci",
+                "i'm tracking",
+                "missed your point",
+                "that keeps the answer anchored",
+            ] {
+                assert!(!lower.contains(bad), "{prompt}: leaked {bad:?} in {out}");
+            }
+        }
+    }
+
+    #[test]
+    fn complaint_re_answers_the_previous_question() {
+        let mut chat = engine();
+        chat.respond("my nas keeps refusing ssh connections")
+            .unwrap();
+        let out = chat.respond("you didn't answer my question").unwrap().text;
+        assert!(out.starts_with("You're right"), "{out}");
+        assert!(
+            out.contains("curl -v") || out.contains("listening"),
+            "{out}"
+        );
+        // and a support question that merely contains "not answering" is not feedback
+        let support = chat
+            .respond("why is the printer api not answering")
+            .unwrap()
+            .text;
+        assert!(!support.starts_with("You're right"), "{support}");
+    }
+
+    #[test]
+    fn saved_note_answers_a_later_question() {
+        let mut chat = engine();
+        chat.respond("remember that the spare router key is in the blue drawer")
+            .unwrap();
+        let out = chat.respond("where is the spare router key").unwrap().text;
+        assert!(out.contains("blue drawer"), "{out}");
+    }
 
     #[test]
     fn improve_is_not_mistaken_for_formal_proof() {

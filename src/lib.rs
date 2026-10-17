@@ -13,6 +13,7 @@
 //! Perci orchestrates; specialized engines perform specialized work.
 
 pub mod agent;
+pub mod answer_gate;
 pub mod auto_repairs;
 pub mod backend;
 pub mod binary_dialogue;
