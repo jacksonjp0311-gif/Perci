@@ -197,7 +197,7 @@ pub fn run(deep: bool) -> Report {
     } else {
         "off".to_owned()
     };
-    let tracing = false;
+    let tracing = crate::logs::tracing_enabled();
     let logs = dir_logs(&data.join("logs"));
     let python = find_on_path(&["python3", "python", "py"]);
     let ollama = port_open(11434);

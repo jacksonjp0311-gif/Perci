@@ -5,8 +5,8 @@
 
 use crate::deliberation::Deliberation;
 use std::env;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
+use std::fs;
+use std::io;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -50,14 +50,12 @@ pub fn append_lab(kind: &str, detail: &str, n: usize) {
         json_escape(kind),
         json_escape(&truncate(detail, 200)),
     );
-    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
-        let _ = f.write_all(line.as_bytes());
-    }
+    let _ = crate::logs::append_bounded(&path, &line);
 }
 
-/// Append one decision line. Best-effort; never fails the chat path.
+/// Append one decision line when `PERCI_TRACE=1`. Best-effort; never fails the chat path.
 pub fn append(user: &str, d: &Deliberation) {
-    if !is_high_salience(d) {
+    if !crate::logs::tracing_enabled() || !is_high_salience(d) {
         return;
     }
     let path = default_path();
@@ -112,9 +110,7 @@ pub fn append(user: &str, d: &Deliberation) {
         json_escape(&claim0),
         json_escape(&binds),
     );
-    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
-        let _ = f.write_all(line.as_bytes());
-    }
+    crate::logs::append_trace(&path, &line);
 }
 
 /// Read last N traces for agent lab / CLI.

@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
-use std::fs::{self, OpenOptions};
-use std::io::{self, BufRead, BufReader, Write};
+use std::fs;
+use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -360,8 +360,12 @@ fn append_event(ev: &LedgerEvent) {
         let _ = fs::create_dir_all(parent);
     }
     if let Ok(line) = serde_json::to_string(ev) {
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
-            let _ = writeln!(f, "{line}");
+        // Per-turn match/speech geometry is opt-in (PERCI_TRACE=1); explicit
+        // lab events (tickets, transfer gates) are always kept, bounded.
+        if matches!(ev.kind, EventKind::Match | EventKind::Speech) {
+            crate::logs::append_trace(&path, &line);
+        } else {
+            let _ = crate::logs::append_bounded(&path, &line);
         }
     }
 }
@@ -683,9 +687,8 @@ fn append_curriculum_sample(
         let _ = fs::create_dir_all(parent);
     }
     if let Ok(line) = serde_json::to_string(&cand) {
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&cpath) {
-            let _ = writeln!(f, "{line}");
-        }
+        // Only reached through ticket staging, which the chat path gates on PERCI_TRACE.
+        let _ = crate::logs::append_bounded(&cpath, &line);
     }
 }
 
@@ -957,7 +960,10 @@ pub fn record_match(user: &str, matched: &CognitiveMatch, speech_authority: &str
 
     // Lab answers: stage primary-fix when softcascade geometry says mixture is a crutch
     // or chronic primary_off. Operator authority does not open pack tickets (operator owns speech).
-    if policy.open_primary_fix_ticket && is_curriculum_authority(speech_authority) {
+    if policy.open_primary_fix_ticket
+        && is_curriculum_authority(speech_authority)
+        && crate::logs::tracing_enabled()
+    {
         let mix = preferred_mixture_insight(matched, user);
         let _ = stage_primary_fix_ticket(
             &matched.label,

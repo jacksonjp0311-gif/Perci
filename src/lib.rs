@@ -49,6 +49,7 @@ pub mod knowledge_fabric;
 pub mod language_realize;
 pub mod language_sidecar;
 pub mod learning;
+pub mod logs;
 pub mod low_bit;
 pub mod memory;
 pub mod native_decoder;

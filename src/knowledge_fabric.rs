@@ -5,8 +5,7 @@
 
 use crate::fabric::EvidenceRecord;
 use crate::intel_packs::{self, PackHit};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -106,9 +105,7 @@ pub fn stage_evidence(ev: &EvidenceRecord) -> std::io::Result<()> {
     if let Some(p) = path.parent() {
         fs::create_dir_all(p)?;
     }
-    let mut f = OpenOptions::new().create(true).append(true).open(path)?;
-    writeln!(f, "{}", serde_json::to_string(ev).unwrap_or_default())?;
-    Ok(())
+    crate::logs::append_bounded(&path, &serde_json::to_string(ev).unwrap_or_default())
 }
 
 /// Detect simple contradictions among evidence claims (keyword negation).
