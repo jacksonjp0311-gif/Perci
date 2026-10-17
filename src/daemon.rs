@@ -138,6 +138,22 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Read one line but never buffer more than `max + 1` bytes, so a client that
+/// streams data without a newline cannot exhaust memory. A return value
+/// greater than `max` means "too large" (the caller closes the connection).
+pub fn read_bounded_line<R: BufRead>(
+    reader: &mut R,
+    line: &mut String,
+    max: usize,
+) -> std::io::Result<usize> {
+    use std::io::Read;
+    let limit = u64::try_from(max).unwrap_or(u64::MAX).saturating_add(1);
+    let mut bytes = Vec::new();
+    let n = reader.by_ref().take(limit).read_until(b'\n', &mut bytes)?;
+    line.push_str(&String::from_utf8_lossy(&bytes));
+    Ok(n)
+}
+
 fn handle_client(
     stream: TcpStream,
     engine: &mut ChatEngine,
@@ -150,7 +166,7 @@ fn handle_client(
     let mut line = String::new();
     loop {
         line.clear();
-        let n = reader.read_line(&mut line)?;
+        let n = read_bounded_line(&mut reader, &mut line, MAX_LINE_BYTES)?;
         if n == 0 {
             break;
         }
@@ -395,6 +411,12 @@ pub fn ping_state() -> Option<bool> {
             let remote = v.get("build_id").and_then(|x| x.as_str()).unwrap_or("");
             Some(!remote.is_empty() && remote == crate::branding::build_id())
         }
+        Err(_) => {
+            // A daemon that was killed leaves its marker behind; drop it so the
+            // next call does not probe again.
+            let _ = std::fs::remove_file(marker_path());
+            None
+        }
         _ => None,
     }
 }
@@ -508,5 +530,21 @@ mod tests {
         let _ = std::fs::remove_file(marker_path());
         assert!(!may_be_running());
         assert_eq!(ping_state(), None);
+    }
+
+    #[test]
+    fn bounded_line_read_stops_at_the_limit() {
+        // B2E-PERCI-009: read_line buffered an unbounded line before the size check.
+        let huge = vec![b'a'; 4 * 1024 * 1024]; // no newline
+        let mut reader = std::io::BufReader::new(&huge[..]);
+        let mut line = String::new();
+        let n = read_bounded_line(&mut reader, &mut line, 1024).unwrap();
+        assert_eq!(n, 1025);
+        assert_eq!(line.len(), 1025);
+
+        let mut ok = std::io::BufReader::new(&b"{\"op\":\"ping\"}\nrest"[..]);
+        let mut line = String::new();
+        assert_eq!(read_bounded_line(&mut ok, &mut line, 1024).unwrap(), 14);
+        assert_eq!(line, "{\"op\":\"ping\"}\n");
     }
 }
