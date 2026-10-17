@@ -45,6 +45,7 @@ pub mod emergence;
 pub mod entity_slot;
 pub mod exact_expr;
 pub mod fabric;
+pub mod fetch_weights;
 pub mod field_fold;
 pub mod frontier_speech;
 pub mod governed_will;

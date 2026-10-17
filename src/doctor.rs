@@ -144,6 +144,12 @@ fn dir_logs(dir: &Path) -> Vec<(String, u64)> {
 
 /// Build the report. `deep` adds SHA-256 verification of every artifact.
 pub fn run(deep: bool) -> Report {
+    run_with(deep, false)
+}
+
+/// `tools_only` (`perci doctor --tools`): the tool layer (exact, check_math,
+/// policy, ledger, MCP) needs no weights, so missing weights only warn.
+pub fn run_with(deep: bool, tools_only: bool) -> Report {
     let home = paths::home();
     let home_source = paths::home_source();
     let data = paths::data();
@@ -174,6 +180,16 @@ pub fn run(deep: bool) -> Report {
     if manifest.is_none() && home_source != paths::HomeSource::Unresolved {
         problems.push(format!("missing {}", manifest_path.display()));
     }
+    let artifacts: Vec<ArtifactCheck> = artifacts
+        .into_iter()
+        .map(|mut a| {
+            // A present-but-wrong file is always a problem; absence is fine for the tool layer.
+            if tools_only && matches!(a.state, ArtifactState::Missing | ArtifactState::LfsPointer) {
+                a.required = false;
+            }
+            a
+        })
+        .collect();
     for a in &artifacts {
         if a.required && a.state != ArtifactState::Ok {
             problems.push(format!("{}: {}", a.path, a.state.label()));
@@ -298,10 +314,16 @@ pub fn to_text(r: &Report) -> String {
         for p in &r.problems {
             out.push_str(&format!("  - {p}\n"));
         }
-        out.push_str(&format!(
-            "\nFix: cd \"{}\" && git lfs pull   (or set PERCI_HOME)\n",
-            r.home.display()
-        ));
+        if r.home.join(".git").exists() {
+            out.push_str(&format!(
+                "\nFix: cd \"{}\" && git lfs pull   (or set PERCI_HOME)\n",
+                r.home.display()
+            ));
+        } else {
+            out.push_str(
+                "\nFix: perci fetch-weights   (downloads + verifies the weights; `perci doctor --tools` checks the tool layer only)\n",
+            );
+        }
     }
     out
 }

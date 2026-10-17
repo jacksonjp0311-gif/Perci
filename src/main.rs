@@ -137,7 +137,7 @@ fn check_weights(allow_missing: bool) -> Result<(), Box<dyn std::error::Error>> 
     }
     if !path.is_file() && !allow_missing {
         return Err(format!(
-            "{} Bitwork weights not found (looked for {}).\n  Perci home: {} ({}).\n  Fix: set PERCI_HOME to your Perci checkout and run `git lfs pull` there, \
+            "{} Bitwork weights not found (looked for {}).\n  Perci home: {} ({}).\n  Fix: run `perci fetch-weights` (installed release), or set PERCI_HOME to your Perci checkout and run `git lfs pull` there, \
              or run with --no-weights for reduced mode. `perci doctor` shows details.",
             perci::paths::CONFIG_ERROR_TAG,
             path.display(),
@@ -164,7 +164,8 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     if matches!(command.as_str(), "doctor" | "--doctor") {
         let rest: Vec<String> = args.collect();
         let deep = rest.iter().any(|a| a == "--deep");
-        let report = perci::doctor::run(deep);
+        let tools_only = rest.iter().any(|a| a == "--tools");
+        let report = perci::doctor::run_with(deep, tools_only);
         if rest.iter().any(|a| a == "--json") {
             println!(
                 "{}",
@@ -175,6 +176,16 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         }
         if !report.ok() {
             std::process::exit(2);
+        }
+        return Ok(());
+    }
+
+    // Download + verify the runtime weights into an installed Perci.
+    if matches!(command.as_str(), "fetch-weights" | "fetch_weights") {
+        let rest: Vec<String> = args.collect();
+        let code = perci::fetch_weights::run_cli(&rest);
+        if code != 0 {
+            std::process::exit(code);
         }
         return Ok(());
     }
