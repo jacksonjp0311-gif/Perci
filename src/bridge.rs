@@ -1430,14 +1430,7 @@ pub fn apply_word_budget(text: &str, max_words: usize) -> String {
     cut
 }
 
-fn truncate_chars(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.chars().count() <= max {
-        t.to_owned()
-    } else {
-        t.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate as truncate_chars;
 
 /// Envelope for operator / tool answers without SoftCascade.
 pub fn envelope_light(

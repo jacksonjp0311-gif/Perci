@@ -1227,13 +1227,7 @@ pub fn run_lab_full(dry_run: bool, repair: bool) -> io::Result<AgentReport> {
     Ok(report)
 }
 
-fn truncate_agent(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_owned()
-    } else {
-        s.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate_untrimmed as truncate_agent;
 
 #[derive(Debug, Clone)]
 struct FailedCase {
@@ -1624,14 +1618,7 @@ fn git(root: &Path, args: &[&str]) -> Result<String, String> {
     run_allowlisted(root, &argv)
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.len() <= max {
-        t.to_owned()
-    } else {
-        format!("{}…", &t[..max])
-    }
-}
+use crate::util::text::truncate;
 
 fn json_escape(s: &str) -> String {
     let mut out = String::from("\"");

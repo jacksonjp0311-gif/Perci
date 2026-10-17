@@ -73,6 +73,7 @@ pub mod semantic_field;
 pub mod session;
 pub mod text_normalize;
 pub mod thought_plan;
+pub mod util;
 pub mod voice;
 
 pub use chat::{ChatEngine, ChatResponse};

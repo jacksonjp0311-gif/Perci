@@ -834,12 +834,7 @@ fn json_text(value: &serde_json::Value) -> Option<String> {
     }
 }
 
-fn truncate_chars(text: &str, max: usize) -> String {
-    if text.chars().count() <= max {
-        return text.to_owned();
-    }
-    text.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-}
+use crate::util::text::truncate_untrimmed as truncate_chars;
 
 fn accepted_external_response(text: &str) -> bool {
     let trimmed = text.trim();

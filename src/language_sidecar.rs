@@ -544,13 +544,7 @@ pub fn request_from(user: &str, operator: &str, evidence: Vec<EvidenceRecord>) -
     req
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_owned()
-    } else {
-        s.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate_untrimmed as truncate;
 
 #[cfg(test)]
 mod tests {

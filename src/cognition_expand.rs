@@ -1200,14 +1200,7 @@ pub const EXPAND_FRAMES: &[(&str, &[&str], &str, &str)] = &[
     ),
 ];
 
-fn truncate(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.chars().count() <= max {
-        t.to_owned()
-    } else {
-        t.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate;
 
 /// Snapshot open tickets for meta operators (best-effort).
 #[allow(dead_code)]

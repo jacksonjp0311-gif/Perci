@@ -2024,14 +2024,7 @@ fn extract_json_numberish_from(window: &str, key: &str) -> Option<String> {
     }
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.chars().count() <= max {
-        t.to_owned()
-    } else {
-        t.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate;
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 

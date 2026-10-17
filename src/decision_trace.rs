@@ -139,14 +139,7 @@ pub fn status_label() -> String {
     }
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    let t = s.trim();
-    if t.chars().count() <= max {
-        t.to_owned()
-    } else {
-        t.chars().take(max.saturating_sub(1)).collect::<String>() + "…"
-    }
-}
+use crate::util::text::truncate;
 
 fn json_escape(s: &str) -> String {
     let mut out = String::from("\"");
