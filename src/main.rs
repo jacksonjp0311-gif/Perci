@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 mod ui;
-use ui::BloodUi;
+use ui::Ui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
@@ -522,8 +522,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
-    let ui = BloodUi::detect();
-    // Drop PowerShell banner + cargo sync noise; Dark-Blood frame owns the top.
+    let ui = Ui::detect();
+    // Compact welcome header; clears only when PERCI_CLEAR_SCREEN=1.
     ui.clear_stage();
     ui.banner(engine.backend_name(), &engine.cortex_status());
     ui.opening(&engine.opening_insight());
@@ -537,7 +537,7 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
             ui.reset_color();
             break;
         }
-        // Typed text was purple (open SGR from prompt); close it before Perci replies.
+        // Make sure no color is left open before Perci replies.
         ui.reset_color();
 
         let input = line.trim();
@@ -639,7 +639,7 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
 }
 
 fn print_status(engine: &ChatEngine) {
-    let ui = BloodUi::detect();
+    let ui = Ui::detect();
     ui.section("SYSTEM / VITALS");
     ui.row("name", &engine.personality().name);
     ui.row("version", perci::branding::version_label());
@@ -679,7 +679,7 @@ fn print_status(engine: &ChatEngine) {
 }
 
 fn print_learning(engine: &ChatEngine) {
-    let ui = BloodUi::detect();
+    let ui = Ui::detect();
     ui.section("INTERACTION / LEARNING");
     ui.row("state", engine.learning_status());
     ui.row(
@@ -705,7 +705,7 @@ fn print_learning(engine: &ChatEngine) {
 
 fn print_teaching_result(engine: &mut ChatEngine, claim: &str) -> io::Result<()> {
     let id = engine.stage_teaching(claim)?;
-    let ui = BloodUi::detect();
+    let ui = Ui::detect();
     ui.section("KNOWLEDGE / CANDIDATE");
     ui.row("id", id);
     ui.row("claim", claim.trim());
@@ -715,7 +715,7 @@ fn print_teaching_result(engine: &mut ChatEngine, claim: &str) -> io::Result<()>
 }
 
 fn run_intelligence_probe() -> io::Result<()> {
-    let ui = BloodUi::detect();
+    let ui = Ui::detect();
     let path = perci::cognitive::default_weight_path();
     let weights = perci::cognitive::CognitiveWeights::load(&path)?;
     let cases = [

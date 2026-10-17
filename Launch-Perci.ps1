@@ -1,200 +1,37 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('chat', 'status', 'test', 'bench', 'intel', 'cortex-init')]
+    [ValidateSet('chat', 'status', 'test', 'bench', 'intel', 'cortex-init', 'rebuild')]
     [string]$Mode = 'chat'
 )
 
+# Perci launcher (Desktop shortcut / Start-Perci.cmd).
+# Runs the already-built release binary directly: no cargo step at launch.
+# Building happens only in scripts\Install-PerciCommand.ps1
+# (or `perci --rebuild` / `Launch-Perci.ps1 -Mode rebuild`).
+
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Installer = Join-Path $Root 'scripts\Install-PerciCommand.ps1'
 
-function Write-BloodLine {
+function Write-PerciLine {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Text,
-        [ConsoleColor]$Color = [ConsoleColor]::DarkRed
+        [ConsoleColor]$Color = [ConsoleColor]::Gray
     )
     Write-Host $Text -ForegroundColor $Color
-}
-
-function Get-RedDnaFrames {
-    # ASCII double-helix (encoding-safe on Windows PowerShell).
-    # Backbone = o, rungs = -, phase shifts each frame.
-    @(
-        @(
-            '      o-----o',
-            '     /       \',
-            '    o         o',
-            '     \       /',
-            '      o-----o',
-            '     /       \',
-            '    o         o',
-            '     \       /',
-            '      o-----o'
-        ),
-        @(
-            '     o-----o',
-            '    /       \',
-            '   o         o',
-            '    \       /',
-            '     o-----o',
-            '    /       \',
-            '   o         o',
-            '    \       /',
-            '     o-----o'
-        ),
-        @(
-            '    o-----o',
-            '   /       \',
-            '  o         o',
-            '   \       /',
-            '    o-----o',
-            '   /       \',
-            '  o         o',
-            '   \       /',
-            '    o-----o'
-        ),
-        @(
-            '   o-----o',
-            '  /       \',
-            ' o         o',
-            '  \       /',
-            '   o-----o',
-            '  /       \',
-            ' o         o',
-            '  \       /',
-            '   o-----o'
-        ),
-        @(
-            '  o-----o',
-            ' /       \',
-            'o         o',
-            ' \       /',
-            '  o-----o',
-            ' /       \',
-            'o         o',
-            ' \       /',
-            '  o-----o'
-        ),
-        @(
-            ' o-----o',
-            '/       \',
-            'o       o',
-            '\       /',
-            ' o-----o',
-            '/       \',
-            'o       o',
-            '\       /',
-            ' o-----o'
-        ),
-        @(
-            'o-----o',
-            '       \',
-            'o       o',
-            '       /',
-            'o-----o',
-            '       \',
-            'o       o',
-            '       /',
-            'o-----o'
-        ),
-        @(
-            ' o-----o',
-            '/       \',
-            'o       o',
-            '\       /',
-            ' o-----o',
-            '/       \',
-            'o       o',
-            '\       /',
-            ' o-----o'
-        )
-    )
-}
-
-function Show-RedDnaBanner {
-    param([string]$VersionLabel = 'Perci')
-    Write-Host ''
-    Write-BloodLine '  +------------------------------------------+' DarkRed
-    Write-BloodLine '  |            *                             |' Red
-    Write-BloodLine '  |           / \     RED DNA SYNC           |' DarkRed
-    Write-BloodLine '  |          *   *    dark-blood runtime     |' Red
-    Write-BloodLine '  |           \ /                            |' DarkRed
-    Write-BloodLine '  |            *                             |' Red
-    $label = $VersionLabel
-    if ($label.Length -gt 38) { $label = $label.Substring(0, 38) }
-    $pad = 38 - $label.Length
-    Write-BloodLine ("  |  {0}{1} |" -f $label, (' ' * $pad)) DarkRed
-    Write-BloodLine '  +------------------------------------------+' DarkRed
-    Write-Host ''
-}
-
-function Stop-StalePerciProcesses {
-    <#
-    .SYNOPSIS
-      Kill leftover perci.exe (warm daemons / orphaned chats) so Launch always
-      talks to the binary we just built — never a silent old process.
-    #>
-    param([string]$KeepPath = '')
-    $killed = 0
-    Get-Process -Name 'perci' -ErrorAction SilentlyContinue | ForEach-Object {
-        try {
-            $path = $_.Path
-            if ($KeepPath -and $path -and ($path -ieq $KeepPath)) {
-                return
-            }
-            Stop-Process -Id $_.Id -Force -ErrorAction Stop
-            $killed++
-        } catch {}
-    }
-    if ($killed -gt 0) {
-        Write-BloodLine ("  *  cleared {0} stale perci process(es)" -f $killed) DarkRed
-        Start-Sleep -Milliseconds 200
-    }
-}
-
-function Write-RuntimeStamp {
-    param(
-        [Parameter(Mandatory = $true)][string]$ExePath,
-        [Parameter(Mandatory = $true)][string]$Root
-    )
-    $stampDir = Join-Path $Root '.perci'
-    $null = New-Item -ItemType Directory -Force -Path $stampDir -ErrorAction SilentlyContinue
-    $git = ''
-    try {
-        $git = (& git -C $Root rev-parse --short=8 HEAD 2>$null | Out-String).Trim()
-    } catch {}
-    $item = Get-Item -LiteralPath $ExePath -ErrorAction SilentlyContinue
-    $obj = [ordered]@{
-        schema      = 'perci.runtime-stamp.v1'
-        exe         = $ExePath
-        exe_mtime   = if ($item) { $item.LastWriteTimeUtc.ToString('o') } else { $null }
-        exe_bytes   = if ($item) { $item.Length } else { 0 }
-        git_rev     = $git
-        stamped_utc = (Get-Date).ToUniversalTime().ToString('o')
-        policy      = 'Launch-Perci always cargo-builds live target and kills stale perci processes'
-    }
-    $json = $obj | ConvertTo-Json -Compress
-    Set-Content -LiteralPath (Join-Path $stampDir 'runtime-stamp.json') -Value $json -Encoding utf8
 }
 
 function Repair-PerciDesktopShortcut {
     <#
     .SYNOPSIS
-      Ensure Desktop Perci.lnk uses assets/icons/perci-darkblood.ico (not a missing path).
+      Best-effort: keep an existing Desktop Perci.lnk pointed at this clone's
+      Start-Perci.cmd (fixes shortcuts left over from an older folder) and use
+      assets/icons/perci-darkblood.ico when it exists. Never blocks launch.
     #>
     $ico = Join-Path $Root 'assets\icons\perci-darkblood.ico'
-    $jpg = Join-Path $Root 'assets\icons\perci-darkblood-mark.jpg'
-    if (-not (Test-Path -LiteralPath $ico) -and (Test-Path -LiteralPath $jpg)) {
-        $py = Get-Command python -ErrorAction SilentlyContinue
-        if ($py) {
-            try {
-                & $py.Source (Join-Path $Root 'scripts\build_icon_ico.py') --desktop 2>$null | Out-Null
-            } catch {}
-        }
-    }
-    if (-not (Test-Path -LiteralPath $ico)) {
-        return
-    }
+    $launcher = Join-Path $Root 'Start-Perci.cmd'
+    $haveIco = Test-Path -LiteralPath $ico
     $desktopDirs = @(
         (Join-Path $env:USERPROFILE 'OneDrive\Desktop'),
         (Join-Path $env:USERPROFILE 'Desktop')
@@ -207,198 +44,42 @@ function Repair-PerciDesktopShortcut {
         try {
             $shell = New-Object -ComObject WScript.Shell
             $lnk = $shell.CreateShortcut($lnkPath)
-            $want = "$ico,0"
-            if ($lnk.IconLocation -ne $want -or -not (Test-Path -LiteralPath (($lnk.IconLocation -split ',')[0]))) {
-                $lnk.IconLocation = $want
-                if (-not $lnk.TargetPath) {
-                    $lnk.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-                    $lnk.Arguments = "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $Root 'Launch-Perci.ps1')`""
-                    $lnk.WorkingDirectory = $Root
+            $changed = $false
+            $targetOk = $lnk.TargetPath -and (Test-Path -LiteralPath $lnk.TargetPath)
+            $argsPointHere = ($lnk.Arguments -like "*$Root*") -or ($lnk.TargetPath -ieq $launcher)
+            if (-not $targetOk -or -not $argsPointHere) {
+                $lnk.TargetPath = $launcher
+                $lnk.Arguments = ''
+                $lnk.WorkingDirectory = $Root
+                $changed = $true
+            }
+            if ($haveIco) {
+                $want = "$ico,0"
+                if ($lnk.IconLocation -ne $want) {
+                    $lnk.IconLocation = $want
+                    $changed = $true
                 }
-                $lnk.Description = 'Perci Dark-Blood - local governed cognition'
+            }
+            if ($changed) {
+                $lnk.Description = 'Perci - local assistant'
                 $lnk.Save()
             }
-            # Keep legacy desktop ico in sync when present/missing
-            $legacy = Join-Path $desk 'Perci-DarkBlood-Icon.ico'
-            Copy-Item -LiteralPath $ico -Destination $legacy -Force -ErrorAction SilentlyContinue
         } catch {
             # Best-effort; never block chat launch on shortcut repair.
         }
     }
 }
 
-function Sync-PerciRuntimeWithRedDna {
-    <#
-    .SYNOPSIS
-      Run cargo build while a red DNA helix animation plays (dark-blood theme).
-    #>
-    param(
-        [string[]]$CargoArgs = @('build', '--release')
-    )
-
-    $verLabel = 'Perci'
-    try {
-        $toml = Get-Content (Join-Path $Root 'Cargo.toml') -Raw
-        if ($toml -match 'version\s*=\s*"([^"]+)"') {
-            $verLabel = "Perci v$($Matches[1])"
-        }
-    } catch {}
-
-    $frames = Get-RedDnaFrames
-    $stamp = [guid]::NewGuid().ToString('N').Substring(0, 8)
-    $logPath = Join-Path ([System.IO.Path]::GetTempPath()) ("perci-dna-build-{0}.log" -f $stamp)
-    $outPath = Join-Path ([System.IO.Path]::GetTempPath()) ("perci-dna-out-{0}.log" -f $stamp)
-    $errPath = Join-Path ([System.IO.Path]::GetTempPath()) ("perci-dna-err-{0}.log" -f $stamp)
-
-    $cargoCmd = (Get-Command cargo -ErrorAction SilentlyContinue).Source
-    if (-not $cargoCmd) {
-        throw 'Rust/Cargo is required for first build or source updates.'
-    }
-
-    $argLine = ($CargoArgs -join ' ')
-    $proc = Start-Process -FilePath $cargoCmd `
-        -ArgumentList $argLine `
-        -WorkingDirectory $Root `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $outPath `
-        -RedirectStandardError $errPath `
-        -PassThru
-
-    $interactive = $false
-    try {
-        $interactive = -not [Console]::IsOutputRedirected -and $Host.Name -ne 'ServerRemoteHost'
-        if ($interactive) {
-            $null = [Console]::CursorTop
-        }
-    } catch {
-        $interactive = $false
-    }
-
-    try {
-        if ($interactive) {
-            try { Clear-Host } catch {}
-            Show-RedDnaBanner -VersionLabel $verLabel
-            Write-BloodLine '  *  Synchronizing optimized Perci runtime...' Red
-            Write-BloodLine '  .  sparse strands | integer hot path | governed promote' DarkRed
-            Write-Host ''
-        } else {
-            Write-BloodLine '  *  Synchronizing optimized Perci runtime (red-dna)...' Red
-        }
-
-        $frameIdx = 0
-        $tick = 0
-        $phases = @(
-            'unzipping base pairs',
-            'aligning Bitwork strands',
-            'annealing release symbols',
-            'ligating native fields',
-            'proofreading gates',
-            'coiling into live target'
-        )
-
-        $statusLines = 2
-        $helixLines = $frames[0].Count
-        $block = $helixLines + $statusLines
-        $cursorTop = 0
-        if ($interactive) {
-            for ($i = 0; $i -lt $block; $i++) {
-                Write-Host ''
-            }
-            try {
-                $cursorTop = [Console]::CursorTop - $block
-                if ($cursorTop -lt 0) { $cursorTop = 0 }
-            } catch {
-                $interactive = $false
-            }
-        }
-
-        while (-not $proc.HasExited) {
-            $frame = $frames[$frameIdx % $frames.Count]
-            $phase = $phases[$tick % $phases.Count]
-            $dots = 1 + ($tick % 4)
-            $pulse = ('*' * $dots) + ('.' * (4 - $dots))
-
-            if ($interactive) {
-                try {
-                    [Console]::SetCursorPosition(0, $cursorTop)
-                    foreach ($line in $frame) {
-                        Write-Host ('  {0}' -f $line.PadRight(28)) -ForegroundColor Red
-                    }
-                    Write-Host ('  {0}  {1}' -f $pulse, $phase.PadRight(36)) -ForegroundColor DarkRed
-                    Write-Host '  red-dna // dark-blood compile path'.PadRight(50) -ForegroundColor DarkRed
-                } catch {
-                    $interactive = $false
-                    Write-BloodLine ("  *  red-dna: {0}" -f $phase) DarkRed
-                }
-            } elseif (($tick % 8) -eq 0) {
-                Write-BloodLine ("  *  red-dna: {0}" -f $phase) DarkRed
-            }
-
-            $frameIdx++
-            $tick++
-            Start-Sleep -Milliseconds 90
-        }
-
-        if (-not $proc.HasExited) {
-            $proc.WaitForExit()
-        }
-        # Start-Process can leave ExitCode null for a moment after HasExited flips.
-        for ($i = 0; $i -lt 40 -and $null -eq $proc.ExitCode; $i++) {
-            Start-Sleep -Milliseconds 25
-            try { $proc.Refresh() } catch {}
-        }
-        $code = $proc.ExitCode
-
-        $outText = ''
-        $errText = ''
-        if (Test-Path -LiteralPath $outPath) {
-            $outText = Get-Content -LiteralPath $outPath -Raw -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $errPath) {
-            $errText = Get-Content -LiteralPath $errPath -Raw -ErrorAction SilentlyContinue
-        }
-        $combined = (("$outText`n$errText").Trim())
-        if ($combined) {
-            Set-Content -LiteralPath $logPath -Value $combined -Encoding utf8
-        }
-
-        if ($null -eq $code) {
-            if ($combined -match 'Finished [`'']?release[`'']? profile') {
-                $code = 0
-            } elseif ($combined -match '(?i)error:|could not compile|build failed') {
-                $code = 1
-            } else {
-                $code = 1
-            }
-        }
-
-        if ($code -ne 0) {
-            Write-Host ''
-            Write-BloodLine '  *  DNA sync FAILED - cargo could not anneal the strand.' Red
-            if ($combined) {
-                Write-Host $combined -ForegroundColor DarkYellow
-            }
-            throw "Perci release build failed (exit $code). Exit any other live Perci window and retry. Log: $logPath"
-        }
-
-        Write-Host ''
-        Write-BloodLine '  *  DNA sync complete - runtime strand sealed.' Red
-        if ($interactive) {
-            Write-BloodLine '  .  clearing console -> dark-blood chat' DarkRed
-            Start-Sleep -Milliseconds 220
-        }
-    }
-    finally {
-        if ($proc -and -not $proc.HasExited) {
-            try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch {}
-        }
-        Remove-Item -LiteralPath $outPath, $errPath -Force -ErrorAction SilentlyContinue
-    }
-}
-
 Push-Location $Root
 
 try {
+    try { $Host.UI.RawUI.WindowTitle = 'Perci' } catch {}
+
+    if ($Mode -eq 'rebuild') {
+        & $Installer -Rebuild
+        exit $LASTEXITCODE
+    }
+
     $env:PYTHONUTF8 = '1'
     $env:PERCI_CORTEX_MODE = if ($env:PERCI_CORTEX_MODE) { $env:PERCI_CORTEX_MODE } else { 'auto' }
 
@@ -429,6 +110,9 @@ try {
         $Stream.Dispose()
     }
     if ($Magic -notin @('PERCIW01', 'PERCIW02', 'PERCIW03')) {
+        if ($Magic -like 'version*') {
+            throw "Perci weights are a Git LFS pointer, not the real file. Run: git lfs install; git lfs pull   (in $Root)"
+        }
         throw "Perci weights have an unknown signature '$Magic': $Weights"
     }
     $env:PERCI_WEIGHTS = $Weights
@@ -453,48 +137,28 @@ try {
         exit $LASTEXITCODE
     }
 
-    $Cargo = Get-Command cargo -ErrorAction SilentlyContinue
-    if (-not $Cargo) {
-        throw 'Rust/Cargo is required for first build or source updates.'
-    }
-
-    # Repair broken Desktop icon (missing .ico path) without blocking launch.
+    # Repair a stale Desktop shortcut without blocking launch.
     Repair-PerciDesktopShortcut
 
     if ($Mode -eq 'test') {
+        # Explicit developer mode only; normal launches never invoke cargo.
+        if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+            throw 'Rust/Cargo is required for -Mode test.'
+        }
         & cargo test --release
         exit $LASTEXITCODE
     }
 
-    # Always let Cargo verify source freshness. Timestamp-only checks can select
-    # a stale executable after source files are copied, restored, or synced.
-    $LiveTarget = if ($env:PERCI_TARGET_DIR) {
-        $env:PERCI_TARGET_DIR
-    } else {
-        Join-Path $Root 'target\live'
-    }
-    $env:CARGO_TARGET_DIR = $LiveTarget
-    $Exe = Join-Path $LiveTarget 'release\perci.exe'
-
-    # Never talk to a warm daemon or orphaned perci.exe from a prior session.
-    Stop-StalePerciProcesses
-
-    # Dark-blood red DNA sync: helix animates while cargo builds in background.
-    # Cleared before chat so the banner still snaps to the top.
-    Sync-PerciRuntimeWithRedDna -CargoArgs @('build', '--release')
-
+    # The installer builds into target\release (PERCI_TARGET_DIR overrides the target root).
+    $TargetRoot = if ($env:PERCI_TARGET_DIR) { $env:PERCI_TARGET_DIR } else { Join-Path $Root 'target' }
+    $Exe = Join-Path $TargetRoot 'release\perci.exe'
     if (-not (Test-Path -LiteralPath $Exe)) {
-        throw "Live binary missing after build: $Exe"
+        Write-PerciLine ("  Perci isn't built yet. Run: powershell -NoProfile -ExecutionPolicy Bypass -File `"{0}`"" -f $Installer) Yellow
+        if (-not [Console]::IsInputRedirected) {
+            [void](Read-Host '  Press Enter to close')
+        }
+        exit 1
     }
-
-    # Mirror into default target/release so ad-hoc `perci` / scripts match live.
-    $DefaultRelease = Join-Path $Root 'target\release\perci.exe'
-    try {
-        $null = New-Item -ItemType Directory -Force -Path (Split-Path $DefaultRelease) -ErrorAction SilentlyContinue
-        Copy-Item -LiteralPath $Exe -Destination $DefaultRelease -Force -ErrorAction SilentlyContinue
-    } catch {}
-
-    Write-RuntimeStamp -ExePath $Exe -Root $Root
 
     if ($Mode -eq 'status') {
         Clear-Host
@@ -513,32 +177,15 @@ try {
         exit $LASTEXITCODE
     }
 
-    # Fade out preamble: wipe PS copyright + cargo lines so Perci snaps to top.
-    $ver = 'Perci'
-    try {
-        $out = & $Exe --version 2>$null
-        if ($out) { $ver = ($out | Select-Object -First 1).ToString().Trim() }
-    } catch {}
-    if ($ver -eq 'Perci') {
-        try {
-            $toml = Get-Content (Join-Path $Root 'Cargo.toml') -Raw
-            if ($toml -match 'version\s*=\s*"([^"]+)"') { $ver = "Perci v$($Matches[1])" }
-            $git = (& git -C $Root rev-parse --short=8 HEAD 2>$null | Out-String).Trim()
-            if ($git) { $ver = "$ver+$git" }
-        } catch {}
-    }
-    $Host.UI.RawUI.WindowTitle = "$ver // dark-blood // auto-sync"
     $env:PERCI_COLOR = if ($env:PERCI_COLOR) { $env:PERCI_COLOR } else { 'always' }
+    # Wipe the PowerShell preamble so the Perci welcome header sits at the top.
     Clear-Host
-    # Soft beat so clear is perceived as a transition, then chat paints the banner.
-    Start-Sleep -Milliseconds 80
-    # Chat uses the just-built live binary only — never PATH or a stale daemon.
     & $Exe chat
     exit $LASTEXITCODE
 }
 catch {
-    # Do not let a build/runtime exception make a double-clicked console vanish.
-    # Preserve the exact error for diagnosis and leave the message visible when
+    # Do not let an exception make a double-clicked console vanish.
+    # Preserve the exact error for diagnosis and keep the message visible when
     # launched interactively; piped/automated launches still return exit 1.
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("perci-launch-error-{0}.log" -f $stamp)
@@ -548,8 +195,9 @@ catch {
     } catch {}
     try {
         Write-Host ''
-        Write-BloodLine '  *  Perci launch failed — the console was kept open for diagnosis.' Red
-        Write-BloodLine ("  *  Error log: {0}" -f $errorPath) DarkYellow
+        Write-PerciLine '  Perci could not start.' Red
+        Write-PerciLine ("  {0}" -f $_.Exception.Message) Gray
+        Write-PerciLine ("  Error log: {0}" -f $errorPath) DarkGray
         if (-not [Console]::IsInputRedirected) {
             [void](Read-Host '  Press Enter to close')
         }

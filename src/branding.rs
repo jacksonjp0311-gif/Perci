@@ -1,4 +1,4 @@
-//! Dark-Blood brand identity — version always tracks Cargo.toml.
+//! Perci brand identity — version always tracks Cargo.toml.
 //!
 //! Policy: never hardcode a release version in UI strings or assets by hand.
 //! Use `version()` / `env!("CARGO_PKG_VERSION")` only. `build.rs` regenerates
@@ -22,12 +22,12 @@ pub fn build_id() -> &'static str {
     option_env!("PERCI_BUILD_ID").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
-/// Human label: `Perci v0.9.8+9086af8 · dark-blood`
+/// Human label: `Perci v0.9.8+9086af8`
 pub fn version_label() -> String {
-    format!("Perci v{} · dark-blood", build_id())
+    format!("Perci v{}", build_id())
 }
 
-/// Relative path to the version-agnostic mark (diamond/blood sigil).
+/// Relative path to the version-agnostic mark (diamond).
 pub fn mark_svg_path() -> &'static str {
     "assets/icons/perci-darkblood-mark.svg"
 }
@@ -84,7 +84,8 @@ mod tests {
     fn version_label_contains_crate_version() {
         let label = version_label();
         assert!(label.contains(version()));
-        assert!(label.contains("dark-blood"));
+        assert!(label.starts_with("Perci v"));
+        assert!(!label.contains("dark-blood"));
         assert!(label.contains(build_id()) || build_id() == version());
     }
 
