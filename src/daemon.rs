@@ -3,6 +3,7 @@
 //! Protocol (one JSON object per line, max 256 KiB):
 //!   {"op":"ping","token":"..."}
 //!   {"op":"ask","text":"...","token":"..."}
+//!   {"op":"ask","text":"...","stateless":true}   (no session/learning; deterministic)
 //!   {"op":"classify","text":"...","token":"..."}
 //!   {"op":"shutdown","token":"..."}
 //!
@@ -12,6 +13,8 @@
 //!   require matching `token` when the env var is set. Shutdown **always** requires token
 //!   when PERCI_DAEMON_TOKEN is set.
 //! - Read timeout 60s, write 30s, max line 256 KiB.
+//! - TCP_NODELAY on both ends and one `write_all` per reply, so a warm `ping`
+//!   costs well under a millisecond instead of the ~40 ms Nagle floor.
 //!
 //! Default: 127.0.0.1:17865  (PERCI_DAEMON_PORT / PERCI_DAEMON_HOST)
 
@@ -154,6 +157,35 @@ pub fn read_bounded_line<R: BufRead>(
     Ok(n)
 }
 
+/// Serialize `value` and send it as **one** `write_all` (payload + newline).
+///
+/// Two small writes (`writeln!` on a raw `TcpStream`) hit the Nagle /
+/// delayed-ACK interaction and cost ~40 ms per reply (B2E-PERCI-012).
+pub fn send_line<W: Write>(writer: &mut W, value: &Value) -> std::io::Result<()> {
+    let mut buf = serde_json::to_vec(value).map_err(std::io::Error::other)?;
+    buf.push(b'\n');
+    writer.write_all(&buf)?;
+    writer.flush()
+}
+
+/// Stateless chat engine for `{"op":"ask","stateless":true}`: no session,
+/// no learning observer, no memory file. Same input gives the same output.
+pub fn stateless_engine() -> Result<ChatEngine, Box<dyn std::error::Error>> {
+    let personality = {
+        let path = env::var_os("PERCI_PERSONALITY")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| crate::paths::asset("config/personality.prompt"));
+        Personality::load(path).unwrap_or_else(|_| Personality::default_perci())
+    };
+    let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
+    Ok(ChatEngine::new(
+        personality,
+        MemoryStore::new(PathBuf::new()),
+        backend,
+        None,
+    ))
+}
+
 fn handle_client(
     stream: TcpStream,
     engine: &mut ChatEngine,
@@ -161,6 +193,7 @@ fn handle_client(
 ) -> Result<(), Box<dyn std::error::Error>> {
     stream.set_read_timeout(Some(Duration::from_secs(60)))?;
     stream.set_write_timeout(Some(Duration::from_secs(30)))?;
+    stream.set_nodelay(true)?;
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut writer = stream;
     let mut line = String::new();
@@ -171,20 +204,18 @@ fn handle_client(
             break;
         }
         if line.len() > MAX_LINE_BYTES {
-            writeln!(
-                writer,
-                "{}",
-                json!({"ok": false, "error": "payload too large"})
+            send_line(
+                &mut writer,
+                &json!({"ok": false, "error": "payload too large"}),
             )?;
             break;
         }
         let req: Value = match serde_json::from_str(line.trim()) {
             Ok(v) => v,
             Err(e) => {
-                writeln!(
-                    writer,
-                    "{}",
-                    json!({"ok": false, "error": format!("bad json: {e}")})
+                send_line(
+                    &mut writer,
+                    &json!({"ok": false, "error": format!("bad json: {e}")}),
                 )?;
                 continue;
             }
@@ -196,124 +227,91 @@ fn handle_client(
             .to_ascii_lowercase();
 
         if let Err(e) = check_token(&req, &op) {
-            writeln!(writer, "{}", json!({"ok": false, "error": e}))?;
-            writer.flush()?;
+            send_line(&mut writer, &json!({"ok": false, "error": e}))?;
             continue;
         }
 
-        match op.as_str() {
-            "ping" => {
-                writeln!(
-                    writer,
-                    "{}",
-                    json!({
-                        "ok": true,
-                        "service": "perci-daemon",
-                        "version": env!("CARGO_PKG_VERSION"),
-                        "build_id": crate::branding::build_id(),
-                        "fabric": "v0.7.0"
-                    })
+        if op == "shutdown" {
+            // Fail closed: if token env is set, check_token already required it.
+            // If no token configured, refuse shutdown over network for safety.
+            if expected_token().is_none() {
+                send_line(
+                    &mut writer,
+                    &json!({"ok": false, "error": "shutdown disabled without PERCI_DAEMON_TOKEN"}),
                 )?;
+                continue;
             }
-            "ask" => {
-                let text = req
-                    .get("text")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("")
-                    .trim();
-                if text.is_empty() {
-                    writeln!(
-                        writer,
-                        "{}",
-                        json!({"ok": false, "error": "ask requires text"})
-                    )?;
-                    continue;
-                }
-                if text.len() > 32 * 1024 {
-                    writeln!(
-                        writer,
-                        "{}",
-                        json!({"ok": false, "error": "ask text too long"})
-                    )?;
-                    continue;
-                }
-                match engine.respond(text) {
-                    Ok(r) => {
-                        writeln!(
-                            writer,
-                            "{}",
-                            json!({"ok": true, "text": r.text, "route": format!("{:?}", r.route)})
-                        )?;
-                    }
-                    Err(e) => {
-                        writeln!(writer, "{}", json!({"ok": false, "error": e.to_string()}))?;
-                    }
-                }
-            }
-            "classify" => {
-                let text = req
-                    .get("text")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("")
-                    .trim();
-                if text.is_empty() {
-                    writeln!(
-                        writer,
-                        "{}",
-                        json!({"ok": false, "error": "classify requires text"})
-                    )?;
-                    continue;
-                }
-                match classify_json_value(text, classifier) {
-                    Ok(v) => {
-                        writeln!(writer, "{}", json!({"ok": true, "result": v}))?;
-                    }
-                    Err(e) => {
-                        writeln!(writer, "{}", json!({"ok": false, "error": e}))?;
-                    }
-                }
-            }
-            "session_reset" | "session_clear" => {
-                // Probe / surgical isolation: clear dialogue history only.
-                match engine.clear_dialogue_history() {
-                    Ok(()) => {
-                        writeln!(writer, "{}", json!({"ok": true, "session_reset": true}))?;
-                    }
-                    Err(e) => {
-                        writeln!(writer, "{}", json!({"ok": false, "error": e.to_string()}))?;
-                    }
-                }
-            }
-            "shutdown" => {
-                // Fail closed: if token env is set, check_token already required it.
-                // If no token configured, refuse shutdown over network for safety.
-                if expected_token().is_none() {
-                    writeln!(
-                        writer,
-                        "{}",
-                        json!({"ok": false, "error": "shutdown disabled without PERCI_DAEMON_TOKEN"})
-                    )?;
-                    continue;
-                }
-                writeln!(writer, "{}", json!({"ok": true, "shutdown": true}))?;
-                writer.flush()?;
-                let _ = std::fs::remove_file(marker_path());
-                std::process::exit(0);
-            }
-            "" => {
-                writeln!(writer, "{}", json!({"ok": false, "error": "missing op"}))?;
-            }
-            other => {
-                writeln!(
-                    writer,
-                    "{}",
-                    json!({"ok": false, "error": format!("unknown op: {other}")})
-                )?;
-            }
+            send_line(&mut writer, &json!({"ok": true, "shutdown": true}))?;
+            let _ = std::fs::remove_file(marker_path());
+            std::process::exit(0);
         }
-        writer.flush()?;
+        let reply = respond(&op, &req, engine, classifier);
+        send_line(&mut writer, &reply)?;
     }
     Ok(())
+}
+
+fn respond(
+    op: &str,
+    req: &Value,
+    engine: &mut ChatEngine,
+    classifier: Option<&crate::cognitive::CognitiveWeights>,
+) -> Value {
+    let text = req
+        .get("text")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .trim();
+    match op {
+        "ping" => json!({
+            "ok": true,
+            "service": "perci-daemon",
+            "version": env!("CARGO_PKG_VERSION"),
+            "build_id": crate::branding::build_id(),
+            "fabric": "v0.7.0"
+        }),
+        "ask" => {
+            if text.is_empty() {
+                return json!({"ok": false, "error": "ask requires text"});
+            }
+            if text.len() > 32 * 1024 {
+                return json!({"ok": false, "error": "ask text too long"});
+            }
+            let stateless = req.get("stateless").and_then(Value::as_bool) == Some(true);
+            let result = if stateless {
+                stateless_engine()
+                    .map_err(|e| e.to_string())
+                    .and_then(|mut fresh| fresh.respond(text).map_err(|e| e.to_string()))
+            } else {
+                engine.respond(text).map_err(|e| e.to_string())
+            };
+            match result {
+                Ok(r) => json!({
+                    "ok": true,
+                    "text": r.text,
+                    "route": format!("{:?}", r.route),
+                    "stateless": stateless
+                }),
+                Err(e) => json!({"ok": false, "error": e}),
+            }
+        }
+        "classify" => {
+            if text.is_empty() {
+                return json!({"ok": false, "error": "classify requires text"});
+            }
+            match classify_json_value(text, classifier) {
+                Ok(v) => json!({"ok": true, "result": v}),
+                Err(e) => json!({"ok": false, "error": e}),
+            }
+        }
+        // Probe / surgical isolation: clear dialogue history only.
+        "session_reset" | "session_clear" => match engine.clear_dialogue_history() {
+            Ok(()) => json!({"ok": true, "session_reset": true}),
+            Err(e) => json!({"ok": false, "error": e.to_string()}),
+        },
+        "" => json!({"ok": false, "error": "missing op"}),
+        other => json!({"ok": false, "error": format!("unknown op: {other}")}),
+    }
 }
 
 fn classify_json_value(
@@ -435,7 +433,10 @@ fn connect(addr: &str) -> Result<TcpStream, String> {
         .map_err(|e| format!("daemon connect {addr}: {e}"))?
     {
         match TcpStream::connect_timeout(&sock, timeout) {
-            Ok(stream) => return Ok(stream),
+            Ok(stream) => {
+                let _ = stream.set_nodelay(true);
+                return Ok(stream);
+            }
             Err(e) => last = format!("daemon connect {addr}: {e}"),
         }
     }
@@ -530,6 +531,26 @@ mod tests {
         let _ = std::fs::remove_file(marker_path());
         assert!(!may_be_running());
         assert_eq!(ping_state(), None);
+    }
+
+    #[test]
+    fn replies_go_out_in_one_write() {
+        // B2E-PERCI-012: `writeln!` on a raw TcpStream issued two writes per
+        // reply, which with Nagle + delayed ACK cost ~40 ms per round trip.
+        struct Counting(Vec<Vec<u8>>);
+        impl Write for Counting {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                self.0.push(buf.to_vec());
+                Ok(buf.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut w = Counting(Vec::new());
+        send_line(&mut w, &json!({"ok": true, "n": 1})).unwrap();
+        assert_eq!(w.0.len(), 1);
+        assert_eq!(w.0[0], b"{\"n\":1,\"ok\":true}\n".to_vec());
     }
 
     #[test]

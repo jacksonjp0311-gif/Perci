@@ -60,7 +60,12 @@ fn check_weights(allow_missing: bool) -> Result<(), Box<dyn std::error::Error>> 
 
 fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let no_weights_flag = argv.iter().any(|a| a == "--no-weights");
-    let argv: Vec<String> = argv.into_iter().filter(|a| a != "--no-weights").collect();
+    let stateless = argv.iter().any(|a| a == "--stateless")
+        || env::var("PERCI_STATELESS").as_deref() == Ok("1");
+    let argv: Vec<String> = argv
+        .into_iter()
+        .filter(|a| a != "--no-weights" && a != "--stateless")
+        .collect();
     let mut args = argv.into_iter();
     let command = args.next().unwrap_or_else(|| "chat".into());
 
@@ -145,6 +150,18 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             Ok(_) => {}
             Err(e) => eprintln!("perci: could not copy legacy memory: {e}"),
         }
+    }
+
+    // Tool mode: no session, no learning observer, no memory file, no daemon.
+    // The same input gives byte-identical output (B2E-PERCI-013).
+    if stateless && command == "ask" {
+        let input = args.collect::<Vec<_>>().join(" ");
+        if input.trim().is_empty() {
+            return Err("usage: perci ask --stateless <message>".into());
+        }
+        let mut engine = perci::daemon::stateless_engine()?;
+        println!("{}", engine.respond(&input)?.text);
+        return Ok(());
     }
 
     let personality = load_personality();
