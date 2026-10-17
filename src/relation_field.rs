@@ -184,7 +184,10 @@ pub fn execute_followup(user: &str, prior_user: &str) -> Option<RelationExecutio
     }
     let current = parse_program(user);
     if current.edges.is_empty() {
-        if let Some(intervention) = current.intervention.or_else(|| parse_intervention(&user.to_ascii_lowercase())) {
+        if let Some(intervention) = current
+            .intervention
+            .or_else(|| parse_intervention(&user.to_ascii_lowercase()))
+        {
             return execute_program(
                 RelationProgram {
                     edges: prior.edges,
@@ -557,9 +560,7 @@ fn parse_without_clause(clause: &str) -> Option<RelationEdge> {
 
 fn parse_enablement_clause(clause: &str) -> Option<RelationEdge> {
     let rest = clause.trim().strip_prefix("if ")?;
-    let (cond, tail) = rest
-        .split_once(',')
-        .or_else(|| rest.split_once(" then "))?;
+    let (cond, tail) = rest.split_once(',').or_else(|| rest.split_once(" then "))?;
     if interventionish(cond) {
         return None;
     }
@@ -635,8 +636,8 @@ fn is_status_word(value: &str) -> bool {
 
 fn head_noun(value: &str) -> String {
     const STOP: &[&str] = &[
-        "can", "may", "will", "cannot", "can't", "should", "must", "fails", "fail", "run",
-        "stand", "drops", "still", "no", "longer", "follow", "follows", "change", "changes",
+        "can", "may", "will", "cannot", "can't", "should", "must", "fails", "fail", "run", "stand",
+        "drops", "still", "no", "longer", "follow", "follows", "change", "changes",
     ];
     let clipped = value
         .split_whitespace()
@@ -946,12 +947,10 @@ mod tests {
                 || lower.contains("no longer follows")
         );
         assert!(!lower.contains("touches no supplied relation"));
-        assert!(
-            execution
-                .impacted
-                .iter()
-                .any(|claim| claim.contains("quoril-7") || claim.contains("boundary"))
-        );
+        assert!(execution
+            .impacted
+            .iter()
+            .any(|claim| claim.contains("quoril-7") || claim.contains("boundary")));
     }
 
     #[test]
@@ -1063,7 +1062,9 @@ mod tests {
         let follow = execute_followup("What still holds?", prior).expect("follow-up");
         let lower = follow.text.to_ascii_lowercase();
         assert!(lower.contains("memory"));
-        assert!(lower.contains("invariant") || lower.contains("preserves") || lower.contains("keeps"));
+        assert!(
+            lower.contains("invariant") || lower.contains("preserves") || lower.contains("keeps")
+        );
     }
 
     #[test]

@@ -1071,7 +1071,10 @@ mod tests {
             draft,
         );
         assert_eq!(out.operator, "greeting");
-        assert!(!out.answer.to_ascii_lowercase().contains("repeats the last answer"));
+        assert!(!out
+            .answer
+            .to_ascii_lowercase()
+            .contains("repeats the last answer"));
         assert!(out.answer.contains("Perci"));
     }
 }

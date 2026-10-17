@@ -9128,9 +9128,7 @@ mod tests {
         let lower = follow.answer.to_ascii_lowercase();
         assert!(lower.contains("memory"));
         assert!(
-            lower.contains("invariant")
-                || lower.contains("preserves")
-                || lower.contains("keeps")
+            lower.contains("invariant") || lower.contains("preserves") || lower.contains("keeps")
         );
     }
 
@@ -9140,10 +9138,7 @@ mod tests {
         let second = "A signal is required for the boundary. Identity is preserved by memory. If the signal is missing, what changes and what remains invariant?";
         let prior = run(first, &[]);
         assert_eq!(prior.operator, "relation-field-counterfactual");
-        let next = run(
-            second,
-            &[(first.to_owned(), prior.answer.clone())],
-        );
+        let next = run(second, &[(first.to_owned(), prior.answer.clone())]);
         assert_eq!(next.operator, "relation-field-counterfactual");
         let lower = next.answer.to_ascii_lowercase();
         assert!(lower.contains("signal") || lower.contains("boundary"));
