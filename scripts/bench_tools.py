@@ -174,14 +174,16 @@ def main():
     d = subprocess.Popen([perci, "daemon"], env=denv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         deadline = time.time() + 30
-        while True:
+        c = None
+        while c is None:
             try:
                 c = socket.create_connection(("127.0.0.1", port), timeout=1)
-                break
             except OSError:
-                if time.time() > deadline:
-                    raise
+                if d.poll() is not None or time.time() > deadline:
+                    break  # daemon needs the runtime weights; skip without them
                 time.sleep(0.02)
+        if c is None:
+            raise RuntimeError("daemon unavailable")
         c.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         f = c.makefile("rb")
         xs = []
@@ -193,6 +195,8 @@ def main():
                 xs.append((time.perf_counter() - t) * 1000)
         daemon = {"p50_ms": pct(xs, 50), "p95_ms": pct(xs, 95)}
         c.close()
+    except RuntimeError:
+        print("chat daemon TCP ping: skipped (daemon did not start; runtime weights missing?)")
     finally:
         d.kill()
         d.wait()

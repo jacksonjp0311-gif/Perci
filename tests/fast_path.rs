@@ -23,6 +23,28 @@ fn temp_data(tag: &str) -> std::path::PathBuf {
     dir
 }
 
+/// The chat daemon and `ask` load the runtime weights. Without them (CI's
+/// no-LFS job) skip, unless PERCI_REQUIRE_WEIGHTS=1.
+fn weights_ok() -> bool {
+    let models = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("models");
+    let mut files: Vec<_> = std::fs::read_dir(&models)
+        .map(|d| d.filter_map(|e| e.ok().map(|e| e.path())).collect())
+        .unwrap_or_default();
+    files.retain(|p| {
+        p.extension()
+            .is_some_and(|x| ["pwgt", "blng", "bphr", "bdlg"].iter().any(|e| x == *e))
+    });
+    let usable = !files.is_empty() && files.iter().all(|p| !perci::paths::is_lfs_pointer(p));
+    if !usable {
+        assert!(
+            !perci::cognitive::weights_required(),
+            "weights required (PERCI_REQUIRE_WEIGHTS=1) but models/ holds LFS pointers; run git lfs pull"
+        );
+        eprintln!("skipping: runtime weights not available");
+    }
+    usable
+}
+
 struct Daemon(Child);
 impl Drop for Daemon {
     fn drop(&mut self) {
@@ -33,6 +55,9 @@ impl Drop for Daemon {
 
 #[test]
 fn daemon_ping_has_no_nagle_floor() {
+    if !weights_ok() {
+        return;
+    }
     let port = {
         let l = TcpListener::bind("127.0.0.1:0").unwrap();
         l.local_addr().unwrap().port()
@@ -78,6 +103,9 @@ fn daemon_ping_has_no_nagle_floor() {
 
 #[test]
 fn stateless_ask_is_byte_identical_across_runs() {
+    if !weights_ok() {
+        return;
+    }
     let data = temp_data("ask");
     let run = |q: &str| {
         let out = perci()
