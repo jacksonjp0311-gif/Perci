@@ -1,0 +1,205 @@
+# Perci CI. Jobs:
+#   fmt      cargo fmt --check
+#   clippy   no NEW clippy warnings vs the base commit (scripts/clippy_ratchet.py)
+#   test     cargo test on Linux + Windows WITHOUT weights (weight tests skip;
+#            AgentSearch-backed memory tests run for real)
+#   weights  cargo test with the real LFS weights (PERCI_REQUIRE_WEIGHTS=1, so
+#            weight tests can never pass vacuously) + a release smoke run.
+#            Runs on main, nightly and on demand, not per PR, to save LFS
+#            bandwidth; the weights are cached by their LFS object ids.
+#   evals    bug2eval validate of every evals/b2e case (before fails, after
+#            passes) with a receipt artifact. main, nightly, on demand.
+name: CI
+
+on:
+  push:
+    branches: [main, "perci-*"]
+  pull_request:
+  schedule:
+    - cron: "17 7 * * *"   # nightly, 03:17 ET
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  AGENTSEARCH_REF: v1.0.0-rc5
+  BUG2EVAL_REF: v0.1.3
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Pick the base commit
+        id: base
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git rev-parse HEAD~1)"
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+      - name: No new clippy warnings
+        run: python3 scripts/clippy_ratchet.py --base ${{ steps.base.outputs.sha }} --target-dir "$RUNNER_TEMP/clippy" --json-out clippy-ratchet.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clippy-ratchet
+          path: clippy-ratchet.json
+          if-no-files-found: ignore
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4   # no LFS: weight tests skip with a note
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install AgentSearch (pinned)
+        run: python -m pip install "git+https://github.com/jacksonjp0311-gif/AgentSearch.git@${{ env.AGENTSEARCH_REF }}"
+      - name: cargo test (no weights, real AgentSearch)
+        env:
+          PERCI_AGENTSEARCH: python -m agentsearch
+          PERCI_REQUIRE_AGENTSEARCH: "1"
+        run: cargo test --lib --tests
+
+  weights:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: LFS cache key (object ids of the runtime weights)
+        id: lfs
+        shell: bash
+        run: |
+          git lfs ls-files -l -I "models/*" | sort > "$RUNNER_TEMP/lfs-oids.txt"
+          cat "$RUNNER_TEMP/lfs-oids.txt"
+          echo "key=perci-weights-$(sha256sum "$RUNNER_TEMP/lfs-oids.txt" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Restore weights
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            models/*.pwgt
+            models/*.blng
+            models/*.bphr
+            models/*.bdlg
+          key: ${{ steps.lfs.outputs.key }}
+      - name: Pull weights from LFS (cache miss only)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: git lfs pull --include "models/*"
+      - name: Weights are real, not pointers
+        shell: bash
+        run: |
+          for f in models/*.pwgt; do
+            if head -c 23 "$f" | grep -q "version https://git-lfs"; then echo "::error::$f is an LFS pointer"; exit 1; fi
+          done
+          ls -la models
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "git+https://github.com/jacksonjp0311-gif/AgentSearch.git@${{ env.AGENTSEARCH_REF }}"
+      - name: cargo test with real weights
+        env:
+          PERCI_REQUIRE_WEIGHTS: "1"
+          PERCI_AGENTSEARCH: python -m agentsearch
+          PERCI_REQUIRE_AGENTSEARCH: "1"
+        run: cargo test --lib --tests
+      - name: Release smoke run
+        shell: bash
+        env:
+          PERCI_HOME: ${{ github.workspace }}
+        run: |
+          export PERCI_DATA="$RUNNER_TEMP/perci-data"
+          cargo build --release
+          P=target/release/perci
+          $P doctor --json
+          cd "$RUNNER_TEMP"
+          $GITHUB_WORKSPACE/$P ask "what is 3/7 plus 2/9" | tee out1.txt; grep -q "41/63" out1.txt
+          $GITHUB_WORKSPACE/$P ask "what is the area of a circle with radius 3" | tee out2.txt; grep -q "9π" out2.txt
+          $GITHUB_WORKSPACE/$P memory remember "the CI canary note is blue-42"
+          PERCI_AGENTSEARCH="python -m agentsearch" $GITHUB_WORKSPACE/$P memory recall "canary" --json | tee recall.json
+          python -c "import json,hashlib;h=json.load(open('recall.json'))['hits'][0]['citation'];assert hashlib.sha256(open(h['note_path'],'rb').read()).hexdigest()==h['sha256']"
+          test -z "$(ls -A "$RUNNER_TEMP" | grep -E '^(memory|models)$' || true)"
+
+  evals:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4   # cases carry their own snapshots; no LFS needed
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install bug2eval and AgentSearch (pinned)
+        run: |
+          python -m pip install "git+https://github.com/jacksonjp0311-gif/bug2eval.git@${{ env.BUG2EVAL_REF }}"
+          python -m pip install "git+https://github.com/jacksonjp0311-gif/AgentSearch.git@${{ env.AGENTSEARCH_REF }}"
+      - name: Cache the shared verifier build dir
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/b2e-target
+          key: b2e-target-${{ hashFiles('Cargo.lock') }}
+      - name: bug2eval validate (every case must be valid)
+        env:
+          PERCI_B2E_TARGET: ${{ runner.temp }}/b2e-target
+          PERCI_AGENTSEARCH: python -m agentsearch
+          PERCI_B2E_REQUIRE_AGENTSEARCH: "1"
+        run: python evals/run_b2e.py --receipt evals/receipts/ci-b2e.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: b2e-receipt
+          path: evals/receipts/ci-b2e.json
+          if-no-files-found: ignore
+
+  ci-ok:
+    if: always()
+    needs: [fmt, clippy, test, weights, evals]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs passed (skipped weights/evals on PRs are fine)
+        shell: bash
+        run: |
+          echo '${{ toJSON(needs) }}'
+          for r in "${{ needs.fmt.result }}" "${{ needs.clippy.result }}" "${{ needs.test.result }}" "${{ needs.weights.result }}" "${{ needs.evals.result }}"; do
+            case "$r" in success|skipped) ;; *) echo "::error::a required job ended as $r"; exit 1;; esac
+          done
