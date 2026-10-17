@@ -1,7 +1,9 @@
-//! Stamp Dark-Blood branding from the crate version so icons/badges never drift.
+//! Stamp Perci's build identity from the crate version and git HEAD.
 //!
 //! Single source of truth: Cargo.toml package.version → env CARGO_PKG_VERSION.
-//! Regenerates assets/generated/* on every build. UI and tests assert match.
+//! Normal builds write **only to OUT_DIR**, so `cargo build` never dirties the
+//! source tree. Set `PERCI_STAMP_ASSETS=1` (release step) to also refresh
+//! `assets/generated/*` (VERSION, BUILD_ID, brand-manifest.json, badge SVG).
 
 use std::env;
 use std::fs;
@@ -12,7 +14,8 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let gen_dir = manifest_dir.join("assets").join("generated");
-    let _ = fs::create_dir_all(&gen_dir);
+    let stamp_assets = env::var("PERCI_STAMP_ASSETS").is_ok_and(|v| v == "1");
+    println!("cargo:rerun-if-env-changed=PERCI_STAMP_ASSETS");
 
     // Git short rev (best-effort) so banners prove which source the binary was built from.
     // A branch commit changes refs/heads/<branch>, not .git/HEAD itself. Watch both
@@ -31,16 +34,7 @@ fn main() {
         format!("{version}+{rev}")
     };
 
-    // Always rewrite VERSION stamp (semver + optional +rev).
-    let version_path = gen_dir.join("VERSION");
-    fs::write(&version_path, format!("{build_id}\n")).expect("write VERSION");
-    fs::write(gen_dir.join("BUILD_ID"), format!("{build_id}\n")).expect("write BUILD_ID");
-
-    // Versioned badge SVG (exact text via code — never hand-edited).
-    let badge = render_badge_svg(&version);
-    fs::write(gen_dir.join("perci-darkblood-badge.svg"), badge).expect("write badge svg");
-
-    // Mirror into OUT_DIR for include_str! stability if workspace is cleaned.
+    // Build identity lives in OUT_DIR (and the PERCI_BUILD_ID env below).
     fs::write(out_dir.join("PERCI_BRAND_VERSION"), format!("{version}\n"))
         .expect("write OUT version");
     fs::write(out_dir.join("PERCI_BUILD_ID"), format!("{build_id}\n")).expect("write OUT build id");
@@ -57,9 +51,22 @@ fn main() {
         format!("\"{rev}\"")
     };
     let manifest = format!(
-        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"build_id\": \"{build_id}\",\n  \"git_rev\": {rev_json},\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"mark_ico\": \"assets/icons/perci-darkblood.ico\",\n  \"source_of_truth\": \"Cargo.toml package.version + git HEAD\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml. Launch-Perci always cargo-builds live target and kills stale daemons.\"\n}}\n"
+        "{{\n  \"name\": \"Perci\",\n  \"theme\": \"dark-blood\",\n  \"version\": \"{version}\",\n  \"build_id\": \"{build_id}\",\n  \"git_rev\": {rev_json},\n  \"mark\": \"assets/icons/perci-darkblood-mark.svg\",\n  \"badge\": \"assets/generated/perci-darkblood-badge.svg\",\n  \"mark_raster\": \"assets/icons/perci-darkblood-mark.jpg\",\n  \"mark_ico\": \"assets/icons/perci-darkblood.ico\",\n  \"source_of_truth\": \"Cargo.toml package.version + git HEAD\",\n  \"policy\": \"Never hand-edit generated badge version; rebuild after bumping Cargo.toml. Normal builds write only to OUT_DIR; PERCI_STAMP_ASSETS=1 refreshes assets/generated.\"\n}}\n"
     );
-    fs::write(gen_dir.join("brand-manifest.json"), &manifest).expect("write brand manifest");
+    fs::write(out_dir.join("brand-manifest.json"), &manifest).expect("write OUT manifest");
+
+    // Release-only: refresh the checked-in brand assets.
+    if stamp_assets {
+        let _ = fs::create_dir_all(&gen_dir);
+        fs::write(gen_dir.join("VERSION"), format!("{build_id}\n")).expect("write VERSION");
+        fs::write(gen_dir.join("BUILD_ID"), format!("{build_id}\n")).expect("write BUILD_ID");
+        fs::write(
+            gen_dir.join("perci-darkblood-badge.svg"),
+            render_badge_svg(&version),
+        )
+        .expect("write badge svg");
+        fs::write(gen_dir.join("brand-manifest.json"), &manifest).expect("write brand manifest");
+    }
 
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=assets/icons/perci-darkblood-mark.svg");

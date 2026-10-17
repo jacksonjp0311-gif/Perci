@@ -65,3 +65,7 @@ models/candidates/knowledge-evidence.jsonl
 /Cortex/.ruff_cache/
 *.pyc
 *.pyo
+# Build identity is generated into OUT_DIR; PERCI_STAMP_ASSETS=1 writes these locally.
+/assets/generated/VERSION
+/assets/generated/BUILD_ID
+/assets/generated/brand-manifest.json

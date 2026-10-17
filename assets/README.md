@@ -4,12 +4,18 @@
 
 **Version lives only in `Cargo.toml` → `[package].version`.**
 
-On every `cargo build` / `cargo test`, `build.rs`:
+A normal `cargo build` / `cargo test` writes the build identity only to
+Cargo's `OUT_DIR` (exported as `PERCI_BUILD_ID` / `PERCI_BRAND_VERSION`), so
+building never dirties the working tree.
 
-1. Writes `assets/generated/VERSION`
-2. Regenerates `assets/generated/perci-darkblood-badge.svg` with the current `vX.Y.Z`
-3. Writes `assets/generated/brand-manifest.json`
-4. Exports `PERCI_BRAND_VERSION` for compile-time checks
+When you bump the version, refresh the checked-in badge once:
+
+```bash
+PERCI_STAMP_ASSETS=1 cargo build --release   # PowerShell: $env:PERCI_STAMP_ASSETS=1; cargo build --release
+```
+
+That rewrites `assets/generated/perci-darkblood-badge.svg` (committed) and the
+local, git-ignored `VERSION`, `BUILD_ID` and `brand-manifest.json`.
 
 ## Files
 
@@ -20,9 +26,9 @@ On every `cargo build` / `cargo test`, `build.rs`:
 | `assets/icons/perci-darkblood.ico` | Multi-size Windows shortcut icon | rebuild via script |
 | `assets/icons/perci-hero-darkblood.jpg` | README hero lattice banner | replace art only |
 | `assets/icons/perci-stack-strip.svg` | Cognitive stack strip (exact labels) | yes (art) |
-| `assets/generated/perci-darkblood-badge.svg` | Mark + **version** | **never** (auto) |
-| `assets/generated/VERSION` | Plain version stamp | **never** (auto) |
-| `assets/generated/brand-manifest.json` | Paths + policy | **never** (auto) |
+| `assets/generated/perci-darkblood-badge.svg` | Mark + **version** | **never** (`PERCI_STAMP_ASSETS=1`) |
+| `assets/generated/VERSION` | Plain version stamp (git-ignored) | **never** (auto) |
+| `assets/generated/brand-manifest.json` | Paths + policy (git-ignored) | **never** (auto) |
 
 ## Windows desktop shortcut icon
 
