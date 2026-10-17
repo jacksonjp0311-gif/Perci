@@ -41,7 +41,7 @@ fn default_min_hits() -> usize {
 fn repairs_path() -> PathBuf {
     env::var_os("PERCI_AUTO_REPAIRS")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/candidates/auto-repairs.jsonl"))
+        .unwrap_or_else(|| crate::paths::data_file("auto-repairs.jsonl"))
 }
 
 static CACHE: RwLock<Option<Vec<AutoRepair>>> = RwLock::new(None);

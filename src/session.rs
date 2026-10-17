@@ -19,7 +19,7 @@ impl SessionStore {
     pub fn discover() -> Self {
         let path = env::var_os("PERCI_SESSION")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("memory/session.jsonl"));
+            .unwrap_or_else(|| crate::paths::data_file("memory/session.jsonl"));
         Self { path }
     }
 

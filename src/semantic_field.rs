@@ -412,7 +412,7 @@ pub struct RetrievalHit {
 
 impl SemanticFieldPack {
     pub fn default_path() -> PathBuf {
-        PathBuf::from("models/candidates/packs/percisem1-v0.1.bsem")
+        crate::paths::asset("models/candidates/packs/percisem1-v0.1.bsem")
     }
 
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {

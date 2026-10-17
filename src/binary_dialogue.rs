@@ -38,6 +38,7 @@ pub struct BinaryDialogueField {
 impl BinaryDialogueField {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let path = path.as_ref().to_path_buf();
+        crate::paths::ensure_not_lfs_pointer(&path)?;
         let file = File::open(&path)?;
         let data = unsafe { MmapOptions::new().map(&file)? };
         if data.len() < HEADER_SIZE || &data[..8] != MAGIC {
@@ -67,7 +68,7 @@ impl BinaryDialogueField {
     pub fn discover() -> io::Result<Option<Self>> {
         let path = env::var_os("PERCI_DIALOGUE_WEIGHTS")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("models/perci-dialogue-v0.1.bdlg"));
+            .unwrap_or_else(|| crate::paths::asset("models/perci-dialogue-v0.1.bdlg"));
         if !path.is_file() {
             return Ok(None);
         }

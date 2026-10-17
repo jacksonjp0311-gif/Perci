@@ -37,7 +37,7 @@ pub struct BinaryRelationStats {
 pub fn default_weight_path() -> PathBuf {
     env::var_os("PERCI_RELATION_WEIGHTS")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/perci-relations-v0.1.brel"))
+        .unwrap_or_else(|| crate::paths::asset("models/perci-relations-v0.1.brel"))
 }
 
 #[derive(Debug)]
@@ -51,6 +51,7 @@ pub struct BinaryRelationField {
 impl BinaryRelationField {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let path = path.as_ref().to_path_buf();
+        crate::paths::ensure_not_lfs_pointer(&path)?;
         let file = File::open(&path)?;
         let data = unsafe { MmapOptions::new().map(&file)? };
         if data.len() < HEADER_SIZE || &data[..8] != MAGIC {

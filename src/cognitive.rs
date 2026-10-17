@@ -32,15 +32,15 @@ pub fn default_weight_path() -> PathBuf {
     if let Some(path) = std::env::var_os("PERCI_WEIGHTS") {
         return PathBuf::from(path);
     }
-    let v3 = PathBuf::from("models/perci-cognitive-v0.3.pwgt");
+    let v3 = crate::paths::asset("models/perci-cognitive-v0.3.pwgt");
     if v3.is_file() {
         return v3;
     }
-    let v2 = PathBuf::from("models/perci-cognitive-v0.2.pwgt");
+    let v2 = crate::paths::asset("models/perci-cognitive-v0.2.pwgt");
     if v2.is_file() {
         return v2;
     }
-    PathBuf::from("models/perci-cognitive-v0.1.pwgt")
+    crate::paths::asset("models/perci-cognitive-v0.1.pwgt")
 }
 
 #[derive(Clone, Debug)]
@@ -188,6 +188,7 @@ pub struct CognitiveWeights {
 impl CognitiveWeights {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let path = path.as_ref().to_path_buf();
+        crate::paths::ensure_not_lfs_pointer(&path)?;
         let file = File::open(&path)?;
         // SAFETY: the mapping is read-only and the model file is immutable during inference.
         let data = unsafe { MmapOptions::new().map(&file)? };

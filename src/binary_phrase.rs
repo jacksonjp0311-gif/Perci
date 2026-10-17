@@ -47,7 +47,7 @@ pub struct BinaryPhraseStats {
 pub fn default_weight_path() -> PathBuf {
     env::var_os("PERCI_PHRASE_WEIGHTS")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/perci-language-v0.2.bphr"))
+        .unwrap_or_else(|| crate::paths::asset("models/perci-language-v0.2.bphr"))
 }
 
 #[derive(Debug)]
@@ -67,6 +67,7 @@ pub struct BinaryPhraseModel {
 impl BinaryPhraseModel {
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {
         let path = path.as_ref().to_path_buf();
+        crate::paths::ensure_not_lfs_pointer(&path)?;
         let file = File::open(&path)?;
         let data = unsafe { MmapOptions::new().map(&file)? };
         if data.len() < HEADER_SIZE {

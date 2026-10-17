@@ -592,7 +592,7 @@ pub fn build_handoff(task: &str) -> AiHandoffPacket {
 pub fn write_handoff_latest(packet: &AiHandoffPacket) -> std::io::Result<std::path::PathBuf> {
     use std::fs;
     use std::io::Write;
-    let path = std::path::PathBuf::from(".perci/ai-handoff-latest.json");
+    let path = crate::paths::data_file("ai-handoff-latest.json");
     if let Some(p) = path.parent() {
         fs::create_dir_all(p)?;
     }

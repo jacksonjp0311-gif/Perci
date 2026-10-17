@@ -45,10 +45,10 @@ impl InteractionLearner {
     pub fn discover() -> Self {
         let events_path = env::var_os("PERCI_LEARNING")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("memory/interaction-learning.jsonl"));
+            .unwrap_or_else(|| crate::paths::data_file("memory/interaction-learning.jsonl"));
         let profile_path = env::var_os("PERCI_DIALOGUE_PROFILE")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("memory/dialogue-profile.json"));
+            .unwrap_or_else(|| crate::paths::data_file("memory/dialogue-profile.json"));
         let mut learner = Self::new(events_path, profile_path);
         // Best-effort reconcile so status never under-reports vs the log.
         let _ = learner.reconcile_counters();

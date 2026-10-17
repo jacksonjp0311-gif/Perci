@@ -619,7 +619,7 @@ pub struct ReasonTransitionPack {
 
 impl ReasonTransitionPack {
     pub fn default_path() -> PathBuf {
-        PathBuf::from("models/candidates/packs/percirsn1-v0.1.brsn")
+        crate::paths::asset("models/candidates/packs/percirsn1-v0.1.brsn")
     }
 
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {

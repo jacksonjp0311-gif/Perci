@@ -26,7 +26,7 @@ pub fn packs_root() -> Option<PathBuf> {
         }
     }
     let candidates = [
-        PathBuf::from("knowledge/packs"),
+        crate::paths::asset("knowledge/packs"),
         env::current_dir()
             .ok()
             .map(|c| c.join("knowledge").join("packs"))

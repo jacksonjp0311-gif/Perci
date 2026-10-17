@@ -26,19 +26,19 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn default_path() -> PathBuf {
     env::var_os("PERCI_EMERGENCE_LOG")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/candidates/emergence-geometry.jsonl"))
+        .unwrap_or_else(|| crate::paths::log_file("emergence-geometry.jsonl"))
 }
 
 pub fn tickets_dir() -> PathBuf {
     env::var_os("PERCI_EMERGENCE_TICKETS")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/candidates/emergence-tickets"))
+        .unwrap_or_else(|| crate::paths::data_file("emergence-tickets"))
 }
 
 pub fn curriculum_path() -> PathBuf {
     env::var_os("PERCI_EMERGENCE_CURRICULUM")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/candidates/emergence-curriculum.jsonl"))
+        .unwrap_or_else(|| crate::paths::log_file("emergence-curriculum.jsonl"))
 }
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -1886,7 +1886,7 @@ pub fn unified_queue_report() -> String {
     out.push_str(&curriculum_cluster_report());
     out.push('\n');
     // Hardness eval presence
-    let hard = PathBuf::from("models/candidates/evaluation-hardness-v1.json");
+    let hard = crate::paths::asset("models/candidates/evaluation-hardness-v1.json");
     if hard.is_file() {
         if let Ok(t) = fs::read_to_string(&hard) {
             let pass = t.contains("\"status\": \"PASS\"") || t.contains("\"status\":\"PASS\"");
@@ -1927,8 +1927,8 @@ SoftCascade pack-align: trust · governance · identity · geometry · planning 
 
     // 2 Hardness + transfer
     out.push_str("## 2. Hardness + transfer-suite\n");
-    let hard = PathBuf::from("models/candidates/evaluation-hardness-v1.json");
-    let pack = PathBuf::from("training/hardness/hardness-pack-v1.jsonl");
+    let hard = crate::paths::asset("models/candidates/evaluation-hardness-v1.json");
+    let pack = crate::paths::asset("training/hardness/hardness-pack-v1.jsonl");
     let pack_n = fs::read_to_string(&pack)
         .map(|t| t.lines().filter(|l| !l.trim().is_empty()).count())
         .unwrap_or(0);

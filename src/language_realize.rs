@@ -468,7 +468,7 @@ pub struct LanguagePack {
 
 impl LanguagePack {
     pub fn default_path() -> PathBuf {
-        PathBuf::from("models/candidates/packs/percilm1-v0.1.blm1")
+        crate::paths::asset("models/candidates/packs/percilm1-v0.1.blm1")
     }
 
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {

@@ -68,7 +68,7 @@ fn hit_to_evidence(i: usize, h: PackHit, now: &str) -> EvidenceRecord {
 }
 
 fn evidence_ledger_path() -> PathBuf {
-    PathBuf::from("models/candidates/knowledge-evidence.jsonl")
+    crate::paths::log_file("knowledge-evidence.jsonl")
 }
 
 fn load_ledger_evidence(query: &str, limit: usize) -> std::io::Result<Vec<EvidenceRecord>> {

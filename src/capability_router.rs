@@ -10,7 +10,7 @@
 use crate::pack_manifest::{discover_manifests, PackFamily, PackManifest, PromotionStatus};
 use crate::thought_plan::Intent;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 /// Per-turn routing telemetry (no secrets).
@@ -52,7 +52,7 @@ pub struct CapabilityRouter {
 impl Default for CapabilityRouter {
     fn default() -> Self {
         Self {
-            pack_root: PathBuf::from("models/candidates/packs"),
+            pack_root: crate::paths::asset("models/candidates/packs"),
             max_active: 3,
             production_only: false,
         }
@@ -283,7 +283,8 @@ fn pack_relevance(m: &PackManifest, tags: &[String], domains: &[String]) -> i32 
 
 /// Convenience: route using default pack root if present.
 pub fn route_prompt(user: &str) -> RouteDecision {
-    let root = Path::new("models/candidates/packs");
+    let root_buf = crate::paths::asset("models/candidates/packs");
+    let root = root_buf.as_path();
     if root.is_dir() {
         CapabilityRouter::with_root(root).route(user)
     } else {

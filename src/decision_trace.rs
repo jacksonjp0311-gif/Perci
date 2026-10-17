@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn default_path() -> PathBuf {
     env::var_os("PERCI_DECISION_TRACE")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("models/candidates/decision-trace.jsonl"))
+        .unwrap_or_else(|| crate::paths::log_file("decision-trace.jsonl"))
 }
 
 /// High-salience if a program ran, or operator is not pure social/greeting.

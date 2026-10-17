@@ -186,7 +186,7 @@ fn walk_manifests(dir: &Path, depth: u32, max_depth: u32, out: &mut Vec<PackMani
 
 /// Default candidate pack root.
 pub fn default_pack_root() -> PathBuf {
-    PathBuf::from("models/candidates/packs")
+    crate::paths::asset("models/candidates/packs")
 }
 
 /// Write a candidate manifest (never marks active).

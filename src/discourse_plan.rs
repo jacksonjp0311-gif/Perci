@@ -392,7 +392,7 @@ pub struct DiscoursePack {
 
 impl DiscoursePack {
     pub fn default_path() -> PathBuf {
-        PathBuf::from("models/candidates/packs/percidsc1-v0.1.bdsc")
+        crate::paths::asset("models/candidates/packs/percidsc1-v0.1.bdsc")
     }
 
     pub fn load(path: impl AsRef<Path>) -> io::Result<Self> {

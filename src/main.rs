@@ -12,9 +12,75 @@ use std::time::Instant;
 mod ui;
 use ui::Ui;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = env::args().skip(1);
+/// Exit codes: 0 ok, 1 usage/runtime error, 2 config or weights problem.
+fn main() -> std::process::ExitCode {
+    match run(env::args().skip(1).collect()) {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            let text = error.to_string();
+            let config = text.contains(perci::paths::CONFIG_ERROR_TAG);
+            let clean = text
+                .replace(perci::paths::CONFIG_ERROR_TAG, "")
+                .trim()
+                .to_owned();
+            eprintln!("perci: {clean}");
+            std::process::ExitCode::from(if config { 2 } else { 1 })
+        }
+    }
+}
+
+/// Commands that run the chat engine and therefore need the Bitwork weights.
+fn needs_weights(command: &str) -> bool {
+    matches!(
+        command,
+        "chat" | "ask" | "classify" | "status" | "bench" | "ping" | "teach" | "learning" | "learn"
+    )
+}
+
+/// Refuse to start a chat engine on missing or un-pulled weights unless the
+/// caller explicitly opts into reduced mode (`--no-weights` / `PERCI_NO_WEIGHTS=1`).
+fn check_weights(allow_missing: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let path = perci::cognitive::default_weight_path();
+    if perci::paths::is_lfs_pointer(&path) {
+        return Err(Box::new(perci::paths::lfs_pointer_error(&path)));
+    }
+    if !path.is_file() && !allow_missing {
+        return Err(format!(
+            "{} Bitwork weights not found (looked for {}).\n  Perci home: {} ({}).\n  Fix: set PERCI_HOME to your Perci checkout and run `git lfs pull` there, \
+             or run with --no-weights for reduced mode. `perci doctor` shows details.",
+            perci::paths::CONFIG_ERROR_TAG,
+            path.display(),
+            perci::paths::home().display(),
+            perci::paths::home_source().label()
+        )
+        .into());
+    }
+    Ok(())
+}
+
+fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let no_weights_flag = argv.iter().any(|a| a == "--no-weights");
+    let argv: Vec<String> = argv.into_iter().filter(|a| a != "--no-weights").collect();
+    let mut args = argv.into_iter();
     let command = args.next().unwrap_or_else(|| "chat".into());
+
+    if matches!(command.as_str(), "doctor" | "--doctor") {
+        let rest: Vec<String> = args.collect();
+        let deep = rest.iter().any(|a| a == "--deep");
+        let report = perci::doctor::run(deep);
+        if rest.iter().any(|a| a == "--json") {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&perci::doctor::to_json(&report))?
+            );
+        } else {
+            print!("{}", perci::doctor::to_text(&report));
+        }
+        if !report.ok() {
+            std::process::exit(2);
+        }
+        return Ok(());
+    }
 
     // Identity only — no pack load. Launch-Perci and scripts use this to prove build.
     if matches!(
@@ -46,10 +112,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return run_modular_command(&command, &mut args);
     }
 
+    if needs_weights(&command) {
+        let allow_missing = no_weights_flag || env::var("PERCI_NO_WEIGHTS").as_deref() == Ok("1");
+        check_weights(allow_missing)?;
+        match perci::paths::migrate_legacy_memory() {
+            Ok(copied) if !copied.is_empty() => eprintln!(
+                "perci: copied existing memory ({}) from {} to {} (originals left in place)",
+                copied.join(", "),
+                perci::paths::asset("memory").display(),
+                perci::paths::data_file("memory").display()
+            ),
+            Ok(_) => {}
+            Err(e) => eprintln!("perci: could not copy legacy memory: {e}"),
+        }
+    }
+
     let personality = load_personality();
     let memory_path = env::var_os("PERCI_MEMORY")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("memory/perci.jsonl"));
+        .unwrap_or_else(|| perci::paths::data_file("memory/perci.jsonl"));
 
     let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
     let cortex = CortexBridge::discover();
@@ -96,7 +177,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "session: {}",
                         engine
                             .session_path()
-                            .unwrap_or_else(|| "memory/session.jsonl".into())
+                            .unwrap_or_else(|| perci::paths::data_file("memory/session.jsonl")
+                                .display()
+                                .to_string())
                     );
                 }
                 other => {
@@ -251,7 +334,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "replay" | "baselines" => {
                     let path = args.next().unwrap_or_else(|| {
-                        "models/candidates/adversarial-v0.8.4-heldout.jsonl".into()
+                        perci::paths::asset("models/candidates/adversarial-v0.8.4-heldout.jsonl")
+                            .display()
+                            .to_string()
                     });
                     let limit = args
                         .next()
@@ -659,9 +744,11 @@ fn print_status(engine: &ChatEngine) {
     ui.row("learning", engine.learning_status());
     ui.row(
         "session",
-        engine
-            .session_path()
-            .unwrap_or_else(|| "memory/session.jsonl".into()),
+        engine.session_path().unwrap_or_else(|| {
+            perci::paths::data_file("memory/session.jsonl")
+                .display()
+                .to_string()
+        }),
     );
     ui.row("voice", "social · multi-turn · reason-loop · self-critic");
     ui.row(
@@ -768,7 +855,7 @@ where
     };
 
     let sub = args.next().unwrap_or_else(|| "status".into());
-    let root = std::env::current_dir()?;
+    let root = perci::paths::home();
     let out_dir = root.join("models/candidates/hydra-bridge");
     std::fs::create_dir_all(&out_dir)?;
 
@@ -925,7 +1012,8 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             );
         }
         "status" | "packs" => {
-            let root = std::path::Path::new("models/candidates/packs");
+            let root_buf = perci::paths::asset("models/candidates/packs");
+            let root = root_buf.as_path();
             let found = if root.is_dir() {
                 perci::pack_manifest::discover_manifests(root)
             } else {
@@ -1040,7 +1128,8 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             println!("{}", plan.receipt());
         }
         "build-sem" => {
-            let fixture = std::path::Path::new("training/modular/semantic-frames-v1.jsonl");
+            let fixture_buf = perci::paths::asset("training/modular/semantic-frames-v1.jsonl");
+            let fixture = fixture_buf.as_path();
             let frames = if fixture.is_file() {
                 perci::semantic_field::load_fixture_jsonl(fixture)?
             } else {
@@ -1167,7 +1256,8 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
                     "explain how boundaries enable repair",
                 ),
             ]);
-            let out = std::path::Path::new("models/candidates/discourse-eval-latest.json");
+            let out_buf = perci::paths::asset("models/candidates/discourse-eval-latest.json");
+            let out = out_buf.as_path();
             if let Some(parent) = out.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
@@ -1176,7 +1266,8 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             println!("receipt: {}", out.display());
         }
         "eval-sem" => {
-            let cases_path = std::path::Path::new("training/modular/semantic-eval-v1.jsonl");
+            let cases_path_buf = perci::paths::asset("training/modular/semantic-eval-v1.jsonl");
+            let cases_path = cases_path_buf.as_path();
             let cases: Vec<perci::semantic_field::SemEvalCase> = if cases_path.is_file() {
                 let text = std::fs::read_to_string(cases_path)?;
                 text.lines()
@@ -1209,7 +1300,8 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
             };
             let pack = perci::semantic_field::try_load_default();
             let report = perci::semantic_field::evaluate_semantic(&cases, pack.as_ref());
-            let out = std::path::Path::new("models/candidates/semantic-eval-latest.json");
+            let out_buf = perci::paths::asset("models/candidates/semantic-eval-latest.json");
+            let out = out_buf.as_path();
             if let Some(parent) = out.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
@@ -1224,7 +1316,9 @@ Law: PERCIW03 retained; packs candidate; no auto-promote; LM wording-only."
                 .unwrap_or(3)
                 .clamp(1, 8);
             let report = perci::field_fold::run_experiment(0xC0FFEE, depth);
-            let out = std::path::Path::new("models/candidates/field-fold-experiment-latest.json");
+            let out_buf =
+                perci::paths::asset("models/candidates/field-fold-experiment-latest.json");
+            let out = out_buf.as_path();
             if let Some(parent) = out.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
@@ -1381,7 +1475,9 @@ fn benchmark_case(engine: &mut ChatEngine, label: &str, input: &str) -> io::Resu
 }
 
 fn load_personality() -> Personality {
-    let path = env::var("PERCI_PERSONALITY").unwrap_or_else(|_| "config/personality.prompt".into());
+    let path = env::var_os("PERCI_PERSONALITY")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| perci::paths::asset("config/personality.prompt"));
     Personality::load(path).unwrap_or_else(|_| Personality::default_perci())
 }
 

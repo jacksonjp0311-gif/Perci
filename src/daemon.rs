@@ -78,13 +78,14 @@ fn check_token(req: &Value, op: &str) -> Result<(), String> {
 /// Run blocking daemon (single client at a time for shared ChatEngine safety).
 pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let personality = {
-        let path =
-            env::var("PERCI_PERSONALITY").unwrap_or_else(|_| "config/personality.prompt".into());
+        let path = env::var_os("PERCI_PERSONALITY")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| crate::paths::asset("config/personality.prompt"));
         Personality::load(path).unwrap_or_else(|_| Personality::default_perci())
     };
     let memory_path = env::var_os("PERCI_MEMORY")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("memory/perci.jsonl"));
+        .unwrap_or_else(|| crate::paths::data_file("memory/perci.jsonl"));
     let backend: Box<dyn LanguageBackend> = Box::new(CompositeBackend::discover()?);
     let classifier = {
         let path = crate::cognitive::default_weight_path();

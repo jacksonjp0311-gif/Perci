@@ -1509,6 +1509,10 @@ fn repo_root() -> io::Result<PathBuf> {
     if let Ok(p) = env::var("PERCI_ROOT") {
         return Ok(PathBuf::from(p));
     }
+    let home = crate::paths::home();
+    if home.join("Cargo.toml").is_file() && home.join("src").is_dir() {
+        return Ok(home);
+    }
     let cwd = env::current_dir()?;
     if cwd.join("Cargo.toml").is_file() && cwd.join("src").is_dir() {
         return Ok(cwd);

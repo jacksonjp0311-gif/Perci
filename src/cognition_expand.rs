@@ -1222,8 +1222,8 @@ fn ticket_snapshot() -> String {
 
 /// Ensure curriculum staging path exists for human review (no promote).
 pub fn ensure_curriculum_dir() {
-    let _ = fs::create_dir_all("models/candidates");
-    let _ = fs::create_dir_all("training/curriculum");
+    let _ = fs::create_dir_all(crate::paths::asset("models/candidates"));
+    let _ = fs::create_dir_all(crate::paths::asset("training/curriculum"));
 }
 
 #[cfg(test)]

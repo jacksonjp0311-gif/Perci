@@ -136,7 +136,7 @@ impl std::fmt::Debug for CortexBridge {
 
 impl CortexBridge {
     pub fn discover() -> Option<Self> {
-        let host_root = env::current_dir().ok()?;
+        let host_root = crate::paths::home();
         let engine_root = env::var_os("PERCI_CORTEX_ROOT")
             .map(PathBuf::from)
             .unwrap_or_else(|| host_root.join("Cortex"));

@@ -54,7 +54,7 @@ pub struct EngineSummary {
 }
 
 fn candidates_path() -> PathBuf {
-    PathBuf::from("models/candidates")
+    crate::paths::asset("models/candidates")
 }
 
 /// Load curriculum rows from adversarial / emergence JSONL.
