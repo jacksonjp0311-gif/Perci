@@ -149,19 +149,19 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             }
             // Prefer warm daemon only when its build_id matches this binary.
             // Stale daemons after source fixes silently broke chat — never again.
-            if perci::daemon::ping_current() {
-                match perci::daemon::ask_daemon(&input) {
+            match perci::daemon::ping_state() {
+                Some(true) => match perci::daemon::ask_daemon(&input) {
                     Ok(text) => {
                         println!("{text}");
                         return Ok(());
                     }
                     Err(e) => eprintln!("daemon ask fallback: {e}"),
-                }
-            } else if perci::daemon::ping() {
-                eprintln!(
+                },
+                Some(false) => eprintln!(
                     "daemon stale (build_id mismatch) — using local binary {}",
                     perci::branding::build_id()
-                );
+                ),
+                None => {}
             }
             println!("{}", engine.respond(&input)?.text);
         }
@@ -192,7 +192,7 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             if input.trim().is_empty() {
                 return Err("usage: perci classify <message>".into());
             }
-            if perci::daemon::ping() {
+            if perci::daemon::ping_state().is_some() {
                 if let Ok(v) = perci::daemon::classify_daemon(&input) {
                     println!("{v}");
                     return Ok(());

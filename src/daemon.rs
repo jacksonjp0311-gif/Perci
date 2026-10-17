@@ -105,6 +105,7 @@ pub fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let bind = addr();
     let listener = TcpListener::bind(&bind)?;
     listener.set_nonblocking(false)?;
+    write_marker(&bind);
     eprintln!("perci daemon listening on {bind}");
     eprintln!(
         "ops: ping | ask | classify | session_reset | shutdown · token_required={}",
@@ -280,6 +281,7 @@ fn handle_client(
                 }
                 writeln!(writer, "{}", json!({"ok": true, "shutdown": true}))?;
                 writer.flush()?;
+                let _ = std::fs::remove_file(marker_path());
                 std::process::exit(0);
             }
             "" => {
@@ -352,11 +354,76 @@ fn classify_json_value(
     }))
 }
 
+/// `PERCI_DATA/daemon.json`, written by a running daemon so clients know to try it.
+pub fn marker_path() -> PathBuf {
+    crate::paths::data_file("daemon.json")
+}
+
+fn write_marker(bind: &str) {
+    let path = marker_path();
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(
+        &path,
+        json!({
+            "addr": bind,
+            "pid": std::process::id(),
+            "build_id": crate::branding::build_id(),
+        })
+        .to_string(),
+    );
+}
+
+/// True when a daemon might be listening: its marker exists or an address
+/// was configured explicitly. Avoids a TCP connect to a closed port on every
+/// `perci ask` — on Windows that alone costs about 2 s per attempt.
+pub fn may_be_running() -> bool {
+    env::var_os("PERCI_DAEMON_PORT").is_some()
+        || env::var_os("PERCI_DAEMON_HOST").is_some()
+        || marker_path().is_file()
+}
+
+/// Daemon state for `perci ask`: `None` = not running, `Some(true)` = live and
+/// built from this binary, `Some(false)` = live but stale. One connect at most.
+pub fn ping_state() -> Option<bool> {
+    if !may_be_running() {
+        return None;
+    }
+    match request("ping", None) {
+        Ok(v) if v.get("ok").and_then(|x| x.as_bool()) == Some(true) => {
+            let remote = v.get("build_id").and_then(|x| x.as_str()).unwrap_or("");
+            Some(!remote.is_empty() && remote == crate::branding::build_id())
+        }
+        _ => None,
+    }
+}
+
+fn connect(addr: &str) -> Result<TcpStream, String> {
+    use std::net::ToSocketAddrs;
+    let timeout = Duration::from_millis(
+        env::var("PERCI_DAEMON_CONNECT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(300),
+    );
+    let mut last = format!("daemon connect {addr}: no address");
+    for sock in addr
+        .to_socket_addrs()
+        .map_err(|e| format!("daemon connect {addr}: {e}"))?
+    {
+        match TcpStream::connect_timeout(&sock, timeout) {
+            Ok(stream) => return Ok(stream),
+            Err(e) => last = format!("daemon connect {addr}: {e}"),
+        }
+    }
+    Err(last)
+}
+
 /// Client: send one request, read one response line (includes token if configured).
 pub fn request(op: &str, text: Option<&str>) -> Result<Value, String> {
     let addr = addr();
-    let mut stream =
-        TcpStream::connect(&addr).map_err(|e| format!("daemon connect {addr}: {e}"))?;
+    let mut stream = connect(&addr)?;
     stream.set_read_timeout(Some(Duration::from_secs(60))).ok();
     stream.set_write_timeout(Some(Duration::from_secs(10))).ok();
     let mut req = json!({"op": op});
@@ -426,4 +493,20 @@ pub fn classify_daemon(text: &str) -> Result<Value, String> {
     v.get("result")
         .cloned()
         .ok_or_else(|| "no result in daemon response".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_marker_means_no_connect_attempt() {
+        if env::var_os("PERCI_DAEMON_PORT").is_some() || env::var_os("PERCI_DAEMON_HOST").is_some()
+        {
+            return;
+        }
+        let _ = std::fs::remove_file(marker_path());
+        assert!(!may_be_running());
+        assert_eq!(ping_state(), None);
+    }
 }
