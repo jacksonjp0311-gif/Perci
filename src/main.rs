@@ -639,6 +639,10 @@ fn interactive(engine: &mut ChatEngine) -> io::Result<()> {
 
         match input {
             "/quit" | "/exit" => break,
+            "/forget" => match engine.clear_dialogue_history() {
+                Ok(()) => println!("Forgot this conversation's history. Saved notes are kept."),
+                Err(e) => ui.error(&e.to_string()),
+            },
             "/help" => println!("{}", help_text()),
             "/status" => print_status(engine),
             "/cortex" => println!("cortex: {}", engine.cortex_status()),
