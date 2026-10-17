@@ -182,15 +182,45 @@ fn load_policy_base() -> LoadedPolicy {
 
 /// Overlay merge: objects merge key by key, arrays append (an object with
 /// the same `"id"` as a base element replaces it), scalars replace.
+///
+/// Two directives let an overlay shrink what it inherits:
+/// `{"$replace": X}` puts X in place of the base value, and
+/// `{"$remove": [..]}` drops those entries from a base list (strings by
+/// value, rules by `id`).
 pub fn merge(base: &mut Value, overlay: Value) {
+    if let Value::Object(o) = &overlay {
+        if o.len() == 1 {
+            if let Some(v) = o.get("$replace") {
+                *base = v.clone();
+                return;
+            }
+            if let (Some(Value::Array(drop)), Value::Array(b)) = (o.get("$remove"), &mut *base) {
+                b.retain(|item| {
+                    !drop.iter().any(|d| {
+                        d == item
+                            || (d.is_string()
+                                && item.get("id").and_then(Value::as_str) == d.as_str())
+                    })
+                });
+                return;
+            }
+        }
+    }
     match (base, overlay) {
         (Value::Object(b), Value::Object(o)) => {
             for (k, v) in o {
                 match b.get_mut(&k) {
                     Some(slot) => merge(slot, v),
-                    None => {
-                        b.insert(k, v);
-                    }
+                    None => match v {
+                        // Nothing inherited to shrink: `$replace` sets, `$remove` is a no-op.
+                        Value::Object(ref d) if d.len() == 1 && d.contains_key("$remove") => {}
+                        Value::Object(mut d) if d.len() == 1 && d.contains_key("$replace") => {
+                            b.insert(k, d.remove("$replace").unwrap_or(Value::Null));
+                        }
+                        v => {
+                            b.insert(k, v);
+                        }
+                    },
                 }
             }
         }
@@ -995,12 +1025,28 @@ fn check_paths(
                 } else if let Some(g) = globs(section, "allow_globs")
                     .iter()
                     .find(|g| glob_match(g, &rel))
+                    .filter(|_| {
+                        // A profile can narrow the allowed paths without
+                        // copying the base list: `allow_within`.
+                        let within = globs(section, "allow_within");
+                        within.is_empty() || within.iter().any(|w| glob_match(w, &rel))
+                    })
                 {
                     d.posture = Posture::Allow;
                     d.hits.push(hit(
                         &format!("{kind}.allowed:{g}"),
                         Posture::Allow,
                         "allowed path",
+                    ));
+                } else if !globs(section, "allow_within").is_empty()
+                    && globs(section, "allow_globs")
+                        .iter()
+                        .any(|g| glob_match(g, &rel))
+                {
+                    d.hits.push(hit(
+                        &format!("{kind}.outside_allow_within"),
+                        default,
+                        "allowed by the base policy but outside this profile's allow_within",
                     ));
                 } else {
                     d.hits.push(hit(
@@ -1513,5 +1559,61 @@ mod tests {
             unwrap_call_operator(vec!["&".into(), "x".into(), "-a".into()]),
             vec!["x".to_owned(), "-a".to_owned()]
         );
+    }
+
+    #[test]
+    fn effective_argv_unwraps_like_the_policy() {
+        let eff = |c: &str| effective_argv(tokenize(c)).first().map(|p| program_name(p));
+        assert_eq!(
+            eff(r"& .\scripts\stage.ps1 -Tag v1").as_deref(),
+            Some("stage.ps1")
+        );
+        assert_eq!(eff(r". .\build.ps1").as_deref(), Some("build.ps1"));
+        assert_eq!(
+            eff(r"powershell -NoProfile -ExecutionPolicy Bypass -File .\x.ps1 a").as_deref(),
+            Some("x.ps1")
+        );
+        assert_eq!(
+            eff("pwsh -Command \"git push origin main\"").as_deref(),
+            Some("git")
+        );
+        assert_eq!(eff("bash -c 'cargo test'").as_deref(), Some("cargo"));
+        assert_eq!(eff("sudo -u bob nohup git push").as_deref(), Some("git"));
+        assert_eq!(
+            eff("env -u HOME FOO=1 make deploy").as_deref(),
+            Some("make")
+        );
+        assert_eq!(eff("bash ./ci.sh").as_deref(), Some("ci.sh"));
+        assert_eq!(eff("bash").as_deref(), Some("bash"));
+    }
+
+    #[test]
+    fn policy_sees_through_powershell_file_and_sudo_values() {
+        let p: Value = serde_json::from_str(EMBEDDED_POLICY).unwrap();
+        let posture = |c: &str| check_command(&p, c, 0).posture;
+        assert_eq!(posture("sudo -u root rm -rf /"), Posture::Refuse);
+        assert_eq!(posture("bash -e ./x.sh"), posture("./x.sh"));
+    }
+
+    #[test]
+    fn merge_directives_shrink_inherited_lists() {
+        let mut base = json!({"write": {"allow_globs": ["src/**", "*.md"]},
+                              "shell": {"refuse": [{"id": "a"}, {"id": "b"}]}});
+        merge(
+            &mut base,
+            json!({"write": {"allow_globs": {"$remove": ["*.md"]}},
+                                "shell": {"refuse": {"$remove": ["a"]}}}),
+        );
+        assert_eq!(base["write"]["allow_globs"], json!(["src/**"]));
+        assert_eq!(base["shell"]["refuse"], json!([{"id": "b"}]));
+        merge(
+            &mut base,
+            json!({"write": {"allow_globs": {"$replace": ["docs/**"]},
+                                          "allow_within": {"$replace": ["docs/**"]},
+                                          "deny": {"$remove": ["x"]}}}),
+        );
+        assert_eq!(base["write"]["allow_globs"], json!(["docs/**"]));
+        assert_eq!(base["write"]["allow_within"], json!(["docs/**"]));
+        assert!(base["write"].get("deny").is_none());
     }
 }
