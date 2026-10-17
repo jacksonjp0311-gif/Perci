@@ -35,7 +35,7 @@ def pct(xs, p):
 class Mcp:
     def __init__(self, perci, env):
         self.p = subprocess.Popen([perci, "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                  stderr=subprocess.DEVNULL, env=env, bufsize=0)
+                                  stderr=subprocess.DEVNULL, env=env)
         self.id = 0
 
     def call(self, method, params=None):
@@ -44,11 +44,13 @@ class Mcp:
         if params is not None:
             msg["params"] = params
         self.p.stdin.write((json.dumps(msg) + "\n").encode())
+        self.p.stdin.flush()
         line = self.p.stdout.readline()
         return json.loads(line)
 
     def notify(self, method):
         self.p.stdin.write((json.dumps({"jsonrpc": "2.0", "method": method}) + "\n").encode())
+        self.p.stdin.flush()
 
     def close(self):
         self.p.stdin.close()
