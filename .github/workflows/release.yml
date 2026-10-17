@@ -1,0 +1,282 @@
+# Perci release: prebuilt binaries + weights + SHA256SUMS.
+#
+#   push a v* tag      build, verify, then publish a GitHub release
+#   workflow_dispatch  dry run: the same build and verification, artifacts
+#                      kept on the run, nothing published
+#
+# Assets (no version in the names, so .../releases/latest/download/<name>
+# always works; the version is inside each archive and in `perci --version`):
+#   perci-x86_64-unknown-linux-musl.tar.gz   static, any x64 Linux
+#   perci-aarch64-apple-darwin.tar.gz        macOS Apple silicon
+#   perci-x86_64-apple-darwin.tar.gz         macOS Intel
+#   perci-x86_64-pc-windows-msvc.zip         Windows x64
+#   perci-cognitive-v0.3.pwgt ... (5 files)  the default weight set, fetched
+#                                            by `perci fetch-weights`
+#   SHA256SUMS                               sha256 of every asset
+#
+# Weights are published once per release as separate assets instead of being
+# bundled into all four archives (decision 38 in docs/DECISIONS.md): the
+# binaries stay ~3 MB, a tools-only install downloads 20 MB instead of 240 MB,
+# and the job reads the weights from the same LFS-object-keyed cache as CI,
+# so a release costs no extra Git LFS bandwidth.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, exe: perci }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, exe: perci.exe }
+          - { os: macos-14, target: aarch64-apple-darwin, exe: perci }
+          - { os: macos-15-intel, target: x86_64-apple-darwin, exe: perci }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4   # no LFS: archives carry the manifest, not the weights
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: musl toolchain
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update -q && sudo apt-get install -y -q musl-tools
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: cargo build --release
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Package
+        run: python scripts/package_release.py binary --target ${{ matrix.target }} --bin target/${{ matrix.target }}/release/${{ matrix.exe }} --out dist
+      - name: Smoke test the unpacked archive (no weights, no PERCI_HOME)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+          if [ -f "$GITHUB_WORKSPACE/dist/perci-${{ matrix.target }}.zip" ]; then
+            python -c "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall('.')" "$GITHUB_WORKSPACE/dist/perci-${{ matrix.target }}.zip"
+          else
+            tar -xzf "$GITHUB_WORKSPACE/dist/perci-${{ matrix.target }}.tar.gz"
+          fi
+          P="$PWD/perci/bin/${{ matrix.exe }}"
+          export PERCI_DATA="$RUNNER_TEMP/smoke-data" PERCI_AGENTSEARCH=off
+          cd "$RUNNER_TEMP"
+          "$P" --version
+          file "$P" 2>/dev/null || true
+          "$P" doctor --tools --json | python -c "import json,sys; d=json.load(sys.stdin); print(d['home'], d['home_source']); assert d['ok'] and d['home_source'] == 'next to the executable', d"
+          set +e
+          echo '{"expr":"17% of 240","claimed":"41"}' | "$P" tool exact > exact.json; code=$?
+          set -e
+          cat exact.json; echo; test "$code" = 1
+          python -c "import json; v=json.load(open('exact.json')); assert v['status']=='fail' and v['result']['decimal']=='40.8', v"
+          "$P" fetch-weights --set tools --list
+          "$P" tool list
+      - uses: actions/upload-artifact@v4
+        with:
+          name: perci-${{ matrix.target }}
+          path: dist/*
+          retention-days: 7
+          if-no-files-found: error
+
+  weights:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: LFS cache key (same key as CI's weights job)
+        id: lfs
+        shell: bash
+        run: |
+          git lfs ls-files -l -I "models/*" | sort > "$RUNNER_TEMP/lfs-oids.txt"
+          echo "key=perci-weights-$(sha256sum "$RUNNER_TEMP/lfs-oids.txt" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Restore weights
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            models/*.pwgt
+            models/*.blng
+            models/*.bphr
+            models/*.bdlg
+          key: ${{ steps.lfs.outputs.key }}
+      - name: Pull weights from LFS (cache miss only)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: git lfs pull --include "models/*"
+      - name: Stage the default weight set (sha256-checked against PACKAGE_MANIFEST.json)
+        run: python3 scripts/package_release.py weights --out dist --set default
+      - uses: actions/upload-artifact@v4
+        with:
+          name: perci-weights
+          path: dist/*
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+  assemble:
+    needs: [build, weights]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: perci-*
+          merge-multiple: true
+      - name: SHA256SUMS + size table
+        shell: bash
+        run: |
+          python3 scripts/package_release.py sums dist
+          {
+            echo "### Perci $(python3 scripts/package_release.py version) release assets"
+            echo
+            echo "| asset | bytes | MB |"
+            echo "|---|---:|---:|"
+            for f in dist/*; do s=$(stat -c %s "$f"); printf '| %s | %s | %.1f |\n' "$(basename "$f")" "$s" "$(echo "$s/1000000" | bc -l)"; done
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-sums
+          path: dist/SHA256SUMS
+          retention-days: 7
+
+  # End-to-end: serve the assets locally and run the real installers against them.
+  verify:
+    name: verify install (${{ matrix.os }})
+    needs: [build, weights]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4   # for install.sh / install.ps1 / bench script only
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/serve
+          pattern: perci-*
+          merge-multiple: true
+      - name: Stage the served folder (assets + SHA256SUMS + installers)
+        shell: bash
+        run: |
+          python scripts/package_release.py sums "$RUNNER_TEMP/serve"
+          cp install.sh install.ps1 "$RUNNER_TEMP/serve/"
+      - name: Serve on 127.0.0.1:8765 (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: nohup python -m http.server 8765 --bind 127.0.0.1 --directory "$RUNNER_TEMP/serve" > "$RUNNER_TEMP/http.log" 2>&1 &
+      - name: Serve on 127.0.0.1:8765 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Start-Process -FilePath python -ArgumentList @("-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "$env:RUNNER_TEMP\serve") -WindowStyle Hidden
+      - name: Wait for the server
+        shell: bash
+        run: for i in $(seq 1 100); do curl -fsS -o /dev/null http://127.0.0.1:8765/SHA256SUMS && exit 0; sleep 0.2; done; exit 1
+      - name: install.sh (default weights) + doctor
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          PERCI_RELEASE_URL: http://127.0.0.1:8765
+          PERCI_AGENTSEARCH: "off"
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/home" PERCI_DATA="$RUNNER_TEMP/data"
+          mkdir -p "$HOME"
+          curl -fsSL http://127.0.0.1:8765/install.sh | sh
+          grep -q '.perci/bin' "$HOME/.profile"
+          P="$HOME/.perci/bin/perci"
+          "$P" doctor --deep
+          cd "$RUNNER_TEMP"
+          "$P" ask "what is 3/7 plus 2/9" | tee ask.txt; grep -q "41/63" ask.txt
+          # Re-run = upgrade in place; verified weights are kept, not re-downloaded.
+          curl -fsSL http://127.0.0.1:8765/install.sh | sh -s -- --no-modify-path | tee again.txt
+          grep -q "present" again.txt
+          python "$HOME/.perci/scripts/bench_public.py" --n 150 --iters 100 --json "$RUNNER_TEMP/bench-${{ runner.os }}.json" --md "$RUNNER_TEMP/bench-${{ runner.os }}.md"
+      - name: install.ps1 via irm | iex (Windows PowerShell 5.1) + doctor
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          PERCI_RELEASE_URL: http://127.0.0.1:8765
+          PERCI_AGENTSEARCH: "off"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:PERCI_INSTALL_DIR = Join-Path $env:RUNNER_TEMP "perci-app"
+          $env:PERCI_DATA = Join-Path $env:RUNNER_TEMP "data"
+          irm http://127.0.0.1:8765/install.ps1 | iex
+          $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          if (-not ($userPath -split ";" | Where-Object { $_ -eq (Join-Path $env:PERCI_INSTALL_DIR "bin") })) { throw "bin not added to user PATH" }
+          perci doctor --deep
+          if ($LASTEXITCODE -ne 0) { throw "doctor failed" }
+          $out = perci ask "what is 3/7 plus 2/9"
+          $out
+          if (-not ($out -match "41/63")) { throw "ask failed" }
+          python (Join-Path $env:PERCI_INSTALL_DIR "scripts\bench_public.py") --n 150 --iters 100 --json (Join-Path $env:RUNNER_TEMP "bench-Windows.json") --md (Join-Path $env:RUNNER_TEMP "bench-Windows.md")
+          if ($LASTEXITCODE -ne 0) { throw "bench gates failed" }
+      - name: install.ps1 as a file, tools-only weights (PowerShell 7)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PERCI_RELEASE_URL: http://127.0.0.1:8765
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "perci-tools"
+          ./install.ps1 -Weights tools -Dir $dir -NoModifyPath
+          & (Join-Path $dir "bin\perci.exe") doctor --tools
+          if ($LASTEXITCODE -ne 0) { throw "doctor --tools failed" }
+      - name: Benchmark summary
+        if: always()
+        shell: bash
+        run: cat "$RUNNER_TEMP"/bench-*.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-public-${{ matrix.os }}
+          path: ${{ runner.temp }}/bench-*
+          if-no-files-found: ignore
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [assemble, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches Cargo.toml version
+        run: test "$GITHUB_REF_NAME" = "v$(python3 scripts/package_release.py version)"
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: perci-*
+          merge-multiple: true
+      - run: python3 scripts/package_release.py sums dist
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Perci $GITHUB_REF_NAME" --generate-notes
