@@ -348,6 +348,39 @@ pub fn solve_arithmetic(text: &str) -> Result<String, ReasoningError> {
     try_solve_arithmetic(text)?.ok_or(ReasoningError::Unsupported)
 }
 
+/// Output symbols for exact geometry. Unicode by default; `PERCI_ASCII=1`
+/// switches to `pi`, `sqrt`, `^2` and `~` for consoles without UTF-8.
+pub mod sym {
+    pub struct Sym(&'static str, &'static str);
+    impl Sym {
+        pub fn get(&self) -> &'static str {
+            if ascii_mode() {
+                self.1
+            } else {
+                self.0
+            }
+        }
+    }
+    pub const PI: Sym = Sym("\u{03c0}", "pi");
+    pub const SQRT: Sym = Sym("\u{221a}", "sqrt");
+    pub const SQUARED: Sym = Sym("\u{00b2}", "^2");
+    pub const APPROX: Sym = Sym("\u{2248}", "~");
+
+    pub fn ascii_mode() -> bool {
+        std::env::var("PERCI_ASCII").is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+    }
+}
+
+/// `"circle area = 9π ≈ 28.2743"`: exact multiple of π first, decimal second.
+fn pi_answer(label: &str, coefficient: i128) -> String {
+    format!(
+        "{label} = {coefficient}{} {} {:.4}",
+        sym::PI.get(),
+        sym::APPROX.get(),
+        coefficient as f64 * std::f64::consts::PI
+    )
+}
+
 /// Attempt one of Perci's exact symbolic geometry forms.
 ///
 /// Conceptual geometry questions return `Ok(None)` and continue to the language
@@ -408,7 +441,11 @@ pub fn try_solve_geometry(text: &str) -> Result<Option<String>, ReasoningError> 
             return Ok(Some(format!("hypotenuse = {root}")));
         }
         return Ok(Some(format!(
-            "hypotenuseÂ² = {squared}; exact hypotenuse = âˆš{squared}"
+            "hypotenuse{} = {squared}; exact hypotenuse = {}{squared} {} {:.4}",
+            sym::SQUARED.get(),
+            sym::SQRT.get(),
+            sym::APPROX.get(),
+            (squared as f64).sqrt()
         )));
     }
 
@@ -418,7 +455,7 @@ pub fn try_solve_geometry(text: &str) -> Result<Option<String>, ReasoningError> 
         && !numbers.is_empty()
     {
         let coefficient = numbers[0].checked_mul(2).ok_or(ReasoningError::Overflow)?;
-        return Ok(Some(format!("circle circumference = {coefficient}Ï€")));
+        return Ok(Some(pi_answer("circle circumference", coefficient)));
     }
 
     if lower.contains("circle")
@@ -426,7 +463,7 @@ pub fn try_solve_geometry(text: &str) -> Result<Option<String>, ReasoningError> 
         && lower.contains("diameter")
         && !numbers.is_empty()
     {
-        return Ok(Some(format!("circle circumference = {}Ï€", numbers[0])));
+        return Ok(Some(pi_answer("circle circumference", numbers[0])));
     }
 
     if lower.contains("circle")
@@ -437,7 +474,7 @@ pub fn try_solve_geometry(text: &str) -> Result<Option<String>, ReasoningError> 
         let coefficient = numbers[0]
             .checked_mul(numbers[0])
             .ok_or(ReasoningError::Overflow)?;
-        return Ok(Some(format!("circle area = {coefficient}Ï€")));
+        return Ok(Some(pi_answer("circle area", coefficient)));
     }
 
     Ok(None)
@@ -720,5 +757,31 @@ mod tests {
             try_solve_geometry("we need a perimeter security design").unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn geometry_prints_real_unicode_symbols_not_mojibake() {
+        // B2E-PERCI-001: π/√/² were double-encoded UTF-8 in the source.
+        let area = try_solve_geometry("area of a circle whose radius is 3")
+            .unwrap()
+            .unwrap();
+        let hyp = try_solve_geometry("pythagorean hypotenuse for legs 2 and 3")
+            .unwrap()
+            .unwrap();
+        let circ = try_solve_geometry("circumference of a circle with diameter 5")
+            .unwrap()
+            .unwrap();
+        if !sym::ascii_mode() {
+            assert!(area.contains("9\u{03c0}"), "{area}");
+            assert!(area.contains("28.27"), "{area}");
+            assert!(hyp.contains("\u{221a}13"), "{hyp}");
+            assert!(hyp.contains("\u{00b2}"), "{hyp}");
+            assert!(circ.contains("5\u{03c0}"), "{circ}");
+        }
+        for text in [&area, &hyp, &circ] {
+            for bad in ["\u{00cf}\u{20ac}", "\u{00e2}\u{02c6}", "\u{00c2}"] {
+                assert!(!text.contains(bad), "mojibake in {text}");
+            }
+        }
     }
 }
