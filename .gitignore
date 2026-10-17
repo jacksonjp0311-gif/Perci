@@ -69,3 +69,9 @@ models/candidates/knowledge-evidence.jsonl
 /assets/generated/VERSION
 /assets/generated/BUILD_ID
 /assets/generated/brand-manifest.json
+
+# bug2eval scratch and local receipts
+.bug2eval/
+evals/receipts/*.json
+!evals/receipts/baseline-*.json
+__pycache__/

@@ -1,0 +1,17 @@
+diff --git a/src/voice.rs b/src/voice.rs
+index 4df6eb6..ed18b59 100644
+--- a/src/voice.rs
++++ b/src/voice.rs
+@@ -697,6 +697,12 @@ pub fn detect_dialogue_act(user: &str) -> DialogueAct {
+         || text.contains("instead of processing")
+         || text.contains("not processing the")
+         || text.contains("not answering the")
++        || text.contains("not answering me")
++        || text.contains("not answering")
++        || text.contains("aren't answering")
++        || text.contains("arent answering")
++        || text.contains("won't answer")
++        || text.contains("wont answer")
+         || text.contains("dodging the question")
+         || text.contains("didn't answer")
+         || text.contains("didnt answer")
