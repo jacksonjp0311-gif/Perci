@@ -21,6 +21,7 @@ pub mod agent;
 pub mod check_math;
 pub mod eval;
 pub mod exact;
+pub mod mcp;
 pub mod policy;
 pub mod recall;
 pub mod relation;

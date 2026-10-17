@@ -29,6 +29,63 @@ fn main() -> std::process::ExitCode {
     }
 }
 
+/// `perci tool list` / `perci tool <name> [--json '<args>' | --json @file | -]`.
+/// Prints the verdict JSON; exit 0 pass, 1 fail, 4 abstain, 3 error, 2 usage.
+fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
+    let usage = "usage: perci tool list | perci tool <name> --json '<args json>' (or --json @file.json, or args on stdin)";
+    let Some(name) = rest.first() else {
+        eprintln!("{usage}");
+        return Ok(2);
+    };
+    if name == "list" {
+        for t in perci::tools::enabled_from_env() {
+            println!("{:<26} {}", perci::tools::wire_name(t.name()), t.title());
+        }
+        return Ok(0);
+    }
+    if name == "schema" {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&perci::verdict::json_schema())?
+        );
+        return Ok(0);
+    }
+    let raw = match rest.iter().position(|a| a == "--json") {
+        Some(i) => match rest.get(i + 1) {
+            Some(v) if v.starts_with('@') => std::fs::read_to_string(&v[1..])?,
+            Some(v) if v != "-" => v.clone(),
+            _ => read_stdin()?,
+        },
+        None => read_stdin()?,
+    };
+    let args: serde_json::Value = match serde_json::from_str(raw.trim()) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("perci tool: arguments are not valid JSON: {e}\n{usage}");
+            return Ok(2);
+        }
+    };
+    let ctx = perci::tools::Ctx::new();
+    let verdict = perci::tools::dispatch(&ctx, name, &args);
+    let pretty = rest.iter().any(|a| a == "--pretty");
+    let value = verdict.to_value();
+    println!(
+        "{}",
+        if pretty {
+            serde_json::to_string_pretty(&value)?
+        } else {
+            value.to_string()
+        }
+    );
+    Ok(verdict.status.exit_code())
+}
+
+fn read_stdin() -> io::Result<String> {
+    let mut s = String::new();
+    io::Read::read_to_string(&mut io::stdin(), &mut s)?;
+    Ok(s)
+}
+
 /// Commands that run the chat engine and therefore need the Bitwork weights.
 fn needs_weights(command: &str) -> bool {
     matches!(
@@ -113,6 +170,21 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         "--version" | "-V" | "version" | "build-id" | "build_id"
     ) {
         println!("Perci {}", perci::branding::build_id());
+        return Ok(());
+    }
+
+    // Perci as a tool: MCP stdio server and one-shot tool calls. These never
+    // build a ChatEngine, so they start in about a millisecond.
+    if command == "mcp" {
+        perci::tools::mcp::run_stdio()?;
+        return Ok(());
+    }
+    if matches!(command.as_str(), "tool" | "tools") {
+        let rest: Vec<String> = args.collect();
+        let code = run_tool_command(&rest)?;
+        if code != 0 {
+            std::process::exit(i32::from(code));
+        }
         return Ok(());
     }
 
