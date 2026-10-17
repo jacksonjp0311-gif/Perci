@@ -360,6 +360,238 @@ impl CognitiveWeights {
         })
     }
 
+    /// The original per-record scan, kept verbatim as the reference that
+    /// [`Self::scan_fast`] must reproduce exactly (`PERCI_SCAN=reference`).
+    fn scan_reference(
+        &self,
+        scan_set: &[(i32, u32, u32, usize)],
+        activation: &[u64; WORDS],
+        query_popcount: u32,
+        per_domain_top: usize,
+    ) -> io::Result<Vec<(CognitiveMatch, usize, usize)>> {
+        let mut pool: Vec<(CognitiveMatch, usize, usize)> = Vec::new();
+        for (coarse_score, positive_overlap, negative_overlap, label_index) in scan_set.iter() {
+            let label = &self.labels[*label_index];
+            let mut domain_top: Vec<(CognitiveMatch, usize, usize)> =
+                Vec::with_capacity(per_domain_top);
+            for local_index in 0..label.record_count {
+                let record_index = label.start_record + local_index;
+                let record_offset = self.header_size + record_index * RECORD_SIZE;
+                let variant = read_u16(&self.data, record_offset)?;
+                let concept_id = read_u16(&self.data, record_offset + 6)?;
+                let quality = read_u16(&self.data, record_offset + 2)? as i32;
+                let prototype_popcount = read_u16(&self.data, record_offset + 4)? as i32;
+
+                let mut overlap = 0u32;
+                let bit_offset = record_offset + 8;
+                for (word_index, input_word) in activation.iter().enumerate() {
+                    let prototype_word = read_u64(&self.data, bit_offset + word_index * 8)?;
+                    overlap += (prototype_word & input_word).count_ones();
+                }
+
+                // Reward matching active bits and learned expert confidence,
+                // while penalizing unmatched bits in the stored prototype.
+                let score =
+                    overlap as i32 * 2 - prototype_popcount + *coarse_score * 2 + quality / 500;
+
+                // Defer select_concept — only survivors get string work.
+                let candidate = CognitiveMatch {
+                    label: label.name.clone(),
+                    variant,
+                    concept_id,
+                    insight: None,
+                    score,
+                    overlap,
+                    runner_up_score: i32::MIN,
+                    margin: 0,
+                    query_popcount,
+                    prototype_popcount: prototype_popcount as u32,
+                    positive_overlap: *positive_overlap,
+                    negative_overlap: *negative_overlap,
+                    hamming: query_popcount + prototype_popcount as u32 - overlap * 2,
+                    jaccard: jaccard(query_popcount, prototype_popcount as u32, overlap),
+                    overlap_z: chance_normalized_overlap(
+                        query_popcount,
+                        prototype_popcount as u32,
+                        overlap,
+                    ),
+                    mixture: Vec::new(),
+                    composition: Vec::new(),
+                    primary_attention_pm: 0,
+                };
+
+                // Insert into domain top-k by score.
+                if domain_top.len() < per_domain_top {
+                    domain_top.push((candidate, record_index, *label_index));
+                    domain_top.sort_unstable_by_key(|(m, _, _)| Reverse(m.score));
+                } else if candidate.score
+                    > domain_top
+                        .last()
+                        .map(|(m, _, _)| m.score)
+                        .unwrap_or(i32::MIN)
+                {
+                    domain_top.pop();
+                    domain_top.push((candidate, record_index, *label_index));
+                    domain_top.sort_unstable_by_key(|(m, _, _)| Reverse(m.score));
+                }
+            }
+            pool.extend(domain_top);
+        }
+        Ok(pool)
+    }
+
+    /// Same result as [`Self::scan_reference`], faster:
+    /// * integer-only candidates; a `CognitiveMatch` (and its label `String`)
+    ///   is built only for the per-domain survivors;
+    /// * exact pruning: `overlap <= min(query_popcount, prototype_popcount)`, so
+    ///   a record whose best possible score cannot beat the current k-th is
+    ///   skipped without reading its prototype bits (prunes ~1-4% on the
+    ///   training prompts: cheap, but not where the time goes);
+    /// * one bounds check per record and a hardware-popcount kernel when the
+    ///   CPU has it;
+    /// * large scans split across threads by domain (results merged in the
+    ///   reference order).
+    fn scan_fast(
+        &self,
+        scan_set: &[(i32, u32, u32, usize)],
+        activation: &[u64; WORDS],
+        query_popcount: u32,
+        per_domain_top: usize,
+    ) -> io::Result<Vec<(CognitiveMatch, usize, usize)>> {
+        let records: usize = scan_set
+            .iter()
+            .map(|(_, _, _, i)| self.labels[*i].record_count)
+            .sum();
+        let threads = scan_threads();
+        let per_domain: Vec<io::Result<Vec<Light>>> =
+            if threads > 1 && records >= PARALLEL_MIN_RECORDS && scan_set.len() > 1 {
+                let next = std::sync::atomic::AtomicUsize::new(0);
+                let slots: Vec<std::sync::Mutex<Option<io::Result<Vec<Light>>>>> = scan_set
+                    .iter()
+                    .map(|_| std::sync::Mutex::new(None))
+                    .collect();
+                std::thread::scope(|scope| {
+                    for _ in 0..threads.min(scan_set.len()) {
+                        scope.spawn(|| loop {
+                            let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            if i >= scan_set.len() {
+                                break;
+                            }
+                            let r = self.scan_domain_light(
+                                scan_set[i],
+                                activation,
+                                query_popcount,
+                                per_domain_top,
+                            );
+                            *slots[i].lock().unwrap_or_else(|e| e.into_inner()) = Some(r);
+                        });
+                    }
+                });
+                slots
+                    .into_iter()
+                    .map(|m| {
+                        m.into_inner()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .unwrap_or_else(|| Ok(Vec::new()))
+                    })
+                    .collect()
+            } else {
+                scan_set
+                    .iter()
+                    .map(|d| self.scan_domain_light(*d, activation, query_popcount, per_domain_top))
+                    .collect()
+            };
+        let mut pool = Vec::new();
+        for ((_, positive_overlap, negative_overlap, label_index), lights) in
+            scan_set.iter().zip(per_domain)
+        {
+            let label = &self.labels[*label_index];
+            for l in lights? {
+                let ppc = l.prototype_popcount;
+                pool.push((
+                    CognitiveMatch {
+                        label: label.name.clone(),
+                        variant: l.variant,
+                        concept_id: l.concept_id,
+                        insight: None,
+                        score: l.score,
+                        overlap: l.overlap,
+                        runner_up_score: i32::MIN,
+                        margin: 0,
+                        query_popcount,
+                        prototype_popcount: ppc,
+                        positive_overlap: *positive_overlap,
+                        negative_overlap: *negative_overlap,
+                        hamming: query_popcount + ppc - l.overlap * 2,
+                        jaccard: jaccard(query_popcount, ppc, l.overlap),
+                        overlap_z: chance_normalized_overlap(query_popcount, ppc, l.overlap),
+                        mixture: Vec::new(),
+                        composition: Vec::new(),
+                        primary_attention_pm: 0,
+                    },
+                    l.record_index,
+                    *label_index,
+                ));
+            }
+        }
+        Ok(pool)
+    }
+
+    /// Top-k of one domain, with exactly the reference's push/pop/sort steps
+    /// so ties come out in the same order.
+    fn scan_domain_light(
+        &self,
+        (coarse_score, _, _, label_index): (i32, u32, u32, usize),
+        activation: &[u64; WORDS],
+        query_popcount: u32,
+        per_domain_top: usize,
+    ) -> io::Result<Vec<Light>> {
+        let label = &self.labels[label_index];
+        let mut top: Vec<Light> = Vec::with_capacity(per_domain_top + 1);
+        let base = self.header_size + label.start_record * RECORD_SIZE;
+        let end = base + label.record_count * RECORD_SIZE;
+        let block = self
+            .data
+            .get(base..end)
+            .ok_or_else(|| invalid("unexpected end of weight file"))?;
+        let qpc = query_popcount as i32;
+        let coarse2 = coarse_score * 2;
+        for (local_index, record) in block.chunks_exact(RECORD_SIZE).enumerate() {
+            let quality = u16::from_le_bytes([record[2], record[3]]) as i32;
+            let prototype_popcount = u16::from_le_bytes([record[4], record[5]]) as i32;
+            let fixed = quality / 500 - prototype_popcount + coarse2;
+            let full = top.len() >= per_domain_top;
+            if full {
+                let floor = top.last().map(|l| l.score).unwrap_or(i32::MIN);
+                // Best case: every query bit is also a prototype bit.
+                if qpc.min(prototype_popcount) * 2 + fixed <= floor {
+                    continue;
+                }
+            }
+            let variant = u16::from_le_bytes([record[0], record[1]]);
+            let concept_id = u16::from_le_bytes([record[6], record[7]]);
+            let overlap = overlap_bits(&record[8..], activation);
+            let score = overlap as i32 * 2 + fixed;
+            let light = Light {
+                score,
+                overlap,
+                variant,
+                concept_id,
+                prototype_popcount: prototype_popcount as u32,
+                record_index: label.start_record + local_index,
+            };
+            if !full {
+                top.push(light);
+                top.sort_unstable_by_key(|l| Reverse(l.score));
+            } else if score > top.last().map(|l| l.score).unwrap_or(i32::MIN) {
+                top.pop();
+                top.push(light);
+                top.sort_unstable_by_key(|l| Reverse(l.score));
+            }
+        }
+        Ok(top)
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -423,6 +655,15 @@ impl CognitiveWeights {
         &self,
         text: &str,
         context: &[&str],
+    ) -> io::Result<CognitiveMatch> {
+        self.classify_impl(text, context, scan_mode_reference())
+    }
+
+    fn classify_impl(
+        &self,
+        text: &str,
+        context: &[&str],
+        reference_scan: bool,
     ) -> io::Result<CognitiveMatch> {
         const MIXTURE_MAX: usize = 6;
         const RESIDUAL_MIN_BITS: u32 = 6;
@@ -505,74 +746,11 @@ impl CognitiveWeights {
 
         // Global pool of strong prototypes (top-N per domain) with record indices.
         // Integer-only hot loop — concept string selection deferred until survivors.
-        let mut pool: Vec<(CognitiveMatch, usize, usize)> = Vec::new();
-        for (coarse_score, positive_overlap, negative_overlap, label_index) in scan_set.iter() {
-            let label = &self.labels[*label_index];
-            let mut domain_top: Vec<(CognitiveMatch, usize, usize)> =
-                Vec::with_capacity(per_domain_top);
-            for local_index in 0..label.record_count {
-                let record_index = label.start_record + local_index;
-                let record_offset = self.header_size + record_index * RECORD_SIZE;
-                let variant = read_u16(&self.data, record_offset)?;
-                let concept_id = read_u16(&self.data, record_offset + 6)?;
-                let quality = read_u16(&self.data, record_offset + 2)? as i32;
-                let prototype_popcount = read_u16(&self.data, record_offset + 4)? as i32;
-
-                let mut overlap = 0u32;
-                let bit_offset = record_offset + 8;
-                for (word_index, input_word) in activation.iter().enumerate() {
-                    let prototype_word = read_u64(&self.data, bit_offset + word_index * 8)?;
-                    overlap += (prototype_word & input_word).count_ones();
-                }
-
-                // Reward matching active bits and learned expert confidence,
-                // while penalizing unmatched bits in the stored prototype.
-                let score =
-                    overlap as i32 * 2 - prototype_popcount + *coarse_score * 2 + quality / 500;
-
-                // Defer select_concept — only survivors get string work.
-                let candidate = CognitiveMatch {
-                    label: label.name.clone(),
-                    variant,
-                    concept_id,
-                    insight: None,
-                    score,
-                    overlap,
-                    runner_up_score: i32::MIN,
-                    margin: 0,
-                    query_popcount,
-                    prototype_popcount: prototype_popcount as u32,
-                    positive_overlap: *positive_overlap,
-                    negative_overlap: *negative_overlap,
-                    hamming: query_popcount + prototype_popcount as u32 - overlap * 2,
-                    jaccard: jaccard(query_popcount, prototype_popcount as u32, overlap),
-                    overlap_z: chance_normalized_overlap(
-                        query_popcount,
-                        prototype_popcount as u32,
-                        overlap,
-                    ),
-                    mixture: Vec::new(),
-                    composition: Vec::new(),
-                    primary_attention_pm: 0,
-                };
-
-                // Insert into domain top-k by score.
-                if domain_top.len() < per_domain_top {
-                    domain_top.push((candidate, record_index, *label_index));
-                    domain_top.sort_unstable_by_key(|(m, _, _)| Reverse(m.score));
-                } else if candidate.score
-                    > domain_top
-                        .last()
-                        .map(|(m, _, _)| m.score)
-                        .unwrap_or(i32::MIN)
-                {
-                    domain_top.pop();
-                    domain_top.push((candidate, record_index, *label_index));
-                    domain_top.sort_unstable_by_key(|(m, _, _)| Reverse(m.score));
-                }
-            }
-            pool.extend(domain_top);
-        }
+        let mut pool = if reference_scan {
+            self.scan_reference(&scan_set, &activation, query_popcount, per_domain_top)?
+        } else {
+            self.scan_fast(&scan_set, &activation, query_popcount, per_domain_top)?
+        };
 
         pool.sort_unstable_by_key(|(matched, _, _)| Reverse(matched.score));
         if pool.is_empty() {
@@ -928,6 +1106,74 @@ fn looks_open_fluency_ask(text: &str) -> bool {
         || lower.contains("in what way")
         || lower.contains("what happens when")
         || (words >= 8 && lower.contains('?'))
+}
+
+/// Integer-only scan candidate (see `CognitiveWeights::scan_fast`).
+#[derive(Clone, Copy)]
+struct Light {
+    score: i32,
+    overlap: u32,
+    variant: u16,
+    concept_id: u16,
+    prototype_popcount: u32,
+    record_index: usize,
+}
+
+/// Domain scans above this many records go multi-threaded.
+const PARALLEL_MIN_RECORDS: usize = 16_384;
+
+/// `PERCI_SCAN=reference` selects the original scan (benchmarks, equality tests).
+fn scan_mode_reference() -> bool {
+    static MODE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *MODE.get_or_init(|| std::env::var("PERCI_SCAN").is_ok_and(|v| v == "reference"))
+}
+
+/// Scan threads: `PERCI_SCAN_THREADS`, else available cores capped at 8.
+fn scan_threads() -> usize {
+    static N: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *N.get_or_init(|| {
+        std::env::var("PERCI_SCAN_THREADS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or_else(|| {
+                std::thread::available_parallelism()
+                    .map(|n| n.get())
+                    .unwrap_or(1)
+                    .min(8)
+            })
+            .max(1)
+    })
+}
+
+/// `popcount(prototype & query)` over a record's 512 little-endian bytes.
+fn overlap_bits(bits: &[u8], activation: &[u64; WORDS]) -> u32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        static HW: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if *HW.get_or_init(|| std::arch::is_x86_feature_detected!("popcnt")) {
+            // SAFETY: the CPU reports POPCNT, checked once above.
+            return unsafe { overlap_bits_popcnt(bits, activation) };
+        }
+    }
+    overlap_bits_portable(bits, activation)
+}
+
+#[inline(always)]
+fn overlap_bits_portable(bits: &[u8], activation: &[u64; WORDS]) -> u32 {
+    let mut total = 0u32;
+    for (chunk, q) in bits.chunks_exact(8).zip(activation.iter()) {
+        let word = u64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+        ]);
+        total += (word & q).count_ones();
+    }
+    total
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "popcnt")]
+unsafe fn overlap_bits_popcnt(bits: &[u8], activation: &[u64; WORDS]) -> u32 {
+    overlap_bits_portable(bits, activation)
 }
 
 fn jaccard(query_popcount: u32, prototype_popcount: u32, overlap: u32) -> f64 {
@@ -2336,6 +2582,43 @@ fn lexical_priors(text: &str) -> Vec<(&'static str, i32)> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn fast_scan_matches_reference_scan_exactly() {
+        let prompts = [
+            "why is my rust build slow",
+            "what is 15% of 80 plus 3",
+            "deploy the service after the tests pass",
+            "remember that the backup drive is in the left desk drawer",
+            "explain how photosynthesis works",
+            "hi there",
+            "Connect geometry, biology, and code through one shared structure.",
+            "What evidence supports that?",
+            "compare a plan with a governance rule and a proof",
+            "",
+        ];
+        for pack in ["v0.2", "v0.3"] {
+            let path = crate::paths::asset(format!("models/perci-cognitive-{pack}.pwgt"));
+            if !weights_available_for_test(&path) {
+                continue;
+            }
+            let w = CognitiveWeights::load(&path).unwrap();
+            for p in prompts {
+                let fast = format!(
+                    "{:?}",
+                    w.classify_impl(p, &["build"], false)
+                        .map_err(|e| e.to_string())
+                );
+                let reference = format!(
+                    "{:?}",
+                    w.classify_impl(p, &["build"], true)
+                        .map_err(|e| e.to_string())
+                );
+                assert_eq!(fast, reference, "{pack}: {p:?}");
+            }
+        }
+    }
+
     use super::*;
 
     #[test]
