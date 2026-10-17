@@ -35,7 +35,7 @@ Wire names (MCP) drop the `perci.` prefix and use `_` (model APIs allow only
 | `status` | perci.status | doctor report, enabled tools, policy hash, recall backend | on |
 | `agent_check_claims` | perci.agent.check_claims | splits an answer into claims, says which Perci could check and how | on |
 | `agent_gate_step` | perci.agent.gate_step | `pre`: policy and sequence rules (against the run ledger) before a step; `post`: exit code, math and hygiene of its output | on |
-| `ledger_append` | perci.ledger_append | records a step the harness ran itself (e.g. tests passed) in the run ledger; gated calls are recorded implicitly | on |
+| `ledger_append` | perci.ledger_append | records a step the harness ran itself (e.g. tests passed) in the run ledger. Give `step`, or an `action` whose label (unwrapped like the policy) becomes the step. Gated calls are recorded implicitly | on |
 | `ledger_verify` | perci.ledger_verify | re-hashes a run's chain from disk: edits, reordering, drops, moves; `expect_head` catches truncation | on |
 | `ledger_show` | perci.ledger_show | the last entries of a run, plus whether the chain verifies | on |
 | `next_step` | perci.next_step | temporal router: likely next steps with counts, sequence-rule warnings, cache / repeat-failure hints for a planned call | on |

@@ -218,3 +218,21 @@ Each entry: what was chosen, why, what it costs.
     `PERCI_NO_MODIFY_PATH`). `PERCI_WEIGHTS` already selects an alternate
     chat pack at runtime, so an installer setting it in the user's session
     would redirect Perci.
+43. **Ledger step names use the policy's unwrapping** (`effective_argv`):
+    `& .\x.ps1` was recorded as `shell:&`, so sequence rules never saw it.
+    Wrappers now skip the values of their options (`sudo -u bob git push`
+    is `git push`, not `bob`, in the policy too). A shell given a script
+    (`powershell -File x.ps1`, `pwsh x.ps1`, `bash x.sh`) is recorded, and
+    checked, as the script. PowerShell aliases match patterns that name the
+    cmdlet, in one direction only, as in the policy.
+44. **Calibration files can be pinned** in `profile.json`
+    (`{"path", "sha256"}`). A pinned file that fails the check fails the
+    pack rather than falling back to "uncalibrated". Silently losing the
+    confidence gate would change routing without anyone noticing.
+45. **Overlays narrow through `allow_within` and `$remove` / `$replace`**,
+    not through a new merge mode. Plain merge semantics stay as they were
+    (lists append), so existing overlays mean the same thing. `allow_within`
+    is a pure intersection and cannot widen anything.
+46. **`ledger_append` derives `step` from `action`** when `step` is
+    omitted, so harnesses record what they ran under the same label a gate
+    call would have used.

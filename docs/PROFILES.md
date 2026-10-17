@@ -45,7 +45,7 @@ file that exists but is invalid, is an error (never silently ignored).
   "tool_pack": "acme-router",
   "pins": {"acme-router": "<sha256 of its manifest>"},
   "require_pins": true,
-  "calibration": {"acme-router": "calibration/acme-router.json"},
+  "calibration": {"acme-router": {"path": "calibration/acme-router.json", "sha256": "<sha256 of the file>"}},
   "route": {"min_confidence_permille": 800, "min_margin": 4},
   "memory_journal": "memory/perci.jsonl",
   "tools": {"enabled": ["exact", "check_math", "route", "policy_check", "agent_gate_step", "ledger_append", "next_step"]}
@@ -56,7 +56,11 @@ Paths are relative to the profile directory unless absolute. Unknown keys are
 ignored, so a host can keep its own settings in the same file. `packs` may
 also be an object `name → {"path": "x.pwgt", "manifest": "x.pack.json"}`
 where the manifest is a `perci.pack-manifest.v1` file (`checksum_sha256`,
-`byte_length`). Environment variables win over the file: `PERCI_POLICY`,
+`byte_length`). A `calibration.<pack>` entry is a path, or `{"path", "sha256"}`
+to pin the file: a pinned table that is missing, not
+`perci.route-calibration.v1`, or changed makes that pack fail to load
+(`PACK_UNAVAILABLE`, "was modified"), the same as a changed pinned pack.
+Environment variables win over the file: `PERCI_POLICY`,
 `PERCI_TOOL_PACK`, `PERCI_TOOLS`, `PERCI_MEMORY`.
 
 ## Policy overlay
@@ -65,6 +69,23 @@ where the manifest is a `perci.pack-manifest.v1` file (`checksum_sha256`,
 `config/policy.json`: objects merge key by key, rule lists append, and a rule
 with the same `id` replaces the base rule. Without `extends` the file replaces
 the base entirely. `PERCI_POLICY` points at one exact file instead (no merge).
+
+An overlay can also **narrow** what it inherits:
+
+```json
+{"extends": "base",
+ "write":  {"allow_within": ["docs/**", "README.md"],
+            "allow_globs": {"$remove": ["*.md"]}},
+ "shell":  {"allow": {"$remove": ["some.rule.id"]}}}
+```
+
+* `allow_within` (in `write` / `delete`): a path the base `allow_globs` allow
+  is allowed only if it also matches one of these globs. Otherwise it gets
+  the kind's default posture with the hit `write.outside_allow_within`. It
+  can only take paths away. `refuse_globs` still win.
+* `{"$remove": [...]}` drops entries from an inherited list (strings by
+  value, rules by `id`). `{"$replace": X}` puts X in place of the inherited
+  value. Without a directive, lists append as above.
 
 ## Sequence rules (`perci.sequence.v1`)
 
@@ -158,6 +179,16 @@ chain is broken is never appended to again. One writer per run.
 ```
 perci ledger list | show RUN | verify [RUN…] | learn | refresh
 ```
+
+Step names are the action's label after the same unwrapping the policy
+does: env assignments, PowerShell's `&` / `.`, wrappers (`sudo -u x`,
+`nohup`, `env`), `bash -c "…"` / `powershell -Command "…"` (first
+segment), and `powershell -File x.ps1` / `bash x.sh` are removed. So
+`& .\scripts\stage_release.ps1` and
+`powershell -ExecutionPolicy Bypass -File .\scripts\stage_release.ps1` are both
+`shell:stage_release.ps1`. A class pattern naming a PowerShell cmdlet
+(`shell:remove-item`) also matches its aliases (`shell:del`, `shell:ri`).
+`ledger_append` takes an `action` instead of `step` and records its label.
 
 `learn` (alias `refresh`) rebuilds `temporal/model.json` from every run that
 verifies; `next_step` adds the current run live.
