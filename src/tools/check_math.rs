@@ -19,6 +19,9 @@ impl Tool for CheckMath {
     fn name(&self) -> &'static str {
         "perci.check_math"
     }
+    fn cacheable(&self) -> bool {
+        true
+    }
     fn title(&self) -> &'static str {
         "Check the math in a text"
     }
@@ -111,8 +114,31 @@ const OPERATOR_WORDS: &[&str] = &[
     "root",
 ];
 
+/// `3x42`, `3 x 42`, `(2)x(3)`: an `x` between digits (or brackets) is a
+/// multiplication sign, as in `exact::normalize`.
+fn has_times_x(s: &str) -> bool {
+    let chars: Vec<char> = s.chars().collect();
+    chars.iter().enumerate().any(|(i, c)| {
+        matches!(c, 'x' | 'X')
+            && chars[..i]
+                .iter()
+                .rev()
+                .find(|c| !c.is_whitespace())
+                .is_some_and(|p| p.is_ascii_digit() || *p == ')')
+            && chars[i + 1..]
+                .iter()
+                .find(|c| !c.is_whitespace())
+                .is_some_and(|n| n.is_ascii_digit() || *n == '(')
+    })
+}
+
 fn is_numberish(w: &str) -> bool {
     let w = w.trim_matches(|c: char| c == ',' || c == ';' || c == ':');
+    if has_times_x(w) {
+        return w
+            .chars()
+            .all(|c| matches!(c, 'x' | 'X') || c.is_ascii_digit() || "+-*/^().,".contains(c));
+    }
     !w.is_empty()
         && w.chars().any(|c| c.is_ascii_digit())
         && w.chars().all(|c| {
@@ -204,6 +230,7 @@ fn lhs_before(text: &str, end: usize) -> Option<(usize, String)> {
         .any(|c| "+*/^\u{00d7}\u{00f7}\u{221a}".contains(c))
         || joined.contains(" - ")
         || joined.contains(" \u{2212} ")
+        || has_times_x(&joined)
         || lower.starts_with("the square root")
         || lower.starts_with("square root");
     // A single token like "2024" or "v1.2" is not an expression.
@@ -498,5 +525,25 @@ mod tests {
         let c = &extract(text)[0];
         assert_eq!(&text[c.span[0]..c.span[1]], "6 * 7 = 43");
         assert_eq!(c.status, Status::Fail);
+    }
+
+    #[test]
+    fn x_and_times_sign_multiply() {
+        for t in [
+            "3 x 42 = 128",
+            "3 × 42 = 128",
+            "3x42 = 128",
+            "3 X 42 = 128",
+            "so (3)x(42) = 128.",
+        ] {
+            let c = extract(t);
+            assert_eq!(c.len(), 1, "{t}: {c:?}");
+            assert_eq!(c[0].status, Status::Fail, "{t}");
+            assert_eq!(c[0].exact.as_deref(), Some("126"), "{t}");
+        }
+        assert_eq!(extract("3 x 42 = 126")[0].status, Status::Pass);
+        // A lone x is still a variable / letter, not a claim.
+        assert!(extract("box x is 3").is_empty());
+        assert!(extract("the 4x4 grid is 16 cells").len() <= 1);
     }
 }
