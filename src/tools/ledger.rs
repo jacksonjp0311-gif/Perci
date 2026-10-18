@@ -315,7 +315,14 @@ impl RunLedger {
             status: status.to_owned(),
             input_sha256: verdict.receipt.input_sha256.clone(),
             output_sha256: verdict.receipt.output_sha256.clone(),
-            receipt_sha256: crate::doctor::sha256_hex(canonical_json(&receipt).as_bytes()),
+            // The verdict's receipt id (binds input + output + engine). A
+            // verdict from an older build without one falls back to the hash
+            // of the whole receipt, as before 0.11.8.
+            receipt_sha256: if verdict.receipt.receipt_sha256.is_empty() {
+                crate::doctor::sha256_hex(canonical_json(&receipt).as_bytes())
+            } else {
+                verdict.receipt.receipt_sha256.clone()
+            },
             cache_hit: verdict.receipt.cache_hit,
             note,
             prev_hash: self.head(),
@@ -610,64 +617,155 @@ impl OptEq for Option<&str> {
     }
 }
 
-/// Apply sequence findings to an outcome: unmet rules make the posture
-/// stricter (never looser) and add `SEQUENCE_REQUIRES` reasons; met rules add
-/// `SEQUENCE_OK` evidence. Without a run ledger the rules cannot be checked,
-/// which is reported as `SEQUENCE_UNCHECKED` (needs approval).
+/// Apply sequence findings to a gate outcome (the policy verdict for the
+/// step). Unmet rules make the posture stricter, never looser, and add
+/// `SEQUENCE_REQUIRES` reasons; met rules add their ledger entries as
+/// evidence. Without a run ledger the rules cannot be checked, which is
+/// reported as `SEQUENCE_UNCHECKED` (needs approval).
+///
+/// Noise control (never loosens a verdict):
+/// * when the policy already refuses the step, unmet rules are still listed
+///   in `result.sequence` (marked `superseded`) but add no reason: the refusal
+///   says everything a second `SEQUENCE_REQUIRES` would.
+/// * a rule with `"skip_if_targets_absent": true` (the base backup-before-
+///   delete rule) is skipped when Perci verified that every delete target
+///   is absent (`result.delete_targets_absent`): there is nothing to back up.
+///
+/// One source of truth: afterwards `result.posture` is the final posture
+/// (the strictest of the policy's and every unmet rule's), `status` is
+/// exactly `posture.status()` (allow=pass, propose_and_verify=abstain,
+/// refuse=fail), `result.summary` names the final posture and the rule that
+/// decided it, and `result.policy_posture` keeps the structural posture.
 pub fn apply_sequence(ctx: &Ctx, run_id: Option<&str>, step: &str, mut o: Outcome) -> Outcome {
+    use super::policy::Posture;
+    let policy_posture = o
+        .result
+        .get("posture")
+        .and_then(Value::as_str)
+        .map(Posture::parse)
+        .unwrap_or(match o.status {
+            Status::Pass => Posture::Allow,
+            Status::Fail => Posture::Refuse,
+            _ => Posture::ProposeAndVerify,
+        });
+    let policy_summary = o
+        .result
+        .get("summary")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_owned();
+    let mut posture = policy_posture;
+    let mut decided_by: Option<String> = None;
+    let mut seq_rows: Option<Vec<Value>> = None;
     let policy = match &super::policy::loaded(ctx).policy {
         Ok(p) => p,
         Err(_) => return o,
     };
+    let raise = |p: Posture, by: &str, posture: &mut Posture, decided_by: &mut Option<String>| {
+        if p > *posture {
+            *posture = p;
+            *decided_by = Some(by.to_owned());
+        }
+    };
     if let Some(err) = policy.pointer("/sequence/error").and_then(Value::as_str) {
-        o.status = o.status.worst(Status::Abstain);
+        raise(
+            Posture::ProposeAndVerify,
+            "sequence.invalid",
+            &mut posture,
+            &mut decided_by,
+        );
         o = o.reason(Reason::new(
             "SEQUENCE_RULES_INVALID",
             format!("sequence rules could not be loaded, so no step can be cleared: {err}"),
         ));
-        if let Some(p) = o.result.get_mut("proceed") {
-            *p = json!(false);
+    } else if !classes_of(policy, step).is_empty() {
+        let absent = o
+            .result
+            .get("delete_targets_absent")
+            .and_then(Value::as_array)
+            .is_some_and(|a| !a.is_empty());
+        let skip_rule = |id: &str| {
+            absent
+                && policy
+                    .pointer("/sequence/rules")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .any(|r| {
+                        r.get("id").and_then(Value::as_str) == Some(id)
+                            && r.get("skip_if_targets_absent").and_then(Value::as_bool)
+                                == Some(true)
+                    })
+        };
+        match ctx.with_ledger_entries(run_id, |h| check_sequence(policy, step, h)) {
+            Some(findings) => {
+                let mut rows = Vec::new();
+                for f in findings {
+                    if !f.satisfied && skip_rule(&f.rule) {
+                        rows.push(json!({"rule": f.rule, "satisfied": true, "skipped": "delete targets absent", "detail": f.detail}));
+                        continue;
+                    }
+                    if f.satisfied {
+                        rows.push(json!({"rule": f.rule, "satisfied": true, "detail": f.detail}));
+                        for e in f.evidence {
+                            o = o.evidence(e);
+                        }
+                    } else if policy_posture == Posture::Refuse {
+                        rows.push(json!({"rule": f.rule, "satisfied": false, "superseded": "policy refuses the step", "detail": f.detail}));
+                    } else {
+                        rows.push(json!({"rule": f.rule, "satisfied": false, "detail": f.detail}));
+                        raise(f.posture, &f.rule, &mut posture, &mut decided_by);
+                        o = o.reason(Reason::new("SEQUENCE_REQUIRES", f.detail));
+                        for e in f.evidence {
+                            o = o.evidence(e);
+                        }
+                    }
+                }
+                seq_rows = Some(rows);
+            }
+            None => {
+                let applicable: Vec<SequenceFinding> = check_sequence(policy, step, &[])
+                    .into_iter()
+                    .filter(|f| !skip_rule(&f.rule))
+                    .collect();
+                if !applicable.is_empty() && policy_posture != Posture::Refuse {
+                    raise(
+                        Posture::ProposeAndVerify,
+                        "sequence.unchecked",
+                        &mut posture,
+                        &mut decided_by,
+                    );
+                    o = o.reason(Reason::new(
+                        "SEQUENCE_UNCHECKED",
+                        format!(
+                            "{} applies to {step} but there is no run ledger (use perci mcp, or set PERCI_RUN_ID)",
+                            applicable.iter().map(|f| f.rule.as_str()).collect::<Vec<_>>().join(", ")
+                        ),
+                    ));
+                }
+            }
         }
-        return o;
     }
-    if classes_of(policy, step).is_empty() {
-        return o;
-    }
-    let findings = match ctx.with_ledger_entries(run_id, |h| check_sequence(policy, step, h)) {
-        Some(f) => f,
-        None => {
-            let applicable: Vec<SequenceFinding> = check_sequence(policy, step, &[]);
-            if applicable.is_empty() {
-                return o;
-            }
-            o.status = o.status.worst(Status::Abstain);
-            o = o.reason(Reason::new(
-                "SEQUENCE_UNCHECKED",
-                format!(
-                    "{} applies to {step} but there is no run ledger (use perci mcp, or set PERCI_RUN_ID)",
-                    applicable.iter().map(|f| f.rule.as_str()).collect::<Vec<_>>().join(", ")
-                ),
-            ));
-            return o;
-        }
-    };
-    let mut seq_rows = Vec::new();
-    for f in findings {
-        seq_rows.push(json!({"rule": f.rule, "satisfied": f.satisfied, "detail": f.detail}));
-        if f.satisfied {
-            for e in f.evidence {
-                o = o.evidence(e);
-            }
-        } else {
-            o.status = o.status.worst(f.posture.status());
-            o = o.reason(Reason::new("SEQUENCE_REQUIRES", f.detail));
-            for e in f.evidence {
-                o = o.evidence(e);
-            }
-        }
+    o.status = o.status.worst(posture.status());
+    if decided_by.is_some() {
+        // The sequence decided the verdict: its reasons go first, so the
+        // first reason always explains the status.
+        o.reasons.sort_by_key(|r| !r.code.starts_with("SEQUENCE_"));
     }
     if let Some(obj) = o.result.as_object_mut() {
-        obj.insert("sequence".into(), json!(seq_rows));
+        if let Some(rows) = seq_rows {
+            obj.insert("sequence".into(), json!(rows));
+        }
+        obj.insert("policy_posture".into(), json!(policy_posture.as_str()));
+        obj.insert("posture".into(), json!(posture.as_str()));
+        if let Some(by) = &decided_by {
+            obj.insert(
+                "summary".into(),
+                json!(format!("{} ({by})", posture.as_str())),
+            );
+        } else if !policy_summary.is_empty() {
+            obj.insert("summary".into(), json!(policy_summary));
+        }
         if let Some(p) = obj.get_mut("proceed") {
             *p = json!(o.status == Status::Pass);
         }

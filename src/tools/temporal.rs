@@ -1,4 +1,4 @@
-//! Temporal router (`perci.next_step`): Perci learns the step sequences of
+//! The Temporal Router (`perci.next_step`, alias `temporal_route`): Perci learns the step sequences of
 //! the system it serves from its own ledgers and tells the main model what
 //! usually comes next, which sequence rules the next step would trip, and
 //! which planned calls it can answer from cache.
@@ -235,10 +235,10 @@ impl Tool for NextStep {
         "perci.next_step"
     }
     fn title(&self) -> &'static str {
-        "Suggest the next step"
+        "Temporal Router: predict the next step"
     }
     fn description(&self) -> &'static str {
-        "Temporal routing from this system's own history: given the current run (or an explicit history), returns the steps that usually come next with their counts, warns when a likely or planned step would break a sequence rule (e.g. deploy before tests passed), and flags planned calls Perci can answer from cache or that already failed with the same input. Advisory, deterministic, < 1 ms."
+        "Perci's Temporal Router (alias temporal_route). Learns from this system's own hash-chained step ledgers (only chains that verify): given the current run (or an explicit history), returns the steps that usually come next with their counts, warns when a likely or planned step would break a sequence rule (e.g. deploy before tests passed), and flags planned calls Perci can answer from cache or that already failed with the same input. Abstains (NO_HISTORY) when it has not seen this context. Advisory, deterministic, < 1 ms."
     }
     fn input_schema(&self) -> Value {
         json!({

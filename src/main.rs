@@ -29,10 +29,29 @@ fn main() -> std::process::ExitCode {
     }
 }
 
+/// Top of `perci --help`: the tool layer most harnesses use.
+const CLI_TOOL_HELP: &str =
+    "Perci: a fast, deterministic verifier and gate for AI agents (preview).
+
+Tool layer (no weights needed except route):
+  perci mcp                         MCP stdio server for Claude Code, Codex, Cursor, ...
+  perci tool list                   enabled tools
+  perci tool NAME --json '<args>'   one verdict (perci.verdict.v1); args may also be piped
+                                    exit 0 pass, 1 fail, 4 abstain, 3 error, 2 usage
+  perci tool schema NAME            a tool's input schema (schema verdict = output)
+  perci ledger list|show|verify|learn
+                                    hash-chained step ledgers; `learn` trains the
+                                    Temporal Router (tool next_step, alias temporal_route)
+  perci doctor [--tools] [--json]   health check
+  perci fetch-weights [--set S]     download + sha256-check the weight files
+Docs: docs/QUICKSTART.md, docs/TOOLS.md
+
+Chat:";
+
 /// `perci tool list` / `perci tool <name> [--json '<args>' | --json @file | -]`.
 /// Prints the verdict JSON; exit 0 pass, 1 fail, 4 abstain, 3 error, 2 usage.
 fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
-    let usage = "usage: perci tool list | perci tool schema [<name>|verdict] | perci tool <name> --json '<args json>' (or --json @file.json, or args on stdin)";
+    let usage = "usage: perci tool list | perci tool schema [<name>|verdict] | perci tool <name> --json '<args json>' (or --json @file.json, --json - for stdin, or args piped on stdin; no args = {})";
     let Some(name) = rest.first() else {
         eprintln!("{usage}");
         return Ok(2);
@@ -83,13 +102,18 @@ fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
         println!("{}", serde_json::to_string_pretty(&out)?);
         return Ok(0);
     }
+    // Arguments: `--json '<json>'`, `--json @file`, `--json -` (stdin), or
+    // piped stdin. A bare `--json` (no value, or followed by another flag)
+    // and an interactive terminal mean `{}`, so `perci tool status --json`
+    // never waits for input that is not coming.
     let raw = match rest.iter().position(|a| a == "--json") {
         Some(i) => match rest.get(i + 1) {
             Some(v) if v.starts_with('@') => std::fs::read_to_string(&v[1..])?,
-            Some(v) if v != "-" => v.clone(),
-            _ => read_stdin()?,
+            Some(v) if v == "-" => read_stdin_args(true)?,
+            Some(v) if !v.starts_with("--") => v.clone(),
+            _ => "{}".to_owned(),
         },
-        None => read_stdin()?,
+        None => read_stdin_args(false)?,
     };
     let args: serde_json::Value = match serde_json::from_str(raw.trim()) {
         Ok(v) => v,
@@ -114,10 +138,70 @@ fn run_tool_command(rest: &[String]) -> Result<u8, Box<dyn std::error::Error>> {
     Ok(verdict.status.exit_code())
 }
 
-fn read_stdin() -> io::Result<String> {
-    let mut s = String::new();
-    io::Read::read_to_string(&mut io::stdin(), &mut s)?;
-    Ok(s)
+/// Tool arguments from stdin. A terminal gives `{}` at once; an empty
+/// stream gives `{}`. Without `--json -` (explicit stdin), a pipe that stays
+/// open and silent for `PERCI_STDIN_WAIT_MS` (default 1500 ms) also gives
+/// `{}`, so a harness that spawns `perci tool NAME` with an inherited,
+/// never-closed stdin does not hang. Once the first byte arrives the rest is
+/// read to EOF with no time limit.
+fn read_stdin_args(explicit: bool) -> io::Result<String> {
+    use std::io::IsTerminal;
+    if io::stdin().is_terminal() {
+        return Ok("{}".to_owned());
+    }
+    let text = if explicit {
+        let mut s = String::new();
+        io::Read::read_to_string(&mut io::stdin(), &mut s)?;
+        s
+    } else {
+        let wait_ms = std::env::var("PERCI_STDIN_WAIT_MS")
+            .ok()
+            .and_then(|v| v.trim().parse::<u64>().ok())
+            .unwrap_or(1500);
+        let (first_tx, first_rx) = std::sync::mpsc::channel::<()>();
+        let (done_tx, done_rx) = std::sync::mpsc::channel::<io::Result<String>>();
+        std::thread::spawn(move || {
+            let mut stdin = io::stdin().lock();
+            let mut buf = Vec::new();
+            let mut chunk = [0u8; 8192];
+            let mut signalled = false;
+            let res = loop {
+                match io::Read::read(&mut stdin, &mut chunk) {
+                    Ok(0) => break Ok(()),
+                    Ok(n) => {
+                        buf.extend_from_slice(&chunk[..n]);
+                        if !signalled {
+                            let _ = first_tx.send(());
+                            signalled = true;
+                        }
+                    }
+                    Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+                    Err(e) => break Err(e),
+                }
+            };
+            let _ = done_tx.send(res.and_then(|()| {
+                String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            }));
+        });
+        let timeout = std::time::Duration::from_millis(wait_ms);
+        match first_rx.recv_timeout(timeout) {
+            // Data arrived (or EOF closed the channel): read to the end.
+            Ok(()) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                done_rx.recv().unwrap_or_else(|_| Ok(String::new()))?
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                eprintln!(
+                    "perci tool: no arguments on stdin after {wait_ms} ms; using {{}} (pass --json '<args>' or --json - to wait)"
+                );
+                String::new()
+            }
+        }
+    };
+    Ok(if text.trim().is_empty() {
+        "{}".to_owned()
+    } else {
+        text
+    })
 }
 
 /// Commands that run the chat engine and therefore need the Bitwork weights.
@@ -767,7 +851,7 @@ fn run(argv: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        "help" | "--help" | "-h" => println!("{}", help_text()),
+        "help" | "--help" | "-h" => println!("{}\n\n{}", CLI_TOOL_HELP, help_text()),
         other => return Err(format!("unknown command: {other}").into()),
     }
 

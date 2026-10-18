@@ -1104,6 +1104,165 @@ fn check_flags(policy: &Value, kind: &str, argv: &[String]) -> Decision {
     d
 }
 
+// ---- deletes of paths that do not exist ----------------------------------------
+
+/// Delete rules a verified-absent target may lift: deleting nothing is
+/// harmless. Refuse rules are never lifted.
+const ABSENT_LIFTABLE: &[&str] = &["shell.rm", "delete.default"];
+
+/// What a delete would remove, when Perci can tell for certain: `kind:
+/// delete` paths, or the operands of a single, unwrapped `rm` / `rmdir` /
+/// `unlink` / `Remove-Item` command. `None` for anything else (pipelines,
+/// wrappers, globs, variables, `~`, unknown flags), so only plain literal
+/// paths are ever looked at.
+pub(crate) fn delete_operands(kind: &str, action: &Value) -> Option<Vec<String>> {
+    let literal = |p: &str| {
+        !p.is_empty()
+            && !p.chars().any(|c| {
+                matches!(
+                    c,
+                    '*' | '?' | '[' | ']' | '{' | '}' | '$' | '~' | '`' | '%' | '\n'
+                )
+            })
+    };
+    let out: Vec<String> = match kind {
+        "delete" | "remove" => action
+            .get("paths")?
+            .as_array()?
+            .iter()
+            .map(|v| v.as_str().map(str::to_owned))
+            .collect::<Option<Vec<_>>>()?,
+        "shell" | "exec" | "command" => {
+            let argv: Vec<String> = match action.get("argv").and_then(Value::as_array) {
+                Some(a) => a
+                    .iter()
+                    .map(|v| v.as_str().map(str::to_owned))
+                    .collect::<Option<Vec<_>>>()?,
+                None => {
+                    let cmd = action.get("command")?.as_str()?;
+                    let segs = segments(cmd);
+                    if segs.len() != 1
+                        || cmd.contains('|')
+                        || cmd.contains('`')
+                        || cmd.contains("$(")
+                    {
+                        return None;
+                    }
+                    tokenize(&segs[0])
+                }
+            };
+            let prog = program_name(argv.first()?);
+            let powershell = prog == "remove-item" || prog == "ri";
+            let unix = matches!(prog.as_str(), "rm" | "rmdir" | "unlink");
+            if !powershell && !unix {
+                return None;
+            }
+            let mut ops = Vec::new();
+            let mut end_of_flags = false;
+            for a in &argv[1..] {
+                if !end_of_flags && a == "--" && !powershell {
+                    end_of_flags = true;
+                } else if !end_of_flags && a.starts_with('-') && a.len() > 1 {
+                    let known = if powershell || (a.len() > 3 && !a.starts_with("--")) {
+                        // PowerShell-style parameters (also on `rm`, the alias).
+                        [
+                            "recurse",
+                            "force",
+                            "path",
+                            "literalpath",
+                            "confirm",
+                            "verbose",
+                        ]
+                        .iter()
+                        .any(|n| ps_param_matches(a, n))
+                            && !a.contains(':')
+                    } else if let Some(long) = a.strip_prefix("--") {
+                        matches!(long, "recursive" | "force" | "verbose" | "dir")
+                    } else {
+                        a[1..]
+                            .chars()
+                            .all(|c| matches!(c, 'r' | 'R' | 'f' | 'v' | 'd' | 'i' | 'I'))
+                    };
+                    if !known {
+                        return None;
+                    }
+                } else {
+                    ops.push(a.clone());
+                }
+            }
+            ops
+        }
+        _ => return None,
+    };
+    if out.is_empty() || !out.iter().all(|p| literal(p)) {
+        return None;
+    }
+    Some(out)
+}
+
+/// Perci's own filesystem check of delete operands. `Some(paths)` (resolved)
+/// only when every operand is a literal path that resolves (absolute, or
+/// relative to `cwd` / the workspace) and does not exist, not even as a
+/// broken symlink.
+pub(crate) fn absent_delete_targets(
+    kind: &str,
+    action: &Value,
+    workspace: Option<&str>,
+) -> Option<Vec<String>> {
+    let ops = delete_operands(kind, action)?;
+    let base = action
+        .get("cwd")
+        .and_then(Value::as_str)
+        .or(workspace)
+        .map(std::path::PathBuf::from);
+    let mut out = Vec::new();
+    for op in ops {
+        let p = std::path::Path::new(&op);
+        let full = if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            base.as_ref().filter(|b| b.is_absolute())?.join(p)
+        };
+        match std::fs::symlink_metadata(&full) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            _ => return None,
+        }
+        out.push(full.to_string_lossy().into_owned());
+    }
+    Some(out)
+}
+
+/// Lift a delete's `propose_and_verify` to `allow` when Perci verified every
+/// target is absent and nothing but liftable delete rules fired. Returns the
+/// absent paths when it did.
+fn lift_absent_delete(
+    policy: &Value,
+    kind: &str,
+    action: &Value,
+    workspace: Option<&str>,
+    decision: &mut Decision,
+) -> Option<Vec<String>> {
+    if decision.posture != Posture::ProposeAndVerify {
+        return None;
+    }
+    let liftable = decision
+        .hits
+        .iter()
+        .filter(|h| h.posture != Posture::Allow)
+        .all(|h| ABSENT_LIFTABLE.contains(&h.id.as_str()));
+    if !liftable {
+        return None;
+    }
+    let absent = absent_delete_targets(kind, action, workspace)?;
+    // A shell delete still has to clear the delete section's protected paths.
+    let root = workspace.or_else(|| action.get("cwd").and_then(Value::as_str));
+    if check_paths(policy, "delete", &absent, root, None).posture == Posture::Refuse {
+        return None;
+    }
+    decision.posture = Posture::Allow;
+    Some(absent)
+}
+
 /// Evaluate an action object against a policy value.
 pub fn evaluate(
     policy: &Value,
@@ -1278,6 +1437,16 @@ impl Tool for PolicyCheck {
             Err(e) => return Outcome::error("BAD_ARGS", e),
         };
         let mut reasons = Vec::new();
+        let absent = lift_absent_delete(policy, &kind, action, workspace, &mut decision);
+        if let Some(paths) = &absent {
+            reasons.push(Reason::new(
+                "DELETE_TARGETS_ABSENT",
+                format!(
+                    "nothing to delete: {} does not exist (checked by Perci just now); lifted to allow",
+                    paths.join(", ")
+                ),
+            ));
+        }
         let heuristic = request_text.map(|t| {
             let a = crate::governed_will::assess(t);
             if a.destructive_request && decision.posture == Posture::Allow {
@@ -1349,6 +1518,12 @@ impl Tool for PolicyCheck {
         )
         .confidence(Confidence::Exact)
         .evidence(Evidence::new("policy_rule", format!("policy:{}", lp.source)).hashed(lp.sha256.clone()));
+        if let Some(paths) = absent {
+            outcome.result["delete_targets_absent"] = json!(paths);
+            for p in paths {
+                outcome = outcome.evidence(Evidence::new("file", format!("absent:{p}")));
+            }
+        }
         for r in reasons {
             outcome = outcome.reason(r);
         }
@@ -1448,7 +1623,7 @@ mod tests {
         assert_eq!(w("/etc/passwd"), "refuse");
         assert_eq!(w("../outside.txt"), "refuse");
         assert_eq!(w("src/../../escape.rs"), "refuse");
-        assert_eq!(w("C:\\Users\\jacks\\.ssh\\id_rsa"), "refuse");
+        assert_eq!(w("C:\\Users\\alice\\.ssh\\id_rsa"), "refuse");
         assert_eq!(w(".env"), "refuse");
         let d = |p: &str| posture_of(json!({"kind": "delete", "paths": [p]}));
         assert_eq!(d("src/old.rs"), "propose_and_verify");
@@ -1461,8 +1636,8 @@ mod tests {
         // Windows workspace, case-insensitive.
         assert_eq!(
             posture_ws(
-                json!({"kind": "write", "paths": ["c:\\users\\jacks\\desktop\\perci\\src\\x.rs"]}),
-                Some("C:\\Users\\jacks\\Desktop\\Perci")
+                json!({"kind": "write", "paths": ["c:\\users\\alice\\desktop\\perci\\src\\x.rs"]}),
+                Some("C:\\Users\\alice\\Desktop\\Perci")
             ),
             "allow"
         );

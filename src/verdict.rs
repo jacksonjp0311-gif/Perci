@@ -5,6 +5,11 @@
 //!
 //! * `input_sha256`  = sha256(canonical JSON of `{"tool", "args"}`)
 //! * `output_sha256` = sha256(canonical JSON of `{"status", "result", "reasons", "evidence"}`)
+//! * `receipt_sha256` = sha256(canonical JSON of `{"schema", "tool",
+//!   "input_sha256", "output_sha256", "perci_version", "build_id", "weights",
+//!   "config"}`): the receipt id. It binds the question, the answer and the
+//!   engine/pack that produced it, so two different inputs that happen to get
+//!   the same output (two reads both allowed) never share a receipt id.
 //!
 //! Canonical JSON means sorted object keys, no insignificant whitespace, and
 //! floats written as strings, so the same input on the same build and
@@ -102,7 +107,7 @@ impl Reason {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Evidence {
-    /// computation | file | memory_record | memory_note | policy_rule | b2e_case | heldout_item | step_log
+    /// computation | file | memory_record | memory_note | policy_rule | ledger_entry | ledger_head | temporal_model | b2e_case | heldout_item | step_log
     pub kind: String,
     #[serde(rename = "ref")]
     pub reference: String,
@@ -203,6 +208,11 @@ impl Outcome {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Receipt {
+    /// Receipt id: binds tool + input + output + engine and weight identity
+    /// (see the module docs). Added in 0.11.8; empty when parsing an older
+    /// verdict that did not carry it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub receipt_sha256: String,
     pub input_sha256: String,
     pub output_sha256: String,
     pub perci_version: String,
@@ -260,6 +270,15 @@ impl Verdict {
         let reasons = outcome.reasons;
         let evidence = outcome.evidence;
         let output_sha256 = output_hash(outcome.status, &outcome.result, &reasons, &evidence);
+        let config = output_config();
+        let receipt_sha256 = receipt_hash(
+            tool,
+            &input_sha256,
+            &output_sha256,
+            crate::branding::build_id(),
+            &outcome.weights,
+            &config,
+        );
         Verdict {
             schema: SCHEMA.to_owned(),
             tool: tool.to_owned(),
@@ -268,12 +287,13 @@ impl Verdict {
             reasons,
             evidence,
             receipt: Receipt {
+                receipt_sha256,
                 input_sha256,
                 output_sha256,
                 perci_version: env!("CARGO_PKG_VERSION").to_owned(),
                 build_id: crate::branding::build_id().to_owned(),
                 weights: outcome.weights,
-                config: output_config(),
+                config,
                 deterministic: outcome.deterministic,
                 confidence: outcome.confidence,
                 elapsed_us,
@@ -304,9 +324,43 @@ impl Verdict {
     /// Recompute `output_sha256` from the body. A receipt that does not match
     /// means the verdict was edited after Perci issued it.
     pub fn receipt_matches(&self) -> bool {
-        output_hash(self.status, &self.result, &self.reasons, &self.evidence)
-            == self.receipt.output_sha256
+        let output_ok = output_hash(self.status, &self.result, &self.reasons, &self.evidence)
+            == self.receipt.output_sha256;
+        let id_ok = self.receipt.receipt_sha256.is_empty()
+            || receipt_hash(
+                &self.tool,
+                &self.receipt.input_sha256,
+                &self.receipt.output_sha256,
+                &self.receipt.build_id,
+                &self.receipt.weights,
+                &self.receipt.config,
+            ) == self.receipt.receipt_sha256;
+        output_ok && id_ok
     }
+}
+
+/// The receipt id (`receipt_sha256`): input, output and engine identity in
+/// one hash. `perci_version` is taken from `build_id`'s semver prefix so the
+/// two can never disagree.
+pub fn receipt_hash(
+    tool: &str,
+    input_sha256: &str,
+    output_sha256: &str,
+    build_id: &str,
+    weights: &BTreeMap<String, String>,
+    config: &BTreeMap<String, String>,
+) -> String {
+    let version = build_id.split('+').next().unwrap_or(build_id);
+    sha256_canonical(&json!({
+        "schema": SCHEMA,
+        "tool": tool,
+        "input_sha256": input_sha256,
+        "output_sha256": output_sha256,
+        "perci_version": version,
+        "build_id": build_id,
+        "weights": weights,
+        "config": config,
+    }))
 }
 
 pub fn input_hash(tool: &str, args: &Value) -> String {
@@ -401,7 +455,7 @@ pub fn json_schema() -> Value {
             "evidence": {"type": "array", "items": {
                 "type": "object", "required": ["kind", "ref"],
                 "properties": {
-                    "kind": {"enum": ["computation", "file", "memory_note", "policy_rule", "b2e_case", "heldout_item", "step_log"]},
+                    "kind": {"type": "string", "description": "computation | file | memory_record | memory_note | policy_rule | ledger_entry | ledger_head | temporal_model | b2e_case | heldout_item | step_log (open set: new kinds may be added)"},
                     "ref": {"type": "string"},
                     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                     "line": {"type": "integer"}
@@ -411,6 +465,7 @@ pub fn json_schema() -> Value {
                 "type": "object",
                 "required": ["input_sha256", "output_sha256", "perci_version", "build_id", "deterministic", "confidence"],
                 "properties": {
+                    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "receipt id: sha256 over tool, input_sha256, output_sha256, perci_version, build_id, weights and config"},
                     "input_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                     "output_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                     "perci_version": {"type": "string"},

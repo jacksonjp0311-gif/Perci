@@ -34,14 +34,23 @@ impl Tool for Exact {
             "required": ["expr"],
             "properties": {
                 "expr": {"type": "string", "description": "Expression or short math question, e.g. \"17% of 240\", \"3/7 + 2/9\", \"solve 2x+3=11\"."},
-                "claimed": {"type": "string", "description": "Optional value to check, e.g. \"41\" or \"40.8\" or \"204/5\"."}
+                "claimed": {"type": "string", "description": "Optional value to check, e.g. \"41\" or \"40.8\" or \"204/5\" (a JSON number is accepted too)."}
             },
             "additionalProperties": false
         })
     }
     fn call(&self, _ctx: &Ctx, args: &Value) -> Outcome {
         let expr = try_arg!(arg_str(args, "expr"));
-        let claimed = try_arg!(opt_str(args, "claimed"));
+        // Hosts and models often send the claimed value as a JSON number;
+        // take its exact JSON text (`41`, `40.8`), never a float round trip.
+        let number_text = match args.get("claimed") {
+            Some(Value::Number(n)) => Some(n.to_string()),
+            _ => None,
+        };
+        let claimed = match &number_text {
+            Some(t) => Some(t.as_str()),
+            None => try_arg!(opt_str(args, "claimed")),
+        };
         let computed = compute(expr);
         match claimed {
             None => computed.into_outcome(expr),

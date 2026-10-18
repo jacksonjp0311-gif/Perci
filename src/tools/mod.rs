@@ -324,6 +324,11 @@ pub fn wire_name(name: &str) -> String {
 /// Accept the canonical id, the wire name, or the bare short name.
 pub fn resolve(tools: &[Registered], requested: &str) -> Option<Registered> {
     let req = requested.trim();
+    // Friendly aliases (the canonical ids stay the wire names).
+    let req = match req {
+        "temporal_route" | "temporal_router" | "perci.temporal_route" => "perci.next_step",
+        r => r,
+    };
     tools
         .iter()
         .find(|t| {
@@ -586,6 +591,9 @@ mod tests {
             resolve(&tools, "agent_check_claims").unwrap().name(),
             "perci.agent.check_claims"
         );
+        for n in ["temporal_route", "temporal_router", "next_step"] {
+            assert_eq!(resolve(&tools, n).unwrap().name(), "perci.next_step");
+        }
     }
 
     #[test]
