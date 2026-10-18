@@ -279,4 +279,23 @@ jobs:
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Perci $GITHUB_REF_NAME" --generate-notes
+        # 0.x versions and tags with a pre-release suffix (v1.0.0-rc1) are
+        # published as GitHub prereleases ("preview").
+        run: |
+          set -euo pipefail
+          flags=()
+          case "$GITHUB_REF_NAME" in
+            v0.*|*-*) flags+=(--prerelease); title="Perci $GITHUB_REF_NAME (preview)" ;;
+            *) title="Perci $GITHUB_REF_NAME" ;;
+          esac
+          cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
+          > **Preview.** The tool layer is tested on Linux, macOS and Windows runners,
+          > but the binaries are **not code-signed** yet: Windows SmartScreen and macOS
+          > Gatekeeper will warn. Verify downloads against `SHA256SUMS`
+          > (see [Verifying downloads](https://github.com/jacksonjp0311-gif/Perci/blob/main/docs/QUICKSTART.md#verifying-downloads-unsigned-preview-builds)).
+
+          Install: `curl -fsSL https://raw.githubusercontent.com/jacksonjp0311-gif/Perci/main/install.sh | sh`
+          (Windows: `irm https://raw.githubusercontent.com/jacksonjp0311-gif/Perci/main/install.ps1 | iex`).
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$title" \
+            --notes-file "$RUNNER_TEMP/notes.md" --generate-notes "${flags[@]}"

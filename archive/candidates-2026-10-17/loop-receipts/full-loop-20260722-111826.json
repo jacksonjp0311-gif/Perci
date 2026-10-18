@@ -261,7 +261,7 @@
       "ms": 5872.5,
       "rc": 0,
       "summary": null,
-      "tail": "Perci HYDRA inject (native Rust)\n  root: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\n  markers: 28 (slots: 3)\n  BRPC receipt: present\n  claim: never auto-promote .pwgt; apply defaults to dry-run\n"
+      "tail": "Perci HYDRA inject (native Rust)\n  root: C:\\Users\\USER\\OneDrive\\Desktop\\perci\n  markers: 28 (slots: 3)\n  BRPC receipt: present\n  claim: never auto-promote .pwgt; apply defaults to dry-run\n"
     },
     {
       "name": "adversarial_probe",
@@ -325,7 +325,7 @@
       "ms": 100.4,
       "rc": 0,
       "summary": null,
-      "tail": "admissible: true\nrisk: 0.352\n--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,0 +980,1 @@\n+// hydra-evolve: factor=M layer=manifold \u2014 candidate note only; not a weight promote\n\nreceipt: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models/candidates/hydra-bridge\\plan-latest.json\n"
+      "tail": "admissible: true\nrisk: 0.352\n--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,0 +980,1 @@\n+// hydra-evolve: factor=M layer=manifold \u2014 candidate note only; not a weight promote\n\nreceipt: models/candidates/hydra-bridge\\plan-latest.json\n"
     },
     {
       "name": "hydra_apply_dryrun",
@@ -333,7 +333,7 @@
       "ms": 98.2,
       "rc": 0,
       "summary": null,
-      "tail": "admissible=true applied=false dry_run=true\n--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,0 +980,1 @@\n+// hydra-evolve: factor=M layer=manifold \u2014 candidate note only; not a weight promote\n\nreceipt: C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models/candidates/hydra-bridge\\apply-latest.json\n"
+      "tail": "admissible=true applied=false dry_run=true\n--- src/hydra_inject.rs:before\n+++ src/hydra_inject.rs:after\n@@ -980,0 +980,1 @@\n+// hydra-evolve: factor=M layer=manifold \u2014 candidate note only; not a weight promote\n\nreceipt: models/candidates/hydra-bridge\\apply-latest.json\n"
     },
     {
       "name": "re_ask",

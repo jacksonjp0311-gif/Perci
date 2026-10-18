@@ -109,6 +109,21 @@ ships two: deploy requires passing tests after the last code change, and a
 destructive delete requires a backup first. A sequence file with another
 schema makes every gated step abstain with `SEQUENCE_RULES_INVALID`.
 
+Two noise controls (0.11.8), neither of which can loosen a verdict:
+
+* When the policy already **refuses** the step (`git push --force`), unmet
+  rules are listed in `result.sequence` with `"superseded"` but add no
+  `SEQUENCE_REQUIRES` reason (and no `SEQUENCE_UNCHECKED` without a ledger).
+* `"skip_if_targets_absent": true` on a rule (the base backup-before-delete
+  rule has it) skips the rule when Perci itself verified that every delete
+  target is absent (`result.delete_targets_absent`). See TOOLS.md, "Deletes
+  of paths that do not exist".
+
+After the rules run, `result.posture` is the final posture (the strictest of
+the policy's and every unmet rule's), `status` is exactly what that posture
+maps to, `result.summary` names it with the rule that decided it, and
+`result.policy_posture` keeps the policy's own posture.
+
 ## Weight packs
 
 ```

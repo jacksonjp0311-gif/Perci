@@ -10,7 +10,7 @@
 # `perci fetch-weights`, and runs `perci doctor`.
 #
 # Options (or environment variables):
-#   --version vX.Y.Z   PERCI_VERSION       release tag (default: latest)
+#   --version vX.Y.Z   PERCI_VERSION       release tag (default: the newest release, previews included)
 #   --dir DIR          PERCI_INSTALL_DIR   install folder (default: ~/.perci)
 #   --weights SET      PERCI_INSTALL_WEIGHTS       default (~240 MB) | tools (~20 MB) | all | none
 #   --no-modify-path   PERCI_NO_MODIFY_PATH=1   do not edit shell startup files
@@ -52,6 +52,19 @@ case "$os/$arch" in
   Darwin/x86_64) target="x86_64-apple-darwin" ;;
   *) die "no prebuilt binary for $os/$arch yet; build from a clone of https://github.com/$REPO (git lfs pull && cargo build --release)" ;;
 esac
+
+if [ "$VERSION" = "latest" ] && [ -z "${PERCI_RELEASE_URL:-}" ]; then
+  # Newest release including previews: GitHub's /releases/latest skips
+  # prereleases, and Perci 0.x releases are published as previews.
+  api="https://api.github.com/repos/$REPO/releases?per_page=1"
+  tag=""
+  if command -v curl >/dev/null 2>&1; then
+    tag="$(curl -fsSL --retry 2 "$api" 2>/dev/null | sed -n 's/.*"tag_name"[^"]*"\([^"]*\)".*/\1/p' | head -n 1)" || tag=""
+  elif command -v wget >/dev/null 2>&1; then
+    tag="$(wget -q -O - "$api" 2>/dev/null | sed -n 's/.*"tag_name"[^"]*"\([^"]*\)".*/\1/p' | head -n 1)" || tag=""
+  fi
+  [ -n "$tag" ] && VERSION="$tag"
+fi
 
 if [ -n "${PERCI_RELEASE_URL:-}" ]; then
   base="${PERCI_RELEASE_URL%/}"

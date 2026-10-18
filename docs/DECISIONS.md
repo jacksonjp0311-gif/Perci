@@ -236,3 +236,33 @@ Each entry: what was chosen, why, what it costs.
 46. **`ledger_append` derives `step` from `action`** when `step` is
     omitted, so harnesses record what they ran under the same label a gate
     call would have used.
+
+## Pre-share fixes (0.11.8)
+
+47. **`perci tool` never waits for input that is not coming.** A bare
+    `--json`, a terminal on stdin, and an empty stdin all mean `{}`. A pipe
+    that stays open and silent for `PERCI_STDIN_WAIT_MS` (1.5 s) also means
+    `{}`; once the first byte arrives the rest is read to EOF without a time
+    limit, so slow writers still work. `--json -` waits for stdin explicitly.
+48. **Receipts get an id that binds the input.** `output_sha256` alone is
+    the same for any two questions with the same answer (two allowed reads),
+    so harnesses that used it as "the receipt" conflated them.
+    `receipt_sha256` hashes tool + `input_sha256` + `output_sha256` + version,
+    build and weight/config identity. It is a new optional field, so
+    `perci.verdict.v1` stays compatible, and the ledger records it.
+49. **One source of truth for a gate's posture.** Sequence rules used to
+    change `status` but not `result.posture` / `summary`, so a release before
+    tests read `FAIL: propose_and_verify`. The gate now recomputes the final
+    posture, derives `status` from it, puts the deciding reason first, and
+    keeps the policy's own answer as `policy_posture`.
+50. **Less noise, never less safety.** A hard policy refusal is not repeated
+    as `SEQUENCE_REQUIRES`. A delete whose literal targets Perci has just
+    verified are absent is lifted from `propose_and_verify` to `allow`,
+    but only for the plain delete rules (`shell.rm`, `delete.default`), never
+    for refusals, globs, variables, `~`, pipelines, wrappers, unknown flags,
+    relative paths without a `cwd`/workspace, or protected paths. The harness
+    cannot claim absence; Perci checks the filesystem itself. The check is a
+    point-in-time one (a path created between gate and run is not covered).
+51. **`exact` accepts a numeric `claimed`.** MCP hosts and the inspector
+    coerce `"41"` to `41`; the number's exact JSON text is used, never a
+    float round trip. The schema still advertises a string.

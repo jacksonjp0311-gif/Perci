@@ -2,7 +2,7 @@
 #
 #   irm https://raw.githubusercontent.com/jacksonjp0311-gif/Perci/main/install.ps1 | iex
 #   $env:PERCI_INSTALL_WEIGHTS = "tools"; irm .../install.ps1 | iex     # tool layer + route pack only (~20 MB)
-#   .\install.ps1 -Weights tools -Version v0.11.7               # when saved to a file
+#   .\install.ps1 -Weights tools -Version v0.11.8               # when saved to a file
 #
 # Downloads the release zip, verifies it against the release's SHA256SUMS,
 # unpacks it into %LOCALAPPDATA%\Perci\app (a complete Perci home), adds its
@@ -10,7 +10,7 @@
 # `perci fetch-weights`, and runs `perci doctor`.
 #
 # Parameters (or environment variables):
-#   -Version vX.Y.Z   PERCI_VERSION        release tag (default: latest)
+#   -Version vX.Y.Z   PERCI_VERSION        release tag (default: the newest release, previews included)
 #   -Dir DIR          PERCI_INSTALL_DIR    install folder
 #   -Weights SET      PERCI_INSTALL_WEIGHTS        default (~240 MB) | tools (~20 MB) | all | none
 #   -NoModifyPath     PERCI_NO_MODIFY_PATH=1
@@ -33,6 +33,14 @@ function Install-Perci {
 
     $repo = "jacksonjp0311-gif/Perci"
     $target = "x86_64-pc-windows-msvc"
+    if ($Version -eq "latest" -and -not $env:PERCI_RELEASE_URL) {
+        # Newest release including previews (/releases/latest skips prereleases).
+        try {
+            $rel = Invoke-RestMethod -UseBasicParsing -Uri "https://api.github.com/repos/$repo/releases?per_page=1"
+            $tag = @($rel)[0].tag_name
+            if ($tag) { $Version = $tag }
+        } catch { }
+    }
     if ($env:PERCI_RELEASE_URL) {
         $base = $env:PERCI_RELEASE_URL.TrimEnd("/")
     } elseif ($Version -eq "latest") {

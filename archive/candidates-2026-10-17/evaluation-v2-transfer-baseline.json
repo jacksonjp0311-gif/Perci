@@ -3,7 +3,7 @@
   "evaluated_at_utc": "2026-07-16T15:26:26.076791+00:00",
   "model_sha256": "11c20d1bee6fd946d4d7165a625dc0db2bc52f51957ef8b66aea6db5949c7747",
   "runtime_sha256": "0eb4cf9c1181d101b8d87fff0f83d25d375485d3e566c9ba64898e7e8acc5dc6",
-  "policy_source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\scripts\\evaluate_v2.py",
+  "policy_source": "scripts\\evaluate_v2.py",
   "policy_source_kind": "evaluator-embedded-v2",
   "policy_source_sha256": "c9403eca3feff5e0822b5b88555b7e320a43e7b66db82e331b3d55d42aeb7a35",
   "evaluator_sha256": "c9403eca3feff5e0822b5b88555b7e320a43e7b66db82e331b3d55d42aeb7a35",

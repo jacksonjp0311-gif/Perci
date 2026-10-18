@@ -1,5 +1,5 @@
 {
-  "root": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci",
+  "root": "C:\\Users\\USER\\OneDrive\\Desktop\\perci",
   "target_file": "scripts/hydra_perci_bridge.py",
   "marker": "# HYDRA-INJECT:slot name=geometry_note profile=library",
   "name": "geometry_note",

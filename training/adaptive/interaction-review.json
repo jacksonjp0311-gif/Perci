@@ -2273,7 +2273,7 @@
     },
     {
       "id": "0e6a26bb01d5c92a8857",
-      "prompt": "cd C:\\Users\\jacks\\OneDrive\\Desktop\\perci",
+      "prompt": "cd C:\\Users\\USER\\OneDrive\\Desktop\\perci",
       "signal": "observation",
       "suggested_label": "identity",
       "label": null,

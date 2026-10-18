@@ -230,8 +230,8 @@
     }
   },
   "binary_freshness": {
-    "live_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\live\\release\\perci.exe",
-    "release_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
+    "live_path": "target\\live\\release\\perci.exe",
+    "release_path": "target\\release\\perci.exe",
     "live_sha256": "d8e1691f750d4ff4d4b22b6dc7d295e6bbb437c3605a2657071699ee66f9c2c4",
     "release_sha256": "a536f42611f08f6532ec7b02639f97351e420b164e1bc0d17bed5fe470d94435",
     "live_mtime_utc": "2026-08-10T13:59:04.219955+00:00",

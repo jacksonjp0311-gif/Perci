@@ -22,6 +22,6 @@
     "comparison": 2,
     "general": 12
   },
-  "traces": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\traces.jsonl",
-  "inject": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\inject_prompts.json"
+  "traces": "training\\adaptive\\traces.jsonl",
+  "inject": "training\\adaptive\\inject_prompts.json"
 }

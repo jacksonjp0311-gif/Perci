@@ -1,8 +1,8 @@
 {
   "schema": "perci.evolve-cycle.v1",
   "started_at_utc": "2026-07-22T11:26:29.529150+00:00",
-  "binary": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\target\\release\\perci.exe",
-  "model": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\perci-cognitive-v0.3.pwgt",
+  "binary": "target\\release\\perci.exe",
+  "model": "models\\perci-cognitive-v0.3.pwgt",
   "steps": {
     "scorecard": {
       "exit": 0

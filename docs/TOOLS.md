@@ -4,19 +4,28 @@ Perci's checks as stateless tools that AI harnesses (Claude Code, Codex,
 Cursor, custom loops) call before they trust an answer or run an action.
 Every call returns a **`perci.verdict.v1`**: `pass` / `fail` / `abstain` /
 `error`, machine-readable reasons, evidence, and a receipt whose
-`input_sha256` / `output_sha256` make the result replayable.
+`receipt_sha256` id binds the input, the output and the engine that produced
+it, so the result is replayable and citable.
 
 ```
 perci mcp                                # MCP server over stdio (JSON-RPC 2.0, one message per line)
 perci tool list                          # enabled tools
 perci tool schema [NAME|verdict]         # a tool's input schema (all tools without NAME), or the verdict schema
 perci packs list | verify | calibrate    # weight packs (docs/PROFILES.md)
-perci ledger verify RUN | learn          # run ledgers and the temporal model
-perci tool exact --json '{"expr":"17% of 240","claimed":"41"}'   # one-shot; also @file or stdin
+perci ledger verify RUN | learn          # run ledgers; `learn` trains the Temporal Router
+perci tool exact --json '{"expr":"17% of 240","claimed":"41"}'   # one-shot; also @file, piped stdin, or --json -
+perci tool status --json                 # no arguments = {} (never waits on stdin)
 perci ask --stateless "what is 3/7 plus 2/9"                     # no session, no learning, byte-identical
 ```
 
 One-shot exit codes: `0` pass, `1` fail, `4` abstain, `3` error, `2` usage.
+
+Arguments: `--json '<json>'`, `--json @file.json`, `--json -` (read stdin to
+EOF), or JSON piped on stdin. A bare `--json`, an interactive terminal and an
+empty stdin all mean `{}`. A pipe that stays open without sending anything
+for `PERCI_STDIN_WAIT_MS` (default 1500 ms) also means `{}` (with a note on
+stderr), so a harness that spawns `perci tool NAME` with an inherited stdin
+never hangs.
 
 ## Tools
 
@@ -38,7 +47,7 @@ Wire names (MCP) drop the `perci.` prefix and use `_` (model APIs allow only
 | `ledger_append` | perci.ledger_append | records a step the harness ran itself (e.g. tests passed) in the run ledger. Give `step`, or an `action` whose label (unwrapped like the policy) becomes the step. Gated calls are recorded implicitly | on |
 | `ledger_verify` | perci.ledger_verify | re-hashes a run's chain from disk: edits, reordering, drops, moves; `expect_head` catches truncation | on |
 | `ledger_show` | perci.ledger_show | the last entries of a run, plus whether the chain verifies | on |
-| `next_step` | perci.next_step | temporal router: likely next steps with counts, sequence-rule warnings, cache / repeat-failure hints for a planned call | on |
+| `next_step` | perci.next_step | **Temporal Router** (alias `temporal_route`): likely next steps learned from verified run ledgers, with counts; sequence-rule warnings; cache / repeat-failure hints for a planned call; abstains (`NO_HISTORY`) on an unseen context | on |
 | `remember` | perci.remember | appends a note to the journal through `CitedMemory::remember`; refuses secrets | **off** |
 | `agent_verify_patch` | perci.agent.verify_patch | applies a diff in a scratch worktree and runs an allowlisted verifier; the caller's tree is untouched | **off** |
 | `eval` | perci.eval | bug2eval through `perci::b2e`: `validate`, `validate_all`, `run` (needs `PERCI_EVAL_ALLOW_AGENT=1`) | **off** |
@@ -48,7 +57,7 @@ set; without it the profile's `tools.enabled` applies. Off-by-default tools
 write user state, execute code or take minutes (`ledger_append` writes only
 Perci's own append-only run ledger).
 
-### Run ledger, sequence rules, next_step
+### Run ledger, sequence rules, Temporal Router
 
 `perci mcp` records every verdict (except the read-only meta tools
 `ledger_show`, `ledger_verify`, `next_step`, `status`) in a hash-chained ledger
@@ -59,10 +68,38 @@ the policy's sequence rules against the ledger: `git push` before tests passed
 after the last write is refused (`SEQUENCE_REQUIRES`), a destructive delete
 without a backup needs approval, and a satisfied rule cites the entry it
 relied on as `ledger_entry` evidence. Without a run ledger the rule is
-reported as `SEQUENCE_UNCHECKED` (abstain). `next_step` learns integer n-gram
-counts (order 3 with back-off) from verified ledgers (`perci ledger learn`)
-plus the current run, and returns `{step, count, of, permille, outcomes}` rows
-so the suggestion is explainable. Layout and formats: `docs/PROFILES.md`.
+reported as `SEQUENCE_UNCHECKED` (abstain). When the policy already refuses
+the step, unmet rules are listed as `superseded` without repeating the
+refusal as a reason.
+
+**Gate posture is one value.** After policy and sequence rules,
+`result.posture` is the final posture, `status` is derived from it (`allow` →
+`pass`, `propose_and_verify` → `abstain`, `refuse` → `fail`), `result.summary`
+reads `<posture> (<deciding rule>)`, the first reason is the one that decided,
+and `result.policy_posture` keeps the policy's own posture.
+
+**The Temporal Router** (`next_step`, also callable as `temporal_route` from
+the CLI or a raw MCP `tools/call`; MCP `tools/list` shows only `next_step`)
+learns integer n-gram counts (order 3 with back-off) from every run ledger
+whose hash chain verifies (`perci ledger learn`; broken chains are skipped and
+reported) plus the current run, and returns `{step, count, of, permille,
+outcomes}` rows so every suggestion is explainable. It abstains with
+`NO_HISTORY` when it has not seen the context. It is advisory
+(`agent_gate_step` is what enforces). There is no accuracy benchmark for it yet (latency
+only, below). Layout and formats: `docs/PROFILES.md`.
+
+### Deletes of paths that do not exist
+
+`policy_check` and `agent_gate_step` look at a delete's targets themselves:
+`kind: delete` paths, or the operands of one plain `rm` / `rmdir` / `unlink` /
+`Remove-Item` command. When every target is a literal path (no globs,
+variables, `~`, pipelines or wrappers; relative paths need `cwd` or
+`workspace`) and Perci finds that none exists, the plain delete rule
+(`shell.rm` / `delete.default`) is lifted to `allow` with a
+`DELETE_TARGETS_ABSENT` reason and `absent:<path>` evidence, and the
+backup-before-delete rule is skipped (`skip_if_targets_absent`). Refusals
+(`rm -rf /`, protected paths such as `.git` or `models/`) are never lifted.
+The check is point-in-time.
 
 ### Verdict cache
 
@@ -87,7 +124,13 @@ world: only the premises/notes given) or `heuristic` (keyword policy escalation)
 
 `input_sha256` = sha256 of canonical JSON `{tool, args}`; `output_sha256` =
 sha256 of canonical `{status, result, reasons, evidence}` (sorted keys, floats
-as strings). `elapsed_us`, `config` (the `PERCI_*` variables that affect output),
+as strings); **`receipt_sha256`** (the receipt id, since 0.11.8) = sha256 of
+canonical `{schema, tool, input_sha256, output_sha256, perci_version,
+build_id, weights, config}`. Two different inputs with the same output share
+`output_sha256` but never `receipt_sha256`; cite the receipt id. The field is
+optional in `perci.verdict.v1` (older verdicts lack it) and is what the run
+ledger records as `receipt_sha256`. `Verdict::receipt_matches()` re-checks
+both hashes. `elapsed_us`, `config` (the `PERCI_*` variables that affect output),
 `weights` (verified pack identity `name@version manifest-sha256:…`),
 `cache_hit` and `ledger` (the run-ledger entry) are recorded but not hashed. `deterministic:
 false` marks tools whose output depends on the outside world (remember, eval,
@@ -123,7 +166,9 @@ Suggested system-prompt line (the server's `instructions` say the same):
 and `agent_gate_step` (phase `pre`) before shell commands or writes. On `fail`
 fix what the reasons say; on `abstain` say it is unverified."
 
-None of these configs have been exercised from the real hosts yet (see Known gaps).
+Which of these were exercised in the real host CLIs (and which are only
+validated against the host's documented format) is in
+[QUICKSTART.md](QUICKSTART.md#host-test-status).
 
 ## Latency (box: Linux, 8 vCPU, release build, Oct 17 2026)
 

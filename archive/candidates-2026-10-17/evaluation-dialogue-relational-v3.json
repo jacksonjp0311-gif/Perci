@@ -1,8 +1,8 @@
 {
   "schema": "perci.dialogue-candidate-evaluation.v1",
-  "questions": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-relational-v3-heldout.jsonl",
+  "questions": "training\\dialogue-relational-v3-heldout.jsonl",
   "questions_sha256": "d7b1d5ec6442cf20d6162d431e6537f67f1ae3ab39d631aa7c9bc4c05f859fae",
-  "phrase_candidate": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\models\\candidates\\perci-dialogue-relational-v3.bphr",
+  "phrase_candidate": "models\\candidates\\perci-dialogue-relational-v3.bphr",
   "phrase_candidate_sha256": "5875657a98da7e407097c434189006a1b3df325d62f094a1bc6b2e74d4dbff4b",
   "baseline": {
     "summary": {
@@ -160,7 +160,7 @@
     "proxy_findings": [
       {
         "kind": "shared_holdout_fixture",
-        "source": "C:\\Users\\jacks\\OneDrive\\Desktop\\perci\\training\\dialogue-relational-v3-heldout.jsonl",
+        "source": "training\\dialogue-relational-v3-heldout.jsonl",
         "disclosure": "paired baseline/candidate comparison; not independent evidence"
       }
     ],

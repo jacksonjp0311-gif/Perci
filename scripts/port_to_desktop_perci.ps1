@@ -6,11 +6,11 @@
 # Usage:
 #   .\scripts\port_to_desktop_perci.ps1
 #   .\scripts\port_to_desktop_perci.ps1 -Weights
-#   .\scripts\port_to_desktop_perci.ps1 -Dest "C:\Users\jacks\OneDrive\Desktop\perci" -WhatIf
+#   .\scripts\port_to_desktop_perci.ps1 -Dest (Join-Path $env:USERPROFILE "OneDrive\Desktop\perci") -WhatIf
 
 param(
     [string]$Source = "",
-    [string]$Dest = "C:\Users\jacks\OneDrive\Desktop\perci",
+    [string]$Dest = (Join-Path $env:USERPROFILE "OneDrive\Desktop\perci"),
     [switch]$Weights,
     [switch]$WhatIf
 )

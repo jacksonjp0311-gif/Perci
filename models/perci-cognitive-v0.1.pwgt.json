@@ -31,7 +31,7 @@
   "corpus_sha256": "1e86222bea035d19d53b610f91ddfdbbb3849966683e6691584f601c715b45d0",
   "seed": 10200195589117137683,
   "adaptive": true,
-  "adaptive_inject": "C:\\Users\\jacks\\OneDrive\\Desktop\\LumenShell\\perci\\training\\adaptive\\inject_prompts.json",
+  "adaptive_inject": "training\\adaptive\\inject_prompts.json",
   "limitations": [
     "Not a transformer or general-purpose pretrained language model.",
     "Open-ended language is template and retrieval based.",
