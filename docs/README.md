@@ -8,6 +8,7 @@
 | [TOOLS.md](TOOLS.md) | every tool, verdict and receipt format, ledger and sequence rules, the Temporal Router, gate posture, latency |
 | [PROFILES.md](PROFILES.md) | your own policy overlays, sequence rules, weight packs and calibration |
 | [BENCHMARKS.md](BENCHMARKS.md) | the public benchmark script and results on Linux, macOS and Windows |
+| [BITWORK_WHITEPAPER.md](BITWORK_WHITEPAPER.md) | **Bitwork white paper**: the binary router's encoding, scoring, retrieval and calibration, a reproducible baseline comparison ([evals/bitwork_baseline](../evals/bitwork_baseline/)), limitations, and where Bitwork sits in Perci |
 | [DECISIONS.md](DECISIONS.md) | why the tool layer works the way it does (numbered decisions) |
 | [DECISIONS-evals-memory.md](DECISIONS-evals-memory.md) | decisions for CI, bug2eval cases and cited memory |
 | [../CHANGELOG.md](../CHANGELOG.md) | changes per release |
@@ -20,7 +21,7 @@ reference; numbers in them are snapshots tied to the receipts they cite, and
 some describe designs that were later replaced. Start with
 [RESEARCH_LOG.md](RESEARCH_LOG.md) (the former README).
 
-- Bitwork and weights: [BITWORK_COGNITION_v0622.md](BITWORK_COGNITION_v0622.md),
+- Bitwork and weights (current reference: [BITWORK_WHITEPAPER.md](BITWORK_WHITEPAPER.md)): [BITWORK_COGNITION_v0622.md](BITWORK_COGNITION_v0622.md),
   [BITWORK_EMERGENCE.md](BITWORK_EMERGENCE.md), [BITWORK_MATH_PATH.md](BITWORK_MATH_PATH.md),
   [BITWORK_V3_EVIDENCE.md](BITWORK_V3_EVIDENCE.md), [LOWBIT_LAYER.md](LOWBIT_LAYER.md),
   [WEIGHT_REASSESSMENT_v0616.md](WEIGHT_REASSESSMENT_v0616.md), [SBCG_V2_EVIDENCE.md](SBCG_V2_EVIDENCE.md),

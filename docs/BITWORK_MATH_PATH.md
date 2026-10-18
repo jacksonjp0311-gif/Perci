@@ -43,12 +43,17 @@ Approximate activation density: if \(f\) features fire, at most \(4f\) bits
 
 For domain \(d\), positive/negative masks \(m_d^+, m_d^- \in \{0,1\}^{4096}\):
 
-\[
-s_d = |q \land m_d^+| - |q \land m_d^-| + \text{lexical prior}
-\]
+$$
+s_d = 2\,\lvert q \land m_d^+\rvert - \lvert q \land m_d^-\rvert + \rho_d
+$$
 
-Integer `AND` + `POPCOUNT`. Top domains win; then only those partitions are
-scanned (latency control).
+This is the formula in `CognitiveWeights::classify_impl` (`src/cognitive.rs`):
+positive evidence counts **twice**. \(\rho_d\) is the lexical prior (48 points
+per matched cue; doubled to 96 for `PERCIW03` packs). An earlier version of
+this note wrote \(|q \land m_d^+| - |q \land m_d^-|\); the code has always
+used the factor 2. Integer `AND` + `POPCOUNT`. Top domains win; then only those
+partitions are scanned (latency control). Full derivation and measurements:
+[BITWORK_WHITEPAPER.md](BITWORK_WHITEPAPER.md).
 
 ### 1.3 Prototype retrieval (nearest neighbor in intersection space)
 
@@ -58,8 +63,12 @@ Stored prototypes \(p_i \in \{0,1\}^{4096}\). Score:
 \text{overlap}(q,p_i) = |q \land p_i|
 \]
 
-Telemetry also uses Jaccard and chance-normalized z-score, but the **decision**
-is essentially **1-NN under intersection / Hamming geometry**.
+The record score in the code is
+\(2|q \land p_i| - |p_i| + 2 s_d + \lfloor \text{quality}/500 \rfloor\), and
+\(2|q \land p_i| - |p_i| = |q| - H(q,p_i)\), so within a domain the decision is
+exactly **Hamming 1-NN**, offset across domains by \(2 s_d\) (see the
+[white paper](BITWORK_WHITEPAPER.md), §5.1). Telemetry also reports Jaccard and
+a chance-normalized z-score.
 
 ### 1.4 Response selection
 

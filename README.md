@@ -16,6 +16,12 @@
 > Windows runners, but its interfaces may still change and the release binaries are not
 > code-signed yet. See [Status](#status-preview).
 
+> **New: [Bitwork white paper](docs/BITWORK_WHITEPAPER.md).** How Perci's
+> integer bit-vector, transformer-free router works (4,096-bit hashed codes, signed
+> masks, Hamming nearest-neighbour over 403k prototypes, Wilson-calibrated
+> abstention), measured against TF-IDF, BM25 and keyword baselines on the same
+> data, with its limits stated plainly.
+
 Your agent says *"17% of 240 is 41"*, cites a note that has changed, or wants
 to `git push` before the tests ran. Perci catches each of these before it
 reaches the user or the repository. It is a local MCP server and CLI that
@@ -94,8 +100,9 @@ $ PERCI_RUN_ID=demo  … ledger_verify
   receipt id, `receipt_sha256`, that binds the input, the output and the
   engine/pack version, so two different questions never share a receipt.
 * **Calibrated routing.** `route` gives a deterministic route (refuse / exact /
-  relation / recall / llm) from Perci's Bitwork weight pack with calibrated
-  confidence, and abstains below the confidence gate.
+  relation / recall / llm) plus a category label from Perci's Bitwork weight
+  pack with calibrated confidence, and abstains below the confidence gate
+  ([how Bitwork works](docs/BITWORK_WHITEPAPER.md)).
 * **Your rules, outside the install.** Profiles (`PERCI_PROFILE`) add policy
   overlays, sequence rules and your own weight packs, all sha256-pinned
   ([docs/PROFILES.md](docs/PROFILES.md)).
@@ -118,6 +125,11 @@ the benchmark table). It is advisory: `agent_gate_step` enforces, the router
 suggests. There is no accuracy benchmark for its suggestions yet. How useful
 they are depends on how repetitive your own runs are, and they get better as
 your ledgers grow.
+
+The Temporal Router is integer n-gram counting, not Bitwork. Bitwork is the
+binary classifier behind `route` and the chat engine; the
+[Bitwork white paper](docs/BITWORK_WHITEPAPER.md) (§9) maps exactly which
+parts of Perci use it and which are plain rules and hashing.
 
 ## Benchmarks
 
@@ -157,9 +169,14 @@ identical across processes.
 * **Bitwork** (only `route` and the chat engine need it): Perci's own sparse
   binary associative weights (`PERCIW03`, ~200 MB; the `tools` set is ~20 MB).
   Routing is a popcount scan over packed bit vectors on up to 8 threads,
-  integer-only and deterministic, with calibration buckets measured on
+  integer scoring and deterministic, with calibration buckets measured on
   held-out cases. Weights are released as separate, sha256-checked assets
-  (`perci fetch-weights`).
+  (`perci fetch-weights`). Full method, math and a reproducible baseline
+  comparison: **[Bitwork white paper](docs/BITWORK_WHITEPAPER.md)**. In short:
+  on 158 held-out cases the 200 MiB pack labels 84% correctly versus 67% for
+  TF-IDF + logistic regression trained on the same corpus, but much of that
+  comes from hand-written keyword priors (55% without them), so the paper
+  frames Bitwork's strengths as speed, determinism and inspectability.
 * **Research engine**: Perci also contains an experimental local chat engine
   built on the same weights (operators, exact tools, governed memory). The
   tool layer does not depend on it; `exact`, `check_math`, `policy_check` and
@@ -208,6 +225,7 @@ Changes per release: [CHANGELOG.md](CHANGELOG.md). Design decisions:
 * [TOOLS](docs/TOOLS.md): every tool, the verdict and receipt format, latency
 * [PROFILES](docs/PROFILES.md): your own policy, sequence rules and weight packs
 * [BENCHMARKS](docs/BENCHMARKS.md): how the numbers above are measured, on three OSes
+* [BITWORK WHITE PAPER](docs/BITWORK_WHITEPAPER.md): the Bitwork router's method, math, evaluation and limits
 * [docs/README.md](docs/README.md): index of everything else, including research notes
 
 ## Contributing and security

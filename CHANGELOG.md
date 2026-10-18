@@ -5,6 +5,23 @@ All notable changes to Perci's tool layer. Versions follow `Cargo.toml`.
 affect harnesses are listed here. The research engine's history is in
 [docs/RESEARCH_LOG.md](docs/RESEARCH_LOG.md).
 
+## Unreleased
+
+### Docs
+
+- **Bitwork white paper** ([docs/BITWORK_WHITEPAPER.md](docs/BITWORK_WHITEPAPER.md)):
+  the router's encoding, category scoring, Hamming nearest-neighbour retrieval,
+  mixture and residual hops, compositional overlay (and its measured limits),
+  calibration and abstention, pack integrity and governance, and exactly which
+  parts of Perci use Bitwork (`route`, chat) and which do not (the verifier and
+  the Temporal Router). Linked from the README.
+- New reproducible evaluation, `evals/bitwork_baseline/`: TF-IDF + logistic
+  regression, TF-IDF 1-NN, BM25 1-NN and keyword baselines trained on the
+  regenerated v0.3 corpus, a keyword-priors ablation, a prior/held-out overlap
+  check and route latency, on the 158 calibration cases. No code changes.
+- `docs/BITWORK_MATH_PATH.md`: the category score now matches the code,
+  `2|q∧m⁺| − |q∧m⁻| + prior`.
+
 ## 0.11.8 (preview) - 2026-10-18
 
 Pre-share fixes found by running Perci inside a live agent harness.

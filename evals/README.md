@@ -1,5 +1,12 @@
 # Perci evals
 
+## Bitwork baseline (`evals/bitwork_baseline/`)
+
+Bitwork's routing label versus TF-IDF, BM25 and keyword baselines on the 158
+held-out calibration cases, with a priors ablation and latency. See its
+[README](bitwork_baseline/README.md) and the
+[Bitwork white paper](../docs/BITWORK_WHITEPAPER.md).
+
 ## bug2eval regression cases (`evals/b2e/`)
 
 Every fixed Perci bug is a [bug2eval](https://github.com/jacksonjp0311-gif/bug2eval)
